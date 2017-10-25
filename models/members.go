@@ -1,4 +1,4 @@
-package routes
+package models
 
 import (
 	"database/sql"
@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"reflect"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -57,7 +58,7 @@ func (nt *NullTime) UnmarshalJSON(text []byte) error {
 // Create our own null string type for prettier marshal JSON format
 type NullString sql.NullString
 
-// Currently it's a wrap of sql.NullString.Scan()
+// Scan is currently a wrap of sql.NullString.Scan()
 func (ns *NullString) Scan(value interface{}) error {
 	// ns.String, ns.Valid = value.(string)
 	// fmt.Printf("string:%s\n, valid:%s\n", ns.String, ns.Valid)
@@ -67,6 +68,8 @@ func (ns *NullString) Scan(value interface{}) error {
 	ns.String, ns.Valid = x.String, x.Valid
 	return err
 }
+
+// Value validate the value
 func (ns NullString) Value() (driver.Value, error) {
 	if !ns.Valid {
 		return nil, nil
@@ -107,7 +110,8 @@ type member struct {
 	CreateTime   NullTime   `json:"created_at" db:"create_time"`
 	UpdatedAt    NullTime   `json:"updated_at" db:"updated_at"`
 	UpdatedBy    NullString `json:"updated_by" db:"updated_by"`
-	Password     NullString `db:"password"`
+	Password     NullString `json:"-" db:"password"`
+	// Ignore password JSON marshall for now
 
 	Description  NullString `json:"description" db:"description"`
 	ProfileImage NullString `json:"profile_image" db:"profile_picture"`
@@ -121,7 +125,50 @@ type member struct {
 	Active       bool `json:"active" db:"active"`
 }
 
-func GetSingleMember(c *gin.Context) {
+func generateSQL(m member, mode string) {
+	fmt.Println(m)
+	result := make([]string, 0)
+	switch mode {
+	case "all":
+		fmt.Println("all")
+	case "partial":
+
+		fmt.Println("partial")
+		u := reflect.ValueOf(m)
+
+		for i := 0; i < u.NumField(); i++ {
+			tag := u.Type().Field(i).Tag
+			field := u.Field(i).Interface()
+			switch field := field.(type) {
+			case string:
+				if field != "" {
+					fmt.Printf("%s field = %s\n", u.Field(i).Type(), field)
+					result = append(result, tag.Get("db"))
+				}
+
+			case NullString:
+				if field.Valid {
+					fmt.Println("valid NullString : ", field.String)
+					result = append(result, tag.Get("db"))
+				}
+			case NullTime:
+				if field.Valid {
+					fmt.Println("valid NullTime : ", field.Time)
+					result = append(result, tag.Get("db"))
+				}
+
+			case bool:
+				fmt.Println("bool type")
+				result = append(result, tag.Get("db"))
+			default:
+				fmt.Println("unrecognised format: ", u.Field(i).Type())
+			}
+		}
+	}
+	fmt.Println(result)
+}
+
+func GetMember(c *gin.Context) {
 	userID := c.Param("id")
 	db := c.MustGet("DB").(*sqlx.DB)
 	member := member{}
@@ -131,6 +178,8 @@ func GetSingleMember(c *gin.Context) {
 	switch {
 	case err == sql.ErrNoRows:
 		log.Printf("No user found.")
+		c.JSON(404, "User Not Found")
+		return
 	case err != nil:
 		log.Fatal(err)
 	default:
@@ -140,7 +189,7 @@ func GetSingleMember(c *gin.Context) {
 	c.JSON(200, member)
 }
 
-func InsertNewMember(c *gin.Context) {
+func InsertMember(c *gin.Context) {
 	member := member{}
 	c.Bind(&member)
 
@@ -192,9 +241,19 @@ func InsertNewMember(c *gin.Context) {
 		:post_push,
 		:comment_push,
 		:active)`
-	_, err := db.NamedExec(query, member)
+	result, err := db.NamedExec(query, member)
 	if err != nil {
 		panic(err)
 	}
+	c.JSON(200, result)
+}
+
+func UpdateMember(c *gin.Context) {
+	member := member{}
+	c.Bind(&member)
+
+	generateSQL(member, "partial")
+
 	c.JSON(200, member)
+	// db := c.MustGet("DB").(*sqlx.DB)
 }

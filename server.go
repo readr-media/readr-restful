@@ -4,7 +4,7 @@ import (
 	"flag"
 	"fmt"
 
-	"github.com/readr-media/readr-restful/routes"
+	"github.com/readr-media/readr-restful/models"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
@@ -43,8 +43,9 @@ func main() {
 		c.String(200, "")
 	})
 
-	router.GET("/member/:id", routes.GetSingleMember)
-	router.POST("/member", routes.InsertNewMember)
+	router.GET("/member/:id", models.GetMember)
+	router.POST("/member", models.InsertMember)
+	router.PUT("/member", models.UpdateMember)
 
 	router.Run()
 }
