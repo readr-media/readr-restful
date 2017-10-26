@@ -46,6 +46,7 @@ func main() {
 	router.GET("/member/:id", models.GetMember)
 	router.POST("/member", models.InsertMember)
 	router.PUT("/member", models.UpdateMember)
+	router.DELETE("/member/:id", models.DeleteMember)
 
 	router.Run()
 }

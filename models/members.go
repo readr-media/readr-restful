@@ -151,10 +151,25 @@ func makeSQL(m *member, mode string) (query string, err error) {
 		// fmt.Println(query)
 		query = bytequery.String()
 		err = nil
+
 	case "full_update":
-		fmt.Println("all")
-		query = "full_update"
+
+		for i := 0; i < u.NumField(); i++ {
+			tag := u.Type().Field(i).Tag.Get("db")
+			columns = append(columns, tag)
+		}
+
+		temp := make([]string, len(columns))
+		for idx, value := range columns {
+			temp[idx] = fmt.Sprintf("%s = :%s", value, value)
+		}
+		bytequery.WriteString("UPDATE members SET ")
+		bytequery.WriteString(strings.Join(temp, ", "))
+		bytequery.WriteString(" WHERE user_id = :user_id")
+
+		query = bytequery.String()
 		err = nil
+
 	case "partial_update":
 
 		fmt.Println("partial")
@@ -181,18 +196,26 @@ func makeSQL(m *member, mode string) (query string, err error) {
 				}
 
 			case bool:
-				fmt.Println("bool type")
+				fmt.Println("bool type", field)
 				columns = append(columns, tag.Get("db"))
 			default:
 				fmt.Println("unrecognised format: ", u.Field(i).Type())
 			}
 		}
-		query = "partial"
+
+		temp := make([]string, len(columns))
+		for idx, value := range columns {
+			temp[idx] = fmt.Sprintf("%s = :%s", value, value)
+		}
+		bytequery.WriteString("UPDATE members SET ")
+		bytequery.WriteString(strings.Join(temp, ", "))
+		bytequery.WriteString(" WHERE user_id = :user_id")
+
+		query = bytequery.String()
 		err = nil
 	}
 	fmt.Println(columns)
 	return
-
 }
 
 func GetMember(c *gin.Context) {
@@ -222,10 +245,24 @@ func InsertMember(c *gin.Context) {
 
 	// Need to implement checking for empty string user_id
 
+	if !member.CreateTime.Valid {
+		member.CreateTime.Time = time.Now()
+		member.CreateTime.Valid = true
+	}
+	if !member.UpdatedAt.Valid {
+		member.UpdatedAt.Time = time.Now()
+		member.UpdatedAt.Valid = true
+	}
 	// Need to manually parse null before insert
 	// Do not insert create_time and updated_by,
 	// left them to the mySQL default
 	db := c.MustGet("DB").(*sqlx.DB)
+	query, _ := makeSQL(&member, "insert")
+	result, err := db.NamedExec(query, member)
+	if err != nil {
+		panic(err)
+	}
+	c.JSON(200, result)
 	// query := `INSERT INTO members (
 	// 	user_id,
 	// 	name,
@@ -268,20 +305,37 @@ func InsertMember(c *gin.Context) {
 	// 	:post_push,
 	// 	:comment_push,
 	// 	:active)`
-	query, _ := makeSQL(&member, "insert")
-	result, err := db.NamedExec(query, member)
-	if err != nil {
-		panic(err)
-	}
-	c.JSON(200, result)
 }
 
 func UpdateMember(c *gin.Context) {
 	member := member{}
 	c.Bind(&member)
 
+	if member.CreateTime.Valid {
+		// member.CreateTime.Time = nil
+		member.CreateTime.Valid = false
+	}
+	if !member.UpdatedAt.Valid {
+		member.UpdatedAt.Time = time.Now()
+		member.UpdatedAt.Valid = true
+	}
+	db := c.MustGet("DB").(*sqlx.DB)
 	query, _ := makeSQL(&member, "partial_update")
-	fmt.Print(query)
-	c.JSON(200, member)
-	// db := c.MustGet("DB").(*sqlx.DB)
+	result, err := db.NamedExec(query, member)
+	// fmt.Print(query)
+	if err != nil {
+		panic(err)
+	}
+	c.JSON(200, result)
+}
+
+func DeleteMember(c *gin.Context) {
+	userID := c.Param("id")
+
+	db := c.MustGet("DB").(*sqlx.DB)
+	result, err := db.Exec("UPDATE members SET active = 0 WHERE user_id = ?", userID)
+	if err != nil {
+		panic(err)
+	}
+	c.JSON(200, result)
 }
