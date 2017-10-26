@@ -1,12 +1,14 @@
 package models
 
 import (
+	"bytes"
 	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
 	"log"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -125,47 +127,72 @@ type member struct {
 	Active       bool `json:"active" db:"active"`
 }
 
-func generateSQL(m member, mode string) {
-	fmt.Println(m)
-	result := make([]string, 0)
+func makeSQL(m *member, mode string) (query string, err error) {
+
+	columns := make([]string, 0)
+	u := reflect.ValueOf(m).Elem()
+
+	bytequery := &bytes.Buffer{}
+
 	switch mode {
-	case "all":
+	case "insert":
+		fmt.Println("insert")
+		for i := 0; i < u.NumField(); i++ {
+			tag := u.Type().Field(i).Tag.Get("db")
+			columns = append(columns, tag)
+		}
+
+		bytequery.WriteString("INSERT INTO members ( ")
+		bytequery.WriteString(strings.Join(columns, ","))
+		bytequery.WriteString(") VALUES ( :")
+		bytequery.WriteString(strings.Join(columns, ",:"))
+		bytequery.WriteString(")")
+
+		// fmt.Println(query)
+		query = bytequery.String()
+		err = nil
+	case "full_update":
 		fmt.Println("all")
-	case "partial":
+		query = "full_update"
+		err = nil
+	case "partial_update":
 
 		fmt.Println("partial")
-		u := reflect.ValueOf(m)
-
 		for i := 0; i < u.NumField(); i++ {
 			tag := u.Type().Field(i).Tag
 			field := u.Field(i).Interface()
+
 			switch field := field.(type) {
 			case string:
 				if field != "" {
 					fmt.Printf("%s field = %s\n", u.Field(i).Type(), field)
-					result = append(result, tag.Get("db"))
+					columns = append(columns, tag.Get("db"))
 				}
 
 			case NullString:
 				if field.Valid {
 					fmt.Println("valid NullString : ", field.String)
-					result = append(result, tag.Get("db"))
+					columns = append(columns, tag.Get("db"))
 				}
 			case NullTime:
 				if field.Valid {
 					fmt.Println("valid NullTime : ", field.Time)
-					result = append(result, tag.Get("db"))
+					columns = append(columns, tag.Get("db"))
 				}
 
 			case bool:
 				fmt.Println("bool type")
-				result = append(result, tag.Get("db"))
+				columns = append(columns, tag.Get("db"))
 			default:
 				fmt.Println("unrecognised format: ", u.Field(i).Type())
 			}
 		}
+		query = "partial"
+		err = nil
 	}
-	fmt.Println(result)
+	fmt.Println(columns)
+	return
+
 }
 
 func GetMember(c *gin.Context) {
@@ -199,48 +226,49 @@ func InsertMember(c *gin.Context) {
 	// Do not insert create_time and updated_by,
 	// left them to the mySQL default
 	db := c.MustGet("DB").(*sqlx.DB)
-	query := `INSERT INTO members (
-		user_id,
-		name,
-		nick,
-		birthday,
-		gender,
-		work,
-		mail,
-		register_mode,
-		social_id,
-		updated_by,
-		password,
-		description,
-		profile_picture,
-		identity,
-		c_editor,
-		hide_profile,
-		profile_push,
-		post_push,
-		comment_push,
-		active)
-	VALUES(
-		:user_id,
-		:name,
-		:nick,
-		:birthday,
-		:gender,
-		:work,
-		:mail,
-		:register_mode,
-		:social_id,
-		:updated_by,
-		:password,
-		:description,
-		:profile_picture,
-		:identity,
-		:c_editor,
-		:hide_profile,
-		:profile_push,
-		:post_push,
-		:comment_push,
-		:active)`
+	// query := `INSERT INTO members (
+	// 	user_id,
+	// 	name,
+	// 	nick,
+	// 	birthday,
+	// 	gender,
+	// 	work,
+	// 	mail,
+	// 	register_mode,
+	// 	social_id,
+	// 	updated_by,
+	// 	password,
+	// 	description,
+	// 	profile_picture,
+	// 	identity,
+	// 	c_editor,
+	// 	hide_profile,
+	// 	profile_push,
+	// 	post_push,
+	// 	comment_push,
+	// 	active)
+	// VALUES(
+	// 	:user_id,
+	// 	:name,
+	// 	:nick,
+	// 	:birthday,
+	// 	:gender,
+	// 	:work,
+	// 	:mail,
+	// 	:register_mode,
+	// 	:social_id,
+	// 	:updated_by,
+	// 	:password,
+	// 	:description,
+	// 	:profile_picture,
+	// 	:identity,
+	// 	:c_editor,
+	// 	:hide_profile,
+	// 	:profile_push,
+	// 	:post_push,
+	// 	:comment_push,
+	// 	:active)`
+	query, _ := makeSQL(&member, "insert")
 	result, err := db.NamedExec(query, member)
 	if err != nil {
 		panic(err)
@@ -252,8 +280,8 @@ func UpdateMember(c *gin.Context) {
 	member := member{}
 	c.Bind(&member)
 
-	generateSQL(member, "partial")
-
+	query, _ := makeSQL(&member, "partial_update")
+	fmt.Print(query)
 	c.JSON(200, member)
 	// db := c.MustGet("DB").(*sqlx.DB)
 }
