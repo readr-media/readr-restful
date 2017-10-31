@@ -97,7 +97,7 @@ func (ns *NullString) UnmarshalJSON(text []byte) error {
 	return nil
 }
 
-type member struct {
+type Member struct {
 	ID       string     `json:"id" db:"user_id"`
 	Name     NullString `json:"name" db:"name"`
 	Nickname NullString `json:"nickname" db:"nick"`
@@ -127,8 +127,12 @@ type member struct {
 	Active       bool `json:"active" db:"active"`
 }
 
+<<<<<<< HEAD
 // May have to re-implement with interface to multiple table implementation
 func makeSQL(m *member, mode string) (query string, err error) {
+=======
+func makeSQL(m *Member, mode string) (query string, err error) {
+>>>>>>> seperate http handler from models
 
 	columns := make([]string, 0)
 	u := reflect.ValueOf(m).Elem()
@@ -219,99 +223,47 @@ func makeSQL(m *member, mode string) (query string, err error) {
 	return
 }
 
-func GetMember(c *gin.Context) {
-	userID := c.Param("id")
+func GetMember(c *gin.Context, userID string) (m *Member, err error) {
 	db := c.MustGet("DB").(*sqlx.DB)
-	member := member{}
+	member := Member{}
 	// err := db.QueryRowx("SELECT work, birthday, description, register_mode, social_id, c_editor, hide_profile, profile_push, post_push, comment_push, user_id, name, nick, create_time, updated_at, gender, mail, updated_by, password, active, profile_picture, identity FROM members where user_id = ?", userID).StructScan(&member)
-	err := db.QueryRowx("SELECT * FROM members where user_id = ?", userID).StructScan(&member)
+	err = db.QueryRowx("SELECT * FROM members where user_id = ?", userID).StructScan(&member)
 
 	switch {
 	case err == sql.ErrNoRows:
 		log.Printf("No user found.")
-		c.JSON(404, "User Not Found")
-		return
+		m = nil
 	case err != nil:
 		log.Fatal(err)
+		m = nil
 	default:
 		fmt.Printf("Successful get user:%s\n", userID)
+		m = &member
 	}
-
-	c.JSON(200, member)
+	return
 }
 
-func InsertMember(c *gin.Context) {
-	member := member{}
-	c.Bind(&member)
-
-	// Need to implement checking for empty string user_id
-
-	if !member.CreateTime.Valid {
-		member.CreateTime.Time = time.Now()
-		member.CreateTime.Valid = true
-	}
-	if !member.UpdatedAt.Valid {
-		member.UpdatedAt.Time = time.Now()
-		member.UpdatedAt.Valid = true
-	}
+func InsertMember(c *gin.Context, member *Member) (result *Member, err error) {
 	// Need to manually parse null before insert
 	// Do not insert create_time and updated_by,
 	// left them to the mySQL default
 	db := c.MustGet("DB").(*sqlx.DB)
-	query, _ := makeSQL(&member, "insert")
-	result, err := db.NamedExec(query, member)
-	if err != nil {
-		panic(err)
+	query, _ := makeSQL(member, "insert")
+	_, e := db.NamedExec(query, member)
+	// Cannot handle duplicate insert, crash
+	if e != nil {
+		log.Fatal(err)
+		result = nil
+		err = e
 	}
-	c.JSON(200, result)
-	// query := `INSERT INTO members (
-	// 	user_id,
-	// 	name,
-	// 	nick,
-	// 	birthday,
-	// 	gender,
-	// 	work,
-	// 	mail,
-	// 	register_mode,
-	// 	social_id,
-	// 	updated_by,
-	// 	password,
-	// 	description,
-	// 	profile_picture,
-	// 	identity,
-	// 	c_editor,
-	// 	hide_profile,
-	// 	profile_push,
-	// 	post_push,
-	// 	comment_push,
-	// 	active)
-	// VALUES(
-	// 	:user_id,
-	// 	:name,
-	// 	:nick,
-	// 	:birthday,
-	// 	:gender,
-	// 	:work,
-	// 	:mail,
-	// 	:register_mode,
-	// 	:social_id,
-	// 	:updated_by,
-	// 	:password,
-	// 	:description,
-	// 	:profile_picture,
-	// 	:identity,
-	// 	:c_editor,
-	// 	:hide_profile,
-	// 	:profile_push,
-	// 	:post_push,
-	// 	:comment_push,
-	// 	:active)`
+	result = member
+	err = nil
+	return
 }
 
-func UpdateMember(c *gin.Context) {
-	member := member{}
-	c.Bind(&member)
+func UpdateMember(c *gin.Context, member *Member) (*Member, error) {
 
+<<<<<<< HEAD
 	// Update time incase it's not in the request body
 	if member.CreateTime.Valid {
 		// member.CreateTime.Time = nil
@@ -321,23 +273,25 @@ func UpdateMember(c *gin.Context) {
 		member.UpdatedAt.Time = time.Now()
 		member.UpdatedAt.Valid = true
 	}
+=======
+>>>>>>> seperate http handler from models
 	db := c.MustGet("DB").(*sqlx.DB)
-	query, _ := makeSQL(&member, "partial_update")
-	result, err := db.NamedExec(query, member)
+	query, _ := makeSQL(member, "partial_update")
+	_, err := db.NamedExec(query, member)
 	// fmt.Print(query)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	c.JSON(200, result)
+	return member, nil
 }
 
-func DeleteMember(c *gin.Context) {
-	userID := c.Param("id")
+func DeleteMember(c *gin.Context, userID string) (*Member, error) {
 
 	db := c.MustGet("DB").(*sqlx.DB)
-	result, err := db.Exec("UPDATE members SET active = 0 WHERE user_id = ?", userID)
+	_, err := db.Exec("UPDATE members SET active = 0 WHERE user_id = ?", userID)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
+		return nil, err
 	}
-	c.JSON(200, result)
+	return &Member{ID: userID}, nil
 }
