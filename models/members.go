@@ -127,6 +127,7 @@ type member struct {
 	Active       bool `json:"active" db:"active"`
 }
 
+// May have to re-implement with interface to multiple table implementation
 func makeSQL(m *member, mode string) (query string, err error) {
 
 	columns := make([]string, 0)
@@ -311,6 +312,7 @@ func UpdateMember(c *gin.Context) {
 	member := member{}
 	c.Bind(&member)
 
+	// Update time incase it's not in the request body
 	if member.CreateTime.Valid {
 		// member.CreateTime.Time = nil
 		member.CreateTime.Valid = false
