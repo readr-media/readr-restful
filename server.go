@@ -3,12 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
-
-	"github.com/readr-media/readr-restful/models"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	"github.com/readr-media/readr-restful/models"
 )
 
 var (
@@ -27,6 +27,68 @@ func sqlMiddleware(connString string) gin.HandlerFunc {
 	}
 }
 
+func MemberGetHandler(c *gin.Context) {
+	userID := c.Param("id")
+	fmt.Println(userID)
+	member, err := models.GetMember(c, userID)
+
+	if err != nil {
+		c.String(500, "Internal Server Error")
+		return
+	}
+	c.JSON(200, member)
+}
+
+func MemberPostHandler(c *gin.Context) {
+	member := models.Member{}
+	c.Bind(&member)
+
+	if !member.CreateTime.Valid {
+		member.CreateTime.Time = time.Now()
+		member.CreateTime.Valid = true
+	}
+	if !member.UpdatedAt.Valid {
+		member.UpdatedAt.Time = time.Now()
+		member.UpdatedAt.Valid = true
+	}
+
+	result, err := models.InsertMember(c, &member)
+	if err != nil {
+		c.String(500, "Internal Server Error")
+		return
+	}
+	c.JSON(200, result)
+}
+func MemberPutHandler(c *gin.Context) {
+	member := models.Member{}
+	c.Bind(&member)
+
+	if member.CreateTime.Valid {
+		// member.CreateTime.Time = nil
+		member.CreateTime.Valid = false
+	}
+	if !member.UpdatedAt.Valid {
+		member.UpdatedAt.Time = time.Now()
+		member.UpdatedAt.Valid = true
+	}
+	result, err := models.UpdateMember(c, &member)
+	if err != nil {
+		c.String(500, "Internal Server Error")
+		return
+	}
+	c.JSON(200, result)
+}
+
+func MemberDeleteHandler(c *gin.Context) {
+	userID := c.Param("id")
+	result, err := models.DeleteMember(c, userID)
+	if err != nil {
+		c.String(500, "Internal Server Error")
+		return
+	}
+	c.JSON(200, result)
+}
+
 func main() {
 	flag.Parse()
 	fmt.Printf("sql user:%s, sql address:%s, auth:%s \n", *sqlUser, *sqlAddress, *sqlAuth)
@@ -43,10 +105,10 @@ func main() {
 		c.String(200, "")
 	})
 
-	router.GET("/member/:id", models.GetMember)
-	router.POST("/member", models.InsertMember)
-	router.PUT("/member", models.UpdateMember)
-	router.DELETE("/member/:id", models.DeleteMember)
+	router.GET("/member/:id", MemberGetHandler)
+	router.POST("/member", MemberPostHandler)
+	router.PUT("/member", MemberPutHandler)
+	router.DELETE("/member/:id", MemberDeleteHandler)
 
 	router.Run()
 }
