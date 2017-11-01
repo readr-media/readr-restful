@@ -5,14 +5,12 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"reflect"
 	"strings"
 	"time"
-
-	"github.com/gin-gonic/gin"
-	"github.com/jmoiron/sqlx"
 )
 
 type NullTime struct {
@@ -97,6 +95,13 @@ func (ns *NullString) UnmarshalJSON(text []byte) error {
 	return nil
 }
 
+type Databox interface {
+	Get() (interface{}, error)
+	Create() (interface{}, error)
+	Update() (interface{}, error)
+	Delete() (interface{}, error)
+}
+
 type Member struct {
 	ID       string     `json:"id" db:"user_id"`
 	Name     NullString `json:"name" db:"name"`
@@ -128,9 +133,65 @@ type Member struct {
 }
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 // May have to re-implement with interface to multiple table implementation
 func makeSQL(m *member, mode string) (query string, err error) {
 =======
+=======
+func (m *Member) Get() (interface{}, error) {
+
+	member := Member{}
+	// err := db.QueryRowx("SELECT work, birthday, description, register_mode, social_id, c_editor, hide_profile, profile_push, post_push, comment_push, user_id, name, nick, create_time, updated_at, gender, mail, updated_by, password, active, profile_picture, identity FROM members where user_id = ?", userID).StructScan(&member)
+	err := db.QueryRowx("SELECT * FROM members where user_id = ?", m.ID).StructScan(&member)
+
+	switch {
+	case err == sql.ErrNoRows:
+		log.Printf("No user found.")
+		err = errors.New("User Not Found")
+	case err != nil:
+		log.Fatal(err)
+	default:
+		fmt.Printf("Successful get user:%s\n", m.ID)
+	}
+	return member, err
+}
+
+func (m *Member) Create() (interface{}, error) {
+	// Need to manually parse null before insert
+	// Do not insert create_time and updated_by,
+	// left them to the mySQL default
+	query, _ := makeSQL(m, "insert")
+	result, err := db.NamedExec(query, m)
+	// Cannot handle duplicate insert, crash
+	if err != nil {
+		log.Fatal(err)
+		return Member{}, err
+	}
+	return result, nil
+}
+func (m *Member) Update() (interface{}, error) {
+
+	query, _ := makeSQL(m, "partial_update")
+	result, err := db.NamedExec(query, m)
+	// fmt.Print(query)
+	if err != nil {
+		log.Fatal(err)
+		return Member{}, err
+	}
+	return result, nil
+}
+
+func (m *Member) Delete() (interface{}, error) {
+
+	result, err := db.Exec("UPDATE members SET active = 0 WHERE user_id = ?", m.ID)
+	if err != nil {
+		log.Fatal(err)
+		return nil, err
+	}
+	return result, nil
+}
+
+>>>>>>> Used global db instance in models package. Member struct implemented interface.
 func makeSQL(m *Member, mode string) (query string, err error) {
 >>>>>>> seperate http handler from models
 
@@ -222,6 +283,7 @@ func makeSQL(m *Member, mode string) (query string, err error) {
 	fmt.Println(columns)
 	return
 }
+<<<<<<< HEAD
 
 func GetMember(c *gin.Context, userID string) (m *Member, err error) {
 	db := c.MustGet("DB").(*sqlx.DB)
@@ -295,3 +357,5 @@ func DeleteMember(c *gin.Context, userID string) (*Member, error) {
 	}
 	return &Member{ID: userID}, nil
 }
+=======
+>>>>>>> Used global db instance in models package. Member struct implemented interface.
