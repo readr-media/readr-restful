@@ -7,7 +7,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -17,20 +16,21 @@ var (
 	sqlAuth    = flag.String("sql-auth", "", "Password to SQL server")
 )
 
-func sqlMiddleware(connString string) gin.HandlerFunc {
-	db := sqlx.MustConnect("mysql", connString)
+// func sqlMiddleware(connString string) gin.HandlerFunc {
+// 	db := sqlx.MustConnect("mysql", connString)
 
-	return func(c *gin.Context) {
-		// Registered sqlx db session as "DB" in middleware
-		c.Set("DB", db)
-		c.Next()
-	}
-}
+// 	return func(c *gin.Context) {
+// 		// Registered sqlx db session as "DB" in middleware
+// 		c.Set("DB", db)
+// 		c.Next()
+// 	}
+// }
 
 func MemberGetHandler(c *gin.Context) {
+
 	userID := c.Param("id")
-	fmt.Println(userID)
-	member, err := models.GetMember(c, userID)
+	var req models.Databox = &models.Member{ID: userID}
+	member, err := req.Get()
 
 	if err != nil {
 		c.String(500, "Internal Server Error")
@@ -40,6 +40,7 @@ func MemberGetHandler(c *gin.Context) {
 }
 
 func MemberPostHandler(c *gin.Context) {
+
 	member := models.Member{}
 	c.Bind(&member)
 
@@ -52,14 +53,17 @@ func MemberPostHandler(c *gin.Context) {
 		member.UpdatedAt.Valid = true
 	}
 
-	result, err := models.InsertMember(c, &member)
+	var req models.Databox = &member
+	result, err := req.Create()
 	if err != nil {
 		c.String(500, "Internal Server Error")
 		return
 	}
 	c.JSON(200, result)
 }
+
 func MemberPutHandler(c *gin.Context) {
+
 	member := models.Member{}
 	c.Bind(&member)
 
@@ -71,7 +75,8 @@ func MemberPutHandler(c *gin.Context) {
 		member.UpdatedAt.Time = time.Now()
 		member.UpdatedAt.Valid = true
 	}
-	result, err := models.UpdateMember(c, &member)
+	var req models.Databox = &member
+	result, err := req.Update()
 	if err != nil {
 		c.String(500, "Internal Server Error")
 		return
@@ -80,26 +85,29 @@ func MemberPutHandler(c *gin.Context) {
 }
 
 func MemberDeleteHandler(c *gin.Context) {
+
 	userID := c.Param("id")
-	result, err := models.DeleteMember(c, userID)
+	var req models.Databox = &models.Member{ID: userID}
+
+	member, err := req.Delete()
 	if err != nil {
 		c.String(500, "Internal Server Error")
 		return
 	}
-	c.JSON(200, result)
+	c.JSON(200, member)
 }
 
 func main() {
 	flag.Parse()
 	fmt.Printf("sql user:%s, sql address:%s, auth:%s \n", *sqlUser, *sqlAddress, *sqlAuth)
 	// db, err := sqlx.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s)/memberdb", *sqlUser, *sqlAuth, *sqlAddress))
-	dbConn := fmt.Sprintf("%s:%s@tcp(%s)/memberdb?parseTime=true", *sqlUser, *sqlAuth, *sqlAddress)
-
+	dbURI := fmt.Sprintf("%s:%s@tcp(%s)/memberdb?parseTime=true", *sqlUser, *sqlAuth, *sqlAddress)
 	// Start with default middleware
 	router := gin.Default()
 
+	models.InitDB(dbURI)
 	// Plug in mySQL middleware
-	router.Use(sqlMiddleware(dbConn))
+	// router.Use(sqlMiddleware(dbConn))
 
 	router.GET("/healthz", func(c *gin.Context) {
 		c.String(200, "")
