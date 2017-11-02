@@ -68,7 +68,7 @@ func MemberPutHandler(c *gin.Context) {
 	c.Bind(&member)
 
 	if member.CreateTime.Valid {
-		// member.CreateTime.Time = nil
+		member.CreateTime.Time = time.Time{}
 		member.CreateTime.Valid = false
 	}
 	if !member.UpdatedAt.Valid {
