@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -26,21 +28,22 @@ var (
 // 	}
 // }
 
-func MemberGetHandler(c *gin.Context) {
-
-	userID := c.Param("id")
-	var req models.Databox = &models.Member{ID: userID}
-	member, err := req.Get()
-
-	if err != nil {
-		c.String(500, "Internal Server Error")
-		return
-	}
-	c.JSON(200, member)
+type Env struct {
+	db models.Datastore
 }
 
-func MemberPostHandler(c *gin.Context) {
+func (env *Env) MemberGetHandler(c *gin.Context) {
 
+	member, err := env.db.Get(c.Param("id"))
+
+	if err != nil {
+		c.AbortWithError(http.StatusNotFound, err)
+		return
+	}
+	c.JSON(http.StatusOK, member)
+}
+
+func (env *Env) MemberPostHandler(c *gin.Context) {
 	member := models.Member{}
 	c.Bind(&member)
 
@@ -53,8 +56,9 @@ func MemberPostHandler(c *gin.Context) {
 		member.UpdatedAt.Valid = true
 	}
 
-	var req models.Databox = &member
-	result, err := req.Create()
+	result, err := env.db.Create(member)
+	// var req models.Databox = &member
+	// result, err := req.Create()
 	if err != nil {
 		c.String(500, "Internal Server Error")
 		return
@@ -62,7 +66,7 @@ func MemberPostHandler(c *gin.Context) {
 	c.JSON(200, result)
 }
 
-func MemberPutHandler(c *gin.Context) {
+func (env *Env) MemberPutHandler(c *gin.Context) {
 
 	member := models.Member{}
 	c.Bind(&member)
@@ -75,8 +79,9 @@ func MemberPutHandler(c *gin.Context) {
 		member.UpdatedAt.Time = time.Now()
 		member.UpdatedAt.Valid = true
 	}
-	var req models.Databox = &member
-	result, err := req.Update()
+	// var req models.Databox = &member
+	// result, err := req.Update()
+	result, err := env.db.Update(member)
 	if err != nil {
 		c.String(500, "Internal Server Error")
 		return
@@ -84,12 +89,12 @@ func MemberPutHandler(c *gin.Context) {
 	c.JSON(200, result)
 }
 
-func MemberDeleteHandler(c *gin.Context) {
+func (env *Env) MemberDeleteHandler(c *gin.Context) {
 
-	userID := c.Param("id")
-	var req models.Databox = &models.Member{ID: userID}
+	member, err := env.db.Get(c.Param("id"))
+	// var req models.Databox = &models.Member{ID: userID}
 
-	member, err := req.Delete()
+	// member, err := req.Delete()
 	if err != nil {
 		c.String(500, "Internal Server Error")
 		return
@@ -105,7 +110,12 @@ func main() {
 	// Start with default middleware
 	router := gin.Default()
 
-	models.InitDB(dbURI)
+	// models.InitDB(dbURI)
+	db, err := models.NewDB(dbURI)
+	if err != nil {
+		log.Panic(err)
+	}
+	env := &Env{db}
 	// Plug in mySQL middleware
 	// router.Use(sqlMiddleware(dbConn))
 
@@ -113,10 +123,10 @@ func main() {
 		c.String(200, "")
 	})
 
-	router.GET("/member/:id", MemberGetHandler)
-	router.POST("/member", MemberPostHandler)
-	router.PUT("/member", MemberPutHandler)
-	router.DELETE("/member/:id", MemberDeleteHandler)
+	router.GET("/member/:id", env.MemberGetHandler)
+	router.POST("/member", env.MemberPostHandler)
+	router.PUT("/member", env.MemberPutHandler)
+	router.DELETE("/member/:id", env.MemberDeleteHandler)
 
 	router.Run()
 }
