@@ -102,6 +102,16 @@ func (env *Env) MemberDeleteHandler(c *gin.Context) {
 	c.JSON(200, member)
 }
 
+func (env *Env) ArticleGetHandler(c *gin.Context) {
+
+	article, err := env.db.Get(c.Param("id"))
+	if err != nil {
+		c.AbortWithError(http.StatusNotFound, err)
+		return
+	}
+	c.JSON(http.StatusOK, article)
+}
+
 func main() {
 	flag.Parse()
 	fmt.Printf("sql user:%s, sql address:%s, auth:%s \n", *sqlUser, *sqlAddress, *sqlAuth)
@@ -128,5 +138,6 @@ func main() {
 	router.PUT("/member", env.MemberPutHandler)
 	router.DELETE("/member/:id", env.MemberDeleteHandler)
 
+	router.GET("/article/:id", env.ArticleGetHandler)
 	router.Run()
 }
