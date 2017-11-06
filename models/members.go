@@ -3,104 +3,12 @@ package models
 import (
 	"bytes"
 	"database/sql"
-	"database/sql/driver"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"reflect"
 	"strings"
-	"time"
 )
-
-type NullTime struct {
-	Time  time.Time
-	Valid bool
-}
-
-func (nt *NullTime) Scan(value interface{}) error {
-	nt.Time, nt.Valid = value.(time.Time)
-	return nil
-}
-
-// Value implements the driver Valuer interface.
-func (nt NullTime) Value() (driver.Value, error) {
-	if !nt.Valid {
-		return nil, nil
-	}
-	return nt.Time, nil
-}
-
-func (nt NullTime) MarshalJSON() ([]byte, error) {
-	if nt.Valid {
-		return json.Marshal(nt.Time)
-	}
-	return json.Marshal(nil)
-}
-
-func (nt *NullTime) UnmarshalJSON(text []byte) error {
-	nt.Valid = false
-	txt := string(text)
-	if txt == "null" || txt == "" {
-		return nil
-	}
-
-	t := time.Time{}
-	err := t.UnmarshalJSON(text)
-	if err == nil {
-		nt.Time = t
-		nt.Valid = true
-	}
-
-	return err
-}
-
-// Create our own null string type for prettier marshal JSON format
-type NullString sql.NullString
-
-// Scan is currently a wrap of sql.NullString.Scan()
-func (ns *NullString) Scan(value interface{}) error {
-	// ns.String, ns.Valid = value.(string)
-	// fmt.Printf("string:%s\n, valid:%s\n", ns.String, ns.Valid)
-	// return nil
-	x := sql.NullString{}
-	err := x.Scan(value)
-	ns.String, ns.Valid = x.String, x.Valid
-	return err
-}
-
-// Value validate the value
-func (ns NullString) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return ns.String, nil
-}
-
-func (ns NullString) MarshalJSON() ([]byte, error) {
-	if ns.Valid {
-		return json.Marshal(ns.String)
-	}
-	return json.Marshal(nil)
-}
-
-func (ns *NullString) UnmarshalJSON(text []byte) error {
-	ns.Valid = false
-	if string(text) == "null" {
-		return nil
-	}
-	if err := json.Unmarshal(text, &ns.String); err == nil {
-		ns.Valid = true
-	}
-	return nil
-}
-
-type Databox interface {
-	Get() (interface{}, error)
-	Create() (interface{}, error)
-	Update() (interface{}, error)
-	Delete() (interface{}, error)
-}
 
 type Member struct {
 	ID       string     `json:"id" db:"user_id"`
@@ -132,30 +40,29 @@ type Member struct {
 	Active       bool `json:"active" db:"active"`
 }
 
-func (m *Member) Get() (interface{}, error) {
+func (db *DB) Get(id string) (interface{}, error) {
 
 	member := Member{}
 	// err := db.QueryRowx("SELECT work, birthday, description, register_mode, social_id, c_editor, hide_profile, profile_push, post_push, comment_push, user_id, name, nick, create_time, updated_at, gender, mail, updated_by, password, active, profile_picture, identity FROM members where user_id = ?", userID).StructScan(&member)
-	err := db.QueryRowx("SELECT * FROM members where user_id = ?", m.ID).StructScan(&member)
+	err := db.QueryRowx("SELECT * FROM members where user_id = ?", id).StructScan(&member)
 
 	switch {
 	case err == sql.ErrNoRows:
-		log.Printf("No user found.")
+		log.Printf("User Not Found")
 		err = errors.New("User Not Found")
 	case err != nil:
 		log.Fatal(err)
 	default:
-		fmt.Printf("Successful get user:%s\n", m.ID)
+		fmt.Printf("Successful get user:%s\n", id)
 	}
 	return member, err
 }
 
-func (m *Member) Create() (interface{}, error) {
-	// Need to manually parse null before insert
-	// Do not insert create_time and updated_by,
-	// left them to the mySQL default
-	query, _ := makeSQL(m, "insert")
-	result, err := db.NamedExec(query, m)
+func (db *DB) Create(item interface{}) (interface{}, error) {
+
+	member := item.(Member)
+	query, _ := makeSQL(&member, "insert")
+	result, err := db.NamedExec(query, member)
 	// Cannot handle duplicate insert, crash
 	if err != nil {
 		log.Fatal(err)
@@ -163,11 +70,13 @@ func (m *Member) Create() (interface{}, error) {
 	}
 	return result, nil
 }
-func (m *Member) Update() (interface{}, error) {
 
-	query, _ := makeSQL(m, "partial_update")
-	result, err := db.NamedExec(query, m)
-	// fmt.Print(query)
+func (db *DB) Update(item interface{}) (interface{}, error) {
+
+	member := item.(Member)
+	query, _ := makeSQL(&member, "partial_update")
+	result, err := db.NamedExec(query, member)
+
 	if err != nil {
 		log.Fatal(err)
 		return Member{}, err
@@ -175,9 +84,9 @@ func (m *Member) Update() (interface{}, error) {
 	return result, nil
 }
 
-func (m *Member) Delete() (interface{}, error) {
+func (db *DB) Delete(id string) (interface{}, error) {
 
-	result, err := db.Exec("UPDATE members SET active = 0 WHERE user_id = ?", m.ID)
+	result, err := db.Exec("UPDATE members SET active = 0 WHERE user_id = ?", id)
 	if err != nil {
 		log.Fatal(err)
 		return nil, err
