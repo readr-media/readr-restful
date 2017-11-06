@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -33,13 +34,25 @@ func (mdb *mockDB) Delete(id string) (interface{}, error) {
 	return models.Member{}, nil
 }
 
+func TestMain(m *testing.M) {
+	gin.SetMode(gin.TestMode)
+
+	os.Exit(m.Run())
+}
+
+func getRouter() *gin.Engine {
+	r := gin.Default()
+	return r
+}
+
 func TestGetExistMember(t *testing.T) {
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/member/jjo4iTaiwan", nil)
 
 	env := Env{db: &mockDB{}}
 
-	r := gin.Default()
+	// r := gin.Default()
+	r := getRouter()
 	r.GET("/member/:id", env.MemberGetHandler)
 	// Start gin server
 	r.ServeHTTP(w, req)
@@ -60,7 +73,8 @@ func TestGetNotExistMember(t *testing.T) {
 
 	env := Env{db: &mockDB{}}
 
-	r := gin.Default()
+	// r := gin.Default()
+	r := getRouter()
 	r.GET("/member/:id", env.MemberGetHandler)
 	// Start gin server
 	r.ServeHTTP(w, req)

@@ -40,17 +40,7 @@ type Member struct {
 	Active       bool `json:"active" db:"active"`
 }
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-// May have to re-implement with interface to multiple table implementation
-func makeSQL(m *member, mode string) (query string, err error) {
-=======
-=======
-func (m *Member) Get() (interface{}, error) {
-=======
 func (db *DB) Get(id string) (interface{}, error) {
->>>>>>> models using interface for db instances. new db.go file created. implemented TestGet*Member functions
 
 	member := Member{}
 	// err := db.QueryRowx("SELECT work, birthday, description, register_mode, social_id, c_editor, hide_profile, profile_push, post_push, comment_push, user_id, name, nick, create_time, updated_at, gender, mail, updated_by, password, active, profile_picture, identity FROM members where user_id = ?", userID).StructScan(&member)
@@ -71,6 +61,48 @@ func (db *DB) Get(id string) (interface{}, error) {
 func (db *DB) Create(item interface{}) (interface{}, error) {
 
 	member := item.(Member)
+	// query := `INSERT INTO members (
+	//   user_id,
+	//   name,
+	//   nick,
+	//   birthday,
+	//   gender,
+	//   work,
+	//   mail,
+	//   register_mode,
+	//   social_id,
+	//   updated_by,
+	//   password,
+	//   description,
+	//   profile_picture,
+	//   identity,
+	//   c_editor,
+	//   hide_profile,
+	//   profile_push,
+	//   post_push,
+	//   comment_push,
+	//   active)
+	// VALUES(
+	//   :user_id,
+	//   :name,
+	//   :nick,
+	//   :birthday,
+	//   :gender,
+	//   :work,
+	//   :mail,
+	//   :register_mode,
+	//   :social_id,
+	//   :updated_by,
+	//   :password,
+	//   :description,
+	//   :profile_picture,
+	//   :identity,
+	//   :c_editor,
+	//   :hide_profile,
+	//   :profile_push,
+	//   :post_push,
+	//   :comment_push,
+	//   :active)`
 	query, _ := makeSQL(&member, "insert")
 	result, err := db.NamedExec(query, member)
 	// Cannot handle duplicate insert, crash
@@ -104,9 +136,7 @@ func (db *DB) Delete(id string) (interface{}, error) {
 	return result, nil
 }
 
->>>>>>> Used global db instance in models package. Member struct implemented interface.
 func makeSQL(m *Member, mode string) (query string, err error) {
->>>>>>> seperate http handler from models
 
 	columns := make([]string, 0)
 	u := reflect.ValueOf(m).Elem()
@@ -196,79 +226,3 @@ func makeSQL(m *Member, mode string) (query string, err error) {
 	fmt.Println(columns)
 	return
 }
-<<<<<<< HEAD
-
-func GetMember(c *gin.Context, userID string) (m *Member, err error) {
-	db := c.MustGet("DB").(*sqlx.DB)
-	member := Member{}
-	// err := db.QueryRowx("SELECT work, birthday, description, register_mode, social_id, c_editor, hide_profile, profile_push, post_push, comment_push, user_id, name, nick, create_time, updated_at, gender, mail, updated_by, password, active, profile_picture, identity FROM members where user_id = ?", userID).StructScan(&member)
-	err = db.QueryRowx("SELECT * FROM members where user_id = ?", userID).StructScan(&member)
-
-	switch {
-	case err == sql.ErrNoRows:
-		log.Printf("No user found.")
-		m = nil
-	case err != nil:
-		log.Fatal(err)
-		m = nil
-	default:
-		fmt.Printf("Successful get user:%s\n", userID)
-		m = &member
-	}
-	return
-}
-
-func InsertMember(c *gin.Context, member *Member) (result *Member, err error) {
-	// Need to manually parse null before insert
-	// Do not insert create_time and updated_by,
-	// left them to the mySQL default
-	db := c.MustGet("DB").(*sqlx.DB)
-	query, _ := makeSQL(member, "insert")
-	_, e := db.NamedExec(query, member)
-	// Cannot handle duplicate insert, crash
-	if e != nil {
-		log.Fatal(err)
-		result = nil
-		err = e
-	}
-	result = member
-	err = nil
-	return
-}
-
-func UpdateMember(c *gin.Context, member *Member) (*Member, error) {
-
-<<<<<<< HEAD
-	// Update time incase it's not in the request body
-	if member.CreateTime.Valid {
-		// member.CreateTime.Time = nil
-		member.CreateTime.Valid = false
-	}
-	if !member.UpdatedAt.Valid {
-		member.UpdatedAt.Time = time.Now()
-		member.UpdatedAt.Valid = true
-	}
-=======
->>>>>>> seperate http handler from models
-	db := c.MustGet("DB").(*sqlx.DB)
-	query, _ := makeSQL(member, "partial_update")
-	_, err := db.NamedExec(query, member)
-	// fmt.Print(query)
-	if err != nil {
-		return nil, err
-	}
-	return member, nil
-}
-
-func DeleteMember(c *gin.Context, userID string) (*Member, error) {
-
-	db := c.MustGet("DB").(*sqlx.DB)
-	_, err := db.Exec("UPDATE members SET active = 0 WHERE user_id = ?", userID)
-	if err != nil {
-		log.Fatal(err)
-		return nil, err
-	}
-	return &Member{ID: userID}, nil
-}
-=======
->>>>>>> Used global db instance in models package. Member struct implemented interface.
