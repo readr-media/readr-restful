@@ -152,6 +152,11 @@ func (db *DB) Get(item TableStruct) (TableStruct, error) {
 			// log.Fatal(err)
 			result = Member{}
 		}
+	case Article:
+		result, err = item.GetFromDatabase(db)
+		if err != nil {
+			result = Article{}
+		}
 		// err = db.QueryRowx("SELECT * FROM members where user_id = ?", item.ID).StructScan(&member)
 
 		// switch {

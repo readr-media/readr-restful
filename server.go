@@ -103,6 +103,19 @@ func (env *Env) MemberGetHandler(c *gin.Context) {
 // 	c.JSON(200, member)
 // }
 
+func (env *Env) ArticleGetHandler(c *gin.Context) {
+
+	input := models.Article{ID: c.Param("id")}
+	article, err := env.db.Get(input)
+
+	// fmt.Println(member)
+	if err != nil {
+		c.AbortWithError(http.StatusNotFound, err)
+		return
+	}
+	c.JSON(http.StatusOK, article)
+}
+
 func main() {
 	flag.Parse()
 	fmt.Printf("sql user:%s, sql address:%s, auth:%s \n", *sqlUser, *sqlAddress, *sqlAuth)

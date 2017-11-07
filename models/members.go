@@ -49,7 +49,7 @@ func (m Member) GetFromDatabase(db *DB) (TableStruct, error) {
 		log.Fatal(err)
 		member = Member{}
 	default:
-		fmt.Printf("Successful get user:%s\n", m.ID)
+		fmt.Printf("Successful get user: %s\n", m.ID)
 		err = nil
 	}
 	return member, err
