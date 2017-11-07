@@ -14,12 +14,32 @@ import (
 
 type mockDB struct{}
 
-func (mdb *mockDB) Get(id string) (interface{}, error) {
-	if id == "jjo4iTaiwan" {
-		member := models.Member{ID: "jjo4iTaiwan", Active: true}
-		return member, nil
+var memberlist = []models.Member{
+	models.Member{
+		ID:     "TaiwanNo.1",
+		Active: true,
+	},
+}
+
+func (mdb *mockDB) Get(item models.TableStruct) (models.TableStruct, error) {
+
+	var (
+		result models.TableStruct
+		err    error
+	)
+	switch item := item.(type) {
+	case models.Member:
+		for _, value := range memberlist {
+			if item.ID == value.ID {
+				result = value
+				err = nil
+			} else {
+				result = models.Member{}
+				err = errors.New("User Not Found")
+			}
+		}
 	}
-	return models.Member{}, errors.New("User Not Found")
+	return result, err
 }
 
 func (mdb *mockDB) Create(interface{}) (interface{}, error) {
@@ -47,7 +67,7 @@ func getRouter() *gin.Engine {
 
 func TestGetExistMember(t *testing.T) {
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/member/jjo4iTaiwan", nil)
+	req, _ := http.NewRequest("GET", "/member/TaiwanNo.1", nil)
 
 	env := Env{db: &mockDB{}}
 
@@ -61,7 +81,7 @@ func TestGetExistMember(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fail()
 	}
-	expected, _ := json.Marshal(models.Member{ID: "jjo4iTaiwan", Active: true})
+	expected, _ := json.Marshal(models.Member{ID: "TaiwanNo.1", Active: true})
 	if w.Body.String() != string(expected) {
 		t.Fail()
 	}

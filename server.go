@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
@@ -34,8 +33,10 @@ type Env struct {
 
 func (env *Env) MemberGetHandler(c *gin.Context) {
 
-	member, err := env.db.Get(c.Param("id"))
+	input := models.Member{ID: c.Param("id")}
+	member, err := env.db.Get(input)
 
+	// fmt.Println(member)
 	if err != nil {
 		c.AbortWithError(http.StatusNotFound, err)
 		return
@@ -43,64 +44,64 @@ func (env *Env) MemberGetHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, member)
 }
 
-func (env *Env) MemberPostHandler(c *gin.Context) {
-	member := models.Member{}
-	c.Bind(&member)
+// func (env *Env) MemberPostHandler(c *gin.Context) {
+// 	member := models.Member{}
+// 	c.Bind(&member)
 
-	if !member.CreateTime.Valid {
-		member.CreateTime.Time = time.Now()
-		member.CreateTime.Valid = true
-	}
-	if !member.UpdatedAt.Valid {
-		member.UpdatedAt.Time = time.Now()
-		member.UpdatedAt.Valid = true
-	}
+// 	if !member.CreateTime.Valid {
+// 		member.CreateTime.Time = time.Now()
+// 		member.CreateTime.Valid = true
+// 	}
+// 	if !member.UpdatedAt.Valid {
+// 		member.UpdatedAt.Time = time.Now()
+// 		member.UpdatedAt.Valid = true
+// 	}
 
-	result, err := env.db.Create(member)
-	// var req models.Databox = &member
-	// result, err := req.Create()
-	if err != nil {
-		c.String(500, "Internal Server Error")
-		return
-	}
-	c.JSON(200, result)
-}
+// 	result, err := env.db.Create(member)
+// 	// var req models.Databox = &member
+// 	// result, err := req.Create()
+// 	if err != nil {
+// 		c.String(500, "Internal Server Error")
+// 		return
+// 	}
+// 	c.JSON(200, result)
+// }
 
-func (env *Env) MemberPutHandler(c *gin.Context) {
+// func (env *Env) MemberPutHandler(c *gin.Context) {
 
-	member := models.Member{}
-	c.Bind(&member)
+// 	member := models.Member{}
+// 	c.Bind(&member)
 
-	if member.CreateTime.Valid {
-		member.CreateTime.Time = time.Time{}
-		member.CreateTime.Valid = false
-	}
-	if !member.UpdatedAt.Valid {
-		member.UpdatedAt.Time = time.Now()
-		member.UpdatedAt.Valid = true
-	}
-	// var req models.Databox = &member
-	// result, err := req.Update()
-	result, err := env.db.Update(member)
-	if err != nil {
-		c.String(500, "Internal Server Error")
-		return
-	}
-	c.JSON(200, result)
-}
+// 	if member.CreateTime.Valid {
+// 		member.CreateTime.Time = time.Time{}
+// 		member.CreateTime.Valid = false
+// 	}
+// 	if !member.UpdatedAt.Valid {
+// 		member.UpdatedAt.Time = time.Now()
+// 		member.UpdatedAt.Valid = true
+// 	}
+// 	// var req models.Databox = &member
+// 	// result, err := req.Update()
+// 	result, err := env.db.Update(member)
+// 	if err != nil {
+// 		c.String(500, "Internal Server Error")
+// 		return
+// 	}
+// 	c.JSON(200, result)
+// }
 
-func (env *Env) MemberDeleteHandler(c *gin.Context) {
+// func (env *Env) MemberDeleteHandler(c *gin.Context) {
 
-	member, err := env.db.Get(c.Param("id"))
-	// var req models.Databox = &models.Member{ID: userID}
+// 	member, err := env.db.Get(c.Param("id"))
+// 	// var req models.Databox = &models.Member{ID: userID}
 
-	// member, err := req.Delete()
-	if err != nil {
-		c.String(500, "Internal Server Error")
-		return
-	}
-	c.JSON(200, member)
-}
+// 	// member, err := req.Delete()
+// 	if err != nil {
+// 		c.String(500, "Internal Server Error")
+// 		return
+// 	}
+// 	c.JSON(200, member)
+// }
 
 func main() {
 	flag.Parse()
@@ -124,9 +125,9 @@ func main() {
 	})
 
 	router.GET("/member/:id", env.MemberGetHandler)
-	router.POST("/member", env.MemberPostHandler)
-	router.PUT("/member", env.MemberPutHandler)
-	router.DELETE("/member/:id", env.MemberDeleteHandler)
+	// router.POST("/member", env.MemberPostHandler)
+	// router.PUT("/member", env.MemberPutHandler)
+	// router.DELETE("/member/:id", env.MemberDeleteHandler)
 
 	router.Run()
 }
