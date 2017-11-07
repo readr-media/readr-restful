@@ -1,13 +1,10 @@
 package models
 
 import (
-	"bytes"
 	"database/sql"
 	"errors"
 	"fmt"
 	"log"
-	"reflect"
-	"strings"
 )
 
 type Member struct {
@@ -40,147 +37,20 @@ type Member struct {
 	Active       bool `json:"active" db:"active"`
 }
 
-func (db *DB) Get(id string) (interface{}, error) {
+func (m Member) GetFromDatabase(db *DB) (TableStruct, error) {
 
 	member := Member{}
-	// err := db.QueryRowx("SELECT work, birthday, description, register_mode, social_id, c_editor, hide_profile, profile_push, post_push, comment_push, user_id, name, nick, create_time, updated_at, gender, mail, updated_by, password, active, profile_picture, identity FROM members where user_id = ?", userID).StructScan(&member)
-	err := db.QueryRowx("SELECT * FROM members where user_id = ?", id).StructScan(&member)
-
+	err := db.QueryRowx("SELECT * FROM members where user_id = ?", m.ID).StructScan(&member)
 	switch {
 	case err == sql.ErrNoRows:
-		log.Printf("User Not Found")
 		err = errors.New("User Not Found")
+		member = Member{}
 	case err != nil:
 		log.Fatal(err)
+		member = Member{}
 	default:
-		fmt.Printf("Successful get user:%s\n", id)
+		fmt.Printf("Successful get user:%s\n", m.ID)
+		err = nil
 	}
 	return member, err
-}
-
-func (db *DB) Create(item interface{}) (interface{}, error) {
-
-	member := item.(Member)
-	query, _ := makeSQL(&member, "insert")
-	result, err := db.NamedExec(query, member)
-	// Cannot handle duplicate insert, crash
-	if err != nil {
-		log.Fatal(err)
-		return Member{}, err
-	}
-	return result, nil
-}
-
-func (db *DB) Update(item interface{}) (interface{}, error) {
-
-	member := item.(Member)
-	query, _ := makeSQL(&member, "partial_update")
-	result, err := db.NamedExec(query, member)
-
-	if err != nil {
-		log.Fatal(err)
-		return Member{}, err
-	}
-	return result, nil
-}
-
-func (db *DB) Delete(id string) (interface{}, error) {
-
-	result, err := db.Exec("UPDATE members SET active = 0 WHERE user_id = ?", id)
-	if err != nil {
-		log.Fatal(err)
-		return nil, err
-	}
-	return result, nil
-}
-
-func makeSQL(m *Member, mode string) (query string, err error) {
-
-	columns := make([]string, 0)
-	u := reflect.ValueOf(m).Elem()
-
-	bytequery := &bytes.Buffer{}
-
-	switch mode {
-	case "insert":
-		fmt.Println("insert")
-		for i := 0; i < u.NumField(); i++ {
-			tag := u.Type().Field(i).Tag.Get("db")
-			columns = append(columns, tag)
-		}
-
-		bytequery.WriteString("INSERT INTO members ( ")
-		bytequery.WriteString(strings.Join(columns, ","))
-		bytequery.WriteString(") VALUES ( :")
-		bytequery.WriteString(strings.Join(columns, ",:"))
-		bytequery.WriteString(")")
-
-		// fmt.Println(query)
-		query = bytequery.String()
-		err = nil
-
-	case "full_update":
-
-		for i := 0; i < u.NumField(); i++ {
-			tag := u.Type().Field(i).Tag.Get("db")
-			columns = append(columns, tag)
-		}
-
-		temp := make([]string, len(columns))
-		for idx, value := range columns {
-			temp[idx] = fmt.Sprintf("%s = :%s", value, value)
-		}
-		bytequery.WriteString("UPDATE members SET ")
-		bytequery.WriteString(strings.Join(temp, ", "))
-		bytequery.WriteString(" WHERE user_id = :user_id")
-
-		query = bytequery.String()
-		err = nil
-
-	case "partial_update":
-
-		fmt.Println("partial")
-		for i := 0; i < u.NumField(); i++ {
-			tag := u.Type().Field(i).Tag
-			field := u.Field(i).Interface()
-
-			switch field := field.(type) {
-			case string:
-				if field != "" {
-					fmt.Printf("%s field = %s\n", u.Field(i).Type(), field)
-					columns = append(columns, tag.Get("db"))
-				}
-
-			case NullString:
-				if field.Valid {
-					fmt.Println("valid NullString : ", field.String)
-					columns = append(columns, tag.Get("db"))
-				}
-			case NullTime:
-				if field.Valid {
-					fmt.Println("valid NullTime : ", field.Time)
-					columns = append(columns, tag.Get("db"))
-				}
-
-			case bool:
-				fmt.Println("bool type", field)
-				columns = append(columns, tag.Get("db"))
-			default:
-				fmt.Println("unrecognised format: ", u.Field(i).Type())
-			}
-		}
-
-		temp := make([]string, len(columns))
-		for idx, value := range columns {
-			temp[idx] = fmt.Sprintf("%s = :%s", value, value)
-		}
-		bytequery.WriteString("UPDATE members SET ")
-		bytequery.WriteString(strings.Join(temp, ", "))
-		bytequery.WriteString(" WHERE user_id = :user_id")
-
-		query = bytequery.String()
-		err = nil
-	}
-	fmt.Println(columns)
-	return
 }
