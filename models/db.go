@@ -6,7 +6,6 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
-	"log"
 	"reflect"
 	"strings"
 	"time"
@@ -17,6 +16,8 @@ import (
 )
 
 // var db *sqlx.DB
+
+// ------------------------------  NULLABLE TYPE DEFINITION -----------------------------
 
 type NullTime struct {
 	Time  time.Time
@@ -100,15 +101,24 @@ func (ns *NullString) UnmarshalJSON(text []byte) error {
 	return nil
 }
 
+// -----------------------------END OF NULLABLE TYPE DEFINITION -----------------------------
+
 type Datastore interface {
 	Get(item TableStruct) (TableStruct, error)
-	Create(item interface{}) (interface{}, error)
-	Update(item interface{}) (interface{}, error)
-	Delete(id string) (interface{}, error)
+	Create(item TableStruct) (interface{}, error)
+	Update(item TableStruct) (interface{}, error)
+	Delete(item TableStruct) (interface{}, error)
 }
 
 type DB struct {
 	*sqlx.DB
+}
+
+type TableStruct interface {
+	GetFromDatabase(*DB) (TableStruct, error)
+	InsertIntoDatabase(*DB) error
+	UpdateDatabase(*DB) error
+	DeleteFromDatabase(*DB) error
 }
 
 // func InitDB(dataURI string) {
@@ -121,9 +131,6 @@ type DB struct {
 // 		log.Panic(err)
 // 	}
 // }
-type TableStruct interface {
-	GetFromDatabase(*DB) (TableStruct, error)
-}
 
 func NewDB(dbURI string) (*DB, error) {
 	db, err := sqlx.Open("mysql", dbURI)
@@ -178,82 +185,49 @@ func (db *DB) Get(item TableStruct) (TableStruct, error) {
 
 }
 
-func (db *DB) Create(item interface{}) (interface{}, error) {
+func (db *DB) Create(item TableStruct) (interface{}, error) {
 
-	member := item.(Member)
-	// query := `INSERT INTO members (
-	//   user_id,
-	//   name,
-	//   nick,
-	//   birthday,
-	//   gender,
-	//   work,
-	//   mail,
-	//   register_mode,
-	//   social_id,
-	//   updated_by,
-	//   password,
-	//   description,
-	//   profile_picture,
-	//   identity,
-	//   c_editor,
-	//   hide_profile,
-	//   profile_push,
-	//   post_push,
-	//   comment_push,
-	//   active)
-	// VALUES(
-	//   :user_id,
-	//   :name,
-	//   :nick,
-	//   :birthday,
-	//   :gender,
-	//   :work,
-	//   :mail,
-	//   :register_mode,
-	//   :social_id,
-	//   :updated_by,
-	//   :password,
-	//   :description,
-	//   :profile_picture,
-	//   :identity,
-	//   :c_editor,
-	//   :hide_profile,
-	//   :profile_push,
-	//   :post_push,
-	//   :comment_push,
-	//   :active)`
-	query, _ := makeSQL(&member, "insert")
-	result, err := db.NamedExec(query, member)
-	// Cannot handle duplicate insert, crash
-	if err != nil {
-		log.Fatal(err)
-		return Member{}, err
+	var (
+		result TableStruct
+		err    error
+	)
+	switch item := item.(type) {
+	case Member:
+		err = item.InsertIntoDatabase(db)
+
 	}
-	return result, nil
+	return result, err
 }
 
-func (db *DB) Update(item interface{}) (interface{}, error) {
+func (db *DB) Update(item TableStruct) (interface{}, error) {
 
-	member := item.(Member)
-	query, _ := makeSQL(&member, "partial_update")
-	result, err := db.NamedExec(query, member)
-
-	if err != nil {
-		log.Fatal(err)
-		return Member{}, err
+	var (
+		result TableStruct
+		err    error
+	)
+	switch item := item.(type) {
+	case Member:
+		err = item.UpdateDatabase(db)
 	}
-	return result, nil
+	return result, err
 }
 
-func (db *DB) Delete(id string) (interface{}, error) {
+func (db *DB) Delete(item TableStruct) (interface{}, error) {
 
-	result, err := db.Exec("UPDATE members SET active = 0 WHERE user_id = ?", id)
-	if err != nil {
-		log.Fatal(err)
-		return nil, err
+	var (
+		result Member
+		err    error
+	)
+	switch item := item.(type) {
+	case Member:
+		err = item.DeleteFromDatabase(db)
+		if err != nil {
+			result = Member{}
+		} else {
+			result = item
+		}
 	}
-	return result, nil
+	return result, err
 }
 
 func makeSQL(m *Member, mode string) (query string, err error) {
@@ -308,11 +282,10 @@ func makeSQL(m *Member, mode string) (query string, err error) {
 
 			switch field := field.(type) {
 			case string:
-				if field != "" {
+				if field != "" && tag.Get("db") != "user_id" {
 					fmt.Printf("%s field = %s\n", u.Field(i).Type(), field)
 					columns = append(columns, tag.Get("db"))
 				}
-
 			case NullString:
 				if field.Valid {
 					fmt.Println("valid NullString : ", field.String)
@@ -343,6 +316,6 @@ func makeSQL(m *Member, mode string) (query string, err error) {
 		query = bytequery.String()
 		err = nil
 	}
-	fmt.Println(columns)
+	// fmt.Println(columns)
 	return
 }

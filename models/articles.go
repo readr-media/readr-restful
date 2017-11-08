@@ -40,3 +40,15 @@ func (a Article) GetFromDatabase(db *DB) (TableStruct, error) {
 	}
 	return article, err
 }
+
+func (a Article) InsertIntoDatabase(db *DB) error {
+	return nil
+}
+
+func (a Article) UpdateDatabase(db *DB) error {
+	return nil
+}
+
+func (a Article) DeleteFromDatabase(db *DB) error {
+	return nil
+}

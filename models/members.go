@@ -54,3 +54,39 @@ func (m Member) GetFromDatabase(db *DB) (TableStruct, error) {
 	}
 	return member, err
 }
+
+func (m Member) InsertIntoDatabase(db *DB) error {
+
+	query, _ := makeSQL(&m, "insert")
+	_, err := db.NamedExec(query, m)
+	// Cannot handle duplicate insert, crash
+	if err != nil {
+		log.Fatal(err)
+		return err
+	}
+	return nil
+}
+
+func (m Member) UpdateDatabase(db *DB) error {
+
+	query, _ := makeSQL(&m, "partial_update")
+	fmt.Println(query)
+	_, err := db.NamedExec(query, m)
+
+	if err != nil {
+		log.Fatal(err)
+		return err
+	}
+	return nil
+}
+
+func (m Member) DeleteFromDatabase(db *DB) error {
+
+	_, err := db.Exec("UPDATE members SET active = 0 WHERE user_id = ?", m.ID)
+	if err != nil {
+		log.Fatal(err)
+	} else {
+		err = nil
+	}
+	return err
+}

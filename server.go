@@ -1,10 +1,12 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
@@ -38,70 +40,78 @@ func (env *Env) MemberGetHandler(c *gin.Context) {
 
 	// fmt.Println(member)
 	if err != nil {
-		c.AbortWithError(http.StatusNotFound, err)
+		c.JSON(http.StatusNotFound, gin.H{"Error": "User Not Found"})
 		return
 	}
 	c.JSON(http.StatusOK, member)
 }
 
-// func (env *Env) MemberPostHandler(c *gin.Context) {
-// 	member := models.Member{}
-// 	c.Bind(&member)
+func (env *Env) MemberPostHandler(c *gin.Context) {
 
-// 	if !member.CreateTime.Valid {
-// 		member.CreateTime.Time = time.Now()
-// 		member.CreateTime.Valid = true
-// 	}
-// 	if !member.UpdatedAt.Valid {
-// 		member.UpdatedAt.Time = time.Now()
-// 		member.UpdatedAt.Valid = true
-// 	}
+	member := models.Member{}
+	c.Bind(&member)
 
-// 	result, err := env.db.Create(member)
-// 	// var req models.Databox = &member
-// 	// result, err := req.Create()
-// 	if err != nil {
-// 		c.String(500, "Internal Server Error")
-// 		return
-// 	}
-// 	c.JSON(200, result)
-// }
+	// Pre-request test
+	if member.ID == "" {
+		c.AbortWithError(http.StatusBadRequest, errors.New("User ID is invalid"))
+		return
+	}
+	if !member.CreateTime.Valid {
+		member.CreateTime.Time = time.Now()
+		member.CreateTime.Valid = true
+	}
+	if !member.UpdatedAt.Valid {
+		member.UpdatedAt.Time = time.Now()
+		member.UpdatedAt.Valid = true
+	}
 
-// func (env *Env) MemberPutHandler(c *gin.Context) {
+	result, err := env.db.Create(member)
+	// var req models.Databox = &member
+	// result, err := req.Create()
+	if err != nil {
+		fmt.Println(err)
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Insert Fail"})
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
 
-// 	member := models.Member{}
-// 	c.Bind(&member)
+func (env *Env) MemberPutHandler(c *gin.Context) {
 
-// 	if member.CreateTime.Valid {
-// 		member.CreateTime.Time = time.Time{}
-// 		member.CreateTime.Valid = false
-// 	}
-// 	if !member.UpdatedAt.Valid {
-// 		member.UpdatedAt.Time = time.Now()
-// 		member.UpdatedAt.Valid = true
-// 	}
-// 	// var req models.Databox = &member
-// 	// result, err := req.Update()
-// 	result, err := env.db.Update(member)
-// 	if err != nil {
-// 		c.String(500, "Internal Server Error")
-// 		return
-// 	}
-// 	c.JSON(200, result)
-// }
+	member := models.Member{}
+	c.Bind(&member)
 
-// func (env *Env) MemberDeleteHandler(c *gin.Context) {
+	if member.CreateTime.Valid {
+		member.CreateTime.Time = time.Time{}
+		member.CreateTime.Valid = false
+	}
+	if !member.UpdatedAt.Valid {
+		member.UpdatedAt.Time = time.Now()
+		member.UpdatedAt.Valid = true
+	}
+	// var req models.Databox = &member
+	// result, err := req.Update()
+	result, err := env.db.Update(member)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Update fail"})
+		return
+	}
+	c.JSON(http.StatusOK, result)
+}
 
-// 	member, err := env.db.Get(c.Param("id"))
-// 	// var req models.Databox = &models.Member{ID: userID}
+func (env *Env) MemberDeleteHandler(c *gin.Context) {
 
-// 	// member, err := req.Delete()
-// 	if err != nil {
-// 		c.String(500, "Internal Server Error")
-// 		return
-// 	}
-// 	c.JSON(200, member)
-// }
+	input := models.Member{ID: c.Param("id")}
+	// var req models.Databox = &models.Member{ID: userID}
+	member, err := env.db.Delete(input)
+
+	// member, err := req.Delete()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "User Not Found"})
+		return
+	}
+	c.JSON(http.StatusOK, member)
+}
 
 func (env *Env) ArticleGetHandler(c *gin.Context) {
 
@@ -134,13 +144,13 @@ func main() {
 	// router.Use(sqlMiddleware(dbConn))
 
 	router.GET("/healthz", func(c *gin.Context) {
-		c.String(200, "")
+		c.String(http.StatusOK, "")
 	})
 
 	router.GET("/member/:id", env.MemberGetHandler)
-	// router.POST("/member", env.MemberPostHandler)
-	// router.PUT("/member", env.MemberPutHandler)
-	// router.DELETE("/member/:id", env.MemberDeleteHandler)
+	router.POST("/member", env.MemberPostHandler)
+	router.PUT("/member", env.MemberPutHandler)
+	router.DELETE("/member/:id", env.MemberDeleteHandler)
 
 	router.GET("/article/:id", env.ArticleGetHandler)
 	router.Run()
