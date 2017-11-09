@@ -107,25 +107,33 @@ func (mdb *mockDB) Delete(item models.TableStruct) (interface{}, error) {
 }
 
 // ---------------------------------- End of Datastore implementation --------------------------------
+// var r = gin.Default()
+var r *gin.Engine
 
 func TestMain(m *testing.M) {
 	gin.SetMode(gin.TestMode)
+
+	r = gin.Default()
+	r.GET("/member/:id", env.MemberGetHandler)
+	r.POST("/member", env.MemberPostHandler)
+	r.PUT("/member", env.MemberPutHandler)
+	r.DELETE("/member/:id", env.MemberDeleteHandler)
 
 	env.db = &mockDB{}
 	os.Exit(m.Run())
 }
 
-func getRouter() *gin.Engine {
-	r := gin.Default()
-	return r
-}
+// func getRouter() *gin.Engine {
+// 	r := gin.Default()
+// 	return r
+// }
 
 func TestGetExistMember(t *testing.T) {
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/member/TaiwanNo.1", nil)
 
-	r := getRouter()
-	r.GET("/member/:id", env.MemberGetHandler)
+	// r := getRouter()
+	// r.GET("/member/:id", env.MemberGetHandler)
 	// Start gin server
 	r.ServeHTTP(w, req)
 
@@ -143,8 +151,8 @@ func TestGetNotExistMember(t *testing.T) {
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", "/member/abc123", nil)
 
-	r := getRouter()
-	r.GET("/member/:id", env.MemberGetHandler)
+	// r := getRouter()
+	// r.GET("/member/:id", env.MemberGetHandler)
 	// Start gin server
 	r.ServeHTTP(w, req)
 
@@ -164,8 +172,8 @@ func TestPostEmptyMember(t *testing.T) {
 
 	req, _ := http.NewRequest("POST", "/member", nil)
 
-	r := getRouter()
-	r.POST("/member", env.MemberPostHandler)
+	// r := getRouter()
+	// r.POST("/member", env.MemberPostHandler)
 	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusBadRequest {
@@ -187,8 +195,8 @@ func TestPostMember(t *testing.T) {
 	req, _ := http.NewRequest("POST", "/member", bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 
-	r := getRouter()
-	r.POST("/member", env.MemberPostHandler)
+	// r := getRouter()
+	// r.POST("/member", env.MemberPostHandler)
 	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
@@ -216,8 +224,8 @@ func TestPostExistedMember(t *testing.T) {
 	req, _ := http.NewRequest("POST", "/member", bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 
-	r := getRouter()
-	r.POST("/member", env.MemberPostHandler)
+	// r := getRouter()
+	// r.POST("/member", env.MemberPostHandler)
 	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusBadRequest {
@@ -239,8 +247,8 @@ func TestPutMember(t *testing.T) {
 	req, _ := http.NewRequest("PUT", "/member", bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 
-	r := getRouter()
-	r.PUT("/member", env.MemberPutHandler)
+	// r := getRouter()
+	// r.PUT("/member", env.MemberPutHandler)
 	r.ServeHTTP(w, req)
 
 	// fmt.Println(w.Code)
@@ -272,8 +280,8 @@ func TestPutNonExistMember(t *testing.T) {
 	req, _ := http.NewRequest("PUT", "/member", bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 
-	r := getRouter()
-	r.PUT("/member", env.MemberPutHandler)
+	// r := getRouter()
+	// r.PUT("/member", env.MemberPutHandler)
 	r.ServeHTTP(w, req)
 
 	// fmt.Println(w.Code)
@@ -291,8 +299,8 @@ func TestDeleteExistMember(t *testing.T) {
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("DELETE", "/member/TaiwanNo.1", nil)
 
-	r := getRouter()
-	r.DELETE("/member/:id", env.MemberDeleteHandler)
+	// r := getRouter()
+	// r.DELETE("/member/:id", env.MemberDeleteHandler)
 	// Start gin server
 	r.ServeHTTP(w, req)
 
@@ -312,8 +320,8 @@ func TestDeleteNonExistMember(t *testing.T) {
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("DELETE", "/member/ChinaNo.19", nil)
 
-	r := getRouter()
-	r.DELETE("/member/:id", env.MemberDeleteHandler)
+	// r := getRouter()
+	// r.DELETE("/member/:id", env.MemberDeleteHandler)
 	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusBadRequest {
