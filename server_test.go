@@ -56,7 +56,7 @@ func (mdb *mockDB) Create(item models.TableStruct) (interface{}, error) {
 	case models.Member:
 		for _, value := range memberList {
 			if item.ID == value.ID {
-				return models.Member{}, errors.New("Duplicate User ID")
+				return models.Member{}, errors.New("Duplicate User")
 			}
 		}
 		memberList = append(memberList, item)
@@ -171,6 +171,10 @@ func TestPostEmptyMember(t *testing.T) {
 	if w.Code != http.StatusBadRequest {
 		t.Fail()
 	}
+	expected := `{"Error":"Invalid User"}`
+	if w.Body.String() != string(expected) {
+		t.Fail()
+	}
 }
 
 func TestPostMember(t *testing.T) {
@@ -217,6 +221,10 @@ func TestPostExistedMember(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusBadRequest {
+		t.Fail()
+	}
+	expected := `{"Error":"User Already Existed"}`
+	if w.Body.String() != string(expected) {
 		t.Fail()
 	}
 }
@@ -272,6 +280,10 @@ func TestPutNonExistMember(t *testing.T) {
 	if w.Code != http.StatusBadRequest {
 		t.Fail()
 	}
+	expected := `{"Error":"User Not Found"}`
+	if w.Body.String() != string(expected) {
+		t.Fail()
+	}
 }
 
 func TestDeleteExistMember(t *testing.T) {
@@ -305,6 +317,10 @@ func TestDeleteNonExistMember(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusBadRequest {
+		t.Fail()
+	}
+	expected := `{"Error":"User Not Found"}`
+	if w.Body.String() != string(expected) {
 		t.Fail()
 	}
 }

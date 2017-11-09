@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -40,8 +39,15 @@ func (env *Env) MemberGetHandler(c *gin.Context) {
 
 	// fmt.Println(member)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"Error": "User Not Found"})
-		return
+		switch err.Error() {
+		case "User Not Found":
+			c.JSON(http.StatusNotFound, gin.H{"Error": "User Not Found"})
+			return
+
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+			return
+		}
 	}
 	c.JSON(http.StatusOK, member)
 }
@@ -53,7 +59,7 @@ func (env *Env) MemberPostHandler(c *gin.Context) {
 
 	// Pre-request test
 	if member.ID == "" {
-		c.AbortWithError(http.StatusBadRequest, errors.New("User ID is invalid"))
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid User"})
 		return
 	}
 	if !member.CreateTime.Valid {
@@ -69,9 +75,14 @@ func (env *Env) MemberPostHandler(c *gin.Context) {
 	// var req models.Databox = &member
 	// result, err := req.Create()
 	if err != nil {
-		fmt.Println(err)
-		c.JSON(http.StatusBadRequest, gin.H{"Error": "Insert Fail"})
-		return
+		switch err.Error() {
+		case "Duplicate User":
+			c.JSON(http.StatusBadRequest, gin.H{"Error": "User Already Existed"})
+			return
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+			return
+		}
 	}
 	c.JSON(http.StatusOK, result)
 }
@@ -93,8 +104,14 @@ func (env *Env) MemberPutHandler(c *gin.Context) {
 	// result, err := req.Update()
 	result, err := env.db.Update(member)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": "Update fail"})
-		return
+		switch err.Error() {
+		case "User Not Found":
+			c.JSON(http.StatusBadRequest, gin.H{"Error": "User Not Found"})
+			return
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+			return
+		}
 	}
 	c.JSON(http.StatusOK, result)
 }
@@ -107,8 +124,14 @@ func (env *Env) MemberDeleteHandler(c *gin.Context) {
 
 	// member, err := req.Delete()
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": "User Not Found"})
-		return
+		switch err.Error() {
+		case "User Not Found":
+			c.JSON(http.StatusBadRequest, gin.H{"Error": "User Not Found"})
+			return
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+			return
+		}
 	}
 	c.JSON(http.StatusOK, member)
 }
