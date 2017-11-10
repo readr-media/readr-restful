@@ -76,7 +76,7 @@ func (env *Env) MemberPostHandler(c *gin.Context) {
 	// result, err := req.Create()
 	if err != nil {
 		switch err.Error() {
-		case "Duplicate User":
+		case "Duplicate entry":
 			c.JSON(http.StatusBadRequest, gin.H{"Error": "User Already Existed"})
 			return
 		default:
@@ -126,7 +126,7 @@ func (env *Env) MemberDeleteHandler(c *gin.Context) {
 	if err != nil {
 		switch err.Error() {
 		case "User Not Found":
-			c.JSON(http.StatusBadRequest, gin.H{"Error": "User Not Found"})
+			c.JSON(http.StatusNotFound, gin.H{"Error": "User Not Found"})
 			return
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})

@@ -56,14 +56,13 @@ func (mdb *mockDB) Create(item models.TableStruct) (interface{}, error) {
 	case models.Member:
 		for _, value := range memberList {
 			if item.ID == value.ID {
-				return models.Member{}, errors.New("Duplicate User")
+				return models.Member{}, errors.New("Duplicate entry")
 			}
 		}
 		memberList = append(memberList, item)
 		result = memberList[len(memberList)-1]
 		err = nil
 	}
-
 	return result, err
 }
 
@@ -324,7 +323,7 @@ func TestDeleteNonExistMember(t *testing.T) {
 	// r.DELETE("/member/:id", env.MemberDeleteHandler)
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusBadRequest {
+	if w.Code != http.StatusNotFound {
 		t.Fail()
 	}
 	expected := `{"Error":"User Not Found"}`

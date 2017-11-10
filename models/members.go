@@ -1,10 +1,13 @@
 package models
 
 import (
+	"bytes"
 	"database/sql"
 	"errors"
 	"fmt"
 	"log"
+	"reflect"
+	"strings"
 )
 
 type Member struct {
@@ -37,6 +40,96 @@ type Member struct {
 	Active       bool `json:"active" db:"active"`
 }
 
+func makeSQL(m *Member, mode string) (query string, err error) {
+
+	columns := make([]string, 0)
+	u := reflect.ValueOf(m).Elem()
+
+	bytequery := &bytes.Buffer{}
+
+	switch mode {
+	case "insert":
+		fmt.Println("insert")
+		for i := 0; i < u.NumField(); i++ {
+			tag := u.Type().Field(i).Tag.Get("db")
+			columns = append(columns, tag)
+		}
+
+		bytequery.WriteString("INSERT INTO members ( ")
+		bytequery.WriteString(strings.Join(columns, ","))
+		bytequery.WriteString(") VALUES ( :")
+		bytequery.WriteString(strings.Join(columns, ",:"))
+		bytequery.WriteString(")")
+
+		// fmt.Println(query)
+		query = bytequery.String()
+		err = nil
+
+	case "full_update":
+
+		for i := 0; i < u.NumField(); i++ {
+			tag := u.Type().Field(i).Tag.Get("db")
+			columns = append(columns, tag)
+		}
+
+		temp := make([]string, len(columns))
+		for idx, value := range columns {
+			temp[idx] = fmt.Sprintf("%s = :%s", value, value)
+		}
+		bytequery.WriteString("UPDATE members SET ")
+		bytequery.WriteString(strings.Join(temp, ", "))
+		bytequery.WriteString(" WHERE user_id = :user_id")
+
+		query = bytequery.String()
+		err = nil
+
+	case "partial_update":
+
+		fmt.Println("partial")
+		for i := 0; i < u.NumField(); i++ {
+			tag := u.Type().Field(i).Tag
+			field := u.Field(i).Interface()
+
+			switch field := field.(type) {
+			case string:
+				if field != "" && tag.Get("db") != "user_id" {
+					fmt.Printf("%s field = %s\n", u.Field(i).Type(), field)
+					columns = append(columns, tag.Get("db"))
+				}
+			case NullString:
+				if field.Valid {
+					fmt.Println("valid NullString : ", field.String)
+					columns = append(columns, tag.Get("db"))
+				}
+			case NullTime:
+				if field.Valid {
+					fmt.Println("valid NullTime : ", field.Time)
+					columns = append(columns, tag.Get("db"))
+				}
+
+			case bool:
+				fmt.Println("bool type", field)
+				columns = append(columns, tag.Get("db"))
+			default:
+				fmt.Println("unrecognised format: ", u.Field(i).Type())
+			}
+		}
+
+		temp := make([]string, len(columns))
+		for idx, value := range columns {
+			temp[idx] = fmt.Sprintf("%s = :%s", value, value)
+		}
+		bytequery.WriteString("UPDATE members SET ")
+		bytequery.WriteString(strings.Join(temp, ", "))
+		bytequery.WriteString(" WHERE user_id = :user_id")
+
+		query = bytequery.String()
+		err = nil
+	}
+	// fmt.Println(columns)
+	return
+}
+
 func (m Member) GetFromDatabase(db *DB) (TableStruct, error) {
 
 	member := Member{}
@@ -58,11 +151,23 @@ func (m Member) GetFromDatabase(db *DB) (TableStruct, error) {
 func (m Member) InsertIntoDatabase(db *DB) error {
 
 	query, _ := makeSQL(&m, "insert")
-	_, err := db.NamedExec(query, m)
-	// Cannot handle duplicate insert, crash
+	result, err := db.NamedExec(query, m)
+
+	if err != nil {
+		fmt.Println(err)
+		if strings.Contains(err.Error(), "Duplicate entry") {
+			return errors.New("Duplicate entry")
+		}
+		return err
+	}
+	rowCnt, err := result.RowsAffected()
 	if err != nil {
 		log.Fatal(err)
-		return err
+	}
+	if rowCnt > 1 {
+		return errors.New("More Than One Rows Affected")
+	} else if rowCnt == 0 {
+		return errors.New("No Row Inserted")
 	}
 	return nil
 }
@@ -71,11 +176,17 @@ func (m Member) UpdateDatabase(db *DB) error {
 
 	query, _ := makeSQL(&m, "partial_update")
 	fmt.Println(query)
-	_, err := db.NamedExec(query, m)
+	result, err := db.NamedExec(query, m)
 
 	if err != nil {
 		log.Fatal(err)
 		return err
+	}
+	rowCnt, err := result.RowsAffected()
+	if rowCnt > 1 {
+		return errors.New("More Than One Rows Affected")
+	} else if rowCnt == 0 {
+		return errors.New("User Not Found")
 	}
 	return nil
 }
