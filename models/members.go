@@ -194,6 +194,7 @@ func (m Member) UpdateDatabase(db *DB) error {
 func (m Member) DeleteFromDatabase(db *DB) error {
 
 	_, err := db.Exec("UPDATE members SET active = 0 WHERE user_id = ?", m.ID)
+	fmt.Println(err)
 	if err != nil {
 		log.Fatal(err)
 	} else {

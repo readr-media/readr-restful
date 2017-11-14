@@ -143,8 +143,97 @@ func (env *Env) ArticleGetHandler(c *gin.Context) {
 
 	// fmt.Println(member)
 	if err != nil {
-		c.AbortWithError(http.StatusNotFound, err)
+		switch err.Error() {
+		case "Article Not Found":
+			c.JSON(http.StatusNotFound, gin.H{"Error": "Article Not Found"})
+			return
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+			return
+		}
+	}
+	c.JSON(http.StatusOK, article)
+}
+
+func (env *Env) ArticlePostHandler(c *gin.Context) {
+
+	article := models.Article{}
+	err := c.Bind(&article)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
+	}
+	if article.ID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Article ID"})
+		return
+	}
+	if !article.CreateTime.Valid {
+		article.CreateTime.Time = time.Now()
+		article.CreateTime.Valid = true
+	}
+	if !article.UpdatedAt.Valid {
+		article.UpdatedAt.Time = time.Now()
+		article.UpdatedAt.Valid = true
+	}
+	if article.Active != 1 {
+		article.Active = 1
+	}
+	result, err := env.db.Create(article)
+	if err != nil {
+		switch err.Error() {
+		case "Duplicate entry":
+			c.JSON(http.StatusBadRequest, gin.H{"Error": "Article ID Already Taken"})
+			return
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+			return
+		}
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+func (env *Env) ArticlePutHandler(c *gin.Context) {
+
+	article := models.Article{}
+	c.Bind(&article)
+	if article.CreateTime.Valid {
+		article.CreateTime.Time = time.Time{}
+		article.CreateTime.Valid = false
+	}
+	if !article.UpdatedAt.Valid {
+		article.UpdatedAt.Time = time.Now()
+		article.UpdatedAt.Valid = true
+	}
+	result, err := env.db.Update(article)
+	if err != nil {
+		switch err.Error() {
+		case "Article Not Found":
+			c.JSON(http.StatusBadRequest, gin.H{"Error": "Article Not Found"})
+			return
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+			return
+		}
+	}
+	c.JSON(http.StatusOK, result)
+}
+
+func (env *Env) ArticleDeleteHandler(c *gin.Context) {
+
+	input := models.Article{ID: c.Param("id")}
+	// var req models.Databox = &models.Member{ID: userID}
+	article, err := env.db.Delete(input)
+
+	// member, err := req.Delete()
+	if err != nil {
+		switch err.Error() {
+		case "Article Not Found":
+			c.JSON(http.StatusNotFound, gin.H{"Error": "Article Not Found"})
+			return
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+			return
+		}
 	}
 	c.JSON(http.StatusOK, article)
 }
@@ -176,5 +265,9 @@ func main() {
 	router.DELETE("/member/:id", env.MemberDeleteHandler)
 
 	router.GET("/article/:id", env.ArticleGetHandler)
+	router.POST("/article", env.ArticlePostHandler)
+	router.PUT("/article", env.ArticlePutHandler)
+	router.DELETE("/article/:id", env.ArticleDeleteHandler)
+
 	router.Run()
 }

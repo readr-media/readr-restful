@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
+	"errors"
 	"time"
 
 	// For NewDB() usage
@@ -173,7 +174,10 @@ func (db *DB) Create(item TableStruct) (interface{}, error) {
 	switch item := item.(type) {
 	case Member:
 		err = item.InsertIntoDatabase(db)
-
+	case Article:
+		err = item.InsertIntoDatabase(db)
+	default:
+		err = errors.New("Insert fail")
 	}
 	return result, err
 }
@@ -187,6 +191,10 @@ func (db *DB) Update(item TableStruct) (interface{}, error) {
 	switch item := item.(type) {
 	case Member:
 		err = item.UpdateDatabase(db)
+	case Article:
+		err = item.UpdateDatabase(db)
+	default:
+		err = errors.New("Update Fail")
 	}
 	return result, err
 }
@@ -194,7 +202,7 @@ func (db *DB) Update(item TableStruct) (interface{}, error) {
 func (db *DB) Delete(item TableStruct) (interface{}, error) {
 
 	var (
-		result Member
+		result TableStruct
 		err    error
 	)
 	switch item := item.(type) {
@@ -202,6 +210,13 @@ func (db *DB) Delete(item TableStruct) (interface{}, error) {
 		err = item.DeleteFromDatabase(db)
 		if err != nil {
 			result = Member{}
+		} else {
+			result = item
+		}
+	case Article:
+		err = item.DeleteFromDatabase(db)
+		if err != nil {
+			result = Article{}
 		} else {
 			result = item
 		}

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -23,6 +24,13 @@ var memberList = []models.Member{
 	},
 }
 
+var articleList = []models.Article{
+	models.Article{
+		ID:     "3345678",
+		Author: models.NullString{String: "李宥儒", Valid: true},
+		Active: 1,
+	},
+}
 var env Env
 
 // ------------------------ Implementation of Datastore interface ---------------------------
@@ -42,6 +50,17 @@ func (mdb *mockDB) Get(item models.TableStruct) (models.TableStruct, error) {
 				err = nil
 			}
 		}
+	case models.Article:
+		result = models.Member{}
+		err = errors.New("Article Not Found")
+		for _, value := range articleList {
+			if item.ID == value.ID {
+				result = value
+				err = nil
+			}
+		}
+	default:
+		log.Fatal("Can't not parse model type")
 	}
 	return result, err
 }
@@ -54,13 +73,24 @@ func (mdb *mockDB) Create(item models.TableStruct) (interface{}, error) {
 	)
 	switch item := item.(type) {
 	case models.Member:
-		for _, value := range memberList {
-			if item.ID == value.ID {
+		for _, member := range memberList {
+			if item.ID == member.ID {
 				return models.Member{}, errors.New("Duplicate entry")
 			}
 		}
 		memberList = append(memberList, item)
 		result = memberList[len(memberList)-1]
+		err = nil
+	case models.Article:
+		for _, article := range articleList {
+			if item.ID == article.ID {
+				result = models.Article{}
+				err = errors.New("Duplicate entry")
+				return result, err
+			}
+		}
+		articleList = append(articleList, item)
+		result = articleList[len(articleList)-1]
 		err = nil
 	}
 	return result, err
@@ -68,7 +98,7 @@ func (mdb *mockDB) Create(item models.TableStruct) (interface{}, error) {
 
 func (mdb *mockDB) Update(item models.TableStruct) (interface{}, error) {
 	var (
-		result models.Member
+		result models.TableStruct
 		err    error
 	)
 	switch item := item.(type) {
@@ -81,15 +111,26 @@ func (mdb *mockDB) Update(item models.TableStruct) (interface{}, error) {
 				err = nil
 			}
 		}
+	case models.Article:
+		result = models.Article{}
+		err = errors.New("Article Not Found")
+		for index, value := range articleList {
+			if value.ID == item.ID {
+				articleList[index].LikeAmount = item.LikeAmount
+				articleList[index].Title = item.Title
+				return articleList[index], nil
+			}
+		}
 	}
 	return result, err
 }
 
 func (mdb *mockDB) Delete(item models.TableStruct) (interface{}, error) {
 	var (
-		result models.Member
+		result models.TableStruct
 		err    error
 	)
+	// fmt.Println("Delete")
 	switch item := item.(type) {
 	case models.Member:
 		result = models.Member{}
@@ -97,10 +138,20 @@ func (mdb *mockDB) Delete(item models.TableStruct) (interface{}, error) {
 		for index, value := range memberList {
 			if item.ID == value.ID {
 				memberList[index].Active = false
-				result = memberList[index]
-				err = nil
+				return memberList[index], nil
 			}
 		}
+	case models.Article:
+		result = models.Article{}
+		err = errors.New("Article Not Found")
+		for index, value := range articleList {
+			if item.ID == value.ID {
+				articleList[index].Active = 0
+				return articleList[index], nil
+			}
+		}
+	default:
+		log.Fatal("Can't not parse model type")
 	}
 	return result, err
 }
@@ -117,6 +168,11 @@ func TestMain(m *testing.M) {
 	r.POST("/member", env.MemberPostHandler)
 	r.PUT("/member", env.MemberPutHandler)
 	r.DELETE("/member/:id", env.MemberDeleteHandler)
+
+	r.GET("/article/:id", env.ArticleGetHandler)
+	r.POST("/article", env.ArticlePostHandler)
+	r.PUT("/article", env.ArticlePutHandler)
+	r.DELETE("/article/:id", env.ArticleDeleteHandler)
 
 	env.db = &mockDB{}
 	os.Exit(m.Run())
@@ -170,7 +226,7 @@ func TestPostEmptyMember(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	req, _ := http.NewRequest("POST", "/member", nil)
-
+	// req.Header.Set("Content-Type", "application/json")
 	// r := getRouter()
 	// r.POST("/member", env.MemberPostHandler)
 	r.ServeHTTP(w, req)
@@ -250,7 +306,6 @@ func TestPutMember(t *testing.T) {
 	// r.PUT("/member", env.MemberPutHandler)
 	r.ServeHTTP(w, req)
 
-	// fmt.Println(w.Code)
 	if w.Code != http.StatusOK {
 		t.Fail()
 	}
@@ -283,7 +338,6 @@ func TestPutNonExistMember(t *testing.T) {
 	// r.PUT("/member", env.MemberPutHandler)
 	r.ServeHTTP(w, req)
 
-	// fmt.Println(w.Code)
 	if w.Code != http.StatusBadRequest {
 		t.Fail()
 	}
@@ -327,6 +381,192 @@ func TestDeleteNonExistMember(t *testing.T) {
 		t.Fail()
 	}
 	expected := `{"Error":"User Not Found"}`
+	if w.Body.String() != string(expected) {
+		t.Fail()
+	}
+}
+
+// ---------------------------------- Article Test -------------------------------
+
+func TestGetExistArticle(t *testing.T) {
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/article/3345678", nil)
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fail()
+	}
+	expected, _ := json.Marshal(articleList[0])
+	if w.Body.String() != string(expected) {
+		t.Fail()
+	}
+}
+
+func TestGetNonExistedArticle(t *testing.T) {
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/article/9527", nil)
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fail()
+	}
+
+	expected := `{"Error":"Article Not Found"}`
+	if w.Body.String() != string(expected) {
+		t.Fail()
+	}
+}
+
+func TestPostArticle(t *testing.T) {
+	w := httptest.NewRecorder()
+	var jsonStr = []byte(`{
+		"id":"9527",
+		"author":"洪晟熊"
+	}`)
+	req, _ := http.NewRequest("POST", "/article", bytes.NewBuffer(jsonStr))
+	req.Header.Set("Content-Type", "application/json")
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fail()
+	}
+	var (
+		resp     models.Article
+		expected models.Article
+	)
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		log.Fatal(err)
+	}
+	if err := json.Unmarshal(jsonStr, &expected); err != nil {
+		log.Fatal(err)
+	}
+	if resp.ID != expected.ID || resp.Author != expected.Author {
+		t.Fail()
+	}
+}
+
+func TestPostEmptyArticle(t *testing.T) {
+	w := httptest.NewRecorder()
+	// When the body is empty in Postman, it actually send EOF to server
+	// It is a problem whether it's proper to send {} in test.
+	var jsonStr = []byte(`{}`)
+	req, _ := http.NewRequest("POST", "/article", bytes.NewBuffer(jsonStr))
+	req.Header.Set("Content-Type", "application/json")
+	// r := getRouter()
+	// r.POST("/member", env.MemberPostHandler)
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fail()
+	}
+	expected := `{"Error":"Invalid Article ID"}`
+	if w.Body.String() != string(expected) {
+		t.Fail()
+	}
+}
+
+func TestPostExistingArticle(t *testing.T) {
+	w := httptest.NewRecorder()
+	var jsonStr = []byte(`{
+		"id":"3345678",
+		"author":"李宥儒"
+	}`)
+	req, _ := http.NewRequest("POST", "/article", bytes.NewBuffer(jsonStr))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusBadRequest {
+		t.Fail()
+	}
+	expected := `{"Error":"Article ID Already Taken"}`
+	if w.Body.String() != string(expected) {
+		t.Fail()
+	}
+}
+
+// ------------------------------------ Update Article Test ------------------------------------
+func TestPutArticle(t *testing.T) {
+	w := httptest.NewRecorder()
+	var jsonStr = []byte(`{
+		"id":"3345678",
+		"liked": 113,
+		"title": "台北不是我的家！？租屋黑市大揭露"
+	}`)
+	req, _ := http.NewRequest("PUT", "/article", bytes.NewBuffer(jsonStr))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fail()
+	}
+	var (
+		resp     models.Article
+		expected models.Article
+	)
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		log.Fatal(err)
+	}
+	if err := json.Unmarshal(jsonStr, &expected); err != nil {
+		log.Fatal(err)
+	}
+	if resp.ID != expected.ID || resp.LikeAmount != expected.LikeAmount || resp.Title != expected.Title {
+		t.Fail()
+	}
+}
+
+func TestPutNonExistingArticle(t *testing.T) {
+	w := httptest.NewRecorder()
+	var jsonStr = []byte(`{
+		"id": "98765",
+		"Title": "數讀政治獻金"
+	}`)
+	req, _ := http.NewRequest("PUT", "/article", bytes.NewBuffer(jsonStr))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	fmt.Println(w.Code)
+	if w.Code != http.StatusBadRequest {
+		t.Fail()
+	}
+	fmt.Println(w.Body.String())
+	expected := `{"Error":"Article Not Found"}`
+	if w.Body.String() != string(expected) {
+		t.Fail()
+	}
+}
+
+// ------------------------------------ Delete Article Test ------------------------------------
+func TestDeleteExistingArticle(t *testing.T) {
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("DELETE", "/article/3345678", nil)
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Fail()
+	}
+	var resp models.Article
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		log.Fatal(err)
+	}
+	if resp.Active != 0 {
+		t.Fail()
+	}
+}
+
+func TestDeleteNonExistingArticle(t *testing.T) {
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("DELETE", "/article/12345", nil)
+
+	r.ServeHTTP(w, req)
+
+	if w.Code != http.StatusNotFound {
+		t.Fail()
+	}
+	expected := `{"Error":"Article Not Found"}`
 	if w.Body.String() != string(expected) {
 		t.Fail()
 	}
