@@ -37,7 +37,6 @@ func (env *Env) MemberGetHandler(c *gin.Context) {
 	input := models.Member{ID: c.Param("id")}
 	member, err := env.db.Get(input)
 
-	// fmt.Println(member)
 	if err != nil {
 		switch err.Error() {
 		case "User Not Found":
@@ -91,7 +90,12 @@ func (env *Env) MemberPutHandler(c *gin.Context) {
 
 	member := models.Member{}
 	c.Bind(&member)
-
+	// Use id field to check if Member Struct was binded successfully
+	// If the binding failed, id would be emtpy string
+	if member.ID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Member Data"})
+		return
+	}
 	if member.CreateTime.Valid {
 		member.CreateTime.Time = time.Time{}
 		member.CreateTime.Valid = false
@@ -141,7 +145,6 @@ func (env *Env) ArticleGetHandler(c *gin.Context) {
 	input := models.Article{ID: c.Param("id")}
 	article, err := env.db.Get(input)
 
-	// fmt.Println(member)
 	if err != nil {
 		switch err.Error() {
 		case "Article Not Found":
@@ -196,6 +199,11 @@ func (env *Env) ArticlePutHandler(c *gin.Context) {
 
 	article := models.Article{}
 	c.Bind(&article)
+	// Check if article struct was binded successfully
+	if article.ID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Article Data"})
+		return
+	}
 	if article.CreateTime.Valid {
 		article.CreateTime.Time = time.Time{}
 		article.CreateTime.Valid = false

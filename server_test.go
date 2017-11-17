@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -130,7 +129,6 @@ func (mdb *mockDB) Delete(item models.TableStruct) (interface{}, error) {
 		result models.TableStruct
 		err    error
 	)
-	// fmt.Println("Delete")
 	switch item := item.(type) {
 	case models.Member:
 		result = models.Member{}
@@ -527,11 +525,9 @@ func TestPutNonExistingArticle(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
-	fmt.Println(w.Code)
 	if w.Code != http.StatusBadRequest {
 		t.Fail()
 	}
-	fmt.Println(w.Body.String())
 	expected := `{"Error":"Article Not Found"}`
 	if w.Body.String() != string(expected) {
 		t.Fail()

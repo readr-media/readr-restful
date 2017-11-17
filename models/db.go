@@ -1,10 +1,14 @@
 package models
 
 import (
+	"bytes"
 	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"reflect"
+	"strings"
 	"time"
 
 	// For NewDB() usage
@@ -153,7 +157,6 @@ func (db *DB) Get(item TableStruct) (TableStruct, error) {
 	case Member:
 		result, err = item.GetFromDatabase(db)
 		if err != nil {
-			// log.Fatal(err)
 			result = Member{}
 		}
 	case Article:
@@ -222,4 +225,103 @@ func (db *DB) Delete(item TableStruct) (interface{}, error) {
 		}
 	}
 	return result, err
+}
+
+func generateSQLStmt(input interface{}, mode string, tableName string) (query string, err error) {
+
+	columns := make([]string, 0)
+	// u := reflect.ValueOf(input).Elem()
+	u := reflect.ValueOf(input)
+
+	bytequery := &bytes.Buffer{}
+
+	switch mode {
+	case "insert":
+		fmt.Println("insert")
+		for i := 0; i < u.NumField(); i++ {
+			tag := u.Type().Field(i).Tag.Get("db")
+			columns = append(columns, tag)
+		}
+
+		bytequery.WriteString(fmt.Sprintf("INSERT INTO %s (", tableName))
+		bytequery.WriteString(strings.Join(columns, ","))
+		bytequery.WriteString(") VALUES ( :")
+		bytequery.WriteString(strings.Join(columns, ",:"))
+		bytequery.WriteString(");")
+
+		query = bytequery.String()
+		err = nil
+
+	case "full_update":
+
+		fmt.Println("full_update")
+		var idName string
+		for i := 0; i < u.NumField(); i++ {
+			tag := u.Type().Field(i).Tag
+			columns = append(columns, tag.Get("db"))
+
+			if tag.Get("json") == "id" {
+				idName = tag.Get("db")
+			}
+		}
+
+		temp := make([]string, len(columns))
+		for idx, value := range columns {
+			temp[idx] = fmt.Sprintf("%s = :%s", value, value)
+		}
+
+		bytequery.WriteString(fmt.Sprintf("UPDATE %s SET ", tableName))
+		bytequery.WriteString(strings.Join(temp, ", "))
+		bytequery.WriteString(fmt.Sprintf(" WHERE %s = :%s", idName, idName))
+
+		query = bytequery.String()
+		err = nil
+
+	case "partial_update":
+
+		var idName string
+		fmt.Println("partial")
+		for i := 0; i < u.NumField(); i++ {
+			tag := u.Type().Field(i).Tag
+			field := u.Field(i).Interface()
+
+			switch field := field.(type) {
+			case string:
+				if field != "" {
+					if tag.Get("json") == "id" {
+						fmt.Printf("%s field = %s\n", u.Field(i).Type(), field)
+						idName = tag.Get("db")
+					}
+					columns = append(columns, tag.Get("db"))
+				}
+			case NullString:
+				if field.Valid {
+					fmt.Println("valid NullString : ", field.String)
+					columns = append(columns, tag.Get("db"))
+				}
+			case NullTime:
+				if field.Valid {
+					fmt.Println("valid NullTime : ", field.Time)
+					columns = append(columns, tag.Get("db"))
+				}
+
+			case bool, int:
+				columns = append(columns, tag.Get("db"))
+			default:
+				fmt.Println("unrecognised format: ", u.Field(i).Type())
+			}
+		}
+
+		temp := make([]string, len(columns))
+		for idx, value := range columns {
+			temp[idx] = fmt.Sprintf("%s = :%s", value, value)
+		}
+		bytequery.WriteString(fmt.Sprintf("UPDATE %s SET ", tableName))
+		bytequery.WriteString(strings.Join(temp, ", "))
+		bytequery.WriteString(fmt.Sprintf(" WHERE %s = :%s;", idName, idName))
+
+		query = bytequery.String()
+		err = nil
+	}
+	return
 }
