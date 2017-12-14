@@ -1,7 +1,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,13 +9,14 @@ import (
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/readr-media/readr-restful/models"
+	"github.com/spf13/viper"
 )
 
-var (
-	sqlUser    = flag.String("sql-user", "root", "User account to SQL server")
-	sqlAddress = flag.String("sql-address", "127.0.0.1:3306", "Address to the SQL server")
-	sqlAuth    = flag.String("sql-auth", "", "Password to SQL server")
-)
+// var (
+// 	sqlUser    = flag.String("sql-user", "root", "User account to SQL server")
+// 	sqlAddress = flag.String("sql-address", "127.0.0.1:3306", "Address to the SQL server")
+// 	sqlAuth    = flag.String("sql-auth", "", "Password to SQL server")
+// )
 
 // func sqlMiddleware(connString string) gin.HandlerFunc {
 // 	db := sqlx.MustConnect("mysql", connString)
@@ -247,10 +247,27 @@ func (env *Env) ArticleDeleteHandler(c *gin.Context) {
 }
 
 func main() {
-	flag.Parse()
-	fmt.Printf("sql user:%s, sql address:%s, auth:%s \n", *sqlUser, *sqlAddress, *sqlAuth)
+	viper.AddConfigPath("./config")
+	viper.SetConfigName("main")
+
+	if err := viper.ReadInConfig(); err != nil {
+		log.Fatalf("Error reading config file, %s", err)
+	}
+
+	fmt.Printf("Using config: %s\n", viper.ConfigFileUsed())
+
+	sqlHost := viper.Get("sql.host")
+	sqlPort := viper.GetInt("sql.port")
+	sqlUser := viper.Get("sql.user")
+	sqlPass := viper.Get("sql.password")
+	// flag.Parse()
+	// fmt.Printf("sql user:%s, sql address:%s, auth:%s \n", *sqlUser, *sqlAddress, *sqlAuth)
+	// fmt.Println(sqlPort)
+	fmt.Printf("sql user:%s, sql address:%s, auth:%s \n", sqlUser, fmt.Sprintf("%s:%v", sqlHost, sqlPort), sqlPass)
+
 	// db, err := sqlx.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s)/memberdb", *sqlUser, *sqlAuth, *sqlAddress))
-	dbURI := fmt.Sprintf("%s:%s@tcp(%s)/memberdb?parseTime=true", *sqlUser, *sqlAuth, *sqlAddress)
+	// dbURI := fmt.Sprintf("%s:%s@tcp(%s)/memberdb?parseTime=true", *sqlUser, *sqlAuth, *sqlAddress)
+	dbURI := fmt.Sprintf("%s:%s@tcp(%s)/memberdb?parseTime=true", sqlUser, sqlPass, fmt.Sprintf("%s:%v", sqlHost, sqlPort))
 	// Start with default middleware
 	router := gin.Default()
 
