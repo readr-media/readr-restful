@@ -14,11 +14,11 @@ pipeline:
   builds:
     image: golang
     commands:
-    - go get -v github.com/gin-gonic/gin
-    - go get -v github.com/readr-media/readr-restful/models
-    - go get -v github.com/go-sql-driver/mysql
-    - go get -v github.com/jmoiron/sqlx
-    - go get -v github.com/spf13/viper
+    - go get github.com/gin-gonic/gin
+    - go get github.com/readr-media/readr-restful/models
+    - go get github.com/go-sql-driver/mysql
+    - go get github.com/jmoiron/sqlx
+    - go get github.com/spf13/viper
     - go test -v -cover
     - env GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -a -o app main.go
     when:
@@ -30,16 +30,18 @@ pipeline:
     secrets: [google_credentials]
     commands:
     - gcloud source repos clone default default
+    when:
+      event: [pull_request]
   publish:
     image: plugins/gcr
     repo: mirrormedia-1470651750304/${DRONE_REPO_NAME}
     tag: ${DRONE_COMMIT_AUTHOR}_${DRONE_BUILD_NUMBER}
-    previleged: true
+    # previleged: true
     environment:
       - DOCKER_LAUNCH_DEBUG=true
     secrets: [google_credentials]
     when:
-      event: [push, pull_request]
+      event: [pull_request]
   deploy_dev:
     image: nytimes/drone-gke:develop
     zone: asia-east1-a
@@ -57,7 +59,7 @@ pipeline:
       app: readr-rest
       tier: backend
     when:
-      event: [push, pull_request]
+      event: [pull_request]
       branch: dev
   finish_slack:
     image: plugins/slack
@@ -65,8 +67,6 @@ pipeline:
     secrets: [slack_webhook]
     username: drone
     icon_url: https://avatars2.githubusercontent.com/u/2181346?s=200&v=4
-    when:
-      status: [success, failure]
     template: >
       {{#success build.status}}
         *success* ${DRONE_REPO_NAME}:${DRONE_COMMIT_AUTHOR}_${DRONE_BUILD_NUMBER} was well served.
