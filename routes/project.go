@@ -1,14 +1,19 @@
 package routes
 
 import (
+	"fmt"
+
 	"github.com/gin-gonic/gin"
-	//"github.com/readr-media/readr-restful/models"
+	"github.com/readr-media/readr-restful/models"
 )
 
 type projectHandler struct{}
 
 func (r *projectHandler) projectGet(c *gin.Context){
-	//implements...
+	fmt.Println(c)
+	//input := models.Project{ID: c.Param("id")}
+	result, ok := models.ProjectAPI.GetProjects(models.Project{})
+	fmt.Println(result, ok)
 }
 
 func (r *projectHandler) projectPost(c *gin.Context){
@@ -24,12 +29,12 @@ func (r *projectHandler) projectDelete(c *gin.Context){
 }
 
 func (r *projectHandler) SetRoutes(router *gin.Engine){
-	router.Group("/project")
+	projectRouter := router.Group("/project")
 	{
-		router.GET("/:id", r.projectGet)
-		router.POST("", r.projectPost)
-		router.PUT("", r.projectPut)
-		router.DELETE("/:id", r.projectDelete)
+		projectRouter.GET("/:id", r.projectGet)
+		projectRouter.POST("", r.projectPost)
+		projectRouter.PUT("", r.projectPut)
+		projectRouter.DELETE("/:id", r.projectDelete)
 	}
 }
 
