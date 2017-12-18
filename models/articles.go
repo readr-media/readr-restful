@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+
 )
 
 type Article struct {
@@ -25,9 +26,9 @@ type Article struct {
 	UpdatedBy     NullString `json:"updated_by" db:"updated_by"`
 }
 
-func (a Article) GetFromDatabase(db *DB) (TableStruct, error) {
+func (a Article) GetFromDatabase() (TableStruct, error) {
 	article := Article{}
-	err := db.QueryRowx("SELECT * FROM article_infos WHERE post_id = ?", a.ID).StructScan(&article)
+	err := DB.QueryRowx("SELECT * FROM article_infos WHERE post_id = ?", a.ID).StructScan(&article)
 	switch {
 	case err == sql.ErrNoRows:
 		err = errors.New("Article Not Found")
@@ -42,10 +43,10 @@ func (a Article) GetFromDatabase(db *DB) (TableStruct, error) {
 	return article, err
 }
 
-func (a Article) InsertIntoDatabase(db *DB) error {
+func (a Article) InsertIntoDatabase() error {
 
 	query, _ := generateSQLStmt(a, "insert", "article_infos")
-	result, err := db.NamedExec(query, a)
+	result, err := DB.NamedExec(query, a)
 	if err != nil {
 		if strings.Contains(err.Error(), "Duplicate entry") {
 			return errors.New("Duplicate entry")
@@ -64,13 +65,13 @@ func (a Article) InsertIntoDatabase(db *DB) error {
 	return nil
 }
 
-func (a Article) UpdateDatabase(db *DB) error {
+func (a Article) UpdateDatabase() error {
 
 	query, err := generateSQLStmt(a, "partial_update", "article_infos")
 	if err != nil {
 		return errors.New("Generate SQL statement failed")
 	}
-	result, err := db.NamedExec(query, a)
+	result, err := DB.NamedExec(query, a)
 
 	if err != nil {
 		return err
@@ -84,9 +85,9 @@ func (a Article) UpdateDatabase(db *DB) error {
 	return nil
 }
 
-func (a Article) DeleteFromDatabase(db *DB) error {
+func (a Article) DeleteFromDatabase() error {
 
-	_, err := db.Exec("UPDATE article_infos SET active = 0 WHERE post_id = ?", a.ID)
+	_, err := DB.Exec("UPDATE article_infos SET active = 0 WHERE post_id = ?", a.ID)
 	if err != nil {
 		log.Println(err)
 	} else {

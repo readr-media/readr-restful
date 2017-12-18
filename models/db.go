@@ -2,107 +2,21 @@ package models
 
 import (
 	"bytes"
-	"database/sql"
-	"database/sql/driver"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
 	"strings"
-	"time"
+	"log"
 
 	// For NewDB() usage
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 )
 
-// var db *sqlx.DB
+var DB database = database{nil}
 
-// ------------------------------  NULLABLE TYPE DEFINITION -----------------------------
-
-type NullTime struct {
-	Time  time.Time
-	Valid bool
+type database struct {
+	*sqlx.DB
 }
-
-func (nt *NullTime) Scan(value interface{}) error {
-	nt.Time, nt.Valid = value.(time.Time)
-	return nil
-}
-
-// Value implements the driver Valuer interface.
-func (nt NullTime) Value() (driver.Value, error) {
-	if !nt.Valid {
-		return nil, nil
-	}
-	return nt.Time, nil
-}
-
-func (nt NullTime) MarshalJSON() ([]byte, error) {
-	if nt.Valid {
-		return json.Marshal(nt.Time)
-	}
-	return json.Marshal(nil)
-}
-
-func (nt *NullTime) UnmarshalJSON(text []byte) error {
-	nt.Valid = false
-	txt := string(text)
-	if txt == "null" || txt == "" {
-		return nil
-	}
-
-	t := time.Time{}
-	err := t.UnmarshalJSON(text)
-	if err == nil {
-		nt.Time = t
-		nt.Valid = true
-	}
-
-	return err
-}
-
-// Create our own null string type for prettier marshal JSON format
-type NullString sql.NullString
-
-// Scan is currently a wrap of sql.NullString.Scan()
-func (ns *NullString) Scan(value interface{}) error {
-	// ns.String, ns.Valid = value.(string)
-	// fmt.Printf("string:%s\n, valid:%s\n", ns.String, ns.Valid)
-	// return nil
-	x := sql.NullString{}
-	err := x.Scan(value)
-	ns.String, ns.Valid = x.String, x.Valid
-	return err
-}
-
-// Value validate the value
-func (ns NullString) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return ns.String, nil
-}
-
-func (ns NullString) MarshalJSON() ([]byte, error) {
-	if ns.Valid {
-		return json.Marshal(ns.String)
-	}
-	return json.Marshal(nil)
-}
-
-func (ns *NullString) UnmarshalJSON(text []byte) error {
-	ns.Valid = false
-	if string(text) == "null" {
-		return nil
-	}
-	if err := json.Unmarshal(text, &ns.String); err == nil {
-		ns.Valid = true
-	}
-	return nil
-}
-
-// ----------------------------- END OF NULLABLE TYPE DEFINITION -----------------------------
 
 type Datastore interface {
 	Get(item TableStruct) (TableStruct, error)
@@ -111,15 +25,11 @@ type Datastore interface {
 	Delete(item TableStruct) (interface{}, error)
 }
 
-type DB struct {
-	*sqlx.DB
-}
-
 type TableStruct interface {
-	GetFromDatabase(*DB) (TableStruct, error)
-	InsertIntoDatabase(*DB) error
-	UpdateDatabase(*DB) error
-	DeleteFromDatabase(*DB) error
+	GetFromDatabase() (TableStruct, error)
+	InsertIntoDatabase() error
+	UpdateDatabase() error
+	DeleteFromDatabase() error
 }
 
 // func InitDB(dataURI string) {
@@ -133,19 +43,19 @@ type TableStruct interface {
 // 	}
 // }
 
-func NewDB(dbURI string) (*DB, error) {
-	db, err := sqlx.Open("mysql", dbURI)
+func Connect(dbURI string) {
+	d, err := sqlx.Open("mysql", dbURI)
 	if err != nil {
-		return nil, err
+		log.Panic(err)
 	}
-	if err = db.Ping(); err != nil {
-		return nil, err
+	if err = d.Ping(); err != nil {
+		log.Panic(err)
 	}
-	return &DB{db}, nil
+	DB = database{d}
 }
 
 // Get implemented for Datastore interface below
-func (db *DB) Get(item TableStruct) (TableStruct, error) {
+func (db *database) Get(item TableStruct) (TableStruct, error) {
 
 	// Declaration of return set
 	var (
@@ -155,12 +65,12 @@ func (db *DB) Get(item TableStruct) (TableStruct, error) {
 
 	switch item := item.(type) {
 	case Member:
-		result, err = item.GetFromDatabase(db)
+		result, err = item.GetFromDatabase()
 		if err != nil {
 			result = Member{}
 		}
 	case Article:
-		result, err = item.GetFromDatabase(db)
+		result, err = item.GetFromDatabase()
 		if err != nil {
 			result = Article{}
 		}
@@ -168,7 +78,7 @@ func (db *DB) Get(item TableStruct) (TableStruct, error) {
 	return result, err
 }
 
-func (db *DB) Create(item TableStruct) (interface{}, error) {
+func (db *database) Create(item TableStruct) (interface{}, error) {
 
 	var (
 		result TableStruct
@@ -176,16 +86,16 @@ func (db *DB) Create(item TableStruct) (interface{}, error) {
 	)
 	switch item := item.(type) {
 	case Member:
-		err = item.InsertIntoDatabase(db)
+		err = item.InsertIntoDatabase()
 	case Article:
-		err = item.InsertIntoDatabase(db)
+		err = item.InsertIntoDatabase()
 	default:
 		err = errors.New("Insert fail")
 	}
 	return result, err
 }
 
-func (db *DB) Update(item TableStruct) (interface{}, error) {
+func (db *database) Update(item TableStruct) (interface{}, error) {
 
 	var (
 		result TableStruct
@@ -193,16 +103,16 @@ func (db *DB) Update(item TableStruct) (interface{}, error) {
 	)
 	switch item := item.(type) {
 	case Member:
-		err = item.UpdateDatabase(db)
+		err = item.UpdateDatabase()
 	case Article:
-		err = item.UpdateDatabase(db)
+		err = item.UpdateDatabase()
 	default:
 		err = errors.New("Update Fail")
 	}
 	return result, err
 }
 
-func (db *DB) Delete(item TableStruct) (interface{}, error) {
+func (db *database) Delete(item TableStruct) (interface{}, error) {
 
 	var (
 		result TableStruct
@@ -210,14 +120,14 @@ func (db *DB) Delete(item TableStruct) (interface{}, error) {
 	)
 	switch item := item.(type) {
 	case Member:
-		err = item.DeleteFromDatabase(db)
+		err = item.DeleteFromDatabase()
 		if err != nil {
 			result = Member{}
 		} else {
 			result = item
 		}
 	case Article:
-		err = item.DeleteFromDatabase(db)
+		err = item.DeleteFromDatabase()
 		if err != nil {
 			result = Article{}
 		} else {

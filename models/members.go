@@ -38,10 +38,10 @@ type Member struct {
 	Active       bool `json:"active" db:"active"`
 }
 
-func (m Member) GetFromDatabase(db *DB) (TableStruct, error) {
+func (m Member) GetFromDatabase() (TableStruct, error) {
 
 	member := Member{}
-	err := db.QueryRowx("SELECT * FROM members where user_id = ?", m.ID).StructScan(&member)
+	err := DB.QueryRowx("SELECT * FROM members where user_id = ?", m.ID).StructScan(&member)
 	switch {
 	case err == sql.ErrNoRows:
 		err = errors.New("User Not Found")
@@ -56,11 +56,11 @@ func (m Member) GetFromDatabase(db *DB) (TableStruct, error) {
 	return member, err
 }
 
-func (m Member) InsertIntoDatabase(db *DB) error {
+func (m Member) InsertIntoDatabase() error {
 
 	query, _ := generateSQLStmt(m, "insert", "members")
 
-	result, err := db.NamedExec(query, m)
+	result, err := DB.NamedExec(query, m)
 
 	if err != nil {
 		if strings.Contains(err.Error(), "Duplicate entry") {
@@ -80,10 +80,10 @@ func (m Member) InsertIntoDatabase(db *DB) error {
 	return nil
 }
 
-func (m Member) UpdateDatabase(db *DB) error {
+func (m Member) UpdateDatabase() error {
 
 	query, _ := generateSQLStmt(m, "partial_update", "members")
-	result, err := db.NamedExec(query, m)
+	result, err := DB.NamedExec(query, m)
 
 	if err != nil {
 		log.Fatal(err)
@@ -98,9 +98,9 @@ func (m Member) UpdateDatabase(db *DB) error {
 	return nil
 }
 
-func (m Member) DeleteFromDatabase(db *DB) error {
+func (m Member) DeleteFromDatabase() error {
 
-	_, err := db.Exec("UPDATE members SET active = 0 WHERE user_id = ?", m.ID)
+	_, err := DB.Exec("UPDATE members SET active = 0 WHERE user_id = ?", m.ID)
 	if err != nil {
 		log.Fatal(err)
 	} else {
