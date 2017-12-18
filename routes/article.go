@@ -117,12 +117,12 @@ func (r *articleHandler) ArticleDeleteHandler(c *gin.Context) {
 }
 
 func (r *articleHandler) SetRoutes(router *gin.Engine){
-	router.Group("/article")
+	articleRouter := router.Group("/article")
 	{
-		router.GET("/:id", r.ArticleGetHandler)
-		router.POST("", r.ArticlePostHandler)
-		router.PUT("", r.ArticlePutHandler)
-		router.DELETE("/:id", r.ArticleDeleteHandler)
+		articleRouter.GET("/:id", r.ArticleGetHandler)
+		articleRouter.POST("", r.ArticlePostHandler)
+		articleRouter.PUT("", r.ArticlePutHandler)
+		articleRouter.DELETE("/:id", r.ArticleDeleteHandler)
 	}
 }
 

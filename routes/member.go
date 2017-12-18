@@ -119,12 +119,12 @@ func (r *memberHandler) MemberDeleteHandler(c *gin.Context) {
 }
 
 func (r *memberHandler) SetRoutes(router *gin.Engine){
-	router.Group("/member")
+	memberRouter := router.Group("/member")
 	{
-		router.GET("/:id", r.MemberGetHandler)
-		router.POST("", r.MemberPostHandler)
-		router.PUT("", r.MemberPutHandler)
-		router.DELETE("/:id", r.MemberDeleteHandler)
+		memberRouter.GET("/:id", r.MemberGetHandler)
+		memberRouter.POST("", r.MemberPostHandler)
+		memberRouter.PUT("", r.MemberPutHandler)
+		memberRouter.DELETE("/:id", r.MemberDeleteHandler)
 	}
 }
 
