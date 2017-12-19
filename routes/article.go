@@ -51,6 +51,10 @@ func (r *articleHandler) ArticlePostHandler(c *gin.Context) {
 	if article.Active != 1 {
 		article.Active = 1
 	}
+	if !article.UpdatedBy.Valid {
+		article.UpdatedBy.String = article.Author.String
+		article.UpdatedBy.Valid = true
+	}
 	result, err := models.DS.Create(article)
 	if err != nil {
 		switch err.Error() {
