@@ -13,7 +13,7 @@ type memberHandler struct{}
 func (r *memberHandler) MemberGetHandler(c *gin.Context) {
 
 	input := models.Member{ID: c.Param("id")}
-	member, err := models.DB.Get(input)
+	member, err := models.DS.Get(input)
 
 	if err != nil {
 		switch err.Error() {
@@ -48,7 +48,7 @@ func (r *memberHandler) MemberPostHandler(c *gin.Context) {
 		member.UpdatedAt.Valid = true
 	}
 
-	result, err := models.DB.Create(member)
+	result, err := models.DS.Create(member)
 	// var req models.Databox = &member
 	// result, err := req.Create()
 	if err != nil {
@@ -84,7 +84,7 @@ func (r *memberHandler) MemberPutHandler(c *gin.Context) {
 	}
 	// var req models.Databox = &member
 	// result, err := req.Update()
-	result, err := models.DB.Update(member)
+	result, err := models.DS.Update(member)
 	if err != nil {
 		switch err.Error() {
 		case "User Not Found":
@@ -102,7 +102,7 @@ func (r *memberHandler) MemberDeleteHandler(c *gin.Context) {
 
 	input := models.Member{ID: c.Param("id")}
 	// var req models.Databox = &models.Member{ID: userID}
-	member, err := models.DB.Delete(input)
+	member, err := models.DS.Delete(input)
 
 	// member, err := req.Delete()
 	if err != nil {

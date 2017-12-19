@@ -18,12 +18,16 @@ type database struct {
 	*sqlx.DB
 }
 
-type Datastore interface {
+type dataStore struct {}
+
+type DatastoreInterface interface {
 	Get(item TableStruct) (TableStruct, error)
 	Create(item TableStruct) (interface{}, error)
 	Update(item TableStruct) (interface{}, error)
 	Delete(item TableStruct) (interface{}, error)
 }
+
+var DS DatastoreInterface = new(dataStore)
 
 type TableStruct interface {
 	GetFromDatabase() (TableStruct, error)
@@ -55,7 +59,7 @@ func Connect(dbURI string) {
 }
 
 // Get implemented for Datastore interface below
-func (db *database) Get(item TableStruct) (TableStruct, error) {
+func (ds *dataStore) Get(item TableStruct) (TableStruct, error) {
 
 	// Declaration of return set
 	var (
@@ -78,7 +82,7 @@ func (db *database) Get(item TableStruct) (TableStruct, error) {
 	return result, err
 }
 
-func (db *database) Create(item TableStruct) (interface{}, error) {
+func (ds *dataStore) Create(item TableStruct) (interface{}, error) {
 
 	var (
 		result TableStruct
@@ -95,7 +99,7 @@ func (db *database) Create(item TableStruct) (interface{}, error) {
 	return result, err
 }
 
-func (db *database) Update(item TableStruct) (interface{}, error) {
+func (ds *dataStore) Update(item TableStruct) (interface{}, error) {
 
 	var (
 		result TableStruct
@@ -112,7 +116,7 @@ func (db *database) Update(item TableStruct) (interface{}, error) {
 	return result, err
 }
 
-func (db *database) Delete(item TableStruct) (interface{}, error) {
+func (ds *dataStore) Delete(item TableStruct) (interface{}, error) {
 
 	var (
 		result TableStruct
