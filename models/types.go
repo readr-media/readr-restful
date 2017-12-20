@@ -10,7 +10,6 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-
 // ------------------------------  NULLABLE TYPE DEFINITION -----------------------------
 
 type NullTime struct {

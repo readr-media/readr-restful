@@ -118,7 +118,7 @@ func (r *memberHandler) MemberDeleteHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, member)
 }
 
-func (r *memberHandler) SetRoutes(router *gin.Engine){
+func (r *memberHandler) SetRoutes(router *gin.Engine) {
 	memberRouter := router.Group("/member")
 	{
 		memberRouter.GET("/:id", r.MemberGetHandler)
