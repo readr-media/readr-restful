@@ -2,6 +2,7 @@ package routes
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"testing"
@@ -14,7 +15,9 @@ import (
 var r *gin.Engine
 
 type mockDatastore struct{}
+
 var DS models.DatastoreInterface = new(mockDatastore)
+var ProjectAPI models.ProjectAPIInterface = new(mockProjectAPI)
 
 func TestMain(m *testing.M) {
 	gin.SetMode(gin.TestMode)
@@ -27,11 +30,13 @@ func TestMain(m *testing.M) {
 	r = gin.New()
 	ArticleHandler.SetRoutes(r)
 	MemberHandler.SetRoutes(r)
+	ProjectHandler.SetRoutes(r)
 
 	models.DS = DS
+	models.ProjectAPI = ProjectAPI
+
 	os.Exit(m.Run())
 }
-
 
 var memberList = []models.Member{
 	models.Member{
@@ -45,6 +50,17 @@ var articleList = []models.Article{
 		ID:     "3345678",
 		Author: models.NullString{String: "李宥儒", Valid: true},
 		Active: 1,
+	},
+}
+
+var mockProjectDS = []models.Project{
+	models.Project{
+		ID:            "32767",
+		Title:         models.NullString{String: "Hello", Valid: true},
+		PostID:        0,
+		LikeAmount:    0,
+		CommentAmount: 0,
+		Active:        1,
 	},
 }
 
@@ -171,7 +187,6 @@ func (mdb *mockDatastore) Delete(item models.TableStruct) (interface{}, error) {
 }
 
 // ---------------------------------- End of Datastore implementation --------------------------------
-
 
 // func getRouter() *gin.Engine {
 // 	r := gin.Default()

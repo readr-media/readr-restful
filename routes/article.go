@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/readr-media/readr-restful/models"
 	"github.com/gin-gonic/gin"
+	"github.com/readr-media/readr-restful/models"
 )
 
 type articleHandler struct{}
@@ -116,7 +116,7 @@ func (r *articleHandler) ArticleDeleteHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, article)
 }
 
-func (r *articleHandler) SetRoutes(router *gin.Engine){
+func (r *articleHandler) SetRoutes(router *gin.Engine) {
 	articleRouter := router.Group("/article")
 	{
 		articleRouter.GET("/:id", r.ArticleGetHandler)

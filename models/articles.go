@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"log"
 	"strings"
-
 )
 
 type Article struct {

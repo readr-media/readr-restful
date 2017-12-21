@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"log"
 	"reflect"
 	"strings"
-	"log"
 
 	// For NewDB() usage
 	"github.com/jmoiron/sqlx"
@@ -18,7 +18,7 @@ type database struct {
 	*sqlx.DB
 }
 
-type dataStore struct {}
+type dataStore struct{}
 
 type DatastoreInterface interface {
 	Get(item TableStruct) (TableStruct, error)
