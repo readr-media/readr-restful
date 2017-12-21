@@ -38,10 +38,21 @@ type Member struct {
 	Active       bool `json:"active" db:"active"`
 }
 
-func (m Member) GetFromDatabase() (TableStruct, error) {
+// Separate API and Member struct
+type memberAPI struct{}
 
+var MemberAPI MemberInterface = new(memberAPI)
+
+type MemberInterface interface {
+	GetMember(id string) (Member, error)
+	InsertMember(m Member) error
+	UpdateMember(m Member) error
+	DeleteMember(id string) (Member, error)
+}
+
+func (api *memberAPI) GetMember(id string) (Member, error) {
 	member := Member{}
-	err := DB.QueryRowx("SELECT * FROM members where user_id = ?", m.ID).StructScan(&member)
+	err := DB.QueryRowx("SELECT * FROM members where user_id = ?", id).StructScan(&member)
 	switch {
 	case err == sql.ErrNoRows:
 		err = errors.New("User Not Found")
@@ -50,14 +61,13 @@ func (m Member) GetFromDatabase() (TableStruct, error) {
 		log.Fatal(err)
 		member = Member{}
 	default:
-		fmt.Printf("Successful get user: %s\n", m.ID)
+		fmt.Printf("Successful get user: %s\n", id)
 		err = nil
 	}
 	return member, err
 }
 
-func (m Member) InsertIntoDatabase() error {
-
+func (api *memberAPI) InsertMember(m Member) error {
 	query, _ := generateSQLStmt(m, "insert", "members")
 
 	result, err := DB.NamedExec(query, m)
@@ -80,8 +90,7 @@ func (m Member) InsertIntoDatabase() error {
 	return nil
 }
 
-func (m Member) UpdateDatabase() error {
-
+func (api *memberAPI) UpdateMember(m Member) error {
 	query, _ := generateSQLStmt(m, "partial_update", "members")
 	result, err := DB.NamedExec(query, m)
 
@@ -98,13 +107,14 @@ func (m Member) UpdateDatabase() error {
 	return nil
 }
 
-func (m Member) DeleteFromDatabase() error {
+func (api *memberAPI) DeleteMember(id string) (Member, error) {
 
-	_, err := DB.Exec("UPDATE members SET active = 0 WHERE user_id = ?", m.ID)
+	result := Member{}
+	_, err := DB.Exec("UPDATE members SET active = 0 WHERE user_id = ?", id)
 	if err != nil {
 		log.Fatal(err)
 	} else {
 		err = nil
 	}
-	return err
+	return result, err
 }

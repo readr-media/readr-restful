@@ -25,9 +25,20 @@ type Article struct {
 	UpdatedBy     NullString `json:"updated_by" db:"updated_by"`
 }
 
-func (a Article) GetFromDatabase() (TableStruct, error) {
+type articleAPI struct{}
+
+var ArticleAPI ArticleInterface = new(articleAPI)
+
+type ArticleInterface interface {
+	GetArticle(id string) (Article, error)
+	InsertArticle(a Article) error
+	UpdateArticle(a Article) error
+	DeleteArticle(id string) (Article, error)
+}
+
+func (api *articleAPI) GetArticle(id string) (Article, error) {
 	article := Article{}
-	err := DB.QueryRowx("SELECT * FROM article_infos WHERE post_id = ?", a.ID).StructScan(&article)
+	err := DB.QueryRowx("SELECT * FROM article_infos WHERE post_id = ?", id).StructScan(&article)
 	switch {
 	case err == sql.ErrNoRows:
 		err = errors.New("Article Not Found")
@@ -36,14 +47,13 @@ func (a Article) GetFromDatabase() (TableStruct, error) {
 		log.Fatal(err)
 		article = Article{}
 	default:
-		fmt.Printf("Successfully get article: %v\n", a.ID)
+		fmt.Printf("Successfully get article: %v\n", id)
 		err = nil
 	}
 	return article, err
 }
 
-func (a Article) InsertIntoDatabase() error {
-
+func (api *articleAPI) InsertArticle(a Article) error {
 	query, _ := generateSQLStmt(a, "insert", "article_infos")
 	result, err := DB.NamedExec(query, a)
 	if err != nil {
@@ -64,7 +74,7 @@ func (a Article) InsertIntoDatabase() error {
 	return nil
 }
 
-func (a Article) UpdateDatabase() error {
+func (api *articleAPI) UpdateArticle(a Article) error {
 
 	query, err := generateSQLStmt(a, "partial_update", "article_infos")
 	if err != nil {
@@ -84,13 +94,14 @@ func (a Article) UpdateDatabase() error {
 	return nil
 }
 
-func (a Article) DeleteFromDatabase() error {
+func (api *articleAPI) DeleteArticle(id string) (Article, error) {
 
-	_, err := DB.Exec("UPDATE article_infos SET active = 0 WHERE post_id = ?", a.ID)
+	result := Article{}
+	_, err := DB.Exec("UPDATE article_infos SET active = 0 WHERE post_id = ?", id)
 	if err != nil {
 		log.Println(err)
 	} else {
 		err = nil
 	}
-	return err
+	return result, err
 }

@@ -12,8 +12,10 @@ type articleHandler struct{}
 
 func (r *articleHandler) ArticleGetHandler(c *gin.Context) {
 
-	input := models.Article{ID: c.Param("id")}
-	article, err := models.DS.Get(input)
+	// input := models.Article{ID: c.Param("id")}
+	// article, err := models.DS.Get(input)
+	id := c.Param("id")
+	article, err := models.ArticleAPI.GetArticle(id)
 
 	if err != nil {
 		switch err.Error() {
@@ -51,7 +53,12 @@ func (r *articleHandler) ArticlePostHandler(c *gin.Context) {
 	if article.Active != 1 {
 		article.Active = 1
 	}
-	result, err := models.DS.Create(article)
+	if !article.UpdatedBy.Valid {
+		article.UpdatedBy.String = article.Author.String
+		article.UpdatedBy.Valid = true
+	}
+	// result, err := models.DS.Create(article)
+	err = models.ArticleAPI.InsertArticle(article)
 	if err != nil {
 		switch err.Error() {
 		case "Duplicate entry":
@@ -62,7 +69,7 @@ func (r *articleHandler) ArticlePostHandler(c *gin.Context) {
 			return
 		}
 	}
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, models.Article{})
 }
 
 func (r *articleHandler) ArticlePutHandler(c *gin.Context) {
@@ -82,7 +89,8 @@ func (r *articleHandler) ArticlePutHandler(c *gin.Context) {
 		article.UpdatedAt.Time = time.Now()
 		article.UpdatedAt.Valid = true
 	}
-	result, err := models.DS.Update(article)
+	// result, err := models.DS.Update(article)
+	err := models.ArticleAPI.UpdateArticle(article)
 	if err != nil {
 		switch err.Error() {
 		case "Article Not Found":
@@ -93,15 +101,16 @@ func (r *articleHandler) ArticlePutHandler(c *gin.Context) {
 			return
 		}
 	}
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, models.Article{})
 }
 
 func (r *articleHandler) ArticleDeleteHandler(c *gin.Context) {
 
-	input := models.Article{ID: c.Param("id")}
+	// input := models.Article{ID: c.Param("id")}
 	// var req models.Databox = &models.Member{ID: userID}
-	article, err := models.DS.Delete(input)
-
+	// article, err := models.DS.Delete(input)
+	id := c.Param("id")
+	article, err := models.ArticleAPI.DeleteArticle(id)
 	// member, err := req.Delete()
 	if err != nil {
 		switch err.Error() {
