@@ -2,7 +2,6 @@ package models
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"log"
 	"reflect"
@@ -21,20 +20,13 @@ type database struct {
 type dataStore struct{}
 
 type DatastoreInterface interface {
-	Get(item TableStruct) (TableStruct, error)
-	Create(item TableStruct) (interface{}, error)
-	Update(item TableStruct) (interface{}, error)
-	Delete(item TableStruct) (interface{}, error)
+	Get(item interface{}) (result interface{}, err error)
+	Create(item interface{}) (result interface{}, err error)
+	Update(item interface{}) (result interface{}, err error)
+	Delete(item interface{}) (result interface{}, err error)
 }
 
-var DS DatastoreInterface = new(dataStore)
-
-type TableStruct interface {
-	GetFromDatabase() (TableStruct, error)
-	InsertIntoDatabase() error
-	UpdateDatabase() error
-	DeleteFromDatabase() error
-}
+// var DS DatastoreInterface = new(dataStore)
 
 // func InitDB(dataURI string) {
 // 	var err error
@@ -56,89 +48,6 @@ func Connect(dbURI string) {
 		log.Panic(err)
 	}
 	DB = database{d}
-}
-
-// Get implemented for Datastore interface below
-func (ds *dataStore) Get(item TableStruct) (TableStruct, error) {
-
-	// Declaration of return set
-	var (
-		result TableStruct
-		err    error
-	)
-
-	switch item := item.(type) {
-	case Member:
-		result, err = item.GetFromDatabase()
-		if err != nil {
-			result = Member{}
-		}
-	case Article:
-		result, err = item.GetFromDatabase()
-		if err != nil {
-			result = Article{}
-		}
-	}
-	return result, err
-}
-
-func (ds *dataStore) Create(item TableStruct) (interface{}, error) {
-
-	var (
-		result TableStruct
-		err    error
-	)
-	switch item := item.(type) {
-	case Member:
-		err = item.InsertIntoDatabase()
-	case Article:
-		err = item.InsertIntoDatabase()
-	default:
-		err = errors.New("Insert fail")
-	}
-	return result, err
-}
-
-func (ds *dataStore) Update(item TableStruct) (interface{}, error) {
-
-	var (
-		result TableStruct
-		err    error
-	)
-	switch item := item.(type) {
-	case Member:
-		err = item.UpdateDatabase()
-	case Article:
-		err = item.UpdateDatabase()
-	default:
-		err = errors.New("Update Fail")
-	}
-	return result, err
-}
-
-func (ds *dataStore) Delete(item TableStruct) (interface{}, error) {
-
-	var (
-		result TableStruct
-		err    error
-	)
-	switch item := item.(type) {
-	case Member:
-		err = item.DeleteFromDatabase()
-		if err != nil {
-			result = Member{}
-		} else {
-			result = item
-		}
-	case Article:
-		err = item.DeleteFromDatabase()
-		if err != nil {
-			result = Article{}
-		} else {
-			result = item
-		}
-	}
-	return result, err
 }
 
 func generateSQLStmt(input interface{}, mode string, tableName string) (query string, err error) {

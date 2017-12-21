@@ -12,9 +12,10 @@ type memberHandler struct{}
 
 func (r *memberHandler) MemberGetHandler(c *gin.Context) {
 
-	input := models.Member{ID: c.Param("id")}
-	member, err := models.DS.Get(input)
-
+	// input := models.Member{ID: c.Param("id")}
+	// member, err := models.DS.Get(input)
+	id := c.Param("id")
+	member, err := models.MemberAPI.GetMember(id)
 	if err != nil {
 		switch err.Error() {
 		case "User Not Found":
@@ -48,7 +49,8 @@ func (r *memberHandler) MemberPostHandler(c *gin.Context) {
 		member.UpdatedAt.Valid = true
 	}
 
-	result, err := models.DS.Create(member)
+	err := models.MemberAPI.InsertMember(member)
+	// result, err := models.DS.Create(member)
 	// var req models.Databox = &member
 	// result, err := req.Create()
 	if err != nil {
@@ -61,7 +63,7 @@ func (r *memberHandler) MemberPostHandler(c *gin.Context) {
 			return
 		}
 	}
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, models.Member{})
 }
 
 func (r *memberHandler) MemberPutHandler(c *gin.Context) {
@@ -84,7 +86,8 @@ func (r *memberHandler) MemberPutHandler(c *gin.Context) {
 	}
 	// var req models.Databox = &member
 	// result, err := req.Update()
-	result, err := models.DS.Update(member)
+	// result, err := models.DS.Update(member)
+	err := models.MemberAPI.UpdateMember(member)
 	if err != nil {
 		switch err.Error() {
 		case "User Not Found":
@@ -95,15 +98,16 @@ func (r *memberHandler) MemberPutHandler(c *gin.Context) {
 			return
 		}
 	}
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, models.Member{})
 }
 
 func (r *memberHandler) MemberDeleteHandler(c *gin.Context) {
 
-	input := models.Member{ID: c.Param("id")}
+	// input := models.Member{ID: c.Param("id")}
 	// var req models.Databox = &models.Member{ID: userID}
-	member, err := models.DS.Delete(input)
-
+	// member, err := models.DS.Delete(input)
+	id := c.Param("id")
+	member, err := models.MemberAPI.DeleteMember(id)
 	// member, err := req.Delete()
 	if err != nil {
 		switch err.Error() {
