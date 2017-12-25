@@ -45,7 +45,7 @@ func TestMain(m *testing.M) {
 var mockMemberDS = []models.Member{
 	models.Member{
 		ID:     "TaiwanNo.1",
-		Active: true,
+		Active: 1,
 	},
 }
 

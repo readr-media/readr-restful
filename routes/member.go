@@ -40,9 +40,9 @@ func (r *memberHandler) MemberPostHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid User"})
 		return
 	}
-	if !member.CreateTime.Valid {
-		member.CreateTime.Time = time.Now()
-		member.CreateTime.Valid = true
+	if !member.CreatedAt.Valid {
+		member.CreatedAt.Time = time.Now()
+		member.CreatedAt.Valid = true
 	}
 	if !member.UpdatedAt.Valid {
 		member.UpdatedAt.Time = time.Now()
@@ -76,9 +76,9 @@ func (r *memberHandler) MemberPutHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Member Data"})
 		return
 	}
-	if member.CreateTime.Valid {
-		member.CreateTime.Time = time.Time{}
-		member.CreateTime.Valid = false
+	if member.CreatedAt.Valid {
+		member.CreatedAt.Time = time.Time{}
+		member.CreatedAt.Valid = false
 	}
 	if !member.UpdatedAt.Valid {
 		member.UpdatedAt.Time = time.Now()

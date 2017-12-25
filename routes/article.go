@@ -42,9 +42,9 @@ func (r *articleHandler) ArticlePostHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Article ID"})
 		return
 	}
-	if !article.CreateTime.Valid {
-		article.CreateTime.Time = time.Now()
-		article.CreateTime.Valid = true
+	if !article.CreatedAt.Valid {
+		article.CreatedAt.Time = time.Now()
+		article.CreatedAt.Valid = true
 	}
 	if !article.UpdatedAt.Valid {
 		article.UpdatedAt.Time = time.Now()
@@ -81,9 +81,9 @@ func (r *articleHandler) ArticlePutHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Article Data"})
 		return
 	}
-	if article.CreateTime.Valid {
-		article.CreateTime.Time = time.Time{}
-		article.CreateTime.Valid = false
+	if article.CreatedAt.Valid {
+		article.CreatedAt.Time = time.Time{}
+		article.CreatedAt.Valid = false
 	}
 	if !article.UpdatedAt.Valid {
 		article.UpdatedAt.Time = time.Now()
