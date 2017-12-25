@@ -7,12 +7,48 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"sort"
 	"testing"
 
 	"github.com/readr-media/readr-restful/models"
 )
 
 type mockMemberAPI struct{}
+
+func (mapi *mockMemberAPI) GetMembers(maxResult uint8, page uint16, sortMethod string) ([]models.Member, error) {
+
+	var (
+		result []models.Member
+		err    error
+	)
+	if len(mockMemberDS) == 0 {
+		err = errors.New("Members Not Found")
+		return result, err
+	}
+
+	sortedMockMemberDS := make([]models.Member, len(mockMemberDS))
+	copy(sortedMockMemberDS, mockMemberDS)
+
+	switch sortMethod {
+	case "updated_at":
+		sort.SliceStable(sortedMockMemberDS, func(i, j int) bool {
+			return sortedMockMemberDS[i].UpdatedAt.Before(sortedMockMemberDS[j].UpdatedAt)
+		})
+	case "-updated_at":
+		sort.SliceStable(sortedMockMemberDS, func(i, j int) bool {
+			return sortedMockMemberDS[i].UpdatedAt.After(sortedMockMemberDS[j].UpdatedAt)
+		})
+	}
+
+	if maxResult >= uint8(len(sortedMockMemberDS)) {
+		result = sortedMockMemberDS
+		err = nil
+	} else if maxResult < uint8(len(sortedMockMemberDS)) {
+		result = sortedMockMemberDS[(page-1)*uint16(maxResult) : page*uint16(maxResult)]
+		err = nil
+	}
+	return result, err
+}
 
 func (mapi *mockMemberAPI) GetMember(id string) (models.Member, error) {
 	result := models.Member{}
@@ -61,6 +97,36 @@ func (mapi *mockMemberAPI) DeleteMember(id string) (models.Member, error) {
 		}
 	}
 	return result, err
+}
+
+func TestGetMembersDescending(t *testing.T) {
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/members", nil)
+
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("HTTP response code error: want %q but get %q", http.StatusOK, w.Code)
+	}
+	res := []models.Member{}
+	json.Unmarshal([]byte(w.Body.String()), &res)
+	if res[0] != mockMemberDS[1] || res[1] != mockMemberDS[0] || res[2] != mockMemberDS[2] {
+		t.Errorf("Response sort error")
+	}
+}
+
+func TestGetMembersAscending(t *testing.T) {
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/members?sort=updated_at", nil)
+
+	r.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Errorf("HTTP response code error: want %q but get %q", http.StatusOK, w.Code)
+	}
+	res := []models.Member{}
+	json.Unmarshal([]byte(w.Body.String()), &res)
+	if res[0] != mockMemberDS[2] || res[1] != mockMemberDS[0] || res[2] != mockMemberDS[1] {
+		t.Errorf("Response sort error")
+	}
 }
 
 func TestGetExistMember(t *testing.T) {

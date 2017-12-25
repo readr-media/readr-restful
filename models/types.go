@@ -54,6 +54,16 @@ func (nt *NullTime) UnmarshalJSON(text []byte) error {
 	return err
 }
 
+// Before is wrap of time.Time.Before, used in test
+func (nt *NullTime) Before(value NullTime) bool {
+	return nt.Time.Before(value.Time)
+}
+
+// After is wrap of time.Time.After, used in test
+func (nt *NullTime) After(value NullTime) bool {
+	return nt.Time.After(value.Time)
+}
+
 // Create our own null string type for prettier marshal JSON format
 type NullString sql.NullString
 

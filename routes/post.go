@@ -11,6 +11,32 @@ import (
 
 type postHandler struct{}
 
+func (r *postHandler) PostsGetHandler(c *gin.Context) {
+
+	mr := c.DefaultQuery("max_result", "20")
+	u64MaxResult, _ := strconv.ParseUint(mr, 10, 8)
+	maxResult := uint8(u64MaxResult)
+
+	pg := c.DefaultQuery("page", "1")
+	u64Page, _ := strconv.ParseUint(pg, 10, 16)
+	page := uint16(u64Page)
+
+	sorting := c.DefaultQuery("sort", "-updated_at")
+
+	result, err := models.PostAPI.GetPosts(maxResult, page, sorting)
+	if err != nil {
+		switch err.Error() {
+		case "Posts Not Found":
+			c.JSON(http.StatusNotFound, gin.H{"Error": "Posts Not Found"})
+			return
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+			return
+		}
+	}
+	c.JSON(http.StatusOK, result)
+}
+
 func (r *postHandler) PostGetHandler(c *gin.Context) {
 
 	// input := models.Post{ID: c.Param("id")}
@@ -135,6 +161,9 @@ func (r *postHandler) PostDeleteHandler(c *gin.Context) {
 }
 
 func (r *postHandler) SetRoutes(router *gin.Engine) {
+
+	router.GET("posts", r.PostsGetHandler)
+
 	postRouter := router.Group("/post")
 	{
 		postRouter.GET("/:id", r.PostGetHandler)

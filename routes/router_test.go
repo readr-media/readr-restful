@@ -3,6 +3,7 @@ package routes
 import (
 	"os"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	//"github.com/jmoiron/sqlx"
@@ -44,16 +45,49 @@ func TestMain(m *testing.M) {
 
 var mockMemberDS = []models.Member{
 	models.Member{
-		ID:     "TaiwanNo.1",
-		Active: 1,
+		ID:        "TaiwanNo.1",
+		Active:    1,
+		UpdatedAt: models.NullTime{Time: time.Date(2017, 6, 8, 16, 27, 52, 0, time.UTC), Valid: true},
+	},
+	models.Member{
+		ID:        "test6743",
+		Active:    1,
+		Birthday:  models.NullTime{Time: time.Date(2001, 1, 3, 0, 0, 0, 0, time.UTC), Valid: true},
+		UpdatedAt: models.NullTime{Time: time.Date(2017, 11, 11, 23, 11, 37, 0, time.UTC), Valid: true},
+		Mail:      models.NullString{String: "Lulu_Brakus@yahoo.com", Valid: true},
+	},
+	models.Member{
+		ID:        "Barney.Corwin@hotmail.com",
+		Active:    1,
+		Gender:    models.NullString{String: "M", Valid: true},
+		UpdatedAt: models.NullTime{Time: time.Date(2017, 1, 3, 19, 32, 37, 0, time.UTC), Valid: true},
+		Birthday:  models.NullTime{Time: time.Date(1939, 11, 9, 0, 0, 0, 0, time.UTC), Valid: true},
+		Mail:      models.NullString{String: "Barney.Corwin@hotmail.com", Valid: true},
 	},
 }
 
 var mockPostDS = []models.Post{
 	models.Post{
-		ID:     3345678,
-		Author: models.NullString{String: "李宥儒", Valid: true},
-		Active: 1,
+		ID:        3345678,
+		Author:    models.NullString{String: "李宥儒", Valid: true},
+		Active:    1,
+		UpdatedAt: models.NullTime{Time: time.Date(2017, 11, 8, 16, 27, 52, 0, time.UTC), Valid: true},
+	},
+	models.Post{
+		ID:         9876543,
+		Author:     models.NullString{String: "史學爾", Valid: true},
+		Active:     1,
+		Title:      models.NullString{String: "", Valid: true},
+		LikeAmount: 256,
+		UpdatedAt:  models.NullTime{Time: time.Date(2017, 10, 18, 23, 11, 37, 0, time.UTC), Valid: true},
+	},
+	models.Post{
+		ID:         5535678,
+		Author:     models.NullString{String: "莊勝雄", Valid: true},
+		Active:     1,
+		Title:      models.NullString{String: "", Valid: true},
+		LikeAmount: 256,
+		UpdatedAt:  models.NullTime{Time: time.Date(2017, 9, 6, 7, 55, 25, 0, time.UTC), Valid: true},
 	},
 }
 

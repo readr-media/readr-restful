@@ -31,10 +31,37 @@ type postAPI struct{}
 var PostAPI PostInterface = new(postAPI)
 
 type PostInterface interface {
+	GetPosts(maxResult uint8, page uint16, sortMethod string) ([]Post, error)
 	GetPost(id uint32) (Post, error)
 	InsertPost(p Post) error
 	UpdatePost(p Post) error
 	DeletePost(id uint32) (Post, error)
+}
+
+func (a *postAPI) GetPosts(maxResult uint8, page uint16, sortMethod string) ([]Post, error) {
+
+	var (
+		result     []Post
+		err        error
+		sortString string
+	)
+	switch sortMethod {
+	case "updated_at":
+		sortString = "updated_at"
+	case "-updated_at":
+		sortString = "updated_at DESC"
+	default:
+		sortString = "updated_at DESC"
+	}
+	limitBase := (page - 1) * uint16(maxResult)
+	limitIncrement := page * uint16(maxResult)
+
+	err = DB.Select(&result, "SELECT * FROM posts ORDER BY ? LIMIT ?, ?", sortString, limitBase, limitIncrement)
+	if err != nil || len(result) == 0 {
+		result = []Post{}
+		err = errors.New("Posts Not Found")
+	}
+	return result, err
 }
 
 func (a *postAPI) GetPost(id uint32) (Post, error) {

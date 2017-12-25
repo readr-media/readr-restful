@@ -47,13 +47,41 @@ type memberAPI struct{}
 var MemberAPI MemberInterface = new(memberAPI)
 
 type MemberInterface interface {
+	GetMembers(maxResult uint8, page uint16, sortMethod string) ([]Member, error)
 	GetMember(id string) (Member, error)
 	InsertMember(m Member) error
 	UpdateMember(m Member) error
 	DeleteMember(id string) (Member, error)
 }
 
-func (api *memberAPI) GetMember(id string) (Member, error) {
+func (a *memberAPI) GetMembers(maxResult uint8, page uint16, sortMethod string) ([]Member, error) {
+	var (
+		result     []Member
+		err        error
+		sortString string
+	)
+	switch sortMethod {
+	case "updated_at":
+		sortString = "updated_at"
+	case "-updated_at":
+		sortString = "updated_at DESC"
+	default:
+		sortString = "updated_at DESC"
+	}
+	limitBase := (page - 1) * uint16(maxResult)
+	limitIncrement := page * uint16(maxResult)
+
+	// fmt.Println("sortString: ", sortString, " , limitBase: ", limitBase, " , limitIncrement: ", limitIncrement)
+	err = DB.Select(&result, "SELECT * FROM members ORDER BY ? LIMIT ?, ?", sortString, limitBase, limitIncrement)
+	if err != nil || len(result) == 0 {
+		result = []Member{}
+		err = errors.New("Members Not Found")
+	}
+	// fmt.Println(result)
+	return result, err
+}
+
+func (a *memberAPI) GetMember(id string) (Member, error) {
 	member := Member{}
 	err := DB.QueryRowx("SELECT * FROM members where user_id = ?", id).StructScan(&member)
 	switch {
@@ -70,7 +98,7 @@ func (api *memberAPI) GetMember(id string) (Member, error) {
 	return member, err
 }
 
-func (api *memberAPI) InsertMember(m Member) error {
+func (a *memberAPI) InsertMember(m Member) error {
 	query, _ := generateSQLStmt(m, "insert", "members")
 
 	result, err := DB.NamedExec(query, m)
@@ -93,7 +121,7 @@ func (api *memberAPI) InsertMember(m Member) error {
 	return nil
 }
 
-func (api *memberAPI) UpdateMember(m Member) error {
+func (a *memberAPI) UpdateMember(m Member) error {
 	query, _ := generateSQLStmt(m, "partial_update", "members")
 	result, err := DB.NamedExec(query, m)
 
@@ -110,7 +138,7 @@ func (api *memberAPI) UpdateMember(m Member) error {
 	return nil
 }
 
-func (api *memberAPI) DeleteMember(id string) (Member, error) {
+func (a *memberAPI) DeleteMember(id string) (Member, error) {
 
 	result := Member{}
 	_, err := DB.Exec("UPDATE members SET active = 0 WHERE user_id = ?", id)
