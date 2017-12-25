@@ -11,9 +11,10 @@ import (
 type Project struct {
 	ID string `json:"id" db:"project_id"`
 
-	CreateTime NullTime   `json:"created_at" db:"created_at"` //NEED TO CHECK NAMING
-	UpdatedAt  NullTime   `json:"updated_at" db:"updated_at"`
-	UpdatedBy  NullString `json:"updated_by" db:"updated_by"`
+	CreatedAt   NullTime   `json:"created_at" db:"created_at"`
+	UpdatedAt   NullTime   `json:"updated_at" db:"updated_at"`
+	UpdatedBy   NullString `json:"updated_by" db:"updated_by"`
+	PublishedAt NullString `json:"published_at" db:"published_at"`
 
 	PostID        int `json:"post_id" db:"post_id"`
 	LikeAmount    int `json:"like_amount" db:"like_amount"`

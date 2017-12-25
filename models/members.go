@@ -20,22 +20,25 @@ type Member struct {
 
 	RegisterMode NullString `json:"register_mode" db:"register_mode"`
 	SocialID     NullString `json:"social_id,omitempty" db:"social_id"`
-	CreateTime   NullTime   `json:"created_at" db:"create_time"`
+	CreatedAt    NullTime   `json:"created_at" db:"created_at"`
 	UpdatedAt    NullTime   `json:"updated_at" db:"updated_at"`
 	UpdatedBy    NullString `json:"updated_by" db:"updated_by"`
 	Password     NullString `json:"-" db:"password"`
+	Salt         NullString `json:"-" db:"salt"`
 	// Ignore password JSON marshall for now
 
 	Description  NullString `json:"description" db:"description"`
 	ProfileImage NullString `json:"profile_image" db:"profile_picture"`
 	Identity     NullString `json:"identity" db:"identity"`
 
+	Role   int `json:"role" db:"role"`
+	Active int `json:"active" db:"active"`
+
 	CustomEditor bool `json:"custom_editor" db:"c_editor"`
 	HideProfile  bool `json:"hide_profile" db:"hide_profile"`
 	ProfilePush  bool `json:"profile_push" db:"profile_push"`
 	PostPush     bool `json:"post_push" db:"post_push"`
 	CommentPush  bool `json:"comment_push" db:"comment_push"`
-	Active       bool `json:"active" db:"active"`
 }
 
 // Separate API and Member struct

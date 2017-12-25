@@ -11,7 +11,7 @@ import (
 type Article struct {
 	ID            string     `json:"id" db:"post_id"`
 	Author        NullString `json:"author" db:"author"`
-	CreateTime    NullTime   `json:"created_at" db:"create_time"`
+	CreatedAt     NullTime   `json:"created_at" db:"created_at"`
 	LikeAmount    int        `json:"liked" db:"like_amount"`
 	CommentAmount int        `json:"comment_amount" db:"comment_amount"`
 	Title         NullString `json:"title" db:"title"`
@@ -23,6 +23,7 @@ type Article struct {
 	Active        int        `json:"active" db:"active"`
 	UpdatedAt     NullTime   `json:"updated_at" db:"updated_at"`
 	UpdatedBy     NullString `json:"updated_by" db:"updated_by"`
+	PublishedAt   NullString `json:"published_at" db:"published_at"`
 }
 
 type articleAPI struct{}
