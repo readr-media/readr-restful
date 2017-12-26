@@ -2,6 +2,7 @@ package routes
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -10,6 +11,32 @@ import (
 
 type memberHandler struct{}
 
+func (r *memberHandler) MembersGetHandler(c *gin.Context) {
+
+	mr := c.DefaultQuery("max_result", "20")
+	u64MaxResult, _ := strconv.ParseUint(mr, 10, 8)
+	maxResult := uint8(u64MaxResult)
+
+	pg := c.DefaultQuery("page", "1")
+	u64Page, _ := strconv.ParseUint(pg, 10, 16)
+	page := uint16(u64Page)
+
+	sorting := c.DefaultQuery("sort", "-updated_at")
+
+	result, err := models.MemberAPI.GetMembers(maxResult, page, sorting)
+	// fmt.Println(result)
+	if err != nil {
+		switch err.Error() {
+		case "Members Not Found":
+			c.JSON(http.StatusNotFound, gin.H{"Error": "Members Not Found"})
+			return
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+			return
+		}
+	}
+	c.JSON(http.StatusOK, result)
+}
 func (r *memberHandler) MemberGetHandler(c *gin.Context) {
 
 	// input := models.Member{ID: c.Param("id")}
@@ -123,6 +150,9 @@ func (r *memberHandler) MemberDeleteHandler(c *gin.Context) {
 }
 
 func (r *memberHandler) SetRoutes(router *gin.Engine) {
+
+	router.GET("/members", r.MembersGetHandler)
+
 	memberRouter := router.Group("/member")
 	{
 		memberRouter.GET("/:id", r.MemberGetHandler)
