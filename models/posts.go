@@ -8,8 +8,8 @@ import (
 	"strings"
 )
 
-type Article struct {
-	ID            string     `json:"id" db:"post_id"`
+type Post struct {
+	ID            uint32     `json:"id" db:"post_id"`
 	Author        NullString `json:"author" db:"author"`
 	CreatedAt     NullTime   `json:"created_at" db:"created_at"`
 	LikeAmount    int        `json:"liked" db:"like_amount"`
@@ -26,37 +26,37 @@ type Article struct {
 	PublishedAt   NullString `json:"published_at" db:"published_at"`
 }
 
-type articleAPI struct{}
+type postAPI struct{}
 
-var ArticleAPI ArticleInterface = new(articleAPI)
+var PostAPI PostInterface = new(postAPI)
 
-type ArticleInterface interface {
-	GetArticle(id string) (Article, error)
-	InsertArticle(a Article) error
-	UpdateArticle(a Article) error
-	DeleteArticle(id string) (Article, error)
+type PostInterface interface {
+	GetPost(id uint32) (Post, error)
+	InsertPost(p Post) error
+	UpdatePost(p Post) error
+	DeletePost(id uint32) (Post, error)
 }
 
-func (api *articleAPI) GetArticle(id string) (Article, error) {
-	article := Article{}
-	err := DB.QueryRowx("SELECT * FROM article_infos WHERE post_id = ?", id).StructScan(&article)
+func (a *postAPI) GetPost(id uint32) (Post, error) {
+	post := Post{}
+	err := DB.QueryRowx("SELECT * FROM posts WHERE post_id = ?", id).StructScan(&post)
 	switch {
 	case err == sql.ErrNoRows:
-		err = errors.New("Article Not Found")
-		article = Article{}
+		err = errors.New("Post Not Found")
+		post = Post{}
 	case err != nil:
 		log.Fatal(err)
-		article = Article{}
+		post = Post{}
 	default:
-		fmt.Printf("Successfully get article: %v\n", id)
+		fmt.Printf("Successfully get post: %v\n", id)
 		err = nil
 	}
-	return article, err
+	return post, err
 }
 
-func (api *articleAPI) InsertArticle(a Article) error {
-	query, _ := generateSQLStmt(a, "insert", "article_infos")
-	result, err := DB.NamedExec(query, a)
+func (a *postAPI) InsertPost(p Post) error {
+	query, _ := generateSQLStmt(p, "insert", "posts")
+	result, err := DB.NamedExec(query, p)
 	if err != nil {
 		if strings.Contains(err.Error(), "Duplicate entry") {
 			return errors.New("Duplicate entry")
@@ -70,18 +70,19 @@ func (api *articleAPI) InsertArticle(a Article) error {
 	if rowCnt > 1 {
 		return errors.New("More Than One Rows Affected")
 	} else if rowCnt == 0 {
-		return errors.New("Article Not Found")
+		return errors.New("Post Not Found")
 	}
 	return nil
 }
 
-func (api *articleAPI) UpdateArticle(a Article) error {
+func (a *postAPI) UpdatePost(p Post) error {
 
-	query, err := generateSQLStmt(a, "partial_update", "article_infos")
+	query, err := generateSQLStmt(p, "partial_update", "posts")
+	fmt.Println(query)
 	if err != nil {
 		return errors.New("Generate SQL statement failed")
 	}
-	result, err := DB.NamedExec(query, a)
+	result, err := DB.NamedExec(query, p)
 
 	if err != nil {
 		return err
@@ -90,15 +91,15 @@ func (api *articleAPI) UpdateArticle(a Article) error {
 	if rowCnt > 1 {
 		return errors.New("More Than One Rows Affected")
 	} else if rowCnt == 0 {
-		return errors.New("Article Not Found")
+		return errors.New("Post Not Found")
 	}
 	return nil
 }
 
-func (api *articleAPI) DeleteArticle(id string) (Article, error) {
+func (a *postAPI) DeletePost(id uint32) (Post, error) {
 
-	result := Article{}
-	_, err := DB.Exec("UPDATE article_infos SET active = 0 WHERE post_id = ?", id)
+	result := Post{}
+	_, err := DB.Exec("UPDATE posts SET active = 0 WHERE post_id = ?", id)
 	if err != nil {
 		log.Println(err)
 	} else {

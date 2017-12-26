@@ -38,9 +38,9 @@ func (r *projectHandler) projectPost(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Project"})
 		return
 	}
-	if !project.CreateTime.Valid {
-		project.CreateTime.Time = time.Now()
-		project.CreateTime.Valid = true
+	if !project.CreatedAt.Valid {
+		project.CreatedAt.Time = time.Now()
+		project.CreatedAt.Valid = true
 	}
 	if !project.UpdatedAt.Valid {
 		project.UpdatedAt.Time = time.Now()
@@ -69,9 +69,9 @@ func (r *projectHandler) projectPut(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Project Data"})
 		return
 	}
-	if project.CreateTime.Valid {
-		project.CreateTime.Time = time.Time{}
-		project.CreateTime.Valid = false
+	if project.CreatedAt.Valid {
+		project.CreatedAt.Time = time.Time{}
+		project.CreatedAt.Valid = false
 	}
 	if !project.UpdatedAt.Valid {
 		project.UpdatedAt.Time = time.Now()

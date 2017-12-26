@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
-	//"log"
+	// "fmt"
+	// "log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -298,10 +298,10 @@ func TestRouteDeleteNonExistMember(t *testing.T) {
 
 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Errorf("Get %d but want %d", w.Code, http.StatusOK)
+	if w.Code != http.StatusNotFound {
+		t.Errorf("Get %d but want %d", w.Code, http.StatusNotFound)
 	}
-	expected := `ok`
+	expected := `{"Error":"Project Not Found"}`
 	if w.Body.String() != string(expected) {
 		t.Errorf("Get %q but want %q", w.Body.String(), string(expected))
 	}

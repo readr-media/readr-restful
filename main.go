@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
-	
+
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/readr-media/readr-restful/models"
@@ -30,7 +30,6 @@ import (
 // type Env struct {
 //	db models.Datastore
 // }
-
 
 func main() {
 	viper.AddConfigPath("./config")
@@ -59,12 +58,12 @@ func main() {
 
 	// models.InitDB(dbURI)
 	models.Connect(dbURI)
-	
+
 	// Plug in mySQL middleware
 	// router.Use(sqlMiddleware(dbConn))
 
 	routes.MemberHandler.SetRoutes(router)
-	routes.ArticleHandler.SetRoutes(router)
+	routes.PostHandler.SetRoutes(router)
 	routes.ProjectHandler.SetRoutes(router)
 
 	routes.MiscHandler.SetRoutes(router)
