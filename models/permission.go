@@ -20,7 +20,7 @@ var PermissionAPI PermissionAPIInterface = new(PermissionAPIImpl)
 type PermissionAPIInterface interface {
 	GetPermission(p Permission) error
 	GetPermissionsByRole(role int) ([]Permission, error)
-	PostPermission(p Permission) (Permission, error)
+	InsertPermission(p Permission) (Permission, error)
 	UpdatePermission(p Permission) (Permission, error)
 	DeletePermission(p Permission) error
 }
@@ -43,10 +43,7 @@ func (a *PermissionAPIImpl) GetPermission(p Permission) error {
 func (a *PermissionAPIImpl) GetPermissionsByRole(role int) ([]Permission, error) {
 
 	permissions := []Permission{}
-	result, err := DB.QueryRowx("SELECT * FROM project_infos WHERE role = ?", role).SliceScan()
-	for _, item := range result {
-		permissions = append(permissions, item.(Permission))
-	}
+	rows, err := DB.Queryx("SELECT * FROM permissions WHERE role = ?", role)
 	switch {
 	case err == sql.ErrNoRows:
 		permissions = nil
@@ -56,13 +53,18 @@ func (a *PermissionAPIImpl) GetPermissionsByRole(role int) ([]Permission, error)
 	default:
 		err = nil
 	}
+	for rows.Next() {
+		var p Permission
+		err = rows.StructScan(&p)
+		permissions = append(permissions, p)
+	}
 	return permissions, err
 }
 
-func (a *PermissionAPIImpl) PostPermission(p Permission) (Permission, error) {
+func (a *PermissionAPIImpl) InsertPermission(p Permission) (Permission, error) {
 
 	permission := Permission{}
-	query, _ := generateSQLStmt(p, "permission", "project_infos")
+	query, _ := generateSQLStmt(p, "insert", "permissions")
 	result, err := DB.NamedExec(query, p)
 
 	if err != nil {
@@ -73,7 +75,7 @@ func (a *PermissionAPIImpl) PostPermission(p Permission) (Permission, error) {
 	if rowCnt > 1 {
 		return permission, errors.New("More Than One Rows Affected") //Transaction rollback?
 	} else if rowCnt == 0 {
-		return permission, errors.New("Project Not Found")
+		return permission, errors.New("Permission Insert Fail")
 	}
 	return p, nil
 }
@@ -81,7 +83,7 @@ func (a *PermissionAPIImpl) PostPermission(p Permission) (Permission, error) {
 func (a *PermissionAPIImpl) UpdatePermission(p Permission) (Permission, error) {
 
 	permission := Permission{}
-	query, _ := generateSQLStmt(p, "insert", "permission")
+	query, _ := generateSQLStmt(p, "update", "permission")
 	result, err := DB.NamedExec(query, p)
 
 	if err != nil {

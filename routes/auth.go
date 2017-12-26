@@ -34,7 +34,7 @@ func (r *authHandler) userLogin(c *gin.Context) {
 
 	fmt.Printf("id: %v, pwd: %v, mode: %v", id, password, mode)
 
-	if !hasid || !hasmode || (mode == "password" && !haspw) {
+	if !hasid || !hasmode || (mode == "ordinary" && !haspw) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Request"})
 		return
 	}
@@ -72,7 +72,7 @@ func (r *authHandler) userLogin(c *gin.Context) {
 	}
 
 	// 3. Password mode: use salt to hash user's password, compare to password from db
-	if mode == "password" {
+	if mode == "ordinary" {
 		if member.Salt.Valid == false {
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": "User Data Misconfigured"})
 			return
@@ -93,6 +93,11 @@ func (r *authHandler) userLogin(c *gin.Context) {
 	// 5. return user's profile and permission info
 
 	userPermissions, err := models.PermissionAPI.GetPermissionsByRole(member.Role)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+		return
+	}
+
 	var permissions []string
 	for _, userPermission := range userPermissions[:] {
 		permissions = append(permissions, userPermission.Object.String)
@@ -102,7 +107,6 @@ func (r *authHandler) userLogin(c *gin.Context) {
 }
 
 func pwHash(pw, salt string) (string, error) {
-	fmt.Printf("%s, %s", pw, salt)
 	hpw, err := scrypt.Key([]byte(pw), []byte(salt), 32768, 8, 1, 64)
 	if err != nil {
 		return "", err
@@ -122,7 +126,7 @@ func validateID(id string) bool {
 func validateMode(mode string) bool {
 	//email, googleid, fbid
 	result := true
-	if mode != "password" && mode != "facebook" && mode != "google" {
+	if mode != "ordinary" && mode != "oauth-fb" && mode != "oauth-goo" {
 		result = false
 	}
 	return result

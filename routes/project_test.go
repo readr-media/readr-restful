@@ -208,7 +208,6 @@ func TestRoutePostExistedProject(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	r.ServeHTTP(w, req)
-
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("Get %d but want %d", w.Code, http.StatusBadRequest)
 	}
@@ -223,7 +222,8 @@ func TestRouteUpdateProject(t *testing.T) {
 	w := httptest.NewRecorder()
 	var jsonStr = []byte(`{
 		"ID":"32767", 
-		"Title":"Modified"
+		"Title":"Modified",
+		"active": 1
 	}`)
 	req, _ := http.NewRequest("PUT", "/project", bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
@@ -281,13 +281,13 @@ func TestRouteDeleteExistProject(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Errorf("Get %d but want %d", w.Code, http.StatusOK)
 	}
-	var resp models.Project
-	/*if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+	/*var resp models.Project
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Errorf("Get error when Unmarshaling: %q, error: %q", w.Body.Bytes(), err)
-	}*/
+	}
 	if resp.Active > 0 {
 		t.Errorf("Get %d but want %d", resp.Active, 0)
-	}
+	}*/
 }
 
 func TestRouteDeleteNonExistProject(t *testing.T) {
@@ -297,7 +297,7 @@ func TestRouteDeleteNonExistProject(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusNotFound {
-		t.Errorf("Get %d but want %d", w.Code, http.StatusOK)
+		t.Errorf("Get %d but want %d", w.Code, http.StatusNotFound)
 	}
 	expected := `{"Error":"Project Not Found"}`
 	if w.Body.String() != string(expected) {

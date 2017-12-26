@@ -93,7 +93,6 @@ func (a *projectAPI) UpdateProjects(p Project) error {
 	result, err := DB.NamedExec(query, p)
 
 	if err != nil {
-		log.Fatal(err)
 		return err
 	}
 	rowCnt, err := result.RowsAffected()
@@ -107,9 +106,16 @@ func (a *projectAPI) UpdateProjects(p Project) error {
 
 func (a *projectAPI) DeleteProjects(p Project) error {
 
-	_, err := DB.Exec("UPDATE members SET active = 0 WHERE user_id = ?", p.ID)
+	result, err := DB.NamedExec("UPDATE project_infos SET active = 0 WHERE project_id = :project_id", p)
 	if err != nil {
 		log.Fatal(err)
+	}
+	afrows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if afrows == 0 {
+		return errors.New("Project Not Found")
 	}
 	return err
 }
