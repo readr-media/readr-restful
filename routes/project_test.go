@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	// "fmt"
-	// "log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -172,7 +170,7 @@ func TestRoutePostProject(t *testing.T) {
 	var jsonStr = []byte(`{
 		"ID":"32768",
 		"Title":"OK",
-		"PostID":1,
+		"PostID":188,
 		"LikeAmount":0,
 		"CommentAmount":0,
 		"Active":1
@@ -252,7 +250,7 @@ func TestRouteUpdateProject(t *testing.T) {
 	}*/
 }
 
-func TestRouteUpdateNonExistMember(t *testing.T) {
+func TestRouteUpdateNonExistProject(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	var jsonStr = []byte(`{
@@ -273,7 +271,7 @@ func TestRouteUpdateNonExistMember(t *testing.T) {
 	}
 }
 
-func TestRouteDeleteExistMember(t *testing.T) {
+func TestRouteDeleteExistProject(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("DELETE", "/project/32767", nil)
@@ -292,14 +290,14 @@ func TestRouteDeleteExistMember(t *testing.T) {
 	}
 }
 
-func TestRouteDeleteNonExistMember(t *testing.T) {
+func TestRouteDeleteNonExistProject(t *testing.T) {
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("DELETE", "/project/0", nil)
 
 	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusNotFound {
-		t.Errorf("Get %d but want %d", w.Code, http.StatusNotFound)
+		t.Errorf("Get %d but want %d", w.Code, http.StatusOK)
 	}
 	expected := `{"Error":"Project Not Found"}`
 	if w.Body.String() != string(expected) {
