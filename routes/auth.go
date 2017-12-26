@@ -10,12 +10,18 @@ import (
 	"golang.org/x/crypto/scrypt"
 )
 
+const (
+	pw_salt_bytes = 32
+	pw_hash_bytes = 64
+)
+
 type authHandler struct {
 }
 
 type userLoginParams struct {
-	id       string
-	password string
+	ID       string `json:"id"`
+	Password string `json:"password"`
+	Mode     string `json:"mode"`
 }
 
 type userInfoResponse struct {
@@ -28,16 +34,16 @@ func (r *authHandler) userLogin(c *gin.Context) {
 	// 1. check input entry: id, password if uesr is not logged-in from OAuth
 	// 2. get user by id, check if user exsists, check if user is active
 
-	id, hasid := c.GetPostForm("id")
-	password, haspw := c.GetPostForm("password")
-	mode, hasmode := c.GetPostForm("mode")
-
-	fmt.Printf("id: %v, pwd: %v, mode: %v", id, password, mode)
-
-	if !hasid || !hasmode || (mode == "ordinary" && !haspw) {
+	p := userLoginParams{}
+	err := c.Bind(&p)
+	if err != nil {
+		fmt.Printf("%v", err)
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Request"})
 		return
 	}
+
+	id, password, mode := p.ID, p.Password, p.Mode
+	//fmt.Printf("id: %v, pwd: %v, mode: %v, p:%v", id, password, mode, p)
 
 	if idValid := validateID(id); !idValid {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Request"})
@@ -45,6 +51,11 @@ func (r *authHandler) userLogin(c *gin.Context) {
 	}
 
 	if modeValid := validateMode(mode); !modeValid {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Request"})
+		return
+	}
+
+	if mode == "ordinary" && password == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Request"})
 		return
 	}
@@ -107,7 +118,7 @@ func (r *authHandler) userLogin(c *gin.Context) {
 }
 
 func pwHash(pw, salt string) (string, error) {
-	hpw, err := scrypt.Key([]byte(pw), []byte(salt), 32768, 8, 1, 64)
+	hpw, err := scrypt.Key([]byte(pw), []byte(salt), 32768, 8, 1, pw_hash_bytes)
 	if err != nil {
 		return "", err
 	}
@@ -134,6 +145,7 @@ func validateMode(mode string) bool {
 
 func (r *authHandler) SetRoutes(router *gin.Engine) {
 	router.POST("/login", r.userLogin)
+	//router.POST("/register", r.userRegister)
 }
 
 var AuthHandler authHandler

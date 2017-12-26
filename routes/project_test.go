@@ -16,7 +16,7 @@ type mockProjectAPI struct{}
 /* Should implement test set for MODELS
 func (a *mockProjectAPI) Init() {
 	//realsql test
-	dbURI := fmt.Sprintf("root:qwerty@tcp(127.0.0.1)/memberdb?parseTime=true")
+	dbURI := "root:qwerty@tcp(127.0.0.1)/memberdb?parseTime=true"
 	models.Connect(dbURI)
 	_, _ = models.DB.Exec("truncate table project_infos;")
 	_ = models.ProjectAPI.PostProject(mockProjectDS[0])

@@ -2,11 +2,10 @@
 package routes
 
 import (
+	"bytes"
 	"golang.org/x/crypto/scrypt"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
-	"strings"
 	"testing"
 
 	"github.com/readr-media/readr-restful/models"
@@ -127,13 +126,20 @@ func TestRouteLogin(t *testing.T) {
 
 		w := httptest.NewRecorder()
 
-		formdata := url.Values{}
-		formdata.Add("id", testcase.in.id)
-		formdata.Add("password", testcase.in.pw)
-		formdata.Add("mode", testcase.in.mode)
+		jsonStrPerp := `{`
+		if testcase.in.id != "" {
+			jsonStrPerp = jsonStrPerp + `"id":"` + testcase.in.id + `",`
+		}
+		if testcase.in.pw != "" {
+			jsonStrPerp = jsonStrPerp + `"password":"` + testcase.in.pw + `",`
+		}
+		if testcase.in.mode != "" {
+			jsonStrPerp = jsonStrPerp + `"mode":"` + testcase.in.mode + `",`
+		}
+		jsonStr := []byte(jsonStrPerp[0:len(jsonStrPerp)-1] + `}`)
 
-		req, _ := http.NewRequest("POST", "/login", strings.NewReader(formdata.Encode()))
-		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req, _ := http.NewRequest("POST", "/login", bytes.NewBuffer(jsonStr))
+		req.Header.Set("Content-Type", "application/json")
 
 		r.ServeHTTP(w, req)
 
