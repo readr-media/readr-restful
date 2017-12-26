@@ -12,12 +12,12 @@ import (
 	"github.com/readr-media/readr-restful/models"
 )
 
-type mockArticleAPI struct{}
+type mockPostAPI struct{}
 
-func (api *mockArticleAPI) GetArticle(id string) (models.Article, error) {
-	result := models.Article{}
-	err := errors.New("Article Not Found")
-	for _, value := range mockArticleDS {
+func (a *mockPostAPI) GetPost(id uint32) (models.Post, error) {
+	result := models.Post{}
+	err := errors.New("Post Not Found")
+	for _, value := range mockPostDS {
 		if value.ID == id {
 			result = value
 			err = nil
@@ -27,28 +27,28 @@ func (api *mockArticleAPI) GetArticle(id string) (models.Article, error) {
 	return result, err
 }
 
-func (api *mockArticleAPI) InsertArticle(a models.Article) error {
-	for _, article := range mockArticleDS {
-		if article.ID == a.ID {
-			// result = models.Article{}
+func (a *mockPostAPI) InsertPost(p models.Post) error {
+	for _, post := range mockPostDS {
+		if post.ID == p.ID {
+			// result = models.Post{}
 			err := errors.New("Duplicate entry")
 			return err
 		}
 	}
-	mockArticleDS = append(mockArticleDS, a)
-	// result := mockArticleDS[len(mockArticleDS)-1]
+	mockPostDS = append(mockPostDS, p)
+	// result := mockPostDS[len(mockPostDS)-1]
 	// err := nil
 	return nil
 }
 
-func (api *mockArticleAPI) UpdateArticle(a models.Article) error {
-	// result = models.Article{}
-	err := errors.New("Article Not Found")
-	for index, value := range mockArticleDS {
-		if value.ID == a.ID {
-			mockArticleDS[index].LikeAmount = a.LikeAmount
-			mockArticleDS[index].Title = a.Title
-			// return mockArticleDS[index], nil
+func (a *mockPostAPI) UpdatePost(p models.Post) error {
+	// result = models.Post{}
+	err := errors.New("Post Not Found")
+	for index, value := range mockPostDS {
+		if value.ID == p.ID {
+			mockPostDS[index].LikeAmount = p.LikeAmount
+			mockPostDS[index].Title = p.Title
+			// return mockPostDS[index], nil
 			err = nil
 			return err
 		}
@@ -56,13 +56,13 @@ func (api *mockArticleAPI) UpdateArticle(a models.Article) error {
 	return err
 }
 
-func (api *mockArticleAPI) DeleteArticle(id string) (models.Article, error) {
-	result := models.Article{}
-	err := errors.New("Article Not Found")
-	for index, value := range mockArticleDS {
+func (a *mockPostAPI) DeletePost(id uint32) (models.Post, error) {
+	result := models.Post{}
+	err := errors.New("Post Not Found")
+	for index, value := range mockPostDS {
 		if value.ID == id {
-			mockArticleDS[index].Active = 0
-			result = mockArticleDS[index]
+			mockPostDS[index].Active = 0
+			result = mockPostDS[index]
 			err = nil
 			return result, err
 		}
@@ -70,26 +70,26 @@ func (api *mockArticleAPI) DeleteArticle(id string) (models.Article, error) {
 	return result, err
 }
 
-// ---------------------------------- Article Test -------------------------------
+// ---------------------------------- Post Test -------------------------------
 
-func TestGetExistArticle(t *testing.T) {
+func TestGetExistPost(t *testing.T) {
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/article/3345678", nil)
+	req, _ := http.NewRequest("GET", "/post/3345678", nil)
 
 	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Fail()
 	}
-	expected, _ := json.Marshal(mockArticleDS[0])
+	expected, _ := json.Marshal(mockPostDS[0])
 	if w.Body.String() != string(expected) {
 		t.Fail()
 	}
 }
 
-func TestGetNonExistedArticle(t *testing.T) {
+func TestGetNonExistedPost(t *testing.T) {
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/article/9527", nil)
+	req, _ := http.NewRequest("GET", "/post/9527", nil)
 
 	r.ServeHTTP(w, req)
 
@@ -97,19 +97,19 @@ func TestGetNonExistedArticle(t *testing.T) {
 		t.Fail()
 	}
 
-	expected := `{"Error":"Article Not Found"}`
+	expected := `{"Error":"Post Not Found"}`
 	if w.Body.String() != string(expected) {
 		t.Fail()
 	}
 }
 
-func TestPostArticle(t *testing.T) {
+func TestPostPost(t *testing.T) {
 	w := httptest.NewRecorder()
 	var jsonStr = []byte(`{
-		"id":"9527",
+		"id":9527,
 		"author":"洪晟熊"
 	}`)
-	req, _ := http.NewRequest("POST", "/article", bytes.NewBuffer(jsonStr))
+	req, _ := http.NewRequest("POST", "/post", bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 
 	r.ServeHTTP(w, req)
@@ -118,8 +118,8 @@ func TestPostArticle(t *testing.T) {
 		t.Fail()
 	}
 	// var (
-	// 	resp     models.Article
-	// 	expected models.Article
+	// 	resp     models.Post
+	// 	expected models.Post
 	// )
 	// if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 	// 	log.Fatal(err)
@@ -134,12 +134,12 @@ func TestPostArticle(t *testing.T) {
 	// }
 }
 
-func TestPostEmptyArticle(t *testing.T) {
+func TestPostEmptyPost(t *testing.T) {
 	w := httptest.NewRecorder()
 	// When the body is empty in Postman, it actually send EOF to server
 	// It is a problem whether it's proper to send {} in test.
 	var jsonStr = []byte(`{}`)
-	req, _ := http.NewRequest("POST", "/article", bytes.NewBuffer(jsonStr))
+	req, _ := http.NewRequest("POST", "/post", bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 	// r := getRouter()
 	// r.POST("/member", env.MemberPostHandler)
@@ -148,40 +148,40 @@ func TestPostEmptyArticle(t *testing.T) {
 	if w.Code != http.StatusBadRequest {
 		t.Fail()
 	}
-	expected := `{"Error":"Invalid Article ID"}`
+	expected := `{"Error":"Invalid Post"}`
 	if w.Body.String() != string(expected) {
 		t.Fail()
 	}
 }
 
-func TestPostExistingArticle(t *testing.T) {
+func TestPostExistingPost(t *testing.T) {
 	w := httptest.NewRecorder()
 	var jsonStr = []byte(`{
-		"id":"3345678",
+		"id":3345678,
 		"author":"李宥儒"
 	}`)
-	req, _ := http.NewRequest("POST", "/article", bytes.NewBuffer(jsonStr))
+	req, _ := http.NewRequest("POST", "/post", bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusBadRequest {
 		t.Fail()
 	}
-	expected := `{"Error":"Article ID Already Taken"}`
+	expected := `{"Error":"Post ID Already Taken"}`
 	if w.Body.String() != string(expected) {
 		t.Fail()
 	}
 }
 
-// ------------------------------------ Update Article Test ------------------------------------
-func TestPutArticle(t *testing.T) {
+// ------------------------------------ Update Post Test ------------------------------------
+func TestPutPost(t *testing.T) {
 	w := httptest.NewRecorder()
 	var jsonStr = []byte(`{
-		"id":"3345678",
+		"id":3345678,
 		"liked": 113,
 		"title": "台北不是我的家！？租屋黑市大揭露"
 	}`)
-	req, _ := http.NewRequest("PUT", "/article", bytes.NewBuffer(jsonStr))
+	req, _ := http.NewRequest("PUT", "/post", bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -189,8 +189,8 @@ func TestPutArticle(t *testing.T) {
 		t.Fail()
 	}
 	// var (
-	// 	resp     models.Article
-	// 	expected models.Article
+	// 	resp     models.Post
+	// 	expected models.Post
 	// )
 	// if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 	// 	log.Fatal(err)
@@ -203,36 +203,36 @@ func TestPutArticle(t *testing.T) {
 	// }
 }
 
-func TestPutNonExistingArticle(t *testing.T) {
+func TestPutNonExistingPost(t *testing.T) {
 	w := httptest.NewRecorder()
 	var jsonStr = []byte(`{
-		"id": "98765",
+		"id": 98765,
 		"Title": "數讀政治獻金"
 	}`)
-	req, _ := http.NewRequest("PUT", "/article", bytes.NewBuffer(jsonStr))
+	req, _ := http.NewRequest("PUT", "/post", bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusBadRequest {
 		t.Fail()
 	}
-	expected := `{"Error":"Article Not Found"}`
+	expected := `{"Error":"Post Not Found"}`
 	if w.Body.String() != string(expected) {
 		t.Fail()
 	}
 }
 
-// ------------------------------------ Delete Article Test ------------------------------------
-func TestDeleteExistingArticle(t *testing.T) {
+// ------------------------------------ Delete Post Test ------------------------------------
+func TestDeleteExistingPost(t *testing.T) {
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("DELETE", "/article/3345678", nil)
+	req, _ := http.NewRequest("DELETE", "/post/3345678", nil)
 	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusOK {
 		t.Fail()
 	}
-	var resp models.Article
+	var resp models.Post
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		log.Fatal(err)
 	}
@@ -241,16 +241,16 @@ func TestDeleteExistingArticle(t *testing.T) {
 	}
 }
 
-func TestDeleteNonExistingArticle(t *testing.T) {
+func TestDeleteNonExistingPost(t *testing.T) {
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("DELETE", "/article/12345", nil)
+	req, _ := http.NewRequest("DELETE", "/post/12345", nil)
 
 	r.ServeHTTP(w, req)
 
 	if w.Code != http.StatusNotFound {
 		t.Fail()
 	}
-	expected := `{"Error":"Article Not Found"}`
+	expected := `{"Error":"Post Not Found"}`
 	if w.Body.String() != string(expected) {
 		t.Fail()
 	}

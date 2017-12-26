@@ -107,14 +107,19 @@ func generateSQLStmt(input interface{}, mode string, tableName string) (query st
 		for i := 0; i < u.NumField(); i++ {
 			tag := u.Type().Field(i).Tag
 			field := u.Field(i).Interface()
+			// Get table id and set it to idName
+			if tag.Get("json") == "id" {
+				fmt.Printf("%s field = %s\n", u.Field(i).Type(), field)
+				idName = tag.Get("db")
+			}
 
 			switch field := field.(type) {
 			case string:
 				if field != "" {
-					if tag.Get("json") == "id" {
-						fmt.Printf("%s field = %s\n", u.Field(i).Type(), field)
-						idName = tag.Get("db")
-					}
+					// if tag.Get("json") == "id" {
+					// 	fmt.Printf("%s field = %s\n", u.Field(i).Type(), field)
+					// 	idName = tag.Get("db")
+					// }
 					columns = append(columns, tag.Get("db"))
 				}
 			case NullString:
@@ -127,8 +132,7 @@ func generateSQLStmt(input interface{}, mode string, tableName string) (query st
 					fmt.Println("valid NullTime : ", field.Time)
 					columns = append(columns, tag.Get("db"))
 				}
-
-			case bool, int:
+			case bool, int, uint32:
 				columns = append(columns, tag.Get("db"))
 			default:
 				fmt.Println("unrecognised format: ", u.Field(i).Type())

@@ -18,7 +18,7 @@ type mockDatastore struct{}
 // var DS models.DatastoreInterface = new(mockDatastore)
 
 var MemberAPI models.MemberInterface = new(mockMemberAPI)
-var ArticleAPI models.ArticleInterface = new(mockArticleAPI)
+var PostAPI models.PostInterface = new(mockPostAPI)
 var ProjectAPI models.ProjectAPIInterface = new(mockProjectAPI)
 
 func TestMain(m *testing.M) {
@@ -30,14 +30,14 @@ func TestMain(m *testing.M) {
 	sqlDB := sqlx.NewDb(mockSQL, "sqlmock")*/
 
 	r = gin.New()
-	ArticleHandler.SetRoutes(r)
+	PostHandler.SetRoutes(r)
 	MemberHandler.SetRoutes(r)
 	ProjectHandler.SetRoutes(r)
 
 	// models.DS = DS
 	models.ProjectAPI = ProjectAPI
 	models.MemberAPI = MemberAPI
-	models.ArticleAPI = ArticleAPI
+	models.PostAPI = PostAPI
 
 	os.Exit(m.Run())
 }
@@ -49,9 +49,9 @@ var mockMemberDS = []models.Member{
 	},
 }
 
-var mockArticleDS = []models.Article{
-	models.Article{
-		ID:     "3345678",
+var mockPostDS = []models.Post{
+	models.Post{
+		ID:     3345678,
 		Author: models.NullString{String: "李宥儒", Valid: true},
 		Active: 1,
 	},
