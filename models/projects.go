@@ -66,7 +66,7 @@ func (a *projectAPI) GetProjects(ps ...Project) ([]Project, error) {
 
 func (a *projectAPI) PostProject(p Project) error {
 
-	query, _ := generateSQLStmt(p, "insert", "project_infos")
+	query, _ := generateSQLStmt("insert", "project_infos", p)
 	result, err := DB.NamedExec(query, p)
 
 	if err != nil {
@@ -89,7 +89,7 @@ func (a *projectAPI) PostProject(p Project) error {
 
 func (a *projectAPI) UpdateProjects(p Project) error {
 
-	query, _ := generateSQLStmt(p, "partial_update", "project_infos")
+	query, _ := generateSQLStmt("partial_update", "project_infos", p)
 	result, err := DB.NamedExec(query, p)
 
 	if err != nil {

@@ -50,16 +50,22 @@ func Connect(dbURI string) {
 	DB = database{d}
 }
 
-func generateSQLStmt(input interface{}, mode string, tableName string) (query string, err error) {
+// Use ... operator to encompass the potential for variadic input in the future
+func generateSQLStmt(mode string, tableName string, input ...interface{}) (query string, err error) {
 
 	columns := make([]string, 0)
 	// u := reflect.ValueOf(input).Elem()
-	u := reflect.ValueOf(input)
 
 	bytequery := &bytes.Buffer{}
 
 	switch mode {
+	case "get_all":
+		bytequery.WriteString(fmt.Sprintf("SELECT * FROM %s ORDER BY %s LIMIT ?, ?", tableName, input[0].(string)))
+		query = bytequery.String()
+		err = nil
 	case "insert":
+		// Parse first input
+		u := reflect.ValueOf(input[0])
 		fmt.Println("insert")
 		for i := 0; i < u.NumField(); i++ {
 			tag := u.Type().Field(i).Tag.Get("db")
@@ -77,6 +83,7 @@ func generateSQLStmt(input interface{}, mode string, tableName string) (query st
 
 	case "full_update":
 
+		u := reflect.ValueOf(input[0])
 		fmt.Println("full_update")
 		var idName string
 		for i := 0; i < u.NumField(); i++ {
@@ -103,6 +110,7 @@ func generateSQLStmt(input interface{}, mode string, tableName string) (query st
 	case "partial_update":
 
 		var idName string
+		u := reflect.ValueOf(input[0])
 		fmt.Println("partial")
 		for i := 0; i < u.NumField(); i++ {
 			tag := u.Type().Field(i).Tag

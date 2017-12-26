@@ -55,8 +55,9 @@ func (a *postAPI) GetPosts(maxResult uint8, page uint16, sortMethod string) ([]P
 	}
 	limitBase := (page - 1) * uint16(maxResult)
 	limitIncrement := page * uint16(maxResult)
+	query, _ := generateSQLStmt("get_all", "posts", sortString)
 
-	err = DB.Select(&result, "SELECT * FROM posts ORDER BY ? LIMIT ?, ?", sortString, limitBase, limitIncrement)
+	err = DB.Select(&result, query, limitBase, limitIncrement)
 	if err != nil || len(result) == 0 {
 		result = []Post{}
 		err = errors.New("Posts Not Found")
@@ -82,7 +83,7 @@ func (a *postAPI) GetPost(id uint32) (Post, error) {
 }
 
 func (a *postAPI) InsertPost(p Post) error {
-	query, _ := generateSQLStmt(p, "insert", "posts")
+	query, _ := generateSQLStmt("insert", "posts", p)
 	result, err := DB.NamedExec(query, p)
 	if err != nil {
 		if strings.Contains(err.Error(), "Duplicate entry") {
@@ -104,7 +105,7 @@ func (a *postAPI) InsertPost(p Post) error {
 
 func (a *postAPI) UpdatePost(p Post) error {
 
-	query, err := generateSQLStmt(p, "partial_update", "posts")
+	query, err := generateSQLStmt("partial_update", "posts", p)
 	fmt.Println(query)
 	if err != nil {
 		return errors.New("Generate SQL statement failed")
