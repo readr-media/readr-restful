@@ -14,31 +14,19 @@ var r *gin.Engine
 
 type mockDatastore struct{}
 
-// var DS models.DatastoreInterface = new(mockDatastore)
-// type mockDatastore struct{}
-// var DS models.DatastoreInterface = new(mockDatastore)
-
-var MemberAPI models.MemberInterface = new(mockMemberAPI)
-var PostAPI models.PostInterface = new(mockPostAPI)
-var ProjectAPI models.ProjectAPIInterface = new(mockProjectAPI)
-
 func TestMain(m *testing.M) {
 	gin.SetMode(gin.TestMode)
-
-	// init mockdb according to https://github.com/jmoiron/sqlx/issues/204
-	/*mockSQL, _, _ := sqlmock.New()
-	defer mockSQL.Close()
-	sqlDB := sqlx.NewDb(mockSQL, "sqlmock")*/
 
 	r = gin.New()
 	PostHandler.SetRoutes(r)
 	MemberHandler.SetRoutes(r)
 	ProjectHandler.SetRoutes(r)
+	AuthHandler.SetRoutes(r)
 
-	// models.DS = DS
-	models.ProjectAPI = ProjectAPI
-	models.MemberAPI = MemberAPI
-	models.PostAPI = PostAPI
+	models.ProjectAPI = new(mockProjectAPI)
+	models.MemberAPI = new(mockMemberAPI)
+	models.PostAPI = new(mockPostAPI)
+	models.PermissionAPI = new(mockPermissionAPI)
 
 	os.Exit(m.Run())
 }

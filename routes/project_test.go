@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	// "fmt"
-	// "log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -18,7 +16,7 @@ type mockProjectAPI struct{}
 /* Should implement test set for MODELS
 func (a *mockProjectAPI) Init() {
 	//realsql test
-	dbURI := fmt.Sprintf("root:qwerty@tcp(127.0.0.1)/memberdb?parseTime=true")
+	dbURI := "root:qwerty@tcp(127.0.0.1)/memberdb?parseTime=true"
 	models.Connect(dbURI)
 	_, _ = models.DB.Exec("truncate table project_infos;")
 	_ = models.ProjectAPI.PostProject(mockProjectDS[0])
@@ -172,7 +170,7 @@ func TestRoutePostProject(t *testing.T) {
 	var jsonStr = []byte(`{
 		"ID":"32768",
 		"Title":"OK",
-		"PostID":1,
+		"PostID":188,
 		"LikeAmount":0,
 		"CommentAmount":0,
 		"Active":1
@@ -210,7 +208,6 @@ func TestRoutePostExistedProject(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	r.ServeHTTP(w, req)
-
 	if w.Code != http.StatusBadRequest {
 		t.Errorf("Get %d but want %d", w.Code, http.StatusBadRequest)
 	}
@@ -225,7 +222,8 @@ func TestRouteUpdateProject(t *testing.T) {
 	w := httptest.NewRecorder()
 	var jsonStr = []byte(`{
 		"ID":"32767", 
-		"Title":"Modified"
+		"Title":"Modified",
+		"active": 1
 	}`)
 	req, _ := http.NewRequest("PUT", "/project", bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
@@ -252,7 +250,7 @@ func TestRouteUpdateProject(t *testing.T) {
 	}*/
 }
 
-func TestRouteUpdateNonExistMember(t *testing.T) {
+func TestRouteUpdateNonExistProject(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	var jsonStr = []byte(`{
@@ -273,7 +271,7 @@ func TestRouteUpdateNonExistMember(t *testing.T) {
 	}
 }
 
-func TestRouteDeleteExistMember(t *testing.T) {
+func TestRouteDeleteExistProject(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("DELETE", "/project/32767", nil)
@@ -283,16 +281,16 @@ func TestRouteDeleteExistMember(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Errorf("Get %d but want %d", w.Code, http.StatusOK)
 	}
-	var resp models.Project
-	/*if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+	/*var resp models.Project
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		t.Errorf("Get error when Unmarshaling: %q, error: %q", w.Body.Bytes(), err)
-	}*/
+	}
 	if resp.Active > 0 {
 		t.Errorf("Get %d but want %d", resp.Active, 0)
-	}
+	}*/
 }
 
-func TestRouteDeleteNonExistMember(t *testing.T) {
+func TestRouteDeleteNonExistProject(t *testing.T) {
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("DELETE", "/project/0", nil)
 
