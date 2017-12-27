@@ -22,6 +22,7 @@ pipeline:
     - go get github.com/go-sql-driver/mysql
     - go get github.com/jmoiron/sqlx
     - go get github.com/spf13/viper
+    - go get golang.org/x/crypto/scrypt
     - go test -v -cover
     - env GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -a -o app main.go
     when:
