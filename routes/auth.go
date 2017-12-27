@@ -1,7 +1,9 @@
 package routes
 
 import (
+	//"crypto/rand"
 	"fmt"
+	//"io"
 	"log"
 	"net/http"
 
@@ -24,11 +26,6 @@ type userLoginParams struct {
 	Mode     string `json:"mode"`
 }
 
-type userInfoResponse struct {
-	member      models.Member
-	permissions []string
-}
-
 func (r *authHandler) userLogin(c *gin.Context) {
 
 	// 1. check input entry: id, password if uesr is not logged-in from OAuth
@@ -45,17 +42,11 @@ func (r *authHandler) userLogin(c *gin.Context) {
 	id, password, mode := p.ID, p.Password, p.Mode
 	//fmt.Printf("id: %v, pwd: %v, mode: %v, p:%v", id, password, mode, p)
 
-	if idValid := validateID(id); !idValid {
+	switch {
+	case !validateID(id), !validateMode(mode):
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Request"})
 		return
-	}
-
-	if modeValid := validateMode(mode); !modeValid {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Request"})
-		return
-	}
-
-	if mode == "ordinary" && password == "" {
+	case mode == "ordinary" && password == "":
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Request"})
 		return
 	}
@@ -113,7 +104,9 @@ func (r *authHandler) userLogin(c *gin.Context) {
 	for _, userPermission := range userPermissions[:] {
 		permissions = append(permissions, userPermission.Object.String)
 	}
-	c.JSON(http.StatusOK, userInfoResponse{member, permissions})
+	c.JSON(http.StatusOK, gin.H{
+		"member":      member,
+		"permissions": permissions})
 	return
 }
 

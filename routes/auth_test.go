@@ -1,8 +1,9 @@
-// +build f1
+// +build !f1
 package routes
 
 import (
 	"bytes"
+	"encoding/json"
 	"golang.org/x/crypto/scrypt"
 	"net/http"
 	"net/http/httptest"
@@ -95,6 +96,11 @@ func TestRouteLogin(t *testing.T) {
 		}
 	}
 
+	type userInfoResponse struct {
+		Member      models.Member `json:"member"`
+		Permissions []string      `json:"permissions"`
+	}
+
 	type LoginCaseIn struct {
 		id   string
 		pw   string
@@ -148,8 +154,16 @@ func TestRouteLogin(t *testing.T) {
 			t.Fail()
 		}
 
-		if w.Code == http.StatusOK && (testcase.out.resp.member.ID != testcase.in.id) {
-			t.Errorf("Expect get user id %s but get %d, testcase %s", testcase.in.id, testcase.out.resp.member.ID, testcase.name)
+		if w.Code == http.StatusOK && (testcase.out.resp.Member.ID != testcase.in.id) {
+			t.Errorf("Expect get user id %s but get %d, testcase %s", testcase.in.id, testcase.out.resp.Member.ID, testcase.name)
+			t.Fail()
+		}
+
+		resp := userInfoResponse{}
+		json.Unmarshal([]byte(w.Body.String()), &resp)
+
+		if w.Code == http.StatusOK && (testcase.out.resp.Member.ID != resp.Member.ID) {
+			t.Errorf("Expect get user id %s but get %d, testcase %s", testcase.out.resp.Member.ID, resp.Member.ID, testcase.name)
 			t.Fail()
 		}
 
