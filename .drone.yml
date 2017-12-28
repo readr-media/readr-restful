@@ -17,14 +17,15 @@ pipeline:
   builds:
     image: golang
     commands:
-    - go get github.com/gin-gonic/gin
-    - go get github.com/readr-media/readr-restful/models
-    - go get github.com/go-sql-driver/mysql
-    - go get github.com/jmoiron/sqlx
-    - go get github.com/spf13/viper
-    - go get golang.org/x/crypto/scrypt
-    - go test -v -cover
-    - env GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -a -o app main.go
+    - make build-alpine
+    # - go get github.com/gin-gonic/gin
+    # - go get github.com/readr-media/readr-restful/models
+    # - go get github.com/go-sql-driver/mysql
+    # - go get github.com/jmoiron/sqlx
+    # - go get github.com/spf13/viper
+    # - go get golang.org/x/crypto/scrypt
+    # - go test -v -cover
+    # - env GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -a -o app main.go
     when:
       event: [push]
       branch: [master, dev]
