@@ -81,8 +81,8 @@ func (r *postHandler) PostPostHandler(c *gin.Context) {
 		post.UpdatedAt.Time = time.Now()
 		post.UpdatedAt.Valid = true
 	}
-	if post.Active != 1 {
-		post.Active = 1
+	if post.Active != 3 {
+		post.Active = 3
 	}
 	if !post.UpdatedBy.Valid {
 		post.UpdatedBy.String = post.Author.String
@@ -113,6 +113,9 @@ func (r *postHandler) PostPutHandler(c *gin.Context) {
 	if post == emptyPost {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Post"})
 		return
+	}
+	if post.Active == 0 {
+		post.Active = 4
 	}
 	if post.CreatedAt.Valid {
 		post.CreatedAt.Time = time.Time{}

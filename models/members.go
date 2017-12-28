@@ -70,9 +70,10 @@ func (a *memberAPI) GetMembers(maxResult uint8, page uint16, sortMethod string) 
 	}
 	limitBase := (page - 1) * uint16(maxResult)
 	limitIncrement := page * uint16(maxResult)
+	query, _ := generateSQLStmt("get_all", "members", sortString)
 
 	// fmt.Println("sortString: ", sortString, " , limitBase: ", limitBase, " , limitIncrement: ", limitIncrement)
-	err = DB.Select(&result, "SELECT * FROM members ORDER BY ? LIMIT ?, ?", sortString, limitBase, limitIncrement)
+	err = DB.Select(&result, query, limitBase, limitIncrement)
 	if err != nil || len(result) == 0 {
 		result = []Member{}
 		err = errors.New("Members Not Found")
@@ -99,7 +100,7 @@ func (a *memberAPI) GetMember(id string) (Member, error) {
 }
 
 func (a *memberAPI) InsertMember(m Member) error {
-	query, _ := generateSQLStmt(m, "insert", "members")
+	query, _ := generateSQLStmt("insert", "members", m)
 
 	result, err := DB.NamedExec(query, m)
 
@@ -122,7 +123,7 @@ func (a *memberAPI) InsertMember(m Member) error {
 }
 
 func (a *memberAPI) UpdateMember(m Member) error {
-	query, _ := generateSQLStmt(m, "partial_update", "members")
+	query, _ := generateSQLStmt("partial_update", "members", m)
 	result, err := DB.NamedExec(query, m)
 
 	if err != nil {
