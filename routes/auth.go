@@ -1,9 +1,10 @@
 package routes
 
 import (
-	//"crypto/rand"
+	"crypto/rand"
+	"encoding/json"
 	"fmt"
-	//"io"
+	"io"
 	"log"
 	"net/http"
 
@@ -23,7 +24,7 @@ type authHandler struct {
 type userLoginParams struct {
 	ID       string `json:"id"`
 	Password string `json:"password"`
-	Mode     string `json:"mode"`
+	Mode     string `json:"register_mode"`
 }
 
 func (r *authHandler) userLogin(c *gin.Context) {
@@ -110,6 +111,104 @@ func (r *authHandler) userLogin(c *gin.Context) {
 	return
 }
 
+type userRegisterParams struct {
+	ID           string `json:"id" db:"user_id"`
+	Name         string `json:"name" db:"name"`
+	Nickname     string `json:"nickname" db:"nick"`
+	Gender       string `json:"gender" db:"gender"`
+	Mail         string `json:"mail" db:"mail"`
+	RegisterMode string `json:"register_mode" db:"register_mode"`
+	SocialID     string `json:"social_id,omitempty" db:"social_id"`
+	Password     string `json:"password" db:"password"`
+}
+
+func (r *authHandler) userRegister(c *gin.Context) {
+	// 1. check input: account, mode, password, role ...
+	// 2. check if user exists
+
+	params := userRegisterParams{}
+	err := c.Bind(&params)
+
+	//Try to solve the problem that can't marshal password into models.Member struct
+	jsonStr, err := json.Marshal(&params)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Request"})
+		return
+	}
+	var member models.Member
+	err = json.Unmarshal(jsonStr, &member)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Request"})
+		return
+	}
+	member.Password = models.NullString{params.Password, true}
+
+	switch {
+	case !validateID(member.ID), !validateMode(member.RegisterMode.String), !validateMail(member.Mail.String):
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Request"})
+		return
+	}
+
+	if member.RegisterMode.String == "ordinary" {
+
+		if member.Password.String == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Request"})
+			return
+		}
+
+		// 3. generate salt and hash password
+		salt := make([]byte, pw_salt_bytes)
+		_, err = io.ReadFull(rand.Reader, salt)
+		if err != nil {
+			log.Println(err.Error())
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+			return
+		}
+
+		hpw, err := pwHash(member.Password.String, string(salt))
+		if err != nil {
+			log.Println(err.Error())
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+			return
+		}
+
+		member.Salt = models.NullString{string(salt), true}
+		member.Password = models.NullString{string(hpw), true}
+		member.Active = 0
+
+	} else {
+
+		if member.SocialID.String != member.ID {
+			c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Request"})
+			return
+		}
+
+		member.Active = 1
+	}
+
+	// 4. create Member object, fill in data and defaults
+
+	err = models.MemberAPI.InsertMember(member)
+
+	if err != nil {
+		switch err.Error() {
+		case "Duplicate entry":
+			c.JSON(http.StatusBadRequest, gin.H{"Error": "User Duplicated"})
+			return
+		case "More Than One Rows Affected", "No Row Inserted":
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+			return
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+			return
+		}
+	}
+
+	c.Status(http.StatusOK)
+	return
+
+}
+
 func pwHash(pw, salt string) (string, error) {
 	hpw, err := scrypt.Key([]byte(pw), []byte(salt), 32768, 8, 1, pw_hash_bytes)
 	if err != nil {
@@ -119,7 +218,6 @@ func pwHash(pw, salt string) (string, error) {
 }
 
 func validateID(id string) bool {
-	//email, googleid, fbid
 	result := true
 	if id == "" {
 		result = false
@@ -128,7 +226,6 @@ func validateID(id string) bool {
 }
 
 func validateMode(mode string) bool {
-	//email, googleid, fbid
 	result := true
 	if mode != "ordinary" && mode != "oauth-fb" && mode != "oauth-goo" {
 		result = false
@@ -136,9 +233,19 @@ func validateMode(mode string) bool {
 	return result
 }
 
+func validateMail(mail string) bool {
+	result := true
+	if mail == "" {
+		result = false
+	}
+	return result
+}
+
+//func convertMemberStruct()
+
 func (r *authHandler) SetRoutes(router *gin.Engine) {
 	router.POST("/login", r.userLogin)
-	//router.POST("/register", r.userRegister)
+	router.POST("/register", r.userRegister)
 }
 
 var AuthHandler authHandler

@@ -3,8 +3,11 @@ package routes
 
 import (
 	"bytes"
+	"crypto/rand"
 	"encoding/json"
+	"fmt"
 	"golang.org/x/crypto/scrypt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -33,68 +36,91 @@ func (a *mockPermissionAPI) GetPermissionsByRole(role int) ([]models.Permission,
 
 var MockPermissionAPI mockPermissionAPI
 
-var mockLoginPermissions = []models.Permission{
-	models.Permission{
-		Role:       models.NullString{"1", true},
-		Object:     models.NullString{"ReadPost", true},
-		Permission: 1,
-	},
-	models.Permission{
-		Role:       models.NullString{"1", true},
-		Object:     models.NullString{"ChangeName", true},
-		Permission: 1,
-	}}
+// Declare a backup struct for member test data
+var mockMemberDSBack []models.Member
 
-var mockLoginMembers = []models.Member{
-	models.Member{
-		ID:           "logintest1@mirrormedia.mg",
-		Password:     models.NullString{"hellopassword", true},
-		Salt:         models.NullString{"12345567890129375", true},
-		Role:         1,
-		Active:       1,
-		RegisterMode: models.NullString{"ordinary", true},
-	},
-	models.Member{
-		ID:           "logintest2018",
-		Password:     models.NullString{"1233211234567", true},
-		Salt:         models.NullString{"lIl11llIII1Il1I", true},
-		Role:         1,
-		Active:       1,
-		RegisterMode: models.NullString{"oauth-fb", true},
-	},
-	models.Member{
-		ID:           "logindeactived",
-		Password:     models.NullString{"88888888", true},
-		Salt:         models.NullString{"1", true},
-		Role:         1,
-		Active:       0,
-		RegisterMode: models.NullString{"ordinary", true},
-	}}
+func initAuthTest() {
+	// Test with local mysql instance
+	/*
+		dbURI := "root:qwerty@tcp(127.0.0.1)/memberdb?parseTime=true"
+		models.Connect(dbURI)
+		_, _ = models.DB.Exec("truncate table members;")
+		_, _ = models.DB.Exec("truncate table permissions;")
+	*/
 
-func TestRouteLogin(t *testing.T) {
+	// Backup current member test data
+	mockMemberDSBack = mockMemberDS
 
-	//Init
-	/*dbURI := "root:qwerty@tcp(127.0.0.1)/memberdb?parseTime=true"
-	models.Connect(dbURI)
-	_, _ = models.DB.Exec("truncate table members;")
-	_, _ = models.DB.Exec("truncate table permissions;")*/
+	var mockLoginPermissions = []models.Permission{
+		models.Permission{
+			Role:       models.NullString{"1", true},
+			Object:     models.NullString{"ReadPost", true},
+			Permission: 1,
+		},
+		models.Permission{
+			Role:       models.NullString{"1", true},
+			Object:     models.NullString{"ChangeName", true},
+			Permission: 1,
+		}}
+
+	var mockLoginMembers = []models.Member{
+		models.Member{
+			ID:           "logintest1@mirrormedia.mg",
+			Password:     models.NullString{"hellopassword", true},
+			Role:         1,
+			Active:       1,
+			RegisterMode: models.NullString{"ordinary", true},
+		},
+		models.Member{
+			ID:           "logintest2018",
+			Password:     models.NullString{"1233211234567", true},
+			Role:         1,
+			Active:       1,
+			RegisterMode: models.NullString{"oauth-fb", true},
+		},
+		models.Member{
+			ID:           "logindeactived",
+			Password:     models.NullString{"88888888", true},
+			Role:         1,
+			Active:       0,
+			RegisterMode: models.NullString{"ordinary", true},
+		}}
 
 	for _, member := range mockLoginMembers {
+
+		salt := make([]byte, 32)
+		_, err := io.ReadFull(rand.Reader, salt)
+		if err != nil {
+			fmt.Errorf(err.Error())
+			return
+		}
+		member.Salt = models.NullString{string(salt), true}
+
 		hpw, err := scrypt.Key([]byte(member.Password.String), []byte(member.Salt.String), 32768, 8, 1, 64)
 		member.Password = models.NullString{string(hpw), true}
 		err = models.MemberAPI.InsertMember(member)
 		if err != nil {
-			t.Fatalf("Init test case fail, aborted. Error: %v", err)
+			fmt.Errorf("Init test case fail, aborted. Error: %v", err)
 			return
 		}
 	}
 	for _, permission := range mockLoginPermissions {
 		_, err := models.PermissionAPI.InsertPermission(permission)
 		if err != nil {
-			t.Fatalf("Init test case fail, aborted. Error: %v", err)
+			fmt.Errorf("Init test case fail, aborted. Error: %v", err)
 			return
 		}
 	}
+}
+
+func clearAuthTest() {
+	//restore the backuped data
+	mockMemberDS = mockMemberDSBack
+}
+
+func TestRouteLogin(t *testing.T) {
+
+	initAuthTest()
 
 	type userInfoResponse struct {
 		Member      models.Member `json:"member"`
@@ -140,7 +166,7 @@ func TestRouteLogin(t *testing.T) {
 			jsonStrPerp = jsonStrPerp + `"password":"` + testcase.in.pw + `",`
 		}
 		if testcase.in.mode != "" {
-			jsonStrPerp = jsonStrPerp + `"mode":"` + testcase.in.mode + `",`
+			jsonStrPerp = jsonStrPerp + `"register_mode":"` + testcase.in.mode + `",`
 		}
 		jsonStr := []byte(jsonStrPerp[0:len(jsonStrPerp)-1] + `}`)
 
@@ -154,8 +180,8 @@ func TestRouteLogin(t *testing.T) {
 			t.Fail()
 		}
 
-		if w.Code == http.StatusOK && (testcase.out.resp.Member.ID != testcase.in.id) {
-			t.Errorf("Expect get user id %s but get %d, testcase %s", testcase.in.id, testcase.out.resp.Member.ID, testcase.name)
+		if w.Code != http.StatusOK && w.Body.String() != testcase.out.Error {
+			t.Errorf("Expect get error message %v but get %v, testcase %s", testcase.out.Error, w.Body.String(), testcase.name)
 			t.Fail()
 		}
 
@@ -167,11 +193,127 @@ func TestRouteLogin(t *testing.T) {
 			t.Fail()
 		}
 
+	}
+
+	clearAuthTest()
+
+}
+
+func TestRouteRegister(t *testing.T) {
+
+	initAuthTest()
+
+	type RegisterCaseIn struct {
+		ID       string `json:id,omitempty`
+		Password string `json:"password,omitempty"`
+		Mail     string `json:"mail,omitempty"`
+		SocialID string `json:"social_id,omitempty"`
+		Mode     string `json:"register_mode",omitempty`
+		Nickname string `json:"nickname",omitempty`
+		Gender   string `json:"gender",omitempty`
+	}
+
+	type RegisterCaseOut struct {
+		httpcode int
+		Error    string
+	}
+
+	var TestRouteRegisterCases = []struct {
+		name string
+		in   RegisterCaseIn
+		out  RegisterCaseOut
+	}{
+		{"RegisterOK", RegisterCaseIn{
+			ID:       "registertest1@mirrormedia.mg",
+			Password: "mir",
+			Mail:     "registertest1@mirrormedia.mg",
+			Mode:     "ordinary"}, RegisterCaseOut{http.StatusOK, `ok`}},
+		{"RegisterNoPassword", RegisterCaseIn{
+			ID:       "registertest1@mirrormedia.mg",
+			Password: "",
+			Mail:     "logintest1@mirrormedia.mg",
+			Mode:     "ordinary"}, RegisterCaseOut{http.StatusBadRequest, `{"Error":"Bad Request"}`}},
+		{"RegisterNoMail", RegisterCaseIn{
+			ID:       "registertest1@mirrormedia.mg",
+			Password: "mir",
+			Mail:     "",
+			Mode:     "ordinary"}, RegisterCaseOut{http.StatusBadRequest, `{"Error":"Bad Request"}`}},
+		{"RegisterNoMode", RegisterCaseIn{
+			ID:       "registertest1@mirrormedia.mg",
+			Password: "mirr",
+			Mail:     "logintest1@mirrormedia.mg",
+			Mode:     ""}, RegisterCaseOut{http.StatusBadRequest, `{"Error":"Bad Request"}`}},
+		{"RegisterNoID", RegisterCaseIn{
+			ID:       "",
+			Password: "mir",
+			Mail:     "logintest1@mirrormedia.mg",
+			Mode:     "ordinary"}, RegisterCaseOut{http.StatusBadRequest, `{"Error":"Bad Request"}`}},
+		{"RegisterSocialOK", RegisterCaseIn{
+			ID:       "112233445566",
+			Password: "mir",
+			Mail:     "logintest1@mirrormedia.mg",
+			Mode:     "oauth-fb",
+			SocialID: "112233445566"}, RegisterCaseOut{http.StatusOK, `ok`}},
+		{"RegisterNoSocialID", RegisterCaseIn{
+			ID:       "112233445566",
+			Password: "mir",
+			Mail:     "logintest1@mirrormedia.mg",
+			Mode:     "oauth-fb",
+			SocialID: ""}, RegisterCaseOut{http.StatusBadRequest, `{"Error":"Bad Request"}`}},
+		{"RegisterWrongSocialID", RegisterCaseIn{
+			ID:       "112233445566",
+			Password: "mir",
+			Mail:     "logintest1@mirrormedia.mg",
+			Mode:     "oauth-fb",
+			SocialID: "112233445567"}, RegisterCaseOut{http.StatusBadRequest, `{"Error":"Bad Request"}`}},
+		{"RegisterUserDupe", RegisterCaseIn{
+			ID:       "logintest2018",
+			Password: "1233211234567",
+			Mail:     "logintest1@mirrormedia.mg",
+			Mode:     "ordinary"}, RegisterCaseOut{http.StatusBadRequest, `{"Error":"User Duplicated"}`}},
+		{"RegisterSocialUserDupe", RegisterCaseIn{
+			ID:       "logintest2018",
+			Password: "1233211234567",
+			Mail:     "logintest1@mirrormedia.mg",
+			Mode:     "ordinary"}, RegisterCaseOut{http.StatusBadRequest, `{"Error":"User Duplicated"}`}},
+	}
+
+	for _, testcase := range TestRouteRegisterCases {
+
+		w := httptest.NewRecorder()
+
+		jsonStr, err := json.Marshal(&testcase.in)
+		if err != nil {
+			t.Errorf("Fail to marshal input objects, error: %v", err.Error())
+			t.Fail()
+		}
+		req, _ := http.NewRequest("POST", "/register", bytes.NewBuffer(jsonStr))
+		req.Header.Set("Content-Type", "application/json")
+
+		r.ServeHTTP(w, req)
+
+		if w.Code != testcase.out.httpcode {
+			t.Errorf("Want %d but get %d, testcase %s", testcase.out.httpcode, w.Code, testcase.name)
+			t.Fail()
+		}
+
 		if w.Code != http.StatusOK && w.Body.String() != testcase.out.Error {
 			t.Errorf("Expect get error message %v but get %v, testcase %s", testcase.out.Error, w.Body.String(), testcase.name)
 			t.Fail()
 		}
 
+		resp := RegisterCaseOut{}
+		json.Unmarshal([]byte(w.Body.String()), &resp)
+
+		if w.Code == http.StatusOK {
+			member, _ := models.MemberAPI.GetMember(testcase.in.ID)
+			if testcase.in.ID != member.ID {
+				t.Errorf("Expect get user id %s but get %d, testcase %s", testcase.in.ID, member.ID, testcase.name)
+				t.Fail()
+			}
+		}
+
 	}
 
+	clearAuthTest()
 }
