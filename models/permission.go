@@ -64,7 +64,7 @@ func (a *PermissionAPIImpl) GetPermissionsByRole(role int) ([]Permission, error)
 func (a *PermissionAPIImpl) InsertPermission(p Permission) (Permission, error) {
 
 	permission := Permission{}
-	query, _ := generateSQLStmt(p, "insert", "permissions")
+	query, _ := generateSQLStmt("insert", "permissions", p)
 	result, err := DB.NamedExec(query, p)
 
 	if err != nil {
@@ -83,7 +83,7 @@ func (a *PermissionAPIImpl) InsertPermission(p Permission) (Permission, error) {
 func (a *PermissionAPIImpl) UpdatePermission(p Permission) (Permission, error) {
 
 	permission := Permission{}
-	query, _ := generateSQLStmt(p, "update", "permission")
+	query, _ := generateSQLStmt("update", "permission", p)
 	result, err := DB.NamedExec(query, p)
 
 	if err != nil {
