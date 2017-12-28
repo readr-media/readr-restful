@@ -8,7 +8,7 @@ import (
 )
 
 type Permission struct {
-	Role       NullString `json:"role" db:"role"`
+	Role       int        `json:"role" db:"role"`
 	Object     NullString `json:"object" db:"object"`
 	Permission int        `json:"permission" db:"permission"`
 }

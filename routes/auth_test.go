@@ -26,7 +26,7 @@ func (a *mockPermissionAPI) InsertPermission(p models.Permission) (models.Permis
 func (a *mockPermissionAPI) GetPermissionsByRole(role int) ([]models.Permission, error) {
 	var permissions = []models.Permission{
 		models.Permission{
-			Role:       models.NullString{"1", true},
+			Role:       1,
 			Object:     models.NullString{"ReadPost", true},
 			Permission: 1,
 		},
@@ -53,12 +53,12 @@ func initAuthTest() {
 
 	var mockLoginPermissions = []models.Permission{
 		models.Permission{
-			Role:       models.NullString{"1", true},
+			Role:       1,
 			Object:     models.NullString{"ReadPost", true},
 			Permission: 1,
 		},
 		models.Permission{
-			Role:       models.NullString{"1", true},
+			Role:       1,
 			Object:     models.NullString{"ChangeName", true},
 			Permission: 1,
 		}}
