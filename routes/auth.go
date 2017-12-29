@@ -1,21 +1,14 @@
 package routes
 
 import (
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/models"
-	"golang.org/x/crypto/scrypt"
-)
-
-const (
-	pw_salt_bytes = 32
-	pw_hash_bytes = 64
+	"github.com/readr-media/readr-restful/utils"
 )
 
 type authHandler struct {
@@ -44,7 +37,7 @@ func (r *authHandler) userLogin(c *gin.Context) {
 	//fmt.Printf("id: %v, pwd: %v, mode: %v, p:%v", id, password, mode, p)
 
 	switch {
-	case !validateID(id), !validateMode(mode):
+	case !utils.ValidateUserID(id), !validateMode(mode):
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Request"})
 		return
 	case mode == "ordinary" && password == "":
@@ -81,7 +74,7 @@ func (r *authHandler) userLogin(c *gin.Context) {
 			return
 		}
 
-		hpassword, err := pwHash(password, member.Salt.String)
+		hpassword, err := utils.CryptGenHash(password, member.Salt.String)
 		if err != nil {
 			log.Printf("error when hashing password: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
@@ -144,7 +137,7 @@ func (r *authHandler) userRegister(c *gin.Context) {
 	member.Password = models.NullString{params.Password, true}
 
 	switch {
-	case !validateID(member.ID), !validateMode(member.RegisterMode.String), !validateMail(member.Mail.String):
+	case !utils.ValidateUserID(member.ID), !validateMode(member.RegisterMode.String), !validateMail(member.Mail.String):
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Request"})
 		return
 	}
@@ -157,15 +150,14 @@ func (r *authHandler) userRegister(c *gin.Context) {
 		}
 
 		// 3. generate salt and hash password
-		salt := make([]byte, pw_salt_bytes)
-		_, err = io.ReadFull(rand.Reader, salt)
+		salt, err := utils.CryptGenSalt()
 		if err != nil {
 			log.Println(err.Error())
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
 			return
 		}
 
-		hpw, err := pwHash(member.Password.String, string(salt))
+		hpw, err := utils.CryptGenHash(member.Password.String, string(salt))
 		if err != nil {
 			log.Println(err.Error())
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
@@ -207,22 +199,6 @@ func (r *authHandler) userRegister(c *gin.Context) {
 	c.Status(http.StatusOK)
 	return
 
-}
-
-func pwHash(pw, salt string) (string, error) {
-	hpw, err := scrypt.Key([]byte(pw), []byte(salt), 32768, 8, 1, pw_hash_bytes)
-	if err != nil {
-		return "", err
-	}
-	return string(hpw), nil
-}
-
-func validateID(id string) bool {
-	result := true
-	if id == "" {
-		result = false
-	}
-	return result
 }
 
 func validateMode(mode string) bool {

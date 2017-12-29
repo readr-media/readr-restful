@@ -51,18 +51,6 @@ func initAuthTest() {
 	// Backup current member test data
 	mockMemberDSBack = mockMemberDS
 
-	var mockLoginPermissions = []models.Permission{
-		models.Permission{
-			Role:       1,
-			Object:     models.NullString{"ReadPost", true},
-			Permission: 1,
-		},
-		models.Permission{
-			Role:       1,
-			Object:     models.NullString{"ChangeName", true},
-			Permission: 1,
-		}}
-
 	var mockLoginMembers = []models.Member{
 		models.Member{
 			ID:           "logintest1@mirrormedia.mg",
@@ -99,13 +87,6 @@ func initAuthTest() {
 		hpw, err := scrypt.Key([]byte(member.Password.String), []byte(member.Salt.String), 32768, 8, 1, 64)
 		member.Password = models.NullString{string(hpw), true}
 		err = models.MemberAPI.InsertMember(member)
-		if err != nil {
-			fmt.Errorf("Init test case fail, aborted. Error: %v", err)
-			return
-		}
-	}
-	for _, permission := range mockLoginPermissions {
-		_, err := models.PermissionAPI.InsertPermission(permission)
 		if err != nil {
 			fmt.Errorf("Init test case fail, aborted. Error: %v", err)
 			return

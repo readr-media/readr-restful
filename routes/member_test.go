@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/readr-media/readr-restful/models"
+	"github.com/readr-media/readr-restful/utils"
 )
 
 type mockMemberAPI struct{}
@@ -77,9 +78,9 @@ func (mapi *mockMemberAPI) InsertMember(m models.Member) error {
 func (mapi *mockMemberAPI) UpdateMember(m models.Member) error {
 
 	err := errors.New("User Not Found")
-	for _, member := range mockMemberDS {
+	for index, member := range mockMemberDS {
 		if member.ID == m.ID {
-			// result = m
+			mockMemberDS[index] = m
 			err = nil
 		}
 	}
@@ -330,4 +331,62 @@ func TestDeleteNonExistMember(t *testing.T) {
 	if w.Body.String() != string(expected) {
 		t.Fail()
 	}
+}
+
+func TestUpdateMemberPassword(t *testing.T) {
+
+	type ChangePWCaseIn struct {
+		ID       string `json:id,omitempty`
+		Password string `json:"password,omitempty"`
+	}
+
+	var TestRouteChangePWCases = []struct {
+		name     string
+		in       ChangePWCaseIn
+		httpcode int
+	}{
+		{"ChangePWOK", ChangePWCaseIn{ID: "TaiwanNo.1", Password: "angrypug"}, http.StatusOK},
+		{"ChangePWFail", ChangePWCaseIn{ID: "TaiwanNo.1"}, http.StatusBadRequest},
+		{"ChangePWNoID", ChangePWCaseIn{Password: "angrypug"}, http.StatusBadRequest},
+		{"ChangePWMemberNotFound", ChangePWCaseIn{ID: "TaiwanNo.9527", Password: "angrypug"}, http.StatusNotFound},
+	}
+
+	for _, testcase := range TestRouteChangePWCases {
+		jsonStr, err := json.Marshal(&testcase.in)
+		if err != nil {
+			t.Errorf("Fail to marshal input objects, error: %v", err.Error())
+			t.Fail()
+		}
+		req, _ := http.NewRequest("PUT", "/member/password", bytes.NewBuffer(jsonStr))
+		req.Header.Set("Content-Type", "application/json")
+
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		if w.Code != testcase.httpcode {
+			t.Errorf("Want %d but get %d, testcase %s", testcase.httpcode, w.Code, testcase.name)
+			t.Fail()
+		}
+
+		if w.Code == http.StatusOK {
+			member, err := models.MemberAPI.GetMember(testcase.in.ID)
+			if err != nil {
+				t.Errorf("Cannot get user after update PW, testcase %s", testcase.name)
+				t.Fail()
+			}
+
+			newPW, err := utils.CryptGenHash(testcase.in.Password, member.Salt.String)
+			switch {
+			case err != nil:
+				t.Errorf("Error when hashing password, testcase %s", testcase.name)
+				t.Fail()
+			case newPW != member.Password.String:
+				t.Errorf("%v", member.ID)
+				t.Errorf("Password update fail Want %v but get %v, testcase %s", newPW, member.Password.String, testcase.name)
+				t.Fail()
+			}
+		}
+
+	}
+
 }
