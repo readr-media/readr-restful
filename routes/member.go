@@ -1,12 +1,14 @@
 package routes
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/models"
+	"github.com/readr-media/readr-restful/utils"
 )
 
 type memberHandler struct{}
@@ -149,6 +151,77 @@ func (r *memberHandler) MemberDeleteHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, member)
 }
 
+// MemberPutPasswordHandler let caller to update a member's password.
+//
+func (r *memberHandler) MemberPutPasswordHandler(c *gin.Context) {
+
+	input := struct {
+		ID          string `json:"id"`
+		NewPassword string `json:"password"`
+		//OldPassword string `json="o"`
+	}{}
+	c.Bind(&input)
+
+	if !utils.ValidateUserID(input.ID) || !utils.ValidatePassword(input.NewPassword) {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Input"})
+		return
+	}
+
+	member, err := models.MemberAPI.GetMember(input.ID)
+	if err != nil {
+		switch err.Error() {
+		case "User Not Found":
+			c.JSON(http.StatusNotFound, gin.H{"Error": "User Not Found"})
+			return
+		default:
+			log.Println(err.Error())
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+			return
+		}
+	}
+
+	/*
+		oldHPW, err := utils.CryptGenHash(input.OldPassword, string(salt))
+		if err != nil {
+			log.Println(err.Error())
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+			return
+		}
+
+		if oldHPW != member.Password.String {
+			c.JSON(http.StatusUnauthorized, gin.H{"Error": "Wrong Password"})
+		}
+	*/
+
+	// Gen salt and password
+	salt, err := utils.CryptGenSalt()
+	if err != nil {
+		log.Println(err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+		return
+	}
+
+	hpw, err := utils.CryptGenHash(input.NewPassword, string(salt))
+	if err != nil {
+		log.Println(err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+		return
+	}
+
+	err = models.MemberAPI.UpdateMember(models.Member{
+		ID:       member.ID,
+		Password: models.NullString{hpw, true},
+		Salt:     models.NullString{salt, true},
+	})
+	if err != nil {
+		log.Println(err.Error())
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+		return
+	}
+
+	c.Status(http.StatusOK)
+}
+
 func (r *memberHandler) SetRoutes(router *gin.Engine) {
 
 	router.GET("/members", r.MembersGetHandler)
@@ -159,6 +232,8 @@ func (r *memberHandler) SetRoutes(router *gin.Engine) {
 		memberRouter.POST("", r.MemberPostHandler)
 		memberRouter.PUT("", r.MemberPutHandler)
 		memberRouter.DELETE("/:id", r.MemberDeleteHandler)
+
+		memberRouter.PUT("/password", r.MemberPutPasswordHandler)
 	}
 }
 

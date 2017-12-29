@@ -19,6 +19,7 @@ func (a *mockProjectAPI) Init() {
 	dbURI := "root:qwerty@tcp(127.0.0.1)/memberdb?parseTime=true"
 	models.Connect(dbURI)
 	_, _ = models.DB.Exec("truncate table project_infos;")
+	_, _ = models.DB.Exec("truncate table members;")
 	_ = models.ProjectAPI.PostProject(mockProjectDS[0])
 }*/
 
