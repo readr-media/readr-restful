@@ -27,7 +27,7 @@ func (r *miscHandler) sendMail(c *gin.Context) {
 	}
 
 	m := gomail.NewMessage()
-	m.SetHeader("From", "yychen@mirrormedia.mg")
+	m.SetHeader("From", r.Dialer.Username)
 	m.SetHeader("To", input.Receiver...)
 	m.SetHeader("Subject", input.Subject)
 	m.SetBody("text/html", input.Payload)
