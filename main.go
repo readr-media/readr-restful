@@ -9,6 +9,7 @@ import (
 	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/routes"
 	"github.com/spf13/viper"
+	"gopkg.in/gomail.v2"
 )
 
 // var (
@@ -62,12 +63,21 @@ func main() {
 	// Plug in mySQL middleware
 	// router.Use(sqlMiddleware(dbConn))
 
+	// init mail sender
+
+	dialer := gomail.NewDialer(
+		viper.Get("mail.host").(string),
+		int(viper.Get("mail.port").(float64)),
+		viper.Get("mail.user").(string),
+		viper.Get("mail.password").(string),
+	)
+
 	routes.MemberHandler.SetRoutes(router)
 	routes.PostHandler.SetRoutes(router)
 	routes.ProjectHandler.SetRoutes(router)
 	routes.AuthHandler.SetRoutes(router)
 
-	routes.MiscHandler.SetRoutes(router)
+	routes.MiscHandler.SetRoutes(router, *dialer)
 
 	router.Run()
 }

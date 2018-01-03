@@ -4,5 +4,11 @@
         "port": 3306,
         "user": "",
         "password": ""
+    },
+    "mail":{
+        "host": "",
+        "port": 0,
+        "user": "",
+        "password": ""
     }
 }

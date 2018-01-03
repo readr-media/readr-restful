@@ -1,4 +1,3 @@
-// +build !f1
 package routes
 
 import (
