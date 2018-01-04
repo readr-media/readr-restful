@@ -50,11 +50,15 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
+// Declare a backup struct for member test data
+var mockMemberDSBack []models.Member
+
 var mockMemberDS = []models.Member{
 	models.Member{
-		ID:        "TaiwanNo.1",
+		ID:        "superman@mirrormedia.mg",
 		Active:    1,
 		UpdatedAt: models.NullTime{Time: time.Date(2017, 6, 8, 16, 27, 52, 0, time.UTC), Valid: true},
+		Mail:      models.NullString{String: "superman@mirrormedia.mg", Valid: true},
 	},
 	models.Member{
 		ID:        "test6743",
@@ -73,28 +77,38 @@ var mockMemberDS = []models.Member{
 	},
 }
 
+var mockPostDSBack []models.Post
+
 var mockPostDS = []models.Post{
 	models.Post{
-		ID:        3345678,
-		Author:    models.NullString{String: "李宥儒", Valid: true},
+		ID:        1,
+		Author:    models.NullString{String: "superman@mirrormedia.mg", Valid: true},
 		Active:    1,
 		UpdatedAt: models.NullTime{Time: time.Date(2017, 11, 8, 16, 27, 52, 0, time.UTC), Valid: true},
+		UpdatedBy: models.NullString{String: "superman@mirrormedia.mg", Valid: true},
 	},
 	models.Post{
-		ID:         9876543,
-		Author:     models.NullString{String: "史學爾", Valid: true},
-		Active:     1,
+		ID:         2,
+		Author:     models.NullString{String: "test6743", Valid: true},
+		Active:     2,
 		Title:      models.NullString{String: "", Valid: true},
 		LikeAmount: 256,
-		UpdatedAt:  models.NullTime{Time: time.Date(2017, 10, 18, 23, 11, 37, 0, time.UTC), Valid: true},
+		UpdatedAt:  models.NullTime{Time: time.Date(2017, 12, 18, 23, 11, 37, 0, time.UTC), Valid: true},
 	},
 	models.Post{
-		ID:         5535678,
-		Author:     models.NullString{String: "莊勝雄", Valid: true},
-		Active:     1,
+		ID:         6,
+		Author:     models.NullString{String: "Barney.Corwin@hotmail.com", Valid: true},
+		Active:     4,
 		Title:      models.NullString{String: "", Valid: true},
 		LikeAmount: 256,
-		UpdatedAt:  models.NullTime{Time: time.Date(2017, 9, 6, 7, 55, 25, 0, time.UTC), Valid: true},
+		UpdatedAt:  models.NullTime{Time: time.Date(2017, 10, 23, 7, 55, 25, 0, time.UTC), Valid: true},
+	},
+	models.Post{
+		ID:        4,
+		Active:    3,
+		Author:    models.NullString{String: "Major.Tom@mirrormedia.mg", Valid: true},
+		UpdatedAt: models.NullTime{Time: time.Date(2018, 1, 3, 12, 22, 20, 0, time.UTC), Valid: true},
+		CreatedAt: models.NullTime{Time: time.Date(2017, 12, 31, 23, 59, 59, 999, time.UTC), Valid: true},
 	},
 }
 

@@ -132,7 +132,7 @@ func TestGetMembersAscending(t *testing.T) {
 
 func TestGetExistMember(t *testing.T) {
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/member/TaiwanNo.1", nil)
+	req, _ := http.NewRequest("GET", "/member/superman@mirrormedia.mg", nil)
 
 	// r := getRouter()
 	// r.GET("/member/:id", env.MemberGetHandler)
@@ -222,7 +222,7 @@ func TestPostMember(t *testing.T) {
 func TestPostExistedMember(t *testing.T) {
 
 	w := httptest.NewRecorder()
-	var jsonStr = []byte(`{"id":"TaiwanNo.1"}`)
+	var jsonStr = []byte(`{"id":"superman@mirrormedia.mg"}`)
 	req, _ := http.NewRequest("POST", "/member", bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 
@@ -243,8 +243,8 @@ func TestPutMember(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	var jsonStr = []byte(`{
-		"id":"TaiwanNo.1", 
-		"name":"Major Tom"
+		"id":"superman@mirrormedia.mg", 
+		"name":"Clark Kent"
 	}`)
 	req, _ := http.NewRequest("PUT", "/member", bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
@@ -297,7 +297,7 @@ func TestPutNonExistMember(t *testing.T) {
 func TestDeleteExistMember(t *testing.T) {
 
 	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("DELETE", "/member/TaiwanNo.1", nil)
+	req, _ := http.NewRequest("DELETE", "/member/superman@mirrormedia.mg", nil)
 
 	// r := getRouter()
 	// r.DELETE("/member/:id", env.MemberDeleteHandler)
@@ -336,7 +336,7 @@ func TestDeleteNonExistMember(t *testing.T) {
 func TestUpdateMemberPassword(t *testing.T) {
 
 	type ChangePWCaseIn struct {
-		ID       string `json:id,omitempty`
+		ID       string `json:"id,omitempty"`
 		Password string `json:"password,omitempty"`
 	}
 
@@ -345,10 +345,10 @@ func TestUpdateMemberPassword(t *testing.T) {
 		in       ChangePWCaseIn
 		httpcode int
 	}{
-		{"ChangePWOK", ChangePWCaseIn{ID: "TaiwanNo.1", Password: "angrypug"}, http.StatusOK},
-		{"ChangePWFail", ChangePWCaseIn{ID: "TaiwanNo.1"}, http.StatusBadRequest},
+		{"ChangePWOK", ChangePWCaseIn{ID: "superman@mirrormedia.mg", Password: "angrypug"}, http.StatusOK},
+		{"ChangePWFail", ChangePWCaseIn{ID: "superman@mirrormedia.mg"}, http.StatusBadRequest},
 		{"ChangePWNoID", ChangePWCaseIn{Password: "angrypug"}, http.StatusBadRequest},
-		{"ChangePWMemberNotFound", ChangePWCaseIn{ID: "TaiwanNo.9527", Password: "angrypug"}, http.StatusNotFound},
+		{"ChangePWMemberNotFound", ChangePWCaseIn{ID: "aquaman@mirrormedia.mg", Password: "angrypug"}, http.StatusNotFound},
 	}
 
 	for _, testcase := range TestRouteChangePWCases {
