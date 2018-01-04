@@ -34,7 +34,7 @@ func (r *postHandler) GetAll(c *gin.Context) {
 			return
 		}
 	}
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, gin.H{"_items": result})
 }
 
 func (r *postHandler) Get(c *gin.Context) {
@@ -56,7 +56,7 @@ func (r *postHandler) Get(c *gin.Context) {
 			return
 		}
 	}
-	c.JSON(http.StatusOK, post)
+	c.JSON(http.StatusOK, gin.H{"_items": []models.PostMember{post}})
 }
 
 func (r *postHandler) Post(c *gin.Context) {
@@ -73,6 +73,10 @@ func (r *postHandler) Post(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Post"})
 		return
 	}
+	if !post.Author.Valid {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Author"})
+		return
+	}
 	if !post.CreatedAt.Valid {
 		post.CreatedAt.Time = time.Now()
 		post.CreatedAt.Valid = true
@@ -83,6 +87,9 @@ func (r *postHandler) Post(c *gin.Context) {
 	}
 	if post.Active != 3 {
 		post.Active = 3
+	}
+	if !post.UpdatedBy.Valid {
+		post.UpdatedBy = post.Author
 	}
 	// if !post.UpdatedBy.Valid {
 	// 	post.UpdatedBy.String = post.Author.String
@@ -100,7 +107,8 @@ func (r *postHandler) Post(c *gin.Context) {
 			return
 		}
 	}
-	c.JSON(http.StatusOK, models.Post{})
+	// c.JSON(http.StatusOK, models.Post{})
+	c.Status(http.StatusOK)
 }
 
 func (r *postHandler) Put(c *gin.Context) {
@@ -138,7 +146,8 @@ func (r *postHandler) Put(c *gin.Context) {
 			return
 		}
 	}
-	c.JSON(http.StatusOK, models.Post{})
+	// c.JSON(http.StatusOK, models.Post{})
+	c.Status(http.StatusOK)
 }
 
 func (r *postHandler) Delete(c *gin.Context) {
@@ -149,7 +158,7 @@ func (r *postHandler) Delete(c *gin.Context) {
 	// id := c.Param("id")
 	iduint64, _ := strconv.ParseUint(c.Param("id"), 10, 32)
 	id := uint32(iduint64)
-	post, err := models.PostAPI.DeletePost(id)
+	err := models.PostAPI.DeletePost(id)
 	// member, err := req.Delete()
 	if err != nil {
 		switch err.Error() {
@@ -161,7 +170,8 @@ func (r *postHandler) Delete(c *gin.Context) {
 			return
 		}
 	}
-	c.JSON(http.StatusOK, post)
+	// c.JSON(http.StatusOK, gin.H{"result": fmt.Sprintf("%d row affected", post)})
+	c.Status(http.StatusOK)
 }
 
 func (r *postHandler) SetRoutes(router *gin.Engine) {
