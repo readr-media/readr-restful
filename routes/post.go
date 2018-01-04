@@ -84,10 +84,10 @@ func (r *postHandler) PostPostHandler(c *gin.Context) {
 	if post.Active != 3 {
 		post.Active = 3
 	}
-	if !post.UpdatedBy.Valid {
-		post.UpdatedBy.String = post.Author.String
-		post.UpdatedBy.Valid = true
-	}
+	// if !post.UpdatedBy.Valid {
+	// 	post.UpdatedBy.String = post.Author.String
+	// 	post.UpdatedBy.Valid = true
+	// }
 	// result, err := models.DS.Create(post)
 	err = models.PostAPI.InsertPost(post)
 	if err != nil {

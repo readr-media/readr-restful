@@ -50,6 +50,40 @@ func Connect(dbURI string) {
 	DB = database{d}
 }
 
+func getStructDBTags(mode string, input interface{}) []string {
+	columns := make([]string, 0)
+	u := reflect.ValueOf(input)
+	for i := 0; i < u.NumField(); i++ {
+		tag := u.Type().Field(i).Tag
+		if mode == "full" {
+			columns = append(columns, tag.Get("db"))
+		} else if mode == "partial" {
+			field := u.Field(i).Interface()
+
+			switch field := field.(type) {
+			case string:
+				if field != "" {
+					columns = append(columns, tag.Get("db"))
+				}
+			// Could not put NullString, NullTime in one case
+			case NullString:
+				if field.Valid {
+					columns = append(columns, tag.Get("db"))
+				}
+			case NullTime:
+				if field.Valid {
+					columns = append(columns, tag.Get("db"))
+				}
+			case bool, int, uint32:
+				columns = append(columns, tag.Get("db"))
+			default:
+				fmt.Println("unrecognised format: ", u.Field(i).Type())
+			}
+		}
+	}
+	return columns
+}
+
 // Use ... operator to encompass the potential for variadic input in the future
 func generateSQLStmt(mode string, tableName string, input ...interface{}) (query string, err error) {
 

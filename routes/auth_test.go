@@ -5,11 +5,12 @@ import (
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
-	"golang.org/x/crypto/scrypt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"golang.org/x/crypto/scrypt"
 
 	"github.com/readr-media/readr-restful/models"
 )
@@ -34,9 +35,6 @@ func (a *mockPermissionAPI) GetPermissionsByRole(role int) ([]models.Permission,
 }
 
 var MockPermissionAPI mockPermissionAPI
-
-// Declare a backup struct for member test data
-var mockMemberDSBack []models.Member
 
 func initAuthTest() {
 	// Test with local mysql instance

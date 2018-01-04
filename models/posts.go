@@ -8,6 +8,9 @@ import (
 	"strings"
 )
 
+// Post could use json:"omitempty" tag to ignore null field
+// However, struct type field like NullTime, NullString must be declared as pointer,
+// like *NullTime, *NullString to be used with omitempty
 type Post struct {
 	ID            uint32     `json:"id" db:"post_id"`
 	Author        NullString `json:"author" db:"author"`
@@ -31,17 +34,40 @@ type postAPI struct{}
 var PostAPI PostInterface = new(postAPI)
 
 type PostInterface interface {
-	GetPosts(maxResult uint8, page uint16, sortMethod string) ([]Post, error)
-	GetPost(id uint32) (Post, error)
+	GetPosts(maxResult uint8, page uint16, sortMethod string) ([]PostMember, error)
+	GetPost(id uint32) (PostMember, error)
 	InsertPost(p Post) error
 	UpdatePost(p Post) error
 	DeletePost(id uint32) (Post, error)
 }
 
-func (a *postAPI) GetPosts(maxResult uint8, page uint16, sortMethod string) ([]Post, error) {
+// UpdatedBy wraps Member for embedded field updated_by
+// in the usage of anonymous struct in PostMember
+type UpdatedBy Member
+type PostMember struct {
+	Post
+	Member    `json:"author" db:"author"`
+	UpdatedBy `json:"updated_by" db:"updated_by"`
+}
+
+func makeFieldString(mode string, pattern string, tags []string, params string) (result []string) {
+	switch mode {
+	case "get":
+		for _, field := range tags {
+			result = append(result, fmt.Sprintf(pattern, params, field, params, field))
+		}
+	case "update":
+		for _, value := range tags {
+			result = append(result, fmt.Sprintf(pattern, value, value))
+		}
+	}
+	return result
+}
+
+func (a *postAPI) GetPosts(maxResult uint8, page uint16, sortMethod string) ([]PostMember, error) {
 
 	var (
-		result     []Post
+		result     []PostMember
 		err        error
 		sortString string
 	)
@@ -55,35 +81,60 @@ func (a *postAPI) GetPosts(maxResult uint8, page uint16, sortMethod string) ([]P
 	}
 	limitBase := (page - 1) * uint16(maxResult)
 	limitIncrement := page * uint16(maxResult)
-	query, _ := generateSQLStmt("get_all", "posts", sortString)
+	// query, _ := generateSQLStmt("get_all", "posts", sortString)
+
+	tags := getStructDBTags("full", Member{})
+	author := makeFieldString("get", `%s.%s "%s.%s"`, tags, "author")
+	updatedBy := makeFieldString("get", `%s.%s "%s.%s"`, tags, "updated_by")
+	query := fmt.Sprintf(`SELECT posts.*, %s, %s FROM posts 
+		LEFT JOIN members AS author ON posts.author = author.user_id 
+		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.user_id 
+		ORDER BY %s LIMIT ?,?`,
+		strings.Join(author, ","), strings.Join(updatedBy, ","), sortString)
 
 	err = DB.Select(&result, query, limitBase, limitIncrement)
 	if err != nil || len(result) == 0 {
-		result = []Post{}
+		result = []PostMember{}
 		err = errors.New("Posts Not Found")
 	}
 	return result, err
 }
 
-func (a *postAPI) GetPost(id uint32) (Post, error) {
-	post := Post{}
-	err := DB.QueryRowx("SELECT * FROM posts WHERE post_id = ?", id).StructScan(&post)
+func (a *postAPI) GetPost(id uint32) (PostMember, error) {
+
+	post := PostMember{}
+	tags := getStructDBTags("full", Member{})
+	author := makeFieldString("get", `%s.%s "%s.%s"`, tags, "author")
+	updatedBy := makeFieldString("get", `%s.%s "%s.%s"`, tags, "updated_by")
+	query := fmt.Sprintf(`SELECT posts.*, %s, %s FROM posts 
+		LEFT JOIN members AS author ON posts.author = author.user_id 
+		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.user_id 
+		WHERE post_id = ?`,
+		strings.Join(author, ","), strings.Join(updatedBy, ","))
+
+	// query, _ := generateSQLStmt("left_join", "posts", "members")
+	err := DB.Get(&post, query, id)
 	switch {
 	case err == sql.ErrNoRows:
 		err = errors.New("Post Not Found")
-		post = Post{}
+		post = PostMember{}
 	case err != nil:
 		log.Fatal(err)
-		post = Post{}
+		post = PostMember{}
 	default:
-		fmt.Printf("Successfully get post: %v\n", id)
+		// fmt.Printf("Successfully get post: %v\n", id)
 		err = nil
 	}
 	return post, err
 }
 
 func (a *postAPI) InsertPost(p Post) error {
-	query, _ := generateSQLStmt("insert", "posts", p)
+	// query, _ := generateSQLStmt("insert", "posts", p)
+
+	tags := getStructDBTags("full", Post{})
+	query := fmt.Sprintf(`INSERT INTO posts (%s) VALUES (:%s)`,
+		strings.Join(tags, ","), strings.Join(tags, ",:"))
+	// fmt.Println("insert: ", query)
 	result, err := DB.NamedExec(query, p)
 	if err != nil {
 		if strings.Contains(err.Error(), "Duplicate entry") {
@@ -105,11 +156,14 @@ func (a *postAPI) InsertPost(p Post) error {
 
 func (a *postAPI) UpdatePost(p Post) error {
 
-	query, err := generateSQLStmt("partial_update", "posts", p)
-	fmt.Println(query)
-	if err != nil {
-		return errors.New("Generate SQL statement failed")
-	}
+	// query, err := generateSQLStmt("partial_update", "posts", p)
+	tags := getStructDBTags("partial", p)
+	fields := makeFieldString("update", `%s = :%s`, tags, "")
+	query := fmt.Sprintf(`UPDATE posts SET %s WHERE post_id = :post_id`,
+		strings.Join(fields, ", "))
+	// if err != nil {
+	// 	return errors.New("Generate SQL statement failed")
+	// }
 	result, err := DB.NamedExec(query, p)
 
 	if err != nil {
