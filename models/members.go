@@ -51,7 +51,7 @@ type MemberInterface interface {
 	GetMember(id string) (Member, error)
 	InsertMember(m Member) error
 	UpdateMember(m Member) error
-	DeleteMember(id string) (Member, error)
+	DeleteMember(id string) error
 }
 
 func (a *memberAPI) GetMembers(maxResult uint8, page uint16, sortMethod string) ([]Member, error) {
@@ -140,14 +140,18 @@ func (a *memberAPI) UpdateMember(m Member) error {
 	return nil
 }
 
-func (a *memberAPI) DeleteMember(id string) (Member, error) {
+func (a *memberAPI) DeleteMember(id string) error {
 
-	result := Member{}
-	_, err := DB.Exec("UPDATE members SET active = 0 WHERE user_id = ?", id)
+	// result := Member{}
+	result, err := DB.Exec("UPDATE members SET active = 0 WHERE user_id = ?", id)
 	if err != nil {
-		log.Fatal(err)
-	} else {
-		err = nil
+		return err
 	}
-	return result, err
+	rowCnt, err := result.RowsAffected()
+	if rowCnt > 1 {
+		return errors.New("More Than One Rows Affected")
+	} else if rowCnt == 0 {
+		return errors.New("Post Not Found")
+	}
+	return err
 }

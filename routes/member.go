@@ -37,7 +37,7 @@ func (r *memberHandler) GetAll(c *gin.Context) {
 			return
 		}
 	}
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, gin.H{"_items": result})
 }
 func (r *memberHandler) Get(c *gin.Context) {
 
@@ -56,7 +56,7 @@ func (r *memberHandler) Get(c *gin.Context) {
 			return
 		}
 	}
-	c.JSON(http.StatusOK, member)
+	c.JSON(http.StatusOK, gin.H{"_items": []models.Member{member}})
 }
 
 func (r *memberHandler) Post(c *gin.Context) {
@@ -92,7 +92,8 @@ func (r *memberHandler) Post(c *gin.Context) {
 			return
 		}
 	}
-	c.JSON(http.StatusOK, models.Member{})
+	// c.JSON(http.StatusOK, models.Member{})
+	c.Status(http.StatusOK)
 }
 
 func (r *memberHandler) Put(c *gin.Context) {
@@ -127,7 +128,8 @@ func (r *memberHandler) Put(c *gin.Context) {
 			return
 		}
 	}
-	c.JSON(http.StatusOK, models.Member{})
+	// c.JSON(http.StatusOK, models.Member{})
+	c.Status(http.StatusOK)
 }
 
 func (r *memberHandler) Delete(c *gin.Context) {
@@ -136,7 +138,7 @@ func (r *memberHandler) Delete(c *gin.Context) {
 	// var req models.Databox = &models.Member{ID: userID}
 	// member, err := models.DS.Delete(input)
 	id := c.Param("id")
-	member, err := models.MemberAPI.DeleteMember(id)
+	err := models.MemberAPI.DeleteMember(id)
 	// member, err := req.Delete()
 	if err != nil {
 		switch err.Error() {
@@ -148,7 +150,8 @@ func (r *memberHandler) Delete(c *gin.Context) {
 			return
 		}
 	}
-	c.JSON(http.StatusOK, member)
+	// c.JSON(http.StatusOK, member)
+	c.Status(http.StatusOK)
 }
 
 // MemberPutPasswordHandler let caller to update a member's password.
