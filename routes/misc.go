@@ -16,6 +16,8 @@ func (r *miscHandler) sendMail(c *gin.Context) {
 
 	input := struct {
 		Receiver []string `json:"receiver"`
+		CC       []string `json:"cc"`
+		BCC      []string `json:"bcc"`
 		Subject  string   `json:"subject"`
 		Payload  string   `json:"content"`
 	}{}
@@ -29,6 +31,8 @@ func (r *miscHandler) sendMail(c *gin.Context) {
 	m := gomail.NewMessage()
 	m.SetHeader("From", r.Dialer.Username)
 	m.SetHeader("To", input.Receiver...)
+	m.SetHeader("Cc", input.CC...)
+	m.SetHeader("Bcc", input.BCC...)
 	m.SetHeader("Subject", input.Subject)
 	m.SetBody("text/html", input.Payload)
 

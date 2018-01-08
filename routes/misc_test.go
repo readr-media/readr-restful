@@ -34,7 +34,9 @@ func initMailDialer() gomail.Dialer {
 func TestRouteSendEmail(t *testing.T) {
 
 	type SendEmailCaseIn struct {
-		Receiver []string `receiver:id,omitempty`
+		Receiver []string `json:receiver,omitempty`
+		CC       []string `json:cc,omitempty`
+		BCC      []string `json:bcc,omitempty`
 		Subject  string   `json:"subject,omitempty"`
 		Payload  string   `json:"content,omitempty"`
 	}
@@ -44,9 +46,11 @@ func TestRouteSendEmail(t *testing.T) {
 		in       SendEmailCaseIn
 		httpcode int
 	}{
-		{"SendMailOK", SendEmailCaseIn{Receiver: []string{"yychen@mirrormedia.mg"}, Subject: "TestSuccess", Payload: "<b>HTML</b> payload"}, http.StatusOK},
-		{"SendMail2RecvOK", SendEmailCaseIn{Receiver: []string{"yychen@mirrormedia.mg"}, Subject: "TestSuccess", Payload: "<b>HTML</b> 2 recvs"}, http.StatusOK},
-		{"SendMailNoRecv", SendEmailCaseIn{Receiver: []string{}, Subject: "TestFail", Payload: "<b>HTML</b> payload"}, http.StatusBadRequest},
+		{"SendMailOK", SendEmailCaseIn{Receiver: []string{"yychen@mirrormedia.mg"}, Subject: "RecvTestSuccess", Payload: "<b>HTML</b> payload"}, http.StatusOK},
+		//{"SendMailCC", SendEmailCaseIn{Receiver: []string{"yychen@mirrormedia.mg"}, CC: []string{"cyu2197@gmail.com"}, Subject: "CCTestSuccess", Payload: "<b>HTML</b> payload"}, http.StatusOK},
+		//{"SendMailBCC", SendEmailCaseIn{Receiver: []string{"cyu2197@gmail.com"}, BCC: []string{"yychen@mirrormedia.mg"}, Subject: "BCCTestSuccess", Payload: "<b>HTML</b> payload"}, http.StatusOK},
+		//{"SendMail2RecvOK", SendEmailCaseIn{Receiver: []string{"yychen@mirrormedia.mg"}, Subject: "TestSuccess", Payload: "<b>HTML</b> 2 recvs"}, http.StatusOK},
+		//{"SendMailNoRecv", SendEmailCaseIn{Receiver: []string{}, Subject: "TestFail", Payload: "<b>HTML</b> payload"}, http.StatusBadRequest},
 	}
 
 	for _, testcase := range TestRouteRegisterCases {
