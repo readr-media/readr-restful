@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
@@ -149,6 +150,34 @@ func (r *postHandler) Put(c *gin.Context) {
 	// c.JSON(http.StatusOK, models.Post{})
 	c.Status(http.StatusOK)
 }
+func (r *postHandler) PostsDeleteHandler(c *gin.Context) {
+
+	ids := []uint32{}
+	// Disable to parse interface{} to []uint32
+	// If change to []interface{} first, there's no way avoid for loop each time.
+	// So here use individual parsing instead of function(interface{}) (interface{})
+	err := json.Unmarshal([]byte(c.Query("ids")), &ids)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
+	}
+	if len(ids) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "ID List Empty"})
+		return
+	}
+	err = models.PostAPI.DeleteMultiple(ids)
+	if err != nil {
+		switch err.Error() {
+		case "Posts Not Found":
+			c.JSON(http.StatusNotFound, gin.H{"Error": "Posts Not Found"})
+			return
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+			return
+		}
+	}
+	c.Status(http.StatusOK)
+}
 
 func (r *postHandler) Delete(c *gin.Context) {
 
@@ -176,7 +205,7 @@ func (r *postHandler) Delete(c *gin.Context) {
 
 func (r *postHandler) SetRoutes(router *gin.Engine) {
 
-	router.GET("posts", r.GetAll)
+	// router.GET("posts", r.PostsGetHandler)
 
 	postRouter := router.Group("/post")
 	{
@@ -184,6 +213,11 @@ func (r *postHandler) SetRoutes(router *gin.Engine) {
 		postRouter.POST("", r.Post)
 		postRouter.PUT("", r.Put)
 		postRouter.DELETE("/:id", r.Delete)
+	}
+	postsRouter := router.Group("/posts")
+	{
+		postsRouter.GET("", r.GetAll)
+		postsRouter.DELETE("", r.PostsDeleteHandler)
 	}
 }
 

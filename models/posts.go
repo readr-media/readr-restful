@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"strings"
+
+	"github.com/jmoiron/sqlx"
 )
 
 // Post could use json:"omitempty" tag to ignore null field
@@ -38,6 +40,7 @@ type PostInterface interface {
 	GetPost(id uint32) (PostMember, error)
 	InsertPost(p Post) error
 	UpdatePost(p Post) error
+	DeleteMultiple(ids []uint32) error
 	DeletePost(id uint32) error
 }
 
@@ -177,6 +180,27 @@ func (a *postAPI) UpdatePost(p Post) error {
 		return errors.New("Post Not Found")
 	}
 	return err
+}
+
+func (a *postAPI) DeleteMultiple(ids []uint32) error {
+	query, args, err := sqlx.In("Update posts SET active = 0 WHERE post_id IN (?);", ids)
+	if err != nil {
+		return err
+	}
+	query = DB.Rebind(query)
+	result, err := DB.Exec(query, args...)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	rowCnt, err := result.RowsAffected()
+	fmt.Println(rowCnt)
+	if rowCnt > int64(len(ids)) {
+		return errors.New("More Rows Affected")
+	} else if rowCnt == 0 {
+		return errors.New("Posts Not Found")
+	}
+	return nil
 }
 
 func (a *postAPI) DeletePost(id uint32) error {

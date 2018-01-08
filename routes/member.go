@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
@@ -132,10 +133,14 @@ func (r *memberHandler) Put(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 func (r *memberHandler) MembersDeleteHandler(c *gin.Context) {
-
-	ids, err := queryArrayParser(c.Query("ids"))
+	ids := []string{}
+	err := json.Unmarshal([]byte(c.Query("ids")), &ids)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
+	}
+	if len(ids) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "ID List Empty"})
 		return
 	}
 	err = models.MemberAPI.DeleteMembers(ids)
@@ -260,7 +265,7 @@ func (r *memberHandler) SetRoutes(router *gin.Engine) {
 	}
 	membersRouter := router.Group("/members")
 	{
-		membersRouter.GET("", r.MembersGetHandler)
+		membersRouter.GET("", r.GetAll)
 		membersRouter.DELETE("", r.MembersDeleteHandler)
 	}
 }

@@ -139,6 +139,23 @@ func (a *mockPostAPI) UpdatePost(p models.Post) error {
 	}
 	return err
 }
+func (a *mockPostAPI) DeleteMultiple(ids []uint32) (err error) {
+
+	result := make([]int, 0)
+	for _, value := range ids {
+		for i, v := range mockPostDS {
+			if v.ID == value {
+				mockPostDS[i].Active = 0
+				result = append(result, i)
+			}
+		}
+	}
+	if len(result) == 0 {
+		err = errors.New("Posts Not Found")
+		return err
+	}
+	return err
+}
 
 func (a *mockPostAPI) DeletePost(id uint32) error {
 	// result := models.Post{}
@@ -303,6 +320,33 @@ func TestRoutePutPost(t *testing.T) {
 	clearPostTest()
 }
 
+func TestRouteDeleteMultiplePosts(t *testing.T) {
+	initPostTest()
+	testCase := []struct {
+		name   string
+		route  string
+		expect ExpectResp
+	}{
+		{"Delete", `/posts?ids=[1, 2]`, ExpectResp{http.StatusOK, ``}},
+		{"Empty", `/posts?ids=[]`, ExpectResp{http.StatusBadRequest, `{"Error":"ID List Empty"}`}},
+		{"NotFound", `/posts?ids=[3, 5]`, ExpectResp{http.StatusNotFound, `{"Error":"Posts Not Found"}`}},
+	}
+	for _, tc := range testCase {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest("DELETE", tc.route, nil)
+			r.ServeHTTP(w, req)
+
+			if w.Code != tc.expect.httpcode {
+				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
+			}
+			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
+				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
+			}
+		})
+	}
+	clearPostTest()
+}
 func TestRouteDeletePost(t *testing.T) {
 	initPostTest()
 	testCase := []struct {
