@@ -32,8 +32,6 @@ func (r *miscHandler) sendMail(c *gin.Context) {
 	m.SetHeader("Subject", input.Subject)
 	m.SetBody("text/html", input.Payload)
 
-	fmt.Println(input.Payload)
-
 	// Send the email to Bob, Cora and Dan.
 	if err := r.Dialer.DialAndSend(m); err != nil {
 		fmt.Println(err.Error())

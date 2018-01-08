@@ -20,6 +20,7 @@ func (a *mockProjectAPI) Init() {
 	models.Connect(dbURI)
 	_, _ = models.DB.Exec("truncate table project_infos;")
 	_, _ = models.DB.Exec("truncate table members;")
+	_, _ = models.DB.Exec("truncate table permissions;")
 	_ = models.ProjectAPI.PostProject(mockProjectDS[0])
 }*/
 

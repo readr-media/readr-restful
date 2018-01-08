@@ -1,7 +1,6 @@
 package routes
 
 import (
-	"log"
 	"os"
 	"testing"
 	"time"
@@ -10,8 +9,6 @@ import (
 	//"github.com/jmoiron/sqlx"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/readr-media/readr-restful/models"
-	"github.com/spf13/viper"
-	"gopkg.in/gomail.v2"
 )
 
 var r *gin.Engine
@@ -19,19 +16,6 @@ var r *gin.Engine
 type mockDatastore struct{}
 
 func TestMain(m *testing.M) {
-	viper.AddConfigPath("../config")
-	viper.SetConfigName("main")
-
-	if err := viper.ReadInConfig(); err != nil {
-		log.Fatalf("Error reading config file, %s", err)
-	}
-
-	dialer := gomail.NewDialer(
-		viper.Get("mail.host").(string),
-		int(viper.Get("mail.port").(float64)),
-		viper.Get("mail.user").(string),
-		viper.Get("mail.password").(string),
-	)
 
 	gin.SetMode(gin.TestMode)
 
@@ -40,7 +24,8 @@ func TestMain(m *testing.M) {
 	MemberHandler.SetRoutes(r)
 	ProjectHandler.SetRoutes(r)
 	AuthHandler.SetRoutes(r)
-	MiscHandler.SetRoutes(r, *dialer)
+	PermissionHandler.SetRoutes(r)
+	MiscHandler.SetRoutes(r, initMailDialer())
 
 	models.ProjectAPI = new(mockProjectAPI)
 	models.MemberAPI = new(mockMemberAPI)
@@ -122,6 +107,8 @@ var mockProjectDS = []models.Project{
 		Active:        1,
 	},
 }
+
+var mockPermissionDS = []models.Permission{}
 
 // func getRouter() *gin.Engine {
 // 	r := gin.Default()

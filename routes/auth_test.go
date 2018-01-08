@@ -15,27 +15,6 @@ import (
 	"github.com/readr-media/readr-restful/models"
 )
 
-type mockPermissionAPI struct {
-	models.PermissionAPIImpl
-}
-
-func (a *mockPermissionAPI) InsertPermission(p models.Permission) (models.Permission, error) {
-	return p, nil
-}
-
-func (a *mockPermissionAPI) GetPermissionsByRole(role int) ([]models.Permission, error) {
-	var permissions = []models.Permission{
-		models.Permission{
-			Role:       1,
-			Object:     models.NullString{"ReadPost", true},
-			Permission: 1,
-		},
-	}
-	return permissions, nil
-}
-
-var MockPermissionAPI mockPermissionAPI
-
 func initAuthTest() {
 	// Test with local mysql instance
 	/*
@@ -182,13 +161,13 @@ func TestRouteRegister(t *testing.T) {
 	initAuthTest()
 
 	type RegisterCaseIn struct {
-		ID       string `json:id,omitempty`
+		ID       string `json:"id,omitempty"`
 		Password string `json:"password,omitempty"`
 		Mail     string `json:"mail,omitempty"`
 		SocialID string `json:"social_id,omitempty"`
-		Mode     string `json:"register_mode",omitempty`
-		Nickname string `json:"nickname",omitempty`
-		Gender   string `json:"gender",omitempty`
+		Mode     string `json:"register_mode,omitempty"`
+		Nickname string `json:"nickname,omitempty"`
+		Gender   string `json:"gender,omitempty"`
 	}
 
 	type RegisterCaseOut struct {

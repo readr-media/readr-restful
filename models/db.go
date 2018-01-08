@@ -17,28 +17,6 @@ type database struct {
 	*sqlx.DB
 }
 
-type dataStore struct{}
-
-type DatastoreInterface interface {
-	Get(item interface{}) (result interface{}, err error)
-	Create(item interface{}) (result interface{}, err error)
-	Update(item interface{}) (result interface{}, err error)
-	Delete(item interface{}) (result interface{}, err error)
-}
-
-// var DS DatastoreInterface = new(dataStore)
-
-// func InitDB(dataURI string) {
-// 	var err error
-// 	db, err = sqlx.Open("mysql", dataURI)
-// 	if err != nil {
-// 		log.Panic(err)
-// 	}
-// 	if err = db.Ping(); err != nil {
-// 		log.Panic(err)
-// 	}
-// }
-
 func Connect(dbURI string) {
 	d, err := sqlx.Open("mysql", dbURI)
 	if err != nil {
