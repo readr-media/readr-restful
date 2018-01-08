@@ -2,12 +2,34 @@ package routes
 
 import (
 	"bytes"
-	"encoding/json"
+	"log"
+	"testing"
 
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"testing"
+
+	"github.com/spf13/viper"
+	"gopkg.in/gomail.v2"
 )
+
+func initMailDialer() gomail.Dialer {
+	viper.AddConfigPath("../config")
+	viper.SetConfigName("main")
+
+	if err := viper.ReadInConfig(); err != nil {
+		log.Fatalf("Error reading config file, %s", err)
+	}
+
+	dialer := gomail.NewDialer(
+		viper.Get("mail.host").(string),
+		int(viper.Get("mail.port").(float64)),
+		viper.Get("mail.user").(string),
+		viper.Get("mail.password").(string),
+	)
+
+	return *dialer
+}
 
 func TestRouteSendEmail(t *testing.T) {
 
