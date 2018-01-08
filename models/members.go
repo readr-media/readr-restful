@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"strings"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type Member struct {
@@ -51,6 +53,7 @@ type MemberInterface interface {
 	GetMember(id string) (Member, error)
 	InsertMember(m Member) error
 	UpdateMember(m Member) error
+	DeleteMembers(ids []string) error
 	DeleteMember(id string) error
 }
 
@@ -152,6 +155,27 @@ func (a *memberAPI) DeleteMember(id string) error {
 		return errors.New("More Than One Rows Affected")
 	} else if rowCnt == 0 {
 		return errors.New("Post Not Found")
+	}
+	return err
+}
+
+func (a *memberAPI) DeleteMembers(ids []string) (err error) {
+	query, args, err := sqlx.In("UPDATE members SET active = 0 WHERE user_id IN (?);", ids)
+	if err != nil {
+		return err
+	}
+	query = DB.Rebind(query)
+	result, err := DB.Exec(query, args...)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	rowCnt, err := result.RowsAffected()
+	fmt.Println(rowCnt)
+	if rowCnt > int64(len(ids)) {
+		return errors.New("More Rows Affected")
+	} else if rowCnt == 0 {
+		return errors.New("Members Not Found")
 	}
 	return err
 }

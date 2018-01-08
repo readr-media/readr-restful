@@ -23,7 +23,7 @@ func clearMemberTest() {
 	mockMemberDS = mockMemberDSBack
 }
 
-func (mapi *mockMemberAPI) GetMembers(maxResult uint8, page uint16, sortMethod string) ([]models.Member, error) {
+func (a *mockMemberAPI) GetMembers(maxResult uint8, page uint16, sortMethod string) ([]models.Member, error) {
 
 	var (
 		result []models.Member
@@ -58,7 +58,7 @@ func (mapi *mockMemberAPI) GetMembers(maxResult uint8, page uint16, sortMethod s
 	return result, err
 }
 
-func (mapi *mockMemberAPI) GetMember(id string) (models.Member, error) {
+func (a *mockMemberAPI) GetMember(id string) (models.Member, error) {
 	result := models.Member{}
 	err := errors.New("User Not Found")
 	for _, value := range mockMemberDS {
@@ -70,7 +70,7 @@ func (mapi *mockMemberAPI) GetMember(id string) (models.Member, error) {
 	return result, err
 }
 
-func (mapi *mockMemberAPI) InsertMember(m models.Member) error {
+func (a *mockMemberAPI) InsertMember(m models.Member) error {
 	var err error
 	for _, member := range mockMemberDS {
 		if member.ID == m.ID {
@@ -81,7 +81,7 @@ func (mapi *mockMemberAPI) InsertMember(m models.Member) error {
 	err = nil
 	return err
 }
-func (mapi *mockMemberAPI) UpdateMember(m models.Member) error {
+func (a *mockMemberAPI) UpdateMember(m models.Member) error {
 
 	err := errors.New("User Not Found")
 	for index, member := range mockMemberDS {
@@ -93,7 +93,7 @@ func (mapi *mockMemberAPI) UpdateMember(m models.Member) error {
 	return err
 }
 
-func (mapi *mockMemberAPI) DeleteMember(id string) error {
+func (a *mockMemberAPI) DeleteMember(id string) error {
 
 	// result := models.Member{}
 	err := errors.New("User Not Found")
@@ -103,6 +103,25 @@ func (mapi *mockMemberAPI) DeleteMember(id string) error {
 			return mockMemberDS[index], nil
 		}
 	}
+	return err
+}
+
+func (a *mockMemberAPI) DeleteMembers(ids []string) (err error) {
+
+	result := make([]int, 0)
+	for _, value := range ids {
+		for i, v := range mockMemberDS {
+			if v.ID == value {
+				mockMemberDS[i].Active = 0
+				result = append(result, i)
+			}
+		}
+	}
+	if len(result) == 0 {
+		err = errors.New("Members Not Found")
+		return err
+	}
+	// fmt.Println(mockMemberDS)
 	return err
 }
 
@@ -171,7 +190,7 @@ func TestRouteGetMember(t *testing.T) {
 				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
 			}
 			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
-				t.Errorf("%s expect error message %v but get %v", tc.name, w.Body.String(), tc.expect.err)
+				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
 			}
 
 			// expected, _ := json.Marshal(tc.expect.resp)
@@ -207,7 +226,7 @@ func TestRoutePostMember(t *testing.T) {
 				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
 			}
 			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
-				t.Errorf("%s expect error message %v but get %v", tc.name, w.Body.String(), tc.expect.err)
+				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
 			}
 		})
 	}
@@ -235,11 +254,39 @@ func TestRoutePutMember(t *testing.T) {
 				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
 			}
 			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
-				t.Errorf("%s expect error message %v but get %v", tc.name, w.Body.String(), tc.expect.err)
+				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
 			}
 		})
 	}
 
+	clearMemberTest()
+}
+
+func TestRouteDeleteMembers(t *testing.T) {
+	initMemberTest()
+	testCase := []struct {
+		name   string
+		route  string
+		expect ExpectResp
+	}{
+		{"SimpleUpdate", `/members?ids=["superman@mirrormedia.mg","test6743"]`, ExpectResp{http.StatusOK, ""}},
+		{"InvalidQueryArray", `/members?ids=["superman@mirrormedia.mg,"test6743"]`, ExpectResp{http.StatusBadRequest, `{"Error":"invalid character 't' after array element"}`}},
+		{"NotFound", `/members?ids=["superman", "wonderwoman"]`, ExpectResp{http.StatusBadRequest, `{"Error":"Members Not Found"}`}},
+	}
+	for _, tc := range testCase {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest("DELETE", tc.route, nil)
+			r.ServeHTTP(w, req)
+
+			if w.Code != tc.expect.httpcode {
+				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
+			}
+			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
+				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
+			}
+		})
+	}
 	clearMemberTest()
 }
 func TestRouteDeleteMember(t *testing.T) {
@@ -262,7 +309,7 @@ func TestRouteDeleteMember(t *testing.T) {
 				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
 			}
 			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
-				t.Errorf("%s expect error message %v but get %v", tc.name, w.Body.String(), tc.expect.err)
+				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
 			}
 		})
 	}
@@ -322,7 +369,5 @@ func TestUpdateMemberPassword(t *testing.T) {
 				t.Fail()
 			}
 		}
-
 	}
-
 }

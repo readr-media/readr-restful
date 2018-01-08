@@ -131,6 +131,26 @@ func (r *memberHandler) Put(c *gin.Context) {
 	// c.JSON(http.StatusOK, models.Member{})
 	c.Status(http.StatusOK)
 }
+func (r *memberHandler) MembersDeleteHandler(c *gin.Context) {
+
+	ids, err := queryArrayParser(c.Query("ids"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
+	}
+	err = models.MemberAPI.DeleteMembers(ids)
+	if err != nil {
+		switch err.Error() {
+		case "Members Not Found":
+			c.JSON(http.StatusBadRequest, gin.H{"Error": "Members Not Found"})
+			return
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+			return
+		}
+	}
+	c.Status(http.StatusOK)
+}
 
 func (r *memberHandler) Delete(c *gin.Context) {
 
@@ -227,7 +247,7 @@ func (r *memberHandler) MemberPutPasswordHandler(c *gin.Context) {
 
 func (r *memberHandler) SetRoutes(router *gin.Engine) {
 
-	router.GET("/members", r.GetAll)
+	// router.GET("/members", r.MembersGetHandler)
 
 	memberRouter := router.Group("/member")
 	{
@@ -237,6 +257,11 @@ func (r *memberHandler) SetRoutes(router *gin.Engine) {
 		memberRouter.DELETE("/:id", r.Delete)
 
 		memberRouter.PUT("/password", r.MemberPutPasswordHandler)
+	}
+	membersRouter := router.Group("/members")
+	{
+		membersRouter.GET("", r.MembersGetHandler)
+		membersRouter.DELETE("", r.MembersDeleteHandler)
 	}
 }
 

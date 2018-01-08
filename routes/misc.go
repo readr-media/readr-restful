@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -10,6 +11,14 @@ import (
 
 type miscHandler struct {
 	Dialer gomail.Dialer
+}
+
+func queryArrayParser(i string) (result []string, err error) {
+	err = json.Unmarshal([]byte(i), &result)
+	if err != nil {
+		return []string{}, err
+	}
+	return result, nil
 }
 
 func (r *miscHandler) sendMail(c *gin.Context) {
