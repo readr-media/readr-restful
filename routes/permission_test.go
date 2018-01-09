@@ -79,14 +79,14 @@ var MockPermissionAPI mockPermissionAPI
 func initPermissionTest() {
 
 	var mockDefaultPermissions = []models.Permission{
-		models.Permission{Role: 1, Object: models.NullString{"ChangePW", true}, Permission: 1},
-		models.Permission{Role: 1, Object: models.NullString{"ChangeName", true}, Permission: 1},
-		models.Permission{Role: 1, Object: models.NullString{"CreateAccount", true}, Permission: 1},
-		models.Permission{Role: 1, Object: models.NullString{"AddRole", true}, Permission: 1},
-		models.Permission{Role: 1, Object: models.NullString{"EditRole", true}, Permission: 1},
-		models.Permission{Role: 1, Object: models.NullString{"DeleteRole", true}, Permission: 1},
-		models.Permission{Role: 1, Object: models.NullString{"CreatePost", true}, Permission: 1},
-		models.Permission{Role: 1, Object: models.NullString{"ReadPost", true}, Permission: 1},
+		models.Permission{Role: 1, Object: models.NullString{"ChangePW", true}, Permission: models.NullInt{1, true}},
+		models.Permission{Role: 1, Object: models.NullString{"ChangeName", true}, Permission: models.NullInt{1, true}},
+		models.Permission{Role: 1, Object: models.NullString{"CreateAccount", true}, Permission: models.NullInt{1, true}},
+		models.Permission{Role: 1, Object: models.NullString{"AddRole", true}, Permission: models.NullInt{1, true}},
+		models.Permission{Role: 1, Object: models.NullString{"EditRole", true}, Permission: models.NullInt{1, true}},
+		models.Permission{Role: 1, Object: models.NullString{"DeleteRole", true}, Permission: models.NullInt{1, true}},
+		models.Permission{Role: 1, Object: models.NullString{"CreatePost", true}, Permission: models.NullInt{1, true}},
+		models.Permission{Role: 1, Object: models.NullString{"ReadPost", true}, Permission: models.NullInt{1, true}},
 	}
 
 	err := models.PermissionAPI.InsertPermissions(mockDefaultPermissions)
@@ -210,14 +210,14 @@ func TestPermissionGetAll(t *testing.T) {
 		}
 
 		var mockDefaultPermissions = []models.Permission{
-			models.Permission{Role: 1, Object: models.NullString{"ChangePW", true}, Permission: 1},
-			models.Permission{Role: 1, Object: models.NullString{"ChangeName", true}, Permission: 1},
-			models.Permission{Role: 1, Object: models.NullString{"CreateAccount", true}, Permission: 1},
-			models.Permission{Role: 1, Object: models.NullString{"AddRole", true}, Permission: 1},
-			models.Permission{Role: 1, Object: models.NullString{"EditRole", true}, Permission: 1},
-			models.Permission{Role: 1, Object: models.NullString{"DeleteRole", true}, Permission: 1},
-			models.Permission{Role: 1, Object: models.NullString{"CreatePost", true}, Permission: 1},
-			models.Permission{Role: 1, Object: models.NullString{"ReadPost", true}, Permission: 1},
+			models.Permission{Role: 1, Object: models.NullString{"ChangePW", true}, Permission: models.NullInt{1, true}},
+			models.Permission{Role: 1, Object: models.NullString{"ChangeName", true}, Permission: models.NullInt{1, true}},
+			models.Permission{Role: 1, Object: models.NullString{"CreateAccount", true}, Permission: models.NullInt{1, true}},
+			models.Permission{Role: 1, Object: models.NullString{"AddRole", true}, Permission: models.NullInt{1, true}},
+			models.Permission{Role: 1, Object: models.NullString{"EditRole", true}, Permission: models.NullInt{1, true}},
+			models.Permission{Role: 1, Object: models.NullString{"DeleteRole", true}, Permission: models.NullInt{1, true}},
+			models.Permission{Role: 1, Object: models.NullString{"CreatePost", true}, Permission: models.NullInt{1, true}},
+			models.Permission{Role: 1, Object: models.NullString{"ReadPost", true}, Permission: models.NullInt{1, true}},
 		}
 
 		var result []models.Permission

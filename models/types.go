@@ -1,10 +1,11 @@
 package models
 
 import (
+	"time"
+
 	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
-	"time"
 
 	// For NewDB() usage
 	_ "github.com/go-sql-driver/mysql"
@@ -99,6 +100,90 @@ func (ns *NullString) UnmarshalJSON(text []byte) error {
 		return nil
 	}
 	if err := json.Unmarshal(text, &ns.String); err == nil {
+		ns.Valid = true
+	}
+	return nil
+}
+
+// Create our own null string type for prettier marshal JSON format
+type NullInt struct {
+	Int   int64
+	Valid bool // Valid is true if Int is not NULL
+}
+
+func (ns *NullInt) Scan(value interface{}) error {
+	if value == nil {
+		ns.Int, ns.Valid = 0, false
+		return nil
+	}
+	x := sql.NullInt64{}
+	err := x.Scan(value)
+	ns.Int, ns.Valid = x.Int64, x.Valid
+	return err
+}
+
+func (ns NullInt) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return ns.Int, nil
+}
+
+func (ns NullInt) MarshalJSON() ([]byte, error) {
+	if ns.Valid {
+		return json.Marshal(ns.Int)
+	}
+	return json.Marshal(nil)
+}
+
+func (ns *NullInt) UnmarshalJSON(text []byte) error {
+	ns.Valid = false
+	if string(text) == "null" {
+		return nil
+	}
+	if err := json.Unmarshal(text, &ns.Int); err == nil {
+		ns.Valid = true
+	}
+	return nil
+}
+
+// Create our own null string type for prettier marshal JSON format
+type NullBool struct {
+	Bool  bool
+	Valid bool // Valid is true if Int is not NULL
+}
+
+func (ns *NullBool) Scan(value interface{}) error {
+	if value == nil {
+		ns.Bool, ns.Valid = false, false
+		return nil
+	}
+	x := sql.NullBool{}
+	err := x.Scan(value)
+	ns.Bool, ns.Valid = x.Bool, x.Valid
+	return err
+}
+
+func (ns NullBool) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return ns.Bool, nil
+}
+
+func (ns NullBool) MarshalJSON() ([]byte, error) {
+	if ns.Valid {
+		return json.Marshal(ns.Bool)
+	}
+	return json.Marshal(nil)
+}
+
+func (ns *NullBool) UnmarshalJSON(text []byte) error {
+	ns.Valid = false
+	if string(text) == "null" {
+		return nil
+	}
+	if err := json.Unmarshal(text, &ns.Bool); err == nil {
 		ns.Valid = true
 	}
 	return nil

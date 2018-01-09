@@ -34,7 +34,7 @@ func (r *authHandler) userLogin(c *gin.Context) {
 	}
 
 	id, password, mode := p.ID, p.Password, p.Mode
-	//fmt.Printf("id: %v, pwd: %v, mode: %v, p:%v", id, password, mode, p)
+	// fmt.Printf("id: %v, pwd: %v, mode: %v, p:%v\n", id, password, mode, p)
 
 	switch {
 	case !utils.ValidateUserID(id), !validateMode(mode):
@@ -57,7 +57,7 @@ func (r *authHandler) userLogin(c *gin.Context) {
 		}
 	}
 
-	if member.Active == 0 {
+	if member.Active.Int == 0 {
 		c.JSON(http.StatusUnauthorized, gin.H{"Error": "User Not Activated"})
 		return
 	}
@@ -88,7 +88,7 @@ func (r *authHandler) userLogin(c *gin.Context) {
 	// 4. get user permission by id
 	// 5. return user's profile and permission info
 
-	userPermissions, err := models.PermissionAPI.GetPermissionsByRole(member.Role)
+	userPermissions, err := models.PermissionAPI.GetPermissionsByRole(int(member.Role.Int))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
 		return
@@ -166,7 +166,7 @@ func (r *authHandler) userRegister(c *gin.Context) {
 
 		member.Salt = models.NullString{string(salt), true}
 		member.Password = models.NullString{string(hpw), true}
-		member.Active = 0
+		member.Active = models.NullInt{0, true}
 
 	} else {
 
@@ -175,7 +175,7 @@ func (r *authHandler) userRegister(c *gin.Context) {
 			return
 		}
 
-		member.Active = 1
+		member.Active = models.NullInt{1, true}
 	}
 
 	// 4. create Member object, fill in data and defaults
