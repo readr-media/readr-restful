@@ -67,7 +67,7 @@ func (a *mockProjectAPI) DeleteProjects(p models.Project) error {
 	err := errors.New("Project Not Found")
 	for index, value := range mockProjectDS {
 		if p.ID == value.ID {
-			mockProjectDS[index].Active = 0
+			mockProjectDS[index].Active.Int = 0
 			return nil
 		}
 	}

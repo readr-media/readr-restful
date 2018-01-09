@@ -102,9 +102,9 @@ var mockProjectDS = []models.Project{
 		ID:            "32767",
 		Title:         models.NullString{String: "Hello", Valid: true},
 		PostID:        0,
-		LikeAmount:    0,
-		CommentAmount: 0,
-		Active:        1,
+		LikeAmount:    models.NullInt{0, true},
+		CommentAmount: models.NullInt{0, true},
+		Active:        models.NullInt{1, true},
 	},
 }
 

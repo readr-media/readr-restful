@@ -16,10 +16,10 @@ type Project struct {
 	UpdatedBy   NullString `json:"updated_by" db:"updated_by"`
 	PublishedAt NullString `json:"published_at" db:"published_at"`
 
-	PostID        int `json:"post_id" db:"post_id"`
-	LikeAmount    int `json:"like_amount" db:"like_amount"`
-	CommentAmount int `json:"comment_amount" db:"comment_amount"`
-	Active        int `json:"active" db:"active"`
+	PostID        int     `json:"post_id" db:"post_id"`
+	LikeAmount    NullInt `json:"like_amount" db:"like_amount"`
+	CommentAmount NullInt `json:"comment_amount" db:"comment_amount"`
+	Active        NullInt `json:"active" db:"active"`
 
 	HeroImage     NullString `json:"hero_image" db:"hero_image"`
 	Title         NullString `json:"title" db:"title"`
