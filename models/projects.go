@@ -45,7 +45,7 @@ type ProjectAPIInterface interface {
 func (a *projectAPI) GetProject(p Project) (Project, error) {
 
 	project := Project{}
-	err := DB.QueryRowx("SELECT * FROM project_infos WHERE project_id = ?", p.ID).StructScan(&project)
+	err := DB.QueryRowx("SELECT * FROM projects WHERE project_id = ?", p.ID).StructScan(&project)
 	switch {
 	case err == sql.ErrNoRows:
 		err = errors.New("Project Not Found")
@@ -66,7 +66,7 @@ func (a *projectAPI) GetProjects(ps ...Project) ([]Project, error) {
 
 func (a *projectAPI) PostProject(p Project) error {
 
-	query, _ := generateSQLStmt("insert", "project_infos", p)
+	query, _ := generateSQLStmt("insert", "projects", p)
 	result, err := DB.NamedExec(query, p)
 
 	if err != nil {
@@ -89,7 +89,7 @@ func (a *projectAPI) PostProject(p Project) error {
 
 func (a *projectAPI) UpdateProjects(p Project) error {
 
-	query, _ := generateSQLStmt("partial_update", "project_infos", p)
+	query, _ := generateSQLStmt("partial_update", "projects", p)
 	result, err := DB.NamedExec(query, p)
 
 	if err != nil {
@@ -106,7 +106,7 @@ func (a *projectAPI) UpdateProjects(p Project) error {
 
 func (a *projectAPI) DeleteProjects(p Project) error {
 
-	result, err := DB.NamedExec("UPDATE project_infos SET active = 0 WHERE project_id = :project_id", p)
+	result, err := DB.NamedExec("UPDATE projects SET active = 0 WHERE project_id = :project_id", p)
 	if err != nil {
 		log.Fatal(err)
 	}
