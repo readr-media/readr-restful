@@ -38,7 +38,7 @@ type PostInterface interface {
 	GetPost(id uint32) (PostMember, error)
 	InsertPost(p Post) error
 	UpdatePost(p Post) error
-	DeletePost(id uint32) (Post, error)
+	DeletePost(id uint32) error
 }
 
 // UpdatedBy wraps Member for embedded field updated_by
@@ -79,8 +79,6 @@ func (a *postAPI) GetPosts(maxResult uint8, page uint16, sortMethod string) ([]P
 	default:
 		sortString = "updated_at DESC"
 	}
-	limitBase := (page - 1) * uint16(maxResult)
-	limitIncrement := page * uint16(maxResult)
 	// query, _ := generateSQLStmt("get_all", "posts", sortString)
 
 	tags := getStructDBTags("full", Member{})
@@ -92,10 +90,12 @@ func (a *postAPI) GetPosts(maxResult uint8, page uint16, sortMethod string) ([]P
 		where posts.active != 0 ORDER BY %s LIMIT ? OFFSET ?`,
 		strings.Join(author, ","), strings.Join(updatedBy, ","), sortString)
 
-	err = DB.Select(&result, query, limitBase, limitIncrement)
+	err = DB.Select(&result, query, maxResult, (page-1)*uint16(maxResult))
 	if err != nil || len(result) == 0 {
 		result = []PostMember{}
 		err = errors.New("Posts Not Found")
+		fmt.Println(err)
+		fmt.Println(result)
 	}
 	return result, err
 }
@@ -112,6 +112,7 @@ func (a *postAPI) GetPost(id uint32) (PostMember, error) {
 		WHERE post_id = ?`,
 		strings.Join(author, ","), strings.Join(updatedBy, ","))
 
+	// fmt.Println(query)
 	// query, _ := generateSQLStmt("left_join", "posts", "members")
 	err := DB.Get(&post, query, id)
 	switch {
@@ -151,7 +152,7 @@ func (a *postAPI) InsertPost(p Post) error {
 	} else if rowCnt == 0 {
 		return errors.New("Post Not Found")
 	}
-	return nil
+	return err
 }
 
 func (a *postAPI) UpdatePost(p Post) error {
@@ -175,17 +176,21 @@ func (a *postAPI) UpdatePost(p Post) error {
 	} else if rowCnt == 0 {
 		return errors.New("Post Not Found")
 	}
-	return nil
+	return err
 }
 
-func (a *postAPI) DeletePost(id uint32) (Post, error) {
+func (a *postAPI) DeletePost(id uint32) error {
 
-	result := Post{}
-	_, err := DB.Exec("UPDATE posts SET active = 0 WHERE post_id = ?", id)
+	// result := Post{}
+	result, err := DB.Exec("UPDATE posts SET active = 0 WHERE post_id = ?", id)
 	if err != nil {
-		log.Println(err)
-	} else {
-		err = nil
+		return err
 	}
-	return result, err
+	rowCnt, err := result.RowsAffected()
+	if rowCnt > 1 {
+		return errors.New("More Than One Rows Affected")
+	} else if rowCnt == 0 {
+		return errors.New("Post Not Found")
+	}
+	return err
 }

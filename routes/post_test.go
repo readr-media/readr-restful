@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"sort"
@@ -22,6 +21,11 @@ func clearPostTest() {
 }
 
 type mockPostAPI struct{}
+
+type ExpectResp struct {
+	httpcode int
+	err      string
+}
 
 func (a *mockPostAPI) GetPosts(maxResult uint8, page uint16, sortMethod string) ([]models.PostMember, error) {
 
@@ -136,18 +140,17 @@ func (a *mockPostAPI) UpdatePost(p models.Post) error {
 	return err
 }
 
-func (a *mockPostAPI) DeletePost(id uint32) (models.Post, error) {
-	result := models.Post{}
+func (a *mockPostAPI) DeletePost(id uint32) error {
+	// result := models.Post{}
 	err := errors.New("Post Not Found")
 	for index, value := range mockPostDS {
 		if value.ID == id {
 			mockPostDS[index].Active = 0
-			result = mockPostDS[index]
-			err = nil
-			return result, err
+			// result = mockPostDS[index]
+			return nil
 		}
 	}
-	return result, err
+	return err
 }
 
 // // ---------------------------------- Post Test -------------------------------
@@ -156,29 +159,28 @@ func TestRouteGetPosts(t *testing.T) {
 	initPostTest()
 
 	type ExpectGetsResp struct {
-		httpcode int
-		resp     []models.PostMember
-		err      string
+		ExpectResp
+		resp []models.PostMember
 	}
 	testPostsGetCases := []struct {
-		name  string
-		route string
-		out   ExpectGetsResp
+		name   string
+		route  string
+		expect ExpectGetsResp
 	}{
-		{"Descending", "/posts", ExpectGetsResp{http.StatusOK,
+		{"Descending", "/posts", ExpectGetsResp{ExpectResp{http.StatusOK, ""},
 			[]models.PostMember{
 				{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
 				{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}},
 				{Post: mockPostDS[0], Member: mockMemberDS[0], UpdatedBy: models.UpdatedBy(mockMemberDS[0])},
 				{Post: mockPostDS[2], Member: mockMemberDS[2], UpdatedBy: models.UpdatedBy{}},
-			}, ""}},
-		{"Ascending", "/posts?sort=updated_at", ExpectGetsResp{http.StatusOK,
+			}}},
+		{"Ascending", "/posts?sort=updated_at", ExpectGetsResp{ExpectResp{http.StatusOK, ""},
 			[]models.PostMember{
 				{Post: mockPostDS[2], Member: mockMemberDS[2], UpdatedBy: models.UpdatedBy{}},
 				{Post: mockPostDS[0], Member: mockMemberDS[0], UpdatedBy: models.UpdatedBy(mockMemberDS[0])},
 				{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}},
 				{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
-			}, ""}},
+			}}},
 	}
 	for _, tc := range testPostsGetCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -186,18 +188,144 @@ func TestRouteGetPosts(t *testing.T) {
 			req, _ := http.NewRequest("GET", tc.route, nil)
 
 			r.ServeHTTP(w, req)
-			if w.Code != tc.out.httpcode {
-				t.Errorf("%s Want %d but get %d", tc.name, tc.out.httpcode, w.Code)
+			if w.Code != tc.expect.httpcode {
+				t.Errorf("%s Want %d but get %d", tc.name, tc.expect.httpcode, w.Code)
 			}
-			if w.Code != http.StatusOK && w.Body.String() != tc.out.err {
-				t.Errorf("%s expect to get error message %v but get %v", tc.name, w.Body.String(), tc.out.err)
+			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
+				t.Errorf("%s expect to get error message %v but get %v", tc.name, w.Body.String(), tc.expect.err)
 			}
 
 			// responses := []models.PostMember{}
 			// json.Unmarshal([]byte(w.Body.String()), &responses)
-			expected, _ := json.Marshal(tc.out.resp)
+			expected, _ := json.Marshal(map[string][]models.PostMember{"_items": tc.expect.resp})
 			if w.Code == http.StatusOK && w.Body.String() != string(expected) {
 				t.Log("Not equal!")
+			}
+			// Do we have to test Active for testRouteDelete ?
+		})
+	}
+	clearPostTest()
+}
+func TestRouteGetPost(t *testing.T) {
+	initPostTest()
+
+	type ExpectGetResp struct {
+		ExpectResp
+		resp models.PostMember
+	}
+	testPostGetCases := []struct {
+		name   string
+		route  string
+		expect ExpectGetResp
+	}{
+		{"Exist", "/post/1", ExpectGetResp{ExpectResp{http.StatusOK, ""},
+			models.PostMember{
+				Post:      mockPostDS[0],
+				Member:    mockMemberDS[0],
+				UpdatedBy: models.UpdatedBy(mockMemberDS[0])}}},
+		{"NonExisted", "/post/3", ExpectGetResp{ExpectResp{http.StatusNotFound, `{"Error":"Post Not Found"}`}, models.PostMember{}}},
+	}
+	for _, tc := range testPostGetCases {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest("GET", tc.route, nil)
+
+			r.ServeHTTP(w, req)
+			if w.Code != tc.expect.httpcode {
+				t.Errorf("%s Want %d but get %d", tc.name, tc.expect.httpcode, w.Code)
+			}
+			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
+				t.Errorf("%s expect to get error message %v but get %v", tc.name, w.Body.String(), tc.expect.err)
+			}
+
+			// responses := []models.PostMember{}
+			// json.Unmarshal([]byte(w.Body.String()), &responses)
+			// expected, _ := json.Marshal(tc.expect.resp)
+			expected, _ := json.Marshal(map[string][]models.PostMember{"_items": []models.PostMember{tc.expect.resp}})
+			if w.Code == http.StatusOK && w.Body.String() != string(expected) {
+				t.Log("Not equal!")
+			}
+		})
+	}
+	clearPostTest()
+}
+func TestRoutePostPost(t *testing.T) {
+	initPostTest()
+	testCase := []struct {
+		name    string
+		payload string
+		expect  ExpectResp
+	}{
+		{"New", `{"author":"superman@mirrormedia.mg","title":"You can't save the world alone, but I can"}`, ExpectResp{http.StatusOK, ""}},
+		{"Empty", `{}`, ExpectResp{http.StatusBadRequest, `{"Error":"Invalid Post"}`}},
+		{"Existing", `{"id":1, "author":"superman@mirrormedia.mg"}`, ExpectResp{http.StatusBadRequest, `{"Error":"Post ID Already Taken"}`}},
+	}
+	for _, tc := range testCase {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			var jsonStr = []byte(tc.payload)
+			req, _ := http.NewRequest("POST", "/post", bytes.NewBuffer(jsonStr))
+			req.Header.Set("Content-Type", "application/json")
+			r.ServeHTTP(w, req)
+			if w.Code != tc.expect.httpcode {
+				t.Errorf("%s want %d but get %d", tc.name, tc.expect.httpcode, w.Code)
+			}
+			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
+				t.Errorf("%s expect error message %v but get %v", tc.name, w.Body.String(), tc.expect.err)
+			}
+		})
+	}
+	clearPostTest()
+}
+
+func TestRoutePutPost(t *testing.T) {
+	initPostTest()
+	testCase := []struct {
+		name    string
+		payload string
+		expect  ExpectResp
+	}{
+		{"New", `{"id":1,"author":"wonderwoman@mirrormedia.mg"}`, ExpectResp{http.StatusOK, ""}},
+		{"NonExisted", `{"id":12345, "author":"superman@mirrormedia.mg"}`, ExpectResp{http.StatusBadRequest, `{"Error":"Post Not Found"}`}},
+	}
+	for _, tc := range testCase {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			var jsonStr = []byte(tc.payload)
+			req, _ := http.NewRequest("PUT", "/post", bytes.NewBuffer(jsonStr))
+			req.Header.Set("Content-Type", "application/json")
+			r.ServeHTTP(w, req)
+			if w.Code != tc.expect.httpcode {
+				t.Errorf("%s want %d but get %d", tc.name, tc.expect.httpcode, w.Code)
+			}
+			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
+				t.Errorf("%s expect error message %v but get %v", tc.name, w.Body.String(), tc.expect.err)
+			}
+		})
+	}
+	clearPostTest()
+}
+
+func TestRouteDeletePost(t *testing.T) {
+	initPostTest()
+	testCase := []struct {
+		name   string
+		route  string
+		expect ExpectResp
+	}{
+		{"Existing", "/post/1", ExpectResp{http.StatusOK, ""}},
+		{"NotFound", "/post/12345", ExpectResp{http.StatusNotFound, `{"Error":"Post Not Found"}`}},
+	}
+	for _, tc := range testCase {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest("DELETE", tc.route, nil)
+			r.ServeHTTP(w, req)
+			if w.Code != tc.expect.httpcode {
+				t.Errorf("%s Want %d but get %d", tc.name, tc.expect.httpcode, w.Code)
+			}
+			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
+				t.Errorf("%s expect to get error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
 			}
 		})
 	}
@@ -234,46 +362,6 @@ func TestRouteGetPosts(t *testing.T) {
 // 	}
 // }
 
-func TestRouteGetPost(t *testing.T) {
-	initPostTest()
-
-	type ExpectGetResp struct {
-		httpcode int
-		resp     models.PostMember
-		err      string
-	}
-	testPostGetCases := []struct {
-		name  string
-		route string
-		out   ExpectGetResp
-	}{
-		{"Exist", "/post/1", ExpectGetResp{http.StatusOK,
-			models.PostMember{
-				Post:      mockPostDS[0],
-				Member:    mockMemberDS[0],
-				UpdatedBy: models.UpdatedBy(mockMemberDS[0])}, ""}},
-		{"NonExisted", "/post/3", ExpectGetResp{http.StatusNotFound, models.PostMember{}, `{"Error":"Post Not Found"}`}},
-	}
-	for _, tc := range testPostGetCases {
-		t.Run(tc.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("GET", tc.route, nil)
-
-			r.ServeHTTP(w, req)
-			if w.Code != tc.out.httpcode {
-				t.Errorf("%s Want %d but get %d", tc.name, tc.out.httpcode, w.Code)
-			}
-			if w.Code != http.StatusOK && w.Body.String() != tc.out.err {
-				t.Errorf("%s expect to get error message %v but get %v", tc.name, w.Body.String(), tc.out.err)
-			}
-
-			// responses := []models.PostMember{}
-			// json.Unmarshal([]byte(w.Body.String()), &responses)
-		})
-	}
-	clearPostTest()
-}
-
 // func TestGetExistPost(t *testing.T) {
 // 	w := httptest.NewRecorder()
 // 	req, _ := http.NewRequest("GET", "/post/1", nil)
@@ -305,36 +393,36 @@ func TestRouteGetPost(t *testing.T) {
 // 	}
 // }
 
-func TestPostPost(t *testing.T) {
-	w := httptest.NewRecorder()
-	var jsonStr = []byte(`{
-		"id":9527,
-		"author":"洪晟熊"
-	}`)
-	req, _ := http.NewRequest("POST", "/post", bytes.NewBuffer(jsonStr))
-	req.Header.Set("Content-Type", "application/json")
+// func TestPostPost(t *testing.T) {
+// 	w := httptest.NewRecorder()
+// 	var jsonStr = []byte(`{
+// 		"id":9527,
+// 		"author":"洪晟熊"
+// 	}`)
+// 	req, _ := http.NewRequest("POST", "/post", bytes.NewBuffer(jsonStr))
+// 	req.Header.Set("Content-Type", "application/json")
 
-	r.ServeHTTP(w, req)
+// 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Fail()
-	}
-	// var (
-	// 	resp     models.Post
-	// 	expected models.Post
-	// )
-	// if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-	// 	log.Fatal(err)
-	// }
-	// if err := json.Unmarshal(jsonStr, &expected); err != nil {
-	// 	log.Fatal(err)
-	// }
-	// fmt.Println(resp)
-	// fmt.Println(expected)
-	// if resp.ID != expected.ID || resp.Author != expected.Author {
-	// 	t.Fail()
-	// }
-}
+// 	if w.Code != http.StatusOK {
+// 		t.Fail()
+// 	}
+// 	// var (
+// 	// 	resp     models.Post
+// 	// 	expected models.Post
+// 	// )
+// 	// if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+// 	// 	log.Fatal(err)
+// 	// }
+// 	// if err := json.Unmarshal(jsonStr, &expected); err != nil {
+// 	// 	log.Fatal(err)
+// 	// }
+// 	// fmt.Println(resp)
+// 	// fmt.Println(expected)
+// 	// if resp.ID != expected.ID || resp.Author != expected.Author {
+// 	// 	t.Fail()
+// 	// }
+// }
 
 // func TestRoutePostPost(t *testing.T) {
 
@@ -383,124 +471,124 @@ func TestPostPost(t *testing.T) {
 // 	clearPostTest()
 // }
 
-func TestPostEmptyPost(t *testing.T) {
-	w := httptest.NewRecorder()
-	// When the body is empty in Postman, it actually send EOF to server
-	// It is a problem whether it's proper to send {} in test.
-	var jsonStr = []byte(`{}`)
-	req, _ := http.NewRequest("POST", "/post", bytes.NewBuffer(jsonStr))
-	req.Header.Set("Content-Type", "application/json")
-	// r := getRouter()
-	// r.POST("/member", env.MemberPostHandler)
-	r.ServeHTTP(w, req)
+// func TestPostEmptyPost(t *testing.T) {
+// 	w := httptest.NewRecorder()
+// 	// When the body is empty in Postman, it actually send EOF to server
+// 	// It is a problem whether it's proper to send {} in test.
+// 	var jsonStr = []byte(`{}`)
+// 	req, _ := http.NewRequest("POST", "/post", bytes.NewBuffer(jsonStr))
+// 	req.Header.Set("Content-Type", "application/json")
+// 	// r := getRouter()
+// 	// r.POST("/member", env.MemberPostHandler)
+// 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusBadRequest {
-		t.Fail()
-	}
-	expected := `{"Error":"Invalid Post"}`
-	if w.Body.String() != string(expected) {
-		t.Fail()
-	}
-}
+// 	if w.Code != http.StatusBadRequest {
+// 		t.Fail()
+// 	}
+// 	expected := `{"Error":"Invalid Post"}`
+// 	if w.Body.String() != string(expected) {
+// 		t.Fail()
+// 	}
+// }
 
-func TestPostExistingPost(t *testing.T) {
-	w := httptest.NewRecorder()
-	var jsonStr = []byte(`{
-		"id":1,
-		"author":"superman@mirrormedia.mg"
-	}`)
-	req, _ := http.NewRequest("POST", "/post", bytes.NewBuffer(jsonStr))
-	req.Header.Set("Content-Type", "application/json")
-	r.ServeHTTP(w, req)
+// func TestPostExistingPost(t *testing.T) {
+// 	w := httptest.NewRecorder()
+// 	var jsonStr = []byte(`{
+// 		"id":1,
+// 		"author":"superman@mirrormedia.mg"
+// 	}`)
+// 	req, _ := http.NewRequest("POST", "/post", bytes.NewBuffer(jsonStr))
+// 	req.Header.Set("Content-Type", "application/json")
+// 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusBadRequest {
-		t.Fail()
-	}
-	expected := `{"Error":"Post ID Already Taken"}`
-	if w.Body.String() != string(expected) {
-		t.Fail()
-	}
-}
+// 	if w.Code != http.StatusBadRequest {
+// 		t.Fail()
+// 	}
+// 	expected := `{"Error":"Post ID Already Taken"}`
+// 	if w.Body.String() != string(expected) {
+// 		t.Fail()
+// 	}
+// }
 
 // ------------------------------------ Update Post Test ------------------------------------
-func TestPutPost(t *testing.T) {
-	w := httptest.NewRecorder()
-	var jsonStr = []byte(`{
-		"id":1,
-		"liked": 113,
-		"title": "台北不是我的家！？租屋黑市大揭露"
-	}`)
-	req, _ := http.NewRequest("PUT", "/post", bytes.NewBuffer(jsonStr))
-	req.Header.Set("Content-Type", "application/json")
-	r.ServeHTTP(w, req)
+// func TestPutPost(t *testing.T) {
+// 	w := httptest.NewRecorder()
+// 	var jsonStr = []byte(`{
+// 		"id":1,
+// 		"liked": 113,
+// 		"title": "台北不是我的家！？租屋黑市大揭露"
+// 	}`)
+// 	req, _ := http.NewRequest("PUT", "/post", bytes.NewBuffer(jsonStr))
+// 	req.Header.Set("Content-Type", "application/json")
+// 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Fail()
-	}
-	// var (
-	// 	resp     models.Post
-	// 	expected models.Post
-	// )
-	// if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-	// 	log.Fatal(err)
-	// }
-	// if err := json.Unmarshal(jsonStr, &expected); err != nil {
-	// 	log.Fatal(err)
-	// }
-	// if resp.ID != expected.ID || resp.LikeAmount != expected.LikeAmount || resp.Title != expected.Title {
-	// 	t.Fail()
-	// }
-}
+// 	if w.Code != http.StatusOK {
+// 		t.Fail()
+// 	}
+// 	// var (
+// 	// 	resp     models.Post
+// 	// 	expected models.Post
+// 	// )
+// 	// if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+// 	// 	log.Fatal(err)
+// 	// }
+// 	// if err := json.Unmarshal(jsonStr, &expected); err != nil {
+// 	// 	log.Fatal(err)
+// 	// }
+// 	// if resp.ID != expected.ID || resp.LikeAmount != expected.LikeAmount || resp.Title != expected.Title {
+// 	// 	t.Fail()
+// 	// }
+// }
 
-func TestPutNonExistingPost(t *testing.T) {
-	w := httptest.NewRecorder()
-	var jsonStr = []byte(`{
-		"id": 98765,
-		"Title": "數讀政治獻金"
-	}`)
-	req, _ := http.NewRequest("PUT", "/post", bytes.NewBuffer(jsonStr))
-	req.Header.Set("Content-Type", "application/json")
-	r.ServeHTTP(w, req)
+// func TestPutNonExistingPost(t *testing.T) {
+// 	w := httptest.NewRecorder()
+// 	var jsonStr = []byte(`{
+// 		"id": 98765,
+// 		"Title": "數讀政治獻金"
+// 	}`)
+// 	req, _ := http.NewRequest("PUT", "/post", bytes.NewBuffer(jsonStr))
+// 	req.Header.Set("Content-Type", "application/json")
+// 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusBadRequest {
-		t.Fail()
-	}
-	expected := `{"Error":"Post Not Found"}`
-	if w.Body.String() != string(expected) {
-		t.Fail()
-	}
-}
+// 	if w.Code != http.StatusBadRequest {
+// 		t.Fail()
+// 	}
+// 	expected := `{"Error":"Post Not Found"}`
+// 	if w.Body.String() != string(expected) {
+// 		t.Fail()
+// 	}
+// }
 
 // ------------------------------------ Delete Post Test ------------------------------------
-func TestDeleteExistingPost(t *testing.T) {
+// func TestDeleteExistingPost(t *testing.T) {
 
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("DELETE", "/post/1", nil)
-	r.ServeHTTP(w, req)
+// 	w := httptest.NewRecorder()
+// 	req, _ := http.NewRequest("DELETE", "/post/1", nil)
+// 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusOK {
-		t.Fail()
-	}
-	var resp models.Post
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		log.Fatal(err)
-	}
-	if resp.Active != 0 {
-		t.Fail()
-	}
-}
+// 	if w.Code != http.StatusOK {
+// 		t.Fail()
+// 	}
+// 	var resp models.Post
+// 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	if resp.Active != 0 {
+// 		t.Fail()
+// 	}
+// }
 
-func TestDeleteNonExistingPost(t *testing.T) {
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("DELETE", "/post/12345", nil)
+// func TestDeleteNonExistingPost(t *testing.T) {
+// 	w := httptest.NewRecorder()
+// 	req, _ := http.NewRequest("DELETE", "/post/12345", nil)
 
-	r.ServeHTTP(w, req)
+// 	r.ServeHTTP(w, req)
 
-	if w.Code != http.StatusNotFound {
-		t.Fail()
-	}
-	expected := `{"Error":"Post Not Found"}`
-	if w.Body.String() != string(expected) {
-		t.Fail()
-	}
-}
+// 	if w.Code != http.StatusNotFound {
+// 		t.Fail()
+// 	}
+// 	expected := `{"Error":"Post Not Found"}`
+// 	if w.Body.String() != string(expected) {
+// 		t.Fail()
+// 	}
+// }
