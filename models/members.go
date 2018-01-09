@@ -31,8 +31,8 @@ type Member struct {
 	ProfileImage NullString `json:"profile_image" db:"profile_picture"`
 	Identity     NullString `json:"identity" db:"identity"`
 
-	Role   int `json:"role" db:"role"`
-	Active int `json:"active" db:"active"`
+	Role   NullInt `json:"role" db:"role"`
+	Active NullInt `json:"active" db:"active"`
 
 	CustomEditor bool `json:"custom_editor" db:"c_editor"`
 	HideProfile  bool `json:"hide_profile" db:"hide_profile"`

@@ -13,7 +13,7 @@ import (
 type Permission struct {
 	Role       int        `json:"role" db:"role"`
 	Object     NullString `json:"object" db:"object"`
-	Permission int        `json:"permission" db:"permission"`
+	Permission NullInt    `json:"permission" db:"permission"`
 }
 
 type PermissionAPIImpl struct{}

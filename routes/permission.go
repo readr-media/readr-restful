@@ -44,6 +44,7 @@ OuterLoop:
 				continue OuterLoop
 			}
 		}
+		p.Permission = models.NullInt{0, true}
 		result = append(result, p)
 	}
 

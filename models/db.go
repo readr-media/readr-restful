@@ -152,6 +152,11 @@ func generateSQLStmt(mode string, tableName string, input ...interface{}) (query
 					fmt.Println("valid NullTime : ", field.Time)
 					columns = append(columns, tag.Get("db"))
 				}
+			case NullInt:
+				if field.Valid {
+					fmt.Println("valid NullInt : ", field.Int)
+					columns = append(columns, tag.Get("db"))
+				}
 			case bool, int, uint32:
 				columns = append(columns, tag.Get("db"))
 			default:

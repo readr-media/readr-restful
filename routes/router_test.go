@@ -41,20 +41,20 @@ var mockMemberDSBack []models.Member
 var mockMemberDS = []models.Member{
 	models.Member{
 		ID:        "superman@mirrormedia.mg",
-		Active:    1,
+		Active:    models.NullInt{1, true},
 		UpdatedAt: models.NullTime{Time: time.Date(2017, 6, 8, 16, 27, 52, 0, time.UTC), Valid: true},
 		Mail:      models.NullString{String: "superman@mirrormedia.mg", Valid: true},
 	},
 	models.Member{
 		ID:        "test6743",
-		Active:    1,
+		Active:    models.NullInt{1, true},
 		Birthday:  models.NullTime{Time: time.Date(2001, 1, 3, 0, 0, 0, 0, time.UTC), Valid: true},
 		UpdatedAt: models.NullTime{Time: time.Date(2017, 11, 11, 23, 11, 37, 0, time.UTC), Valid: true},
 		Mail:      models.NullString{String: "Lulu_Brakus@yahoo.com", Valid: true},
 	},
 	models.Member{
 		ID:        "Barney.Corwin@hotmail.com",
-		Active:    1,
+		Active:    models.NullInt{1, true},
 		Gender:    models.NullString{String: "M", Valid: true},
 		UpdatedAt: models.NullTime{Time: time.Date(2017, 1, 3, 19, 32, 37, 0, time.UTC), Valid: true},
 		Birthday:  models.NullTime{Time: time.Date(1939, 11, 9, 0, 0, 0, 0, time.UTC), Valid: true},

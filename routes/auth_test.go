@@ -31,22 +31,22 @@ func initAuthTest() {
 		models.Member{
 			ID:           "logintest1@mirrormedia.mg",
 			Password:     models.NullString{"hellopassword", true},
-			Role:         1,
-			Active:       1,
+			Role:         models.NullInt{1, true},
+			Active:       models.NullInt{1, true},
 			RegisterMode: models.NullString{"ordinary", true},
 		},
 		models.Member{
 			ID:           "logintest2018",
 			Password:     models.NullString{"1233211234567", true},
-			Role:         1,
-			Active:       1,
+			Role:         models.NullInt{1, true},
+			Active:       models.NullInt{1, true},
 			RegisterMode: models.NullString{"oauth-fb", true},
 		},
 		models.Member{
 			ID:           "logindeactived",
 			Password:     models.NullString{"88888888", true},
-			Role:         1,
-			Active:       0,
+			Role:         models.NullInt{1, true},
+			Active:       models.NullInt{0, true},
 			RegisterMode: models.NullString{"ordinary", true},
 		}}
 

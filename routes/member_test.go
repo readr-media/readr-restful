@@ -93,7 +93,7 @@ func (mapi *mockMemberAPI) DeleteMember(id string) (models.Member, error) {
 	err := errors.New("User Not Found")
 	for index, value := range mockMemberDS {
 		if id == value.ID {
-			mockMemberDS[index].Active = 0
+			mockMemberDS[index].Active = models.NullInt{0, true}
 			return mockMemberDS[index], nil
 		}
 	}
@@ -311,7 +311,7 @@ func TestDeleteExistMember(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
 		log.Fatal(err)
 	}
-	if resp.Active == 1 {
+	if resp.Active.Int == 1 {
 		t.Fail()
 	}
 }
