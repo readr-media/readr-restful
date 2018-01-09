@@ -26,7 +26,7 @@ type Post struct {
 	Active        int        `json:"active" db:"active"`
 	UpdatedAt     NullTime   `json:"updated_at" db:"updated_at"`
 	UpdatedBy     NullString `json:"updated_by" db:"updated_by"`
-	PublishedAt   NullString `json:"published_at" db:"published_at"`
+	PublishedAt   NullTime   `json:"published_at" db:"published_at"`
 }
 
 type postAPI struct{}
@@ -89,7 +89,7 @@ func (a *postAPI) GetPosts(maxResult uint8, page uint16, sortMethod string) ([]P
 	query := fmt.Sprintf(`SELECT posts.*, %s, %s FROM posts 
 		LEFT JOIN members AS author ON posts.author = author.user_id 
 		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.user_id 
-		ORDER BY %s LIMIT ?,?`,
+		where posts.active != 0 ORDER BY %s LIMIT ? OFFSET ?`,
 		strings.Join(author, ","), strings.Join(updatedBy, ","), sortString)
 
 	err = DB.Select(&result, query, limitBase, limitIncrement)

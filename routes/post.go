@@ -117,6 +117,7 @@ func (r *postHandler) Put(c *gin.Context) {
 	if post.Active == 0 {
 		post.Active = 4
 	}
+	// CreatedAt would be list in the updating tag list
 	if post.CreatedAt.Valid {
 		post.CreatedAt.Time = time.Time{}
 		post.CreatedAt.Valid = false
