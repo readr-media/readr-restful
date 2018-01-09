@@ -11,7 +11,7 @@ import (
 
 type postHandler struct{}
 
-func (r *postHandler) PostsGetHandler(c *gin.Context) {
+func (r *postHandler) GetAll(c *gin.Context) {
 
 	mr := c.DefaultQuery("max_result", "20")
 	u64MaxResult, _ := strconv.ParseUint(mr, 10, 8)
@@ -37,7 +37,7 @@ func (r *postHandler) PostsGetHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
-func (r *postHandler) PostGetHandler(c *gin.Context) {
+func (r *postHandler) Get(c *gin.Context) {
 
 	// input := models.Post{ID: c.Param("id")}
 	// post, err := models.DS.Get(input)
@@ -59,7 +59,7 @@ func (r *postHandler) PostGetHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, post)
 }
 
-func (r *postHandler) PostPostHandler(c *gin.Context) {
+func (r *postHandler) Post(c *gin.Context) {
 
 	post := models.Post{}
 	emptyPost := models.Post{}
@@ -103,7 +103,7 @@ func (r *postHandler) PostPostHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, models.Post{})
 }
 
-func (r *postHandler) PostPutHandler(c *gin.Context) {
+func (r *postHandler) Put(c *gin.Context) {
 
 	post := models.Post{}
 	emptyPost := models.Post{}
@@ -117,6 +117,7 @@ func (r *postHandler) PostPutHandler(c *gin.Context) {
 	if post.Active == 0 {
 		post.Active = 4
 	}
+	// CreatedAt would be list in the updating tag list
 	if post.CreatedAt.Valid {
 		post.CreatedAt.Time = time.Time{}
 		post.CreatedAt.Valid = false
@@ -140,7 +141,7 @@ func (r *postHandler) PostPutHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, models.Post{})
 }
 
-func (r *postHandler) PostDeleteHandler(c *gin.Context) {
+func (r *postHandler) Delete(c *gin.Context) {
 
 	// input := models.Post{ID: c.Param("id")}
 	// var req models.Databox = &models.Member{ID: userID}
@@ -165,14 +166,14 @@ func (r *postHandler) PostDeleteHandler(c *gin.Context) {
 
 func (r *postHandler) SetRoutes(router *gin.Engine) {
 
-	router.GET("posts", r.PostsGetHandler)
+	router.GET("posts", r.GetAll)
 
 	postRouter := router.Group("/post")
 	{
-		postRouter.GET("/:id", r.PostGetHandler)
-		postRouter.POST("", r.PostPostHandler)
-		postRouter.PUT("", r.PostPutHandler)
-		postRouter.DELETE("/:id", r.PostDeleteHandler)
+		postRouter.GET("/:id", r.Get)
+		postRouter.POST("", r.Post)
+		postRouter.PUT("", r.Put)
+		postRouter.DELETE("/:id", r.Delete)
 	}
 }
 
