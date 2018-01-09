@@ -76,7 +76,7 @@ func main() {
 	routes.PostHandler.SetRoutes(router)
 	routes.ProjectHandler.SetRoutes(router)
 	routes.AuthHandler.SetRoutes(router)
-	routes.PermissionHandler.SetRoutes(routes)
+	routes.PermissionHandler.SetRoutes(router)
 
 	routes.MiscHandler.SetRoutes(router, *dialer)
 
