@@ -13,7 +13,7 @@ import (
 
 type memberHandler struct{}
 
-func (r *memberHandler) MembersGetHandler(c *gin.Context) {
+func (r *memberHandler) GetAll(c *gin.Context) {
 
 	mr := c.DefaultQuery("max_result", "20")
 	u64MaxResult, _ := strconv.ParseUint(mr, 10, 8)
@@ -39,7 +39,7 @@ func (r *memberHandler) MembersGetHandler(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, result)
 }
-func (r *memberHandler) MemberGetHandler(c *gin.Context) {
+func (r *memberHandler) Get(c *gin.Context) {
 
 	// input := models.Member{ID: c.Param("id")}
 	// member, err := models.DS.Get(input)
@@ -59,7 +59,7 @@ func (r *memberHandler) MemberGetHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, member)
 }
 
-func (r *memberHandler) MemberPostHandler(c *gin.Context) {
+func (r *memberHandler) Post(c *gin.Context) {
 
 	member := models.Member{}
 	c.Bind(&member)
@@ -95,7 +95,7 @@ func (r *memberHandler) MemberPostHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, models.Member{})
 }
 
-func (r *memberHandler) MemberPutHandler(c *gin.Context) {
+func (r *memberHandler) Put(c *gin.Context) {
 
 	member := models.Member{}
 	c.Bind(&member)
@@ -130,7 +130,7 @@ func (r *memberHandler) MemberPutHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, models.Member{})
 }
 
-func (r *memberHandler) MemberDeleteHandler(c *gin.Context) {
+func (r *memberHandler) Delete(c *gin.Context) {
 
 	// input := models.Member{ID: c.Param("id")}
 	// var req models.Databox = &models.Member{ID: userID}
@@ -224,14 +224,14 @@ func (r *memberHandler) MemberPutPasswordHandler(c *gin.Context) {
 
 func (r *memberHandler) SetRoutes(router *gin.Engine) {
 
-	router.GET("/members", r.MembersGetHandler)
+	router.GET("/members", r.GetAll)
 
 	memberRouter := router.Group("/member")
 	{
-		memberRouter.GET("/:id", r.MemberGetHandler)
-		memberRouter.POST("", r.MemberPostHandler)
-		memberRouter.PUT("", r.MemberPutHandler)
-		memberRouter.DELETE("/:id", r.MemberDeleteHandler)
+		memberRouter.GET("/:id", r.Get)
+		memberRouter.POST("", r.Post)
+		memberRouter.PUT("", r.Put)
+		memberRouter.DELETE("/:id", r.Delete)
 
 		memberRouter.PUT("/password", r.MemberPutPasswordHandler)
 	}
