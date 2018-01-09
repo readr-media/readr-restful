@@ -34,11 +34,11 @@ type Member struct {
 	Role   NullInt `json:"role" db:"role"`
 	Active NullInt `json:"active" db:"active"`
 
-	CustomEditor bool `json:"custom_editor" db:"c_editor"`
-	HideProfile  bool `json:"hide_profile" db:"hide_profile"`
-	ProfilePush  bool `json:"profile_push" db:"profile_push"`
-	PostPush     bool `json:"post_push" db:"post_push"`
-	CommentPush  bool `json:"comment_push" db:"comment_push"`
+	CustomEditor NullBool `json:"custom_editor" db:"c_editor"`
+	HideProfile  NullBool `json:"hide_profile" db:"hide_profile"`
+	ProfilePush  NullBool `json:"profile_push" db:"profile_push"`
+	PostPush     NullBool `json:"post_push" db:"post_push"`
+	CommentPush  NullBool `json:"comment_push" db:"comment_push"`
 }
 
 // Separate API and Member struct

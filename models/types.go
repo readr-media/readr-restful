@@ -147,4 +147,46 @@ func (ns *NullInt) UnmarshalJSON(text []byte) error {
 	return nil
 }
 
+// Create our own null string type for prettier marshal JSON format
+type NullBool struct {
+	Bool  bool
+	Valid bool // Valid is true if Int is not NULL
+}
+
+func (ns *NullBool) Scan(value interface{}) error {
+	if value == nil {
+		ns.Bool, ns.Valid = false, false
+		return nil
+	}
+	x := sql.NullBool{}
+	err := x.Scan(value)
+	ns.Bool, ns.Valid = x.Bool, x.Valid
+	return err
+}
+
+func (ns NullBool) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return ns.Bool, nil
+}
+
+func (ns NullBool) MarshalJSON() ([]byte, error) {
+	if ns.Valid {
+		return json.Marshal(ns.Bool)
+	}
+	return json.Marshal(nil)
+}
+
+func (ns *NullBool) UnmarshalJSON(text []byte) error {
+	ns.Valid = false
+	if string(text) == "null" {
+		return nil
+	}
+	if err := json.Unmarshal(text, &ns.Bool); err == nil {
+		ns.Valid = true
+	}
+	return nil
+}
+
 // ----------------------------- END OF NULLABLE TYPE DEFINITION -----------------------------
