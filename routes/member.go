@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
@@ -37,7 +38,7 @@ func (r *memberHandler) GetAll(c *gin.Context) {
 			return
 		}
 	}
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, gin.H{"_items": result})
 }
 func (r *memberHandler) Get(c *gin.Context) {
 
@@ -56,7 +57,7 @@ func (r *memberHandler) Get(c *gin.Context) {
 			return
 		}
 	}
-	c.JSON(http.StatusOK, member)
+	c.JSON(http.StatusOK, gin.H{"_items": []models.Member{member}})
 }
 
 func (r *memberHandler) Post(c *gin.Context) {
@@ -92,7 +93,8 @@ func (r *memberHandler) Post(c *gin.Context) {
 			return
 		}
 	}
-	c.JSON(http.StatusOK, models.Member{})
+	// c.JSON(http.StatusOK, models.Member{})
+	c.Status(http.StatusOK)
 }
 
 func (r *memberHandler) Put(c *gin.Context) {
@@ -127,7 +129,33 @@ func (r *memberHandler) Put(c *gin.Context) {
 			return
 		}
 	}
-	c.JSON(http.StatusOK, models.Member{})
+	// c.JSON(http.StatusOK, models.Member{})
+	c.Status(http.StatusOK)
+}
+
+func (r *memberHandler) DeleteAll(c *gin.Context) {
+	ids := []string{}
+	err := json.Unmarshal([]byte(c.Query("ids")), &ids)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
+	}
+	if len(ids) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "ID List Empty"})
+		return
+	}
+	err = models.MemberAPI.SetMultipleActive(ids, 0)
+	if err != nil {
+		switch err.Error() {
+		case "Members Not Found":
+			c.JSON(http.StatusBadRequest, gin.H{"Error": "Members Not Found"})
+			return
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+			return
+		}
+	}
+	c.Status(http.StatusOK)
 }
 
 func (r *memberHandler) Delete(c *gin.Context) {
@@ -136,7 +164,7 @@ func (r *memberHandler) Delete(c *gin.Context) {
 	// var req models.Databox = &models.Member{ID: userID}
 	// member, err := models.DS.Delete(input)
 	id := c.Param("id")
-	member, err := models.MemberAPI.DeleteMember(id)
+	err := models.MemberAPI.DeleteMember(id)
 	// member, err := req.Delete()
 	if err != nil {
 		switch err.Error() {
@@ -148,7 +176,36 @@ func (r *memberHandler) Delete(c *gin.Context) {
 			return
 		}
 	}
-	c.JSON(http.StatusOK, member)
+	// c.JSON(http.StatusOK, member)
+	c.Status(http.StatusOK)
+}
+
+func (r *memberHandler) ActivateAll(c *gin.Context) {
+	payload := struct {
+		MemberIDs []string `json:"member_ids"`
+		Active    int      `json:"active"`
+	}{}
+	err := c.Bind(&payload)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
+	}
+	if payload.MemberIDs == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Request Body"})
+		return
+	}
+	err = models.MemberAPI.SetMultipleActive(payload.MemberIDs, payload.Active)
+	if err != nil {
+		switch err.Error() {
+		case "Members Not Found":
+			c.JSON(http.StatusNotFound, gin.H{"Error": "Members Not Found"})
+			return
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+			return
+		}
+	}
+	c.Status(http.StatusOK)
 }
 
 // MemberPutPasswordHandler let caller to update a member's password.
@@ -224,7 +281,7 @@ func (r *memberHandler) MemberPutPasswordHandler(c *gin.Context) {
 
 func (r *memberHandler) SetRoutes(router *gin.Engine) {
 
-	router.GET("/members", r.GetAll)
+	// router.GET("/members", r.MembersGetHandler)
 
 	memberRouter := router.Group("/member")
 	{
@@ -234,6 +291,12 @@ func (r *memberHandler) SetRoutes(router *gin.Engine) {
 		memberRouter.DELETE("/:id", r.Delete)
 
 		memberRouter.PUT("/password", r.MemberPutPasswordHandler)
+	}
+	membersRouter := router.Group("/members")
+	{
+		membersRouter.GET("", r.GetAll)
+		membersRouter.PUT("", r.ActivateAll)
+		membersRouter.DELETE("", r.DeleteAll)
 	}
 }
 

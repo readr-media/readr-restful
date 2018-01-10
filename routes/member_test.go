@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"sort"
@@ -16,7 +15,15 @@ import (
 
 type mockMemberAPI struct{}
 
-func (mapi *mockMemberAPI) GetMembers(maxResult uint8, page uint16, sortMethod string) ([]models.Member, error) {
+func initMemberTest() {
+	mockMemberDSBack = mockMemberDS
+}
+
+func clearMemberTest() {
+	mockMemberDS = mockMemberDSBack
+}
+
+func (a *mockMemberAPI) GetMembers(maxResult uint8, page uint16, sortMethod string) ([]models.Member, error) {
 
 	var (
 		result []models.Member
@@ -51,7 +58,7 @@ func (mapi *mockMemberAPI) GetMembers(maxResult uint8, page uint16, sortMethod s
 	return result, err
 }
 
-func (mapi *mockMemberAPI) GetMember(id string) (models.Member, error) {
+func (a *mockMemberAPI) GetMember(id string) (models.Member, error) {
 	result := models.Member{}
 	err := errors.New("User Not Found")
 	for _, value := range mockMemberDS {
@@ -63,7 +70,7 @@ func (mapi *mockMemberAPI) GetMember(id string) (models.Member, error) {
 	return result, err
 }
 
-func (mapi *mockMemberAPI) InsertMember(m models.Member) error {
+func (a *mockMemberAPI) InsertMember(m models.Member) error {
 	var err error
 	for _, member := range mockMemberDS {
 		if member.ID == m.ID {
@@ -71,11 +78,10 @@ func (mapi *mockMemberAPI) InsertMember(m models.Member) error {
 		}
 	}
 	mockMemberDS = append(mockMemberDS, m)
-	// result := MemberList[len(MemberList)-1]
 	err = nil
 	return err
 }
-func (mapi *mockMemberAPI) UpdateMember(m models.Member) error {
+func (a *mockMemberAPI) UpdateMember(m models.Member) error {
 
 	err := errors.New("User Not Found")
 	for index, member := range mockMemberDS {
@@ -87,250 +93,228 @@ func (mapi *mockMemberAPI) UpdateMember(m models.Member) error {
 	return err
 }
 
-func (mapi *mockMemberAPI) DeleteMember(id string) (models.Member, error) {
+func (a *mockMemberAPI) DeleteMember(id string) error {
 
-	result := models.Member{}
+	// result := models.Member{}
 	err := errors.New("User Not Found")
 	for index, value := range mockMemberDS {
 		if id == value.ID {
-			mockMemberDS[index].Active = models.NullInt{0, true}
-			return mockMemberDS[index], nil
+			mockMemberDS[index].Active = models.NullInt{Int: 0, Valid: true}
+			return nil
 		}
 	}
-	return result, err
+	return err
 }
 
-func TestGetMembersDescending(t *testing.T) {
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/members", nil)
+func (a *mockMemberAPI) SetMultipleActive(ids []string, active int) (err error) {
 
-	r.ServeHTTP(w, req)
-	if w.Code != http.StatusOK {
-		t.Errorf("HTTP response code error: want %q but get %q", http.StatusOK, w.Code)
+	result := make([]int, 0)
+	for _, value := range ids {
+		for i, v := range mockMemberDS {
+			if v.ID == value {
+				mockMemberDS[i].Active = models.NullInt{Int: int64(active), Valid: true}
+				result = append(result, i)
+			}
+		}
 	}
-	res := []models.Member{}
-	json.Unmarshal([]byte(w.Body.String()), &res)
-	if res[0] != mockMemberDS[1] || res[1] != mockMemberDS[0] || res[2] != mockMemberDS[2] {
-		t.Errorf("Response sort error")
+	if len(result) == 0 {
+		err = errors.New("Members Not Found")
+		return err
 	}
+	// fmt.Println(mockMemberDS)
+	return err
 }
 
-func TestGetMembersAscending(t *testing.T) {
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/members?sort=updated_at", nil)
+func TestRouteGetMembers(t *testing.T) {
 
-	r.ServeHTTP(w, req)
-	if w.Code != http.StatusOK {
-		t.Errorf("HTTP response code error: want %q but get %q", http.StatusOK, w.Code)
+	initMemberTest()
+	type ExpectGetsResp struct {
+		ExpectResp
+		resp []models.Member
 	}
-	res := []models.Member{}
-	json.Unmarshal([]byte(w.Body.String()), &res)
-	if res[0] != mockMemberDS[2] || res[1] != mockMemberDS[0] || res[2] != mockMemberDS[1] {
-		t.Errorf("Response sort error")
+	testCase := []struct {
+		name   string
+		route  string
+		expect ExpectGetsResp
+	}{
+		{"Descending", "/members", ExpectGetsResp{ExpectResp{http.StatusOK, ""},
+			[]models.Member{mockMemberDS[1], mockMemberDS[0], mockMemberDS[2]}}},
+		{"Ascending", "/members?sort=updated_at", ExpectGetsResp{ExpectResp{http.StatusOK, ""},
+			[]models.Member{mockMemberDS[2], mockMemberDS[0], mockMemberDS[1]}}},
 	}
+	for _, tc := range testCase {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest("GET", tc.route, nil)
+			r.ServeHTTP(w, req)
+
+			if w.Code != tc.expect.httpcode {
+				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
+			}
+			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
+				t.Errorf("%s expect errro message %v but get %v", tc.name, tc.expect.err, w.Body.String())
+			}
+
+			expected, _ := json.Marshal(map[string][]models.Member{"_items": tc.expect.resp})
+			if w.Code == http.StatusOK && w.Body.String() != string(expected) {
+				t.Errorf("%s incorrect response", tc.name)
+			}
+		})
+	}
+	clearMemberTest()
 }
 
-func TestGetExistMember(t *testing.T) {
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/member/superman@mirrormedia.mg", nil)
+func TestRouteGetMember(t *testing.T) {
 
-	// r := getRouter()
-	// r.GET("/member/:id", env.MemberGetHandler)
-	// Start gin server
-	r.ServeHTTP(w, req)
+	initMemberTest()
 
-	if w.Code != http.StatusOK {
-		t.Fail()
+	type ExpectGetResp struct {
+		ExpectResp
+		resp models.Member
 	}
-	expected, _ := json.Marshal(mockMemberDS[0])
-	if w.Body.String() != string(expected) {
-		t.Fail()
+	testCase := []struct {
+		name   string
+		route  string
+		expect ExpectGetResp
+	}{
+		{"Current", "/member/superman@mirrormedia.mg", ExpectGetResp{ExpectResp{http.StatusOK, ""}, mockMemberDS[0]}},
+		{"NotExisted", "/member/wonderwoman@mirrormedia.mg", ExpectGetResp{ExpectResp{http.StatusNotFound, `{"Error":"User Not Found"}`}, models.Member{}}},
 	}
+	for _, tc := range testCase {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest("GET", tc.route, nil)
+
+			r.ServeHTTP(w, req)
+			if w.Code != tc.expect.httpcode {
+				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
+			}
+			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
+				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
+			}
+
+			// expected, _ := json.Marshal(tc.expect.resp)
+			expected, _ := json.Marshal(map[string][]models.Member{"_items": []models.Member{tc.expect.resp}})
+			if w.Code == http.StatusOK && w.Body.String() != string(expected) {
+				t.Errorf("%s incorrect response", tc.name)
+			}
+		})
+	}
+
+	clearMemberTest()
+}
+func TestRoutePostMember(t *testing.T) {
+	initMemberTest()
+	testCase := []struct {
+		name    string
+		payload string
+		expect  ExpectResp
+	}{
+		{"New", `{"id":"spaceoddity", "name":"Major Tom"}`, ExpectResp{http.StatusOK, ""}},
+		{"EmptyPayload", `{}`, ExpectResp{http.StatusBadRequest, `{"Error":"Invalid User"}`}},
+		{"Existed", `{"id":"superman@mirrormedia.mg"}`, ExpectResp{http.StatusBadRequest, `{"Error":"User Already Existed"}`}},
+	}
+	for _, tc := range testCase {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			var jsonStr = []byte(tc.payload)
+			req, _ := http.NewRequest("POST", "/member", bytes.NewBuffer(jsonStr))
+			req.Header.Set("Content-Type", "application/json")
+			r.ServeHTTP(w, req)
+
+			if w.Code != tc.expect.httpcode {
+				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
+			}
+			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
+				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
+			}
+		})
+	}
+	clearMemberTest()
+}
+func TestRoutePutMember(t *testing.T) {
+	initMemberTest()
+	testCase := []struct {
+		name    string
+		payload string
+		expect  ExpectResp
+	}{
+		{"Current", `{"id":"superman@mirrormedia.mg", "name":"Clark Kent"}`, ExpectResp{http.StatusOK, ""}},
+		{"NotExisted", `{"id":"spaceoddity", "name":"Major Tom"}`, ExpectResp{http.StatusBadRequest, `{"Error":"User Not Found"}`}},
+	}
+	for _, tc := range testCase {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			var jsonStr = []byte(tc.payload)
+			req, _ := http.NewRequest("PUT", "/member", bytes.NewBuffer(jsonStr))
+			req.Header.Set("Content-Type", "application/json")
+			r.ServeHTTP(w, req)
+
+			if w.Code != tc.expect.httpcode {
+				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
+			}
+			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
+				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
+			}
+		})
+	}
+
+	clearMemberTest()
 }
 
-func TestGetNotExistMember(t *testing.T) {
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("GET", "/member/abc123", nil)
-
-	// r := getRouter()
-	// r.GET("/member/:id", env.MemberGetHandler)
-	// Start gin server
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusNotFound {
-		t.Fail()
+func TestRouteDeleteMembers(t *testing.T) {
+	initMemberTest()
+	testCase := []struct {
+		name   string
+		route  string
+		expect ExpectResp
+	}{
+		{"Delete", `/members?ids=["superman@mirrormedia.mg","test6743"]`, ExpectResp{http.StatusOK, ""}},
+		{"Empty", `/members?ids=[]`, ExpectResp{http.StatusBadRequest, `{"Error":"ID List Empty"}`}},
+		{"InvalidQueryArray", `/members?ids=["superman@mirrormedia.mg,"test6743"]`, ExpectResp{http.StatusBadRequest, `{"Error":"invalid character 't' after array element"}`}},
+		{"NotFound", `/members?ids=["superman", "wonderwoman"]`, ExpectResp{http.StatusBadRequest, `{"Error":"Members Not Found"}`}},
 	}
+	for _, tc := range testCase {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest("DELETE", tc.route, nil)
+			r.ServeHTTP(w, req)
 
-	expected := `{"Error":"User Not Found"}`
-	if w.Body.String() != string(expected) {
-		t.Fail()
+			if w.Code != tc.expect.httpcode {
+				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
+			}
+			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
+				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
+			}
+		})
 	}
+	clearMemberTest()
 }
-
-func TestPostEmptyMember(t *testing.T) {
-
-	w := httptest.NewRecorder()
-
-	req, _ := http.NewRequest("POST", "/member", nil)
-	// req.Header.Set("Content-Type", "application/json")
-	// r := getRouter()
-	// r.POST("/member", env.MemberPostHandler)
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusBadRequest {
-		t.Fail()
+func TestRouteDeleteMember(t *testing.T) {
+	initMemberTest()
+	testCase := []struct {
+		name   string
+		route  string
+		expect ExpectResp
+	}{
+		{"Current", "/member/superman@mirrormedia.mg", ExpectResp{http.StatusOK, ""}},
+		{"NonExisted", "/member/wonderwoman@mirrormedia.mg", ExpectResp{http.StatusNotFound, `{"Error":"User Not Found"}`}},
 	}
-	expected := `{"Error":"Invalid User"}`
-	if w.Body.String() != string(expected) {
-		t.Fail()
+	for _, tc := range testCase {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest("DELETE", tc.route, nil)
+			r.ServeHTTP(w, req)
+
+			if w.Code != tc.expect.httpcode {
+				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
+			}
+			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
+				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
+			}
+		})
 	}
-}
-
-func TestPostMember(t *testing.T) {
-
-	w := httptest.NewRecorder()
-	var jsonStr = []byte(`{
-		"id":"spaceoddity", 
-		"name":"Major Tom"
-	}`)
-	req, _ := http.NewRequest("POST", "/member", bytes.NewBuffer(jsonStr))
-	req.Header.Set("Content-Type", "application/json")
-
-	// r := getRouter()
-	// r.POST("/member", env.MemberPostHandler)
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fail()
-	}
-	// var (
-	// 	resp     models.Member
-	// 	expected models.Member
-	// )
-	// if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-	// 	log.Fatal(err)
-	// }
-	// if err := json.Unmarshal(jsonStr, &expected); err != nil {
-	// 	log.Fatal(err)
-	// }
-	// if resp.ID != expected.ID || resp.Name != expected.Name {
-	// 	t.Fail()
-	// }
-}
-
-func TestPostExistedMember(t *testing.T) {
-
-	w := httptest.NewRecorder()
-	var jsonStr = []byte(`{"id":"superman@mirrormedia.mg"}`)
-	req, _ := http.NewRequest("POST", "/member", bytes.NewBuffer(jsonStr))
-	req.Header.Set("Content-Type", "application/json")
-
-	// r := getRouter()
-	// r.POST("/member", env.MemberPostHandler)
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusBadRequest {
-		t.Fail()
-	}
-	expected := `{"Error":"User Already Existed"}`
-	if w.Body.String() != string(expected) {
-		t.Fail()
-	}
-}
-
-func TestPutMember(t *testing.T) {
-
-	w := httptest.NewRecorder()
-	var jsonStr = []byte(`{
-		"id":"superman@mirrormedia.mg", 
-		"name":"Clark Kent"
-	}`)
-	req, _ := http.NewRequest("PUT", "/member", bytes.NewBuffer(jsonStr))
-	req.Header.Set("Content-Type", "application/json")
-
-	// r := getRouter()
-	// r.PUT("/member", env.MemberPutHandler)
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fail()
-	}
-	// var (
-	// 	resp     models.Member
-	// 	expected models.Member
-	// )
-	// if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-	// 	log.Fatal(err)
-	// }
-	// if err := json.Unmarshal(jsonStr, &expected); err != nil {
-	// 	log.Fatal(err)
-	// }
-	// if resp.ID != expected.ID || resp.Name != expected.Name {
-	// 	t.Fail()
-	// }
-}
-
-func TestPutNonExistMember(t *testing.T) {
-
-	w := httptest.NewRecorder()
-	var jsonStr = []byte(`{
-			"id":"ChinaNo.19", 
-			"name":"Major Tom"
-		}`)
-	req, _ := http.NewRequest("PUT", "/member", bytes.NewBuffer(jsonStr))
-	req.Header.Set("Content-Type", "application/json")
-
-	// r := getRouter()
-	// r.PUT("/member", env.MemberPutHandler)
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusBadRequest {
-		t.Fail()
-	}
-	expected := `{"Error":"User Not Found"}`
-	if w.Body.String() != string(expected) {
-		t.Fail()
-	}
-}
-
-func TestDeleteExistMember(t *testing.T) {
-
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("DELETE", "/member/superman@mirrormedia.mg", nil)
-
-	// r := getRouter()
-	// r.DELETE("/member/:id", env.MemberDeleteHandler)
-	// Start gin server
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusOK {
-		t.Fail()
-	}
-	var resp models.Member
-	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
-		log.Fatal(err)
-	}
-	if resp.Active.Int == 1 {
-		t.Fail()
-	}
-}
-
-func TestDeleteNonExistMember(t *testing.T) {
-	w := httptest.NewRecorder()
-	req, _ := http.NewRequest("DELETE", "/member/ChinaNo.19", nil)
-
-	// r := getRouter()
-	// r.DELETE("/member/:id", env.MemberDeleteHandler)
-	r.ServeHTTP(w, req)
-
-	if w.Code != http.StatusNotFound {
-		t.Fail()
-	}
-	expected := `{"Error":"User Not Found"}`
-	if w.Body.String() != string(expected) {
-		t.Fail()
-	}
+	clearMemberTest()
 }
 
 func TestUpdateMemberPassword(t *testing.T) {
@@ -386,7 +370,34 @@ func TestUpdateMemberPassword(t *testing.T) {
 				t.Fail()
 			}
 		}
-
 	}
+}
 
+func TestRouteActivateMultipleMembers(t *testing.T) {
+	initMemberTest()
+	testCase := []struct {
+		name    string
+		payload string
+		expect  ExpectResp
+	}{
+		{"CurrentMembers", `{"member_ids": ["superman@mirrormedia.mg","test6743"], "active": 1}`, ExpectResp{http.StatusOK, ``}},
+		{"NotFound", `{"member_ids": ["ironman", "spiderman"], "active": 3}`, ExpectResp{http.StatusNotFound, `{"Error":"Members Not Found"}`}},
+		{"InvalidPayload", `{}`, ExpectResp{http.StatusBadRequest, `{"Error":"Invalid Request Body"}`}},
+	}
+	for _, tc := range testCase {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			jsonStr := []byte(tc.payload)
+			req, _ := http.NewRequest("PUT", "/members", bytes.NewBuffer(jsonStr))
+			req.Header.Set("Content-Type", "application/json")
+			r.ServeHTTP(w, req)
+			if w.Code != tc.expect.httpcode {
+				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
+			}
+			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
+				t.Errorf("%s expect error message %s but get %s", tc.name, tc.expect.err, w.Body.String())
+			}
+		})
+	}
+	clearMemberTest()
 }
