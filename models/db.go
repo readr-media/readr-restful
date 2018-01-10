@@ -28,6 +28,20 @@ func Connect(dbURI string) {
 	DB = database{d}
 }
 
+func makeFieldString(mode string, pattern string, tags []string) (result []string) {
+	switch mode {
+	case "get":
+		for _, field := range tags {
+			result = append(result, fmt.Sprintf(pattern, field, field))
+		}
+	case "update":
+		for _, value := range tags {
+			result = append(result, fmt.Sprintf(pattern, value, value))
+		}
+	}
+	return result
+}
+
 func getStructDBTags(mode string, input interface{}) []string {
 	columns := make([]string, 0)
 	u := reflect.ValueOf(input)
@@ -50,6 +64,16 @@ func getStructDBTags(mode string, input interface{}) []string {
 				}
 			case NullTime:
 				if field.Valid {
+					columns = append(columns, tag.Get("db"))
+				}
+			case NullInt:
+				if field.Valid {
+					fmt.Println("valid NullInt : ", field.Int)
+					columns = append(columns, tag.Get("db"))
+				}
+			case NullBool:
+				if field.Valid {
+					fmt.Println("valid NullBool : ", field.Bool)
 					columns = append(columns, tag.Get("db"))
 				}
 			case bool, int, uint32:

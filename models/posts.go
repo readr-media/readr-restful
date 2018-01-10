@@ -53,20 +53,6 @@ type PostMember struct {
 	UpdatedBy `json:"updated_by" db:"updated_by"`
 }
 
-func makeFieldString(mode string, pattern string, tags []string, params string) (result []string) {
-	switch mode {
-	case "get":
-		for _, field := range tags {
-			result = append(result, fmt.Sprintf(pattern, params, field, params, field))
-		}
-	case "update":
-		for _, value := range tags {
-			result = append(result, fmt.Sprintf(pattern, value, value))
-		}
-	}
-	return result
-}
-
 func (a *postAPI) GetPosts(maxResult uint8, page uint16, sortMethod string) ([]PostMember, error) {
 
 	var (
@@ -85,8 +71,8 @@ func (a *postAPI) GetPosts(maxResult uint8, page uint16, sortMethod string) ([]P
 	// query, _ := generateSQLStmt("get_all", "posts", sortString)
 
 	tags := getStructDBTags("full", Member{})
-	author := makeFieldString("get", `%s.%s "%s.%s"`, tags, "author")
-	updatedBy := makeFieldString("get", `%s.%s "%s.%s"`, tags, "updated_by")
+	author := makeFieldString("get", `author.%s "author.%s"`, tags)
+	updatedBy := makeFieldString("get", `updated_by.%s "updated_by.%s"`, tags)
 	query := fmt.Sprintf(`SELECT posts.*, %s, %s FROM posts 
 		LEFT JOIN members AS author ON posts.author = author.user_id 
 		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.user_id 
@@ -107,8 +93,8 @@ func (a *postAPI) GetPost(id uint32) (PostMember, error) {
 
 	post := PostMember{}
 	tags := getStructDBTags("full", Member{})
-	author := makeFieldString("get", `%s.%s "%s.%s"`, tags, "author")
-	updatedBy := makeFieldString("get", `%s.%s "%s.%s"`, tags, "updated_by")
+	author := makeFieldString("get", `author.%s "author.%s"`, tags)
+	updatedBy := makeFieldString("get", `updated_by.%s "updated_by.%s"`, tags)
 	query := fmt.Sprintf(`SELECT posts.*, %s, %s FROM posts 
 		LEFT JOIN members AS author ON posts.author = author.user_id 
 		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.user_id 
@@ -162,7 +148,7 @@ func (a *postAPI) UpdatePost(p Post) error {
 
 	// query, err := generateSQLStmt("partial_update", "posts", p)
 	tags := getStructDBTags("partial", p)
-	fields := makeFieldString("update", `%s = :%s`, tags, "")
+	fields := makeFieldString("update", `%s = :%s`, tags)
 	query := fmt.Sprintf(`UPDATE posts SET %s WHERE post_id = :post_id`,
 		strings.Join(fields, ", "))
 	// if err != nil {

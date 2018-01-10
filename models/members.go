@@ -101,8 +101,11 @@ func (a *memberAPI) GetMember(id string) (Member, error) {
 }
 
 func (a *memberAPI) InsertMember(m Member) error {
-	query, _ := generateSQLStmt("insert", "members", m)
 
+	tags := getStructDBTags("full", Member{})
+	query := fmt.Sprintf(`INSERT INTO members (%s) VALUES (:%s)`,
+		strings.Join(tags, ","), strings.Join(tags, ",:"))
+	// query, _ := generateSQLStmt("insert", "members", m)
 	result, err := DB.NamedExec(query, m)
 
 	if err != nil {
@@ -124,7 +127,10 @@ func (a *memberAPI) InsertMember(m Member) error {
 }
 
 func (a *memberAPI) UpdateMember(m Member) error {
-	query, _ := generateSQLStmt("partial_update", "members", m)
+	// query, _ := generateSQLStmt("partial_update", "members", m)
+	tags := getStructDBTags("partial", m)
+	fields := makeFieldString("update", `%s = :%s`, tags)
+	query := fmt.Sprintf(`UPDATE members SET %s WHERE user_id = :user_id`, strings.Join(fields, ", "))
 	result, err := DB.NamedExec(query, m)
 
 	if err != nil {
