@@ -99,20 +99,20 @@ func (a *mockMemberAPI) DeleteMember(id string) error {
 	err := errors.New("User Not Found")
 	for index, value := range mockMemberDS {
 		if id == value.ID {
-			mockMemberDS[index].Active = models.NullInt{0, true}
-			return mockMemberDS[index], nil
+			mockMemberDS[index].Active = models.NullInt{Int: 0, Valid: true}
+			return nil
 		}
 	}
 	return err
 }
 
-func (a *mockMemberAPI) DeleteMembers(ids []string) (err error) {
+func (a *mockMemberAPI) SetMultipleActive(ids []string, active int) (err error) {
 
 	result := make([]int, 0)
 	for _, value := range ids {
 		for i, v := range mockMemberDS {
 			if v.ID == value {
-				mockMemberDS[i].Active = 0
+				mockMemberDS[i].Active = models.NullInt{Int: int64(active), Valid: true}
 				result = append(result, i)
 			}
 		}
@@ -371,4 +371,33 @@ func TestUpdateMemberPassword(t *testing.T) {
 			}
 		}
 	}
+}
+
+func TestRouteActivateMultipleMembers(t *testing.T) {
+	initMemberTest()
+	testCase := []struct {
+		name    string
+		payload string
+		expect  ExpectResp
+	}{
+		{"CurrentMembers", `{"member_ids": ["superman@mirrormedia.mg","test6743"], "active": 1}`, ExpectResp{http.StatusOK, ``}},
+		{"NotFound", `{"member_ids": ["ironman", "spiderman"], "active": 3}`, ExpectResp{http.StatusNotFound, `{"Error":"Members Not Found"}`}},
+		{"InvalidPayload", `{}`, ExpectResp{http.StatusBadRequest, `{"Error":"Invalid Request Body"}`}},
+	}
+	for _, tc := range testCase {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			jsonStr := []byte(tc.payload)
+			req, _ := http.NewRequest("PUT", "/members", bytes.NewBuffer(jsonStr))
+			req.Header.Set("Content-Type", "application/json")
+			r.ServeHTTP(w, req)
+			if w.Code != tc.expect.httpcode {
+				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
+			}
+			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
+				t.Errorf("%s expect error message %s but get %s", tc.name, tc.expect.err, w.Body.String())
+			}
+		})
+	}
+	clearMemberTest()
 }

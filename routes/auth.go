@@ -57,7 +57,7 @@ func (r *authHandler) userLogin(c *gin.Context) {
 		}
 	}
 
-	if member.Active.Int == 0 {
+	if member.Active.Int <= 0 {
 		c.JSON(http.StatusUnauthorized, gin.H{"Error": "User Not Activated"})
 		return
 	}

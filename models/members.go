@@ -53,7 +53,7 @@ type MemberInterface interface {
 	GetMember(id string) (Member, error)
 	InsertMember(m Member) error
 	UpdateMember(m Member) error
-	DeleteMembers(ids []string) error
+	SetMultipleActive(ids []string, active int) error
 	DeleteMember(id string) error
 }
 
@@ -71,13 +71,10 @@ func (a *memberAPI) GetMembers(maxResult uint8, page uint16, sortMethod string) 
 	default:
 		sortString = "updated_at DESC"
 	}
-	// limitBase := (page - 1) * uint16(maxResult)
-	// limitIncrement := page * uint16(maxResult)
-	query, _ := generateSQLStmt("get_all", "members", sortString)
+	query := fmt.Sprintf(`SELECT * FROM members where active != -1 ORDER BY %s LIMIT ? OFFSET ?`, sortString)
+	// query, _ := generateSQLStmt("get_all", "members", sortString)
 
-	// fmt.Println("sortString: ", sortString, " , limitBase: ", limitBase, " , limitIncrement: ", limitIncrement)
-	// fmt.Println(limitBase, limitIncrement)
-	err = DB.Select(&result, query, (page-1)*uint16(maxResult), maxResult)
+	err = DB.Select(&result, query, maxResult, (page-1)*uint16(maxResult))
 	if err != nil || len(result) == 0 {
 		result = []Member{}
 		err = errors.New("Members Not Found")
@@ -146,7 +143,7 @@ func (a *memberAPI) UpdateMember(m Member) error {
 func (a *memberAPI) DeleteMember(id string) error {
 
 	// result := Member{}
-	result, err := DB.Exec("UPDATE members SET active = 0 WHERE user_id = ?", id)
+	result, err := DB.Exec("UPDATE members SET active = -1 WHERE user_id = ?", id)
 	if err != nil {
 		return err
 	}
@@ -159,8 +156,9 @@ func (a *memberAPI) DeleteMember(id string) error {
 	return err
 }
 
-func (a *memberAPI) DeleteMembers(ids []string) (err error) {
-	query, args, err := sqlx.In("UPDATE members SET active = 0 WHERE user_id IN (?);", ids)
+func (a *memberAPI) SetMultipleActive(ids []string, active int) (err error) {
+	prep := fmt.Sprintf("UPDATE members SET active = %d WHERE user_id IN (?);", active)
+	query, args, err := sqlx.In(prep, ids)
 	if err != nil {
 		return err
 	}

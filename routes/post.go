@@ -150,7 +150,7 @@ func (r *postHandler) Put(c *gin.Context) {
 	// c.JSON(http.StatusOK, models.Post{})
 	c.Status(http.StatusOK)
 }
-func (r *postHandler) PostsDeleteHandler(c *gin.Context) {
+func (r *postHandler) DeleteAll(c *gin.Context) {
 
 	ids := []uint32{}
 	// Disable to parse interface{} to []uint32
@@ -165,7 +165,7 @@ func (r *postHandler) PostsDeleteHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "ID List Empty"})
 		return
 	}
-	err = models.PostAPI.DeleteMultiple(ids)
+	err = models.PostAPI.SetMultipleActive(ids, 0)
 	if err != nil {
 		switch err.Error() {
 		case "Posts Not Found":
@@ -203,6 +203,34 @@ func (r *postHandler) Delete(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
+func (r *postHandler) PublishAll(c *gin.Context) {
+	payload := struct {
+		PostIDs []uint32 `json:"post_ids"`
+		Active  int      `json:"active"`
+	}{}
+	err := c.Bind(&payload)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
+	}
+	if payload.PostIDs == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Request Body"})
+		return
+	}
+	err = models.PostAPI.SetMultipleActive(payload.PostIDs, payload.Active)
+	if err != nil {
+		switch err.Error() {
+		case "Posts Not Found":
+			c.JSON(http.StatusNotFound, gin.H{"Error": "Posts Not Found"})
+			return
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+			return
+		}
+	}
+	c.Status(http.StatusOK)
+}
+
 func (r *postHandler) SetRoutes(router *gin.Engine) {
 
 	// router.GET("posts", r.PostsGetHandler)
@@ -217,7 +245,8 @@ func (r *postHandler) SetRoutes(router *gin.Engine) {
 	postsRouter := router.Group("/posts")
 	{
 		postsRouter.GET("", r.GetAll)
-		postsRouter.DELETE("", r.PostsDeleteHandler)
+		postsRouter.DELETE("", r.DeleteAll)
+		postsRouter.PUT("", r.PublishAll)
 	}
 }
 
