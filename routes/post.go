@@ -86,8 +86,9 @@ func (r *postHandler) Post(c *gin.Context) {
 		post.UpdatedAt.Time = time.Now()
 		post.UpdatedAt.Valid = true
 	}
-	if post.Active != 3 {
-		post.Active = 3
+	// When insert post set default active to 3
+	if !post.Active.Valid {
+		post.Active.Int = 3
 	}
 	if !post.UpdatedBy.Valid {
 		post.UpdatedBy = post.Author
@@ -122,9 +123,6 @@ func (r *postHandler) Put(c *gin.Context) {
 	if post == emptyPost {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Post"})
 		return
-	}
-	if post.Active == 0 {
-		post.Active = 4
 	}
 	// CreatedAt would be list in the updating tag list
 	if post.CreatedAt.Valid {

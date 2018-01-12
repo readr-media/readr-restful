@@ -14,21 +14,24 @@ import (
 // However, struct type field like NullTime, NullString must be declared as pointer,
 // like *NullTime, *NullString to be used with omitempty
 type Post struct {
-	ID            uint32     `json:"id" db:"post_id"`
-	Author        NullString `json:"author" db:"author"`
-	CreatedAt     NullTime   `json:"created_at" db:"created_at"`
-	LikeAmount    int        `json:"liked" db:"like_amount"`
-	CommentAmount int        `json:"comment_amount" db:"comment_amount"`
-	Title         NullString `json:"title" db:"title"`
-	Content       NullString `json:"content" db:"content"`
-	Link          NullString `json:"link" db:"link"`
-	OgTitle       NullString `json:"og_title" db:"og_title"`
-	OgDescription NullString `json:"og_description" db:"og_description"`
-	OgImage       NullString `json:"og_image" db:"og_image"`
-	Active        int        `json:"active" db:"active"`
-	UpdatedAt     NullTime   `json:"updated_at" db:"updated_at"`
-	UpdatedBy     NullString `json:"updated_by" db:"updated_by"`
-	PublishedAt   NullTime   `json:"published_at" db:"published_at"`
+	ID              uint32     `json:"id" db:"post_id"`
+	Author          NullString `json:"author" db:"author"`
+	CreatedAt       NullTime   `json:"created_at" db:"created_at"`
+	LikeAmount      NullInt    `json:"like_amount" db:"like_amount"`
+	CommentAmount   NullInt    `json:"comment_amount" db:"comment_amount"`
+	Title           NullString `json:"title" db:"title"`
+	Content         NullString `json:"content" db:"content"`
+	Link            NullString `json:"link" db:"link"`
+	OgTitle         NullString `json:"og_title" db:"og_title"`
+	OgDescription   NullString `json:"og_description" db:"og_description"`
+	OgImage         NullString `json:"og_image" db:"og_image"`
+	Active          NullInt    `json:"active" db:"active"`
+	UpdatedAt       NullTime   `json:"updated_at" db:"updated_at"`
+	UpdatedBy       NullString `json:"updated_by" db:"updated_by"`
+	PublishedAt     NullTime   `json:"published_at" db:"published_at"`
+	LinkTitle       NullString `json:"link_title" db:"link_title"`
+	LinkDescription NullString `json:"link_description" db:"link_description"`
+	LinkImage       NullString `json:"link_image" db:"link_image"`
 }
 
 type postAPI struct{}
@@ -74,8 +77,8 @@ func (a *postAPI) GetPosts(maxResult uint8, page uint16, sortMethod string) ([]P
 	author := makeFieldString("get", `author.%s "author.%s"`, tags)
 	updatedBy := makeFieldString("get", `updated_by.%s "updated_by.%s"`, tags)
 	query := fmt.Sprintf(`SELECT posts.*, %s, %s FROM posts 
-		LEFT JOIN members AS author ON posts.author = author.user_id 
-		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.user_id 
+		LEFT JOIN members AS author ON posts.author = author.member_id 
+		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.member_id 
 		where posts.active != 0 ORDER BY %s LIMIT ? OFFSET ?`,
 		strings.Join(author, ","), strings.Join(updatedBy, ","), sortString)
 
@@ -96,8 +99,8 @@ func (a *postAPI) GetPost(id uint32) (PostMember, error) {
 	author := makeFieldString("get", `author.%s "author.%s"`, tags)
 	updatedBy := makeFieldString("get", `updated_by.%s "updated_by.%s"`, tags)
 	query := fmt.Sprintf(`SELECT posts.*, %s, %s FROM posts 
-		LEFT JOIN members AS author ON posts.author = author.user_id 
-		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.user_id 
+		LEFT JOIN members AS author ON posts.author = author.member_id 
+		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.member_id 
 		WHERE post_id = ?`,
 		strings.Join(author, ","), strings.Join(updatedBy, ","))
 
