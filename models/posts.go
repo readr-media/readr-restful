@@ -59,19 +59,9 @@ type PostMember struct {
 func (a *postAPI) GetPosts(maxResult uint8, page uint16, sortMethod string) ([]PostMember, error) {
 
 	var (
-		result     []PostMember
-		err        error
-		sortString string
+		result []PostMember
+		err    error
 	)
-	switch sortMethod {
-	case "updated_at":
-		sortString = "updated_at"
-	case "-updated_at":
-		sortString = "updated_at DESC"
-	default:
-		sortString = "updated_at DESC"
-	}
-	// query, _ := generateSQLStmt("get_all", "posts", sortString)
 
 	tags := getStructDBTags("full", Member{})
 	author := makeFieldString("get", `author.%s "author.%s"`, tags)
@@ -80,7 +70,7 @@ func (a *postAPI) GetPosts(maxResult uint8, page uint16, sortMethod string) ([]P
 		LEFT JOIN members AS author ON posts.author = author.member_id 
 		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.member_id 
 		where posts.active != 0 ORDER BY %s LIMIT ? OFFSET ?`,
-		strings.Join(author, ","), strings.Join(updatedBy, ","), sortString)
+		strings.Join(author, ","), strings.Join(updatedBy, ","), orderByHelper(sortMethod))
 
 	err = DB.Select(&result, query, maxResult, (page-1)*uint16(maxResult))
 	if err != nil || len(result) == 0 {

@@ -42,6 +42,16 @@ func makeFieldString(mode string, pattern string, tags []string) (result []strin
 	return result
 }
 
+func orderByHelper(sortMethod string) (result string) {
+	// if strings.Contains(sortMethod, )
+	if strings.HasPrefix(sortMethod, "-") {
+		result = sortMethod[1:] + " DESC"
+	} else {
+		result = sortMethod
+	}
+	return result
+}
+
 func getStructDBTags(mode string, input interface{}) []string {
 	columns := make([]string, 0)
 	u := reflect.ValueOf(input)

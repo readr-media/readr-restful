@@ -59,19 +59,10 @@ type MemberInterface interface {
 
 func (a *memberAPI) GetMembers(maxResult uint8, page uint16, sortMethod string) ([]Member, error) {
 	var (
-		result     []Member
-		err        error
-		sortString string
+		result []Member
+		err    error
 	)
-	switch sortMethod {
-	case "updated_at":
-		sortString = "updated_at"
-	case "-updated_at":
-		sortString = "updated_at DESC"
-	default:
-		sortString = "updated_at DESC"
-	}
-	query := fmt.Sprintf(`SELECT * FROM members where active != -1 ORDER BY %s LIMIT ? OFFSET ?`, sortString)
+	query := fmt.Sprintf(`SELECT * FROM members where active != -1 ORDER BY %s LIMIT ? OFFSET ?`, orderByHelper(sortMethod))
 	// query, _ := generateSQLStmt("get_all", "members", sortString)
 
 	err = DB.Select(&result, query, maxResult, (page-1)*uint16(maxResult))
