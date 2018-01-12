@@ -11,13 +11,13 @@ import (
 )
 
 type Member struct {
-	ID       string     `json:"id" db:"user_id"`
+	ID       string     `json:"id" db:"member_id"`
 	Name     NullString `json:"name" db:"name"`
-	Nickname NullString `json:"nickname" db:"nick"`
+	Nickname NullString `json:"nickname" db:"nickname"`
 	// Cannot parse Date format
 	Birthday NullTime   `json:"birthday" db:"birthday"`
 	Gender   NullString `json:"gender" db:"gender"`
-	Work     NullString `json:"occupation" db:"work"`
+	Work     NullString `json:"work" db:"work"`
 	Mail     NullString `json:"mail" db:"mail"`
 
 	RegisterMode NullString `json:"register_mode" db:"register_mode"`
@@ -30,13 +30,13 @@ type Member struct {
 	// Ignore password JSON marshall for now
 
 	Description  NullString `json:"description" db:"description"`
-	ProfileImage NullString `json:"profile_image" db:"profile_picture"`
+	ProfileImage NullString `json:"profile_image" db:"profile_image"`
 	Identity     NullString `json:"identity" db:"identity"`
 
 	Role   NullInt `json:"role" db:"role"`
 	Active NullInt `json:"active" db:"active"`
 
-	CustomEditor NullBool `json:"custom_editor" db:"c_editor"`
+	CustomEditor NullBool `json:"custom_editor" db:"custom_editor"`
 	HideProfile  NullBool `json:"hide_profile" db:"hide_profile"`
 	ProfilePush  NullBool `json:"profile_push" db:"profile_push"`
 	PostPush     NullBool `json:"post_push" db:"post_push"`
@@ -59,19 +59,10 @@ type MemberInterface interface {
 
 func (a *memberAPI) GetMembers(maxResult uint8, page uint16, sortMethod string) ([]Member, error) {
 	var (
-		result     []Member
-		err        error
-		sortString string
+		result []Member
+		err    error
 	)
-	switch sortMethod {
-	case "updated_at":
-		sortString = "updated_at"
-	case "-updated_at":
-		sortString = "updated_at DESC"
-	default:
-		sortString = "updated_at DESC"
-	}
-	query := fmt.Sprintf(`SELECT * FROM members where active != -1 ORDER BY %s LIMIT ? OFFSET ?`, sortString)
+	query := fmt.Sprintf(`SELECT * FROM members where active != -1 ORDER BY %s LIMIT ? OFFSET ?`, orderByHelper(sortMethod))
 	// query, _ := generateSQLStmt("get_all", "members", sortString)
 
 	err = DB.Select(&result, query, maxResult, (page-1)*uint16(maxResult))
@@ -85,7 +76,7 @@ func (a *memberAPI) GetMembers(maxResult uint8, page uint16, sortMethod string) 
 
 func (a *memberAPI) GetMember(id string) (Member, error) {
 	member := Member{}
-	err := DB.QueryRowx("SELECT * FROM members where user_id = ?", id).StructScan(&member)
+	err := DB.QueryRowx("SELECT * FROM members where member_id = ?", id).StructScan(&member)
 	switch {
 	case err == sql.ErrNoRows:
 		err = errors.New("User Not Found")
@@ -101,8 +92,11 @@ func (a *memberAPI) GetMember(id string) (Member, error) {
 }
 
 func (a *memberAPI) InsertMember(m Member) error {
-	query, _ := generateSQLStmt("insert", "members", m)
 
+	tags := getStructDBTags("full", Member{})
+	query := fmt.Sprintf(`INSERT INTO members (%s) VALUES (:%s)`,
+		strings.Join(tags, ","), strings.Join(tags, ",:"))
+	// query, _ := generateSQLStmt("insert", "members", m)
 	result, err := DB.NamedExec(query, m)
 
 	if err != nil {
@@ -124,7 +118,10 @@ func (a *memberAPI) InsertMember(m Member) error {
 }
 
 func (a *memberAPI) UpdateMember(m Member) error {
-	query, _ := generateSQLStmt("partial_update", "members", m)
+	// query, _ := generateSQLStmt("partial_update", "members", m)
+	tags := getStructDBTags("partial", m)
+	fields := makeFieldString("update", `%s = :%s`, tags)
+	query := fmt.Sprintf(`UPDATE members SET %s WHERE member_id = :member_id`, strings.Join(fields, ", "))
 	result, err := DB.NamedExec(query, m)
 
 	if err != nil {
@@ -143,7 +140,7 @@ func (a *memberAPI) UpdateMember(m Member) error {
 func (a *memberAPI) DeleteMember(id string) error {
 
 	// result := Member{}
-	result, err := DB.Exec("UPDATE members SET active = -1 WHERE user_id = ?", id)
+	result, err := DB.Exec("UPDATE members SET active = -1 WHERE member_id = ?", id)
 	if err != nil {
 		return err
 	}
@@ -157,7 +154,7 @@ func (a *memberAPI) DeleteMember(id string) error {
 }
 
 func (a *memberAPI) SetMultipleActive(ids []string, active int) (err error) {
-	prep := fmt.Sprintf("UPDATE members SET active = %d WHERE user_id IN (?);", active)
+	prep := fmt.Sprintf("UPDATE members SET active = %d WHERE member_id IN (?);", active)
 	query, args, err := sqlx.In(prep, ids)
 	if err != nil {
 		return err
