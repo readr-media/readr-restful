@@ -144,7 +144,7 @@ func (r *memberHandler) DeleteAll(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "ID List Empty"})
 		return
 	}
-	err = models.MemberAPI.SetMultipleActive(ids, 0)
+	err = models.MemberAPI.SetMultipleActive(ids, -1)
 	if err != nil {
 		switch err.Error() {
 		case "Members Not Found":
