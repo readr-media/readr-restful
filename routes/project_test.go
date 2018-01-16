@@ -21,7 +21,11 @@ func (a *mockProjectAPI) Init() {
 	_, _ = models.DB.Exec("truncate table projects;")
 	_, _ = models.DB.Exec("truncate table members;")
 	_, _ = models.DB.Exec("truncate table permissions;")
-	_ = models.ProjectAPI.PostProject(mockProjectDS[0])
+	_, _ = models.DB.Exec("truncate table posts;")
+	_, _ = models.DB.Exec("truncate table following_members;")
+	_, _ = models.DB.Exec("truncate table following_posts;")
+	_, _ = models.DB.Exec("truncate table following_projects;")
+	_ = models.ProjectAPI.InsertProject(mockProjectDS[0])
 }*/
 
 func (a *mockProjectAPI) GetProject(p models.Project) (models.Project, error) {
@@ -40,7 +44,7 @@ func (a *mockProjectAPI) GetProjects(ps ...models.Project) ([]models.Project, er
 	return nil, nil
 }
 
-func (a *mockProjectAPI) PostProject(p models.Project) error {
+func (a *mockProjectAPI) InsertProject(p models.Project) error {
 	for _, project := range mockProjectDS {
 		if p.ID == project.ID {
 			return errors.New("Duplicate entry")
@@ -170,7 +174,7 @@ func TestRoutePostProject(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	var jsonStr = []byte(`{
-		"ID":"32768",
+		"ID":32768,
 		"Title":"OK",
 		"PostID":188,
 		"LikeAmount":0,
@@ -205,7 +209,7 @@ func TestRoutePostProject(t *testing.T) {
 func TestRoutePostExistedProject(t *testing.T) {
 
 	w := httptest.NewRecorder()
-	var jsonStr = []byte(`{"ID":"32767"}`)
+	var jsonStr = []byte(`{"ID":32767}`)
 	req, _ := http.NewRequest("POST", "/project", bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 
@@ -223,7 +227,7 @@ func TestRouteUpdateProject(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	var jsonStr = []byte(`{
-		"ID":"32767", 
+		"ID":32767, 
 		"Title":"Modified",
 		"active": 1
 	}`)
@@ -256,7 +260,7 @@ func TestRouteUpdateNonExistProject(t *testing.T) {
 
 	w := httptest.NewRecorder()
 	var jsonStr = []byte(`{
-			"ID":"0", 
+			"ID":11493, 
 			"Title":"NotExist"
 		}`)
 	req, _ := http.NewRequest("PUT", "/project", bytes.NewBuffer(jsonStr))

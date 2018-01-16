@@ -105,7 +105,7 @@ func (r *authHandler) userLogin(c *gin.Context) {
 }
 
 type userRegisterParams struct {
-	ID           string `json:"id" db:"user_id"`
+	ID           string `json:"id" db:"member_id"`
 	Name         string `json:"name" db:"name"`
 	Nickname     string `json:"nickname" db:"nick"`
 	Gender       string `json:"gender" db:"gender"`

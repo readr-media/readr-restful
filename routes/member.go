@@ -210,7 +210,7 @@ func (r *memberHandler) ActivateAll(c *gin.Context) {
 
 // MemberPutPasswordHandler let caller to update a member's password.
 //
-func (r *memberHandler) MemberPutPasswordHandler(c *gin.Context) {
+func (r *memberHandler) PutPassword(c *gin.Context) {
 
 	input := struct {
 		ID          string `json:"id"`
@@ -290,7 +290,7 @@ func (r *memberHandler) SetRoutes(router *gin.Engine) {
 		memberRouter.PUT("", r.Put)
 		memberRouter.DELETE("/:id", r.Delete)
 
-		memberRouter.PUT("/password", r.MemberPutPasswordHandler)
+		memberRouter.PUT("/password", r.PutPassword)
 	}
 	membersRouter := router.Group("/members")
 	{
