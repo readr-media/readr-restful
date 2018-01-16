@@ -182,19 +182,18 @@ func (r *memberHandler) Delete(c *gin.Context) {
 
 func (r *memberHandler) ActivateAll(c *gin.Context) {
 	payload := struct {
-		MemberIDs []string `json:"member_ids"`
-		Active    int      `json:"active"`
+		IDs []string `json:"ids"`
 	}{}
 	err := c.Bind(&payload)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
-	if payload.MemberIDs == nil {
+	if payload.IDs == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Request Body"})
 		return
 	}
-	err = models.MemberAPI.SetMultipleActive(payload.MemberIDs, payload.Active)
+	err = models.MemberAPI.SetMultipleActive(payload.IDs, 1)
 	if err != nil {
 		switch err.Error() {
 		case "Members Not Found":

@@ -380,9 +380,9 @@ func TestRoutePublishMultiplePosts(t *testing.T) {
 		payload string
 		expect  ExpectResp
 	}{
-		{"CurrentPost", `{"post_ids": [1,6], "active": 1}`, ExpectResp{http.StatusOK, ``}},
-		{"NotFound", `{"post_ids": [3,5], "active": 3}`, ExpectResp{http.StatusNotFound, `{"Error":"Posts Not Found"}`}},
-		{"InvalidPayload", `{"active": 2}`, ExpectResp{http.StatusBadRequest, `{"Error":"Invalid Request Body"}`}},
+		{"CurrentPost", `{"ids": [1,6]}`, ExpectResp{http.StatusOK, ``}},
+		{"NotFound", `{"ids": [3,5]}`, ExpectResp{http.StatusNotFound, `{"Error":"Posts Not Found"}`}},
+		{"InvalidPayload", `{}`, ExpectResp{http.StatusBadRequest, `{"Error":"Invalid Request Body"}`}},
 	}
 	for _, tc := range testCase {
 		t.Run(tc.name, func(t *testing.T) {
