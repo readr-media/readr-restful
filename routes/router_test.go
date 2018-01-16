@@ -25,11 +25,13 @@ func TestMain(m *testing.M) {
 	AuthHandler.SetRoutes(r)
 	PermissionHandler.SetRoutes(r)
 	MiscHandler.SetRoutes(r, initMailDialer())
+	FollowingHandler.SetRoutes(r)
 
 	models.ProjectAPI = new(mockProjectAPI)
 	models.MemberAPI = new(mockMemberAPI)
 	models.PostAPI = new(mockPostAPI)
 	models.PermissionAPI = new(mockPermissionAPI)
+	models.FollowingAPI = new(mockFollowingAPI)
 
 	os.Exit(m.Run())
 }
