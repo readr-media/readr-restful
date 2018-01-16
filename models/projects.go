@@ -9,7 +9,7 @@ import (
 )
 
 type Project struct {
-	ID string `json:"id" db:"project_id"`
+	ID int `json:"id" db:"project_id"`
 
 	CreatedAt   NullTime   `json:"created_at" db:"created_at"`
 	UpdatedAt   NullTime   `json:"updated_at" db:"updated_at"`
@@ -37,7 +37,7 @@ var ProjectAPI ProjectAPIInterface = new(projectAPI)
 type ProjectAPIInterface interface {
 	GetProject(p Project) (Project, error)
 	GetProjects(ps ...Project) ([]Project, error)
-	PostProject(p Project) error
+	InsertProject(p Project) error
 	UpdateProjects(p Project) error
 	DeleteProjects(p Project) error
 }
@@ -64,7 +64,7 @@ func (a *projectAPI) GetProjects(ps ...Project) ([]Project, error) {
 	return nil, nil
 }
 
-func (a *projectAPI) PostProject(p Project) error {
+func (a *projectAPI) InsertProject(p Project) error {
 
 	query, _ := generateSQLStmt("insert", "projects", p)
 	result, err := DB.NamedExec(query, p)

@@ -1,8 +1,10 @@
 package routes
 
 import (
-	"net/http"
+	"strconv"
 	"time"
+
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/models"
@@ -11,8 +13,13 @@ import (
 type projectHandler struct {
 }
 
-func (r *projectHandler) projectGet(c *gin.Context) {
-	input := models.Project{ID: c.Param("id")}
+func (r *projectHandler) Get(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "ID Must Be Integer"})
+		return
+	}
+	input := models.Project{ID: id}
 	project, err := models.ProjectAPI.GetProject(input)
 
 	if err != nil {
@@ -28,13 +35,13 @@ func (r *projectHandler) projectGet(c *gin.Context) {
 	c.JSON(http.StatusOK, project)
 }
 
-func (r *projectHandler) projectPost(c *gin.Context) {
+func (r *projectHandler) Post(c *gin.Context) {
 
 	project := models.Project{}
 	c.Bind(&project)
 
 	// Pre-request test
-	if project.ID == "" {
+	if project.ID == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Project"})
 		return
 	}
@@ -47,7 +54,7 @@ func (r *projectHandler) projectPost(c *gin.Context) {
 		project.UpdatedAt.Valid = true
 	}
 
-	err := models.ProjectAPI.PostProject(project)
+	err := models.ProjectAPI.InsertProject(project)
 	if err != nil {
 		switch err.Error() {
 		case "Duplicate entry":
@@ -61,11 +68,11 @@ func (r *projectHandler) projectPost(c *gin.Context) {
 	c.JSON(http.StatusOK, nil)
 }
 
-func (r *projectHandler) projectPut(c *gin.Context) {
+func (r *projectHandler) Put(c *gin.Context) {
 
 	project := models.Project{}
 	c.Bind(&project)
-	if project.ID == "" {
+	if project.ID == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Project Data"})
 		return
 	}
@@ -91,10 +98,15 @@ func (r *projectHandler) projectPut(c *gin.Context) {
 	c.String(http.StatusOK, "ok")
 }
 
-func (r *projectHandler) projectDelete(c *gin.Context) {
+func (r *projectHandler) Delete(c *gin.Context) {
 
-	input := models.Project{ID: c.Param("id")}
-	err := models.ProjectAPI.DeleteProjects(input)
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "ID Must Be Integer"})
+		return
+	}
+	input := models.Project{ID: id}
+	err = models.ProjectAPI.DeleteProjects(input)
 
 	if err != nil {
 		switch err.Error() {
@@ -112,10 +124,10 @@ func (r *projectHandler) projectDelete(c *gin.Context) {
 func (r *projectHandler) SetRoutes(router *gin.Engine) {
 	projectRouter := router.Group("/project")
 	{
-		projectRouter.GET("/:id", r.projectGet)
-		projectRouter.POST("", r.projectPost)
-		projectRouter.PUT("", r.projectPut)
-		projectRouter.DELETE("/:id", r.projectDelete)
+		projectRouter.GET("/:id", r.Get)
+		projectRouter.POST("", r.Post)
+		projectRouter.PUT("", r.Put)
+		projectRouter.DELETE("/:id", r.Delete)
 	}
 }
 
