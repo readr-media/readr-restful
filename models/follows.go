@@ -23,15 +23,15 @@ type followPost struct {
 }
 
 func (f followPost) Insert() (sql.Result, error) {
-	query := "INSERT INTO following_posts (user_id, post_id) VALUES ( ? , ? );"
+	query := "INSERT INTO following_posts (member_id, post_id) VALUES ( ? , ? );"
 	return DB.Exec(query, f.ID, f.Object)
 }
 func (f followPost) Delete() (sql.Result, error) {
-	query := "DELETE FROM following_posts WHERE user_id = ? AND post_id = ?;"
+	query := "DELETE FROM following_posts WHERE member_id = ? AND post_id = ?;"
 	return DB.Exec(query, f.ID, f.Object)
 }
 func (f followPost) GetFollowings(params map[string]string) (interface{}, error) {
-	rows, err := DB.Queryx("SELECT m.* from posts as m INNER JOIN following_posts as f ON m.post_id = f.post_id WHERE m.active = 1 AND f.user_id = ? ORDER BY f.created_at DESC;", f.ID)
+	rows, err := DB.Queryx("SELECT m.* from posts as m INNER JOIN following_posts as f ON m.post_id = f.post_id WHERE m.active = 1 AND f.member_id = ? ORDER BY f.created_at DESC;", f.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -59,16 +59,16 @@ type followMember struct {
 }
 
 func (f followMember) Insert() (sql.Result, error) {
-	query := "INSERT INTO following_members (user_id, c_editer) VALUES ( ? , ? );"
+	query := "INSERT INTO following_members (member_id, custom_editor) VALUES ( ? , ? );"
 	return DB.Exec(query, f.ID, f.Object)
 }
 
 func (f followMember) Delete() (sql.Result, error) {
-	query := "DELETE FROM following_members WHERE user_id = ? AND c_editer = ?;"
+	query := "DELETE FROM following_members WHERE member_id = ? AND custom_editor = ?;"
 	return DB.Exec(query, f.ID, f.Object)
 }
 func (f followMember) GetFollowings(params map[string]string) (interface{}, error) {
-	rows, err := DB.Queryx("SELECT m.* from members as m INNER JOIN following_members as f ON m.user_id = f.c_editer WHERE m.active > 0 AND f.user_id = ? ORDER BY f.created_at DESC;", f.ID)
+	rows, err := DB.Queryx("SELECT m.* from members as m INNER JOIN following_members as f ON m.member_id = f.custom_editor WHERE m.active > 0 AND f.member_id = ? ORDER BY f.created_at DESC;", f.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -96,15 +96,15 @@ type followProject struct {
 }
 
 func (f followProject) Insert() (sql.Result, error) {
-	query := "INSERT INTO following_projects (user_id, project_id) VALUES ( ? , ? );"
+	query := "INSERT INTO following_projects (member_id, project_id) VALUES ( ? , ? );"
 	return DB.Exec(query, f.ID, f.Object)
 }
 func (f followProject) Delete() (sql.Result, error) {
-	query := "DELETE FROM following_projects WHERE user_id = ? AND project_id = ?;"
+	query := "DELETE FROM following_projects WHERE member_id = ? AND project_id = ?;"
 	return DB.Exec(query, f.ID, f.Object)
 }
 func (f followProject) GetFollowings(params map[string]string) (interface{}, error) {
-	rows, err := DB.Queryx("SELECT m.* from projects as m INNER JOIN following_projects as f ON m.project_id = f.project_id WHERE m.active = 1  AND f.user_id = ? ORDER BY f.created_at DESC;", f.ID)
+	rows, err := DB.Queryx("SELECT m.* from projects as m INNER JOIN following_projects as f ON m.project_id = f.project_id WHERE m.active = 1  AND f.member_id = ? ORDER BY f.created_at DESC;", f.ID)
 	if err != nil {
 		return nil, err
 	}

@@ -15,6 +15,7 @@ import (
 
 func initFollowTest() {
 	mockMemberDSBack = mockMemberDS
+	mockPostDSBack = mockPostDS
 
 	for _, params := range []models.Member{
 		models.Member{ID: "followtest0@mirrormedia.mg", Active: models.NullInt{1, true}},
@@ -29,8 +30,8 @@ func initFollowTest() {
 	}
 
 	for _, params := range []models.Post{
-		models.Post{ID: 42, Active: 1},
-		models.Post{ID: 84, Active: 1},
+		models.Post{ID: 42, Active: models.NullInt{1, true}},
+		models.Post{ID: 84, Active: models.NullInt{1, true}},
 	} {
 		err := models.PostAPI.InsertPost(params)
 		if err != nil {
@@ -66,6 +67,7 @@ func initFollowTest() {
 func clearFollowTest() {
 	//restore the backuped data
 	mockMemberDS = mockMemberDSBack
+	mockPostDS = mockPostDSBack
 }
 
 type mockFollowingAPI struct{}
@@ -115,7 +117,7 @@ func (a *mockFollowingAPI) GetFollowing(params map[string]string) (interface{}, 
 		}, nil
 	case params["resource"] == "post":
 		return []models.Post{
-			models.Post{ID: 42, Active: 1},
+			models.Post{ID: 42, Active: models.NullInt{1, true}},
 		}, nil
 	case params["resource"] == "project":
 		return []models.Project{
@@ -148,8 +150,8 @@ func TestFollowingGet(t *testing.T) {
 		in   CaseIn
 		out  CaseOut
 	}{
-		{"GetFollowingPostOK", CaseIn{"post", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, "[{\"id\":42,\"author\":null,\"created_at\":null,\"liked\":0,\"comment_amount\":0,\"title\":null,\"content\":null,\"link\":null,\"og_title\":null,\"og_description\":null,\"og_image\":null,\"active\":1,\"updated_at\":null,\"updated_by\":null,\"published_at\":null}]"}},
-		{"GetFollowingMemberOK", CaseIn{"member", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, "[{\"id\":\"followtest2@mirrormedia.mg\",\"name\":null,\"nickname\":null,\"birthday\":null,\"gender\":null,\"occupation\":null,\"mail\":null,\"register_mode\":null,\"social_id\":null,\"created_at\":null,\"updated_at\":null,\"updated_by\":null,\"description\":null,\"profile_image\":null,\"identity\":null,\"role\":null,\"active\":1,\"custom_editor\":null,\"hide_profile\":null,\"profile_push\":null,\"post_push\":null,\"comment_push\":null}]"}},
+		{"GetFollowingPostOK", CaseIn{"post", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, "[{\"id\":42,\"author\":null,\"created_at\":null,\"like_amount\":null,\"comment_amount\":null,\"title\":null,\"content\":null,\"link\":null,\"og_title\":null,\"og_description\":null,\"og_image\":null,\"active\":1,\"updated_at\":null,\"updated_by\":null,\"published_at\":null,\"link_title\":null,\"link_description\":null,\"link_image\":null}]"}},
+		{"GetFollowingMemberOK", CaseIn{"member", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, "[{\"id\":\"followtest2@mirrormedia.mg\",\"name\":null,\"nickname\":null,\"birthday\":null,\"gender\":null,\"work\":null,\"mail\":null,\"register_mode\":null,\"social_id\":null,\"created_at\":null,\"updated_at\":null,\"updated_by\":null,\"description\":null,\"profile_image\":null,\"identity\":null,\"role\":null,\"active\":1,\"custom_editor\":null,\"hide_profile\":null,\"profile_push\":null,\"post_push\":null,\"comment_push\":null}]"}},
 		{"GetFollowingProjectOK", CaseIn{"project", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, "[{\"id\":420,\"created_at\":null,\"updated_at\":null,\"updated_by\":null,\"published_at\":null,\"post_id\":42,\"like_amount\":null,\"comment_amount\":null,\"active\":1,\"hero_image\":null,\"title\":null,\"description\":null,\"author\":null,\"og_title\":null,\"og_description\":null,\"og_image\":null}]"}},
 		{"GetFollowingFollowerNotExist", CaseIn{"project", "unknown@user.who"}, CaseOut{http.StatusNotFound, `{"Error":"Not Found"}`}},
 	}

@@ -84,12 +84,12 @@ func (r *followingHandler) Push(c *gin.Context) {
 
 func (r *followingHandler) Get(c *gin.Context) {
 	var (
-		user_id  = c.Param("user_id")
-		resource = c.Param("resource")
+		member_id = c.Param("member_id")
+		resource  = c.Param("resource")
 	)
 
 	result, err := models.FollowingAPI.GetFollowing(map[string]string{
-		"subject":  user_id,
+		"subject":  member_id,
 		"resource": resource,
 	})
 
@@ -110,7 +110,7 @@ func (r *followingHandler) Get(c *gin.Context) {
 func (r *followingHandler) SetRoutes(router *gin.Engine) {
 	followRouter := router.Group("following")
 	{
-		followRouter.GET("/:user_id/:resource", r.Get)
+		followRouter.GET("/:member_id/:resource", r.Get)
 	}
 
 	router.POST("/api/pubsub", r.Push)
