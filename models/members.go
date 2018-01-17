@@ -10,6 +10,8 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+var MemberStatus map[string]interface{}
+
 type Member struct {
 	ID       string     `json:"id" db:"member_id"`
 	Name     NullString `json:"name" db:"name"`
@@ -62,7 +64,7 @@ func (a *memberAPI) GetMembers(maxResult uint8, page uint16, sortMethod string) 
 		result []Member
 		err    error
 	)
-	query := fmt.Sprintf(`SELECT * FROM members where active != -1 ORDER BY %s LIMIT ? OFFSET ?`, orderByHelper(sortMethod))
+	query := fmt.Sprintf(`SELECT * FROM members where active != %d ORDER BY %s LIMIT ? OFFSET ?`, int(MemberStatus["delete"].(float64)), orderByHelper(sortMethod))
 	// query, _ := generateSQLStmt("get_all", "members", sortString)
 
 	err = DB.Select(&result, query, maxResult, (page-1)*uint16(maxResult))
@@ -140,7 +142,7 @@ func (a *memberAPI) UpdateMember(m Member) error {
 func (a *memberAPI) DeleteMember(id string) error {
 
 	// result := Member{}
-	result, err := DB.Exec("UPDATE members SET active = -1 WHERE member_id = ?", id)
+	result, err := DB.Exec(fmt.Sprintf("UPDATE members SET active = %d WHERE member_id = ?", int(MemberStatus["delete"].(float64))), id)
 	if err != nil {
 		return err
 	}

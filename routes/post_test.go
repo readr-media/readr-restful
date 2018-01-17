@@ -145,7 +145,7 @@ func (a *mockPostAPI) SetMultipleActive(ids []uint32, active int) (err error) {
 	for _, value := range ids {
 		for i, v := range mockPostDS {
 			if v.ID == value {
-				mockPostDS[i].Active = models.NullInt{Int: int64(active), Valid: true}
+				mockPostDS[i].Active = models.NullInt{Int: int64(models.PostStatus["active"].(float64)), Valid: true}
 				result = append(result, i)
 			}
 		}
@@ -162,7 +162,7 @@ func (a *mockPostAPI) DeletePost(id uint32) error {
 	err := errors.New("Post Not Found")
 	for index, value := range mockPostDS {
 		if value.ID == id {
-			mockPostDS[index].Active = models.NullInt{Int: 0, Valid: true}
+			mockPostDS[index].Active = models.NullInt{Int: int64(models.PostStatus["deactive"].(float64)), Valid: true}
 			// result = mockPostDS[index]
 			return nil
 		}

@@ -10,5 +10,19 @@
         "port": 0,
         "user": "",
         "password": ""
+    },
+    "models":{
+        "members":{
+            "active": 9,
+            "deactive": 9,
+            "delete": 9
+        },
+        "posts":{
+            "deactive": 9,
+            "active": 9,
+            "pending": 9,
+            "draft": 9,
+            "unpublish": 9
+        }
     }
 }

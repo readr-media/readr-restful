@@ -163,7 +163,7 @@ func (r *postHandler) DeleteAll(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "ID List Empty"})
 		return
 	}
-	err = models.PostAPI.SetMultipleActive(ids, 0)
+	err = models.PostAPI.SetMultipleActive(ids, int(models.PostStatus["deactive"].(float64)))
 	if err != nil {
 		switch err.Error() {
 		case "Posts Not Found":
@@ -214,7 +214,7 @@ func (r *postHandler) PublishAll(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Request Body"})
 		return
 	}
-	err = models.PostAPI.SetMultipleActive(payload.IDs, 1)
+	err = models.PostAPI.SetMultipleActive(payload.IDs, int(models.PostStatus["active"].(float64)))
 	if err != nil {
 		switch err.Error() {
 		case "Posts Not Found":

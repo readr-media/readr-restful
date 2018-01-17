@@ -99,7 +99,7 @@ func (a *mockMemberAPI) DeleteMember(id string) error {
 	err := errors.New("User Not Found")
 	for index, value := range mockMemberDS {
 		if id == value.ID {
-			mockMemberDS[index].Active = models.NullInt{Int: 0, Valid: true}
+			mockMemberDS[index].Active = models.NullInt{Int: int64(models.MemberStatus["delete"].(float64)), Valid: true}
 			return nil
 		}
 	}

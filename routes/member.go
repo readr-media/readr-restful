@@ -144,7 +144,8 @@ func (r *memberHandler) DeleteAll(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "ID List Empty"})
 		return
 	}
-	err = models.MemberAPI.SetMultipleActive(ids, -1)
+
+	err = models.MemberAPI.SetMultipleActive(ids, int(models.MemberStatus["delete"].(float64)))
 	if err != nil {
 		switch err.Error() {
 		case "Members Not Found":
@@ -193,7 +194,7 @@ func (r *memberHandler) ActivateAll(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Request Body"})
 		return
 	}
-	err = models.MemberAPI.SetMultipleActive(payload.IDs, 1)
+	err = models.MemberAPI.SetMultipleActive(payload.IDs, int(models.MemberStatus["active"].(float64)))
 	if err != nil {
 		switch err.Error() {
 		case "Members Not Found":
