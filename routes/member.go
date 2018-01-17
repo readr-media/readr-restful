@@ -78,6 +78,9 @@ func (r *memberHandler) Post(c *gin.Context) {
 		member.UpdatedAt.Time = time.Now()
 		member.UpdatedAt.Valid = true
 	}
+	if !member.Active.Valid {
+		member.Active = models.NullInt{1, true}
+	}
 
 	err := models.MemberAPI.InsertMember(member)
 	// result, err := models.DS.Create(member)

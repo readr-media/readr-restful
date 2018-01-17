@@ -82,15 +82,16 @@ func (r *followingHandler) Push(c *gin.Context) {
 	}
 }
 
-func (r *followingHandler) Get(c *gin.Context) {
-	var (
-		member_id = c.Param("member_id")
-		resource  = c.Param("resource")
-	)
+func (r *followingHandler) GetByUser(c *gin.Context) {
+	input := struct {
+		MemberId string `json:"subject"`
+		Resource string `json:"resource"`
+	}{}
+	c.ShouldBindJSON(&input)
 
 	result, err := models.FollowingAPI.GetFollowing(map[string]string{
-		"subject":  member_id,
-		"resource": resource,
+		"subject":  input.MemberId,
+		"resource": input.Resource,
 	})
 
 	if err != nil {
@@ -107,13 +108,52 @@ func (r *followingHandler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+func (r *followingHandler) GetByResource(c *gin.Context) {
+	input := struct {
+		Resource string   `json:"resource"`
+		Ids      []string `json:"ids"`
+	}{}
+	c.ShouldBindJSON(&input)
+
+	if len(input.Ids) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Resource ID"})
+		return
+	}
+
+	switch input.Resource {
+	case "member":
+		break
+	case "post", "project":
+		for _, value := range input.Ids {
+			_, err := strconv.Atoi(string(value))
+			if err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Resource ID"})
+				return
+			}
+		}
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Unsupported Resource"})
+		return
+	}
+
+	result, err := models.FollowingAPI.GetFollowed(input.Resource, input.Ids)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
+
 func (r *followingHandler) SetRoutes(router *gin.Engine) {
 	followRouter := router.Group("following")
 	{
-		followRouter.GET("/:member_id/:resource", r.Get)
+		followRouter.GET("/byuser", r.GetByUser)
+		followRouter.GET("/byresource", r.GetByResource)
 	}
 
-	router.POST("/api/pubsub", r.Push)
+	router.POST("/restful/pubsub", r.Push)
 }
 
 var FollowingHandler followingHandler

@@ -72,12 +72,12 @@ func main() {
 		viper.Get("mail.password").(string),
 	)
 
+	routes.AuthHandler.SetRoutes(router)
+	routes.FollowingHandler.SetRoutes(router)
 	routes.MemberHandler.SetRoutes(router)
+	routes.PermissionHandler.SetRoutes(router)
 	routes.PostHandler.SetRoutes(router)
 	routes.ProjectHandler.SetRoutes(router)
-	routes.AuthHandler.SetRoutes(router)
-	routes.PermissionHandler.SetRoutes(router)
-	routes.FollowingHandler.SetRoutes(router)
 
 	routes.MiscHandler.SetRoutes(router, *dialer)
 

@@ -21,11 +21,11 @@ type PermissionAPIImpl struct{}
 var PermissionAPI PermissionAPIInterface = new(PermissionAPIImpl)
 
 type PermissionAPIInterface interface {
-	GetPermissions(ps []Permission) ([]Permission, error)
-	GetPermissionsByRole(role int) ([]Permission, error)
-	GetPermissionsAll() ([]Permission, error)
-	InsertPermissions(ps []Permission) error
 	DeletePermissions(ps []Permission) error
+	GetPermissions(ps []Permission) ([]Permission, error)
+	GetPermissionsAll() ([]Permission, error)
+	GetPermissionsByRole(role int) ([]Permission, error)
+	InsertPermissions(ps []Permission) error
 }
 
 func (a *PermissionAPIImpl) GetPermissions(ps []Permission) ([]Permission, error) {
