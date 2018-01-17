@@ -24,8 +24,7 @@ func initFollowTest() {
 	} {
 		err := models.MemberAPI.InsertMember(params)
 		if err != nil {
-			log.Fatalf("Init test case fail, aborted. Error: %v", err)
-			return
+			log.Printf("Init test case fail. Error: %v", err)
 		}
 	}
 
@@ -35,8 +34,7 @@ func initFollowTest() {
 	} {
 		err := models.PostAPI.InsertPost(params)
 		if err != nil {
-			log.Fatalf("Init test case fail, aborted. Error: %v", err)
-			return
+			log.Printf("Init test case fail. Error: %v", err)
 		}
 	}
 
@@ -46,8 +44,7 @@ func initFollowTest() {
 	} {
 		err := models.ProjectAPI.InsertProject(params)
 		if err != nil {
-			log.Fatalf("Init test case fail, aborted. Error: %v", err)
-			return
+			log.Printf("Init test case fail. Error: %v", err)
 		}
 	}
 
@@ -55,11 +52,13 @@ func initFollowTest() {
 		map[string]string{"resource": "member", "subject": "followtest1@mirrormedia.mg", "object": "followtest2@mirrormedia.mg"},
 		map[string]string{"resource": "post", "subject": "followtest1@mirrormedia.mg", "object": "42"},
 		map[string]string{"resource": "project", "subject": "followtest1@mirrormedia.mg", "object": "420"},
+		map[string]string{"resource": "member", "subject": "followtest2@mirrormedia.mg", "object": "followtest1@mirrormedia.mg"},
+		map[string]string{"resource": "post", "subject": "followtest2@mirrormedia.mg", "object": "42"},
+		map[string]string{"resource": "project", "subject": "followtest2@mirrormedia.mg", "object": "420"},
 	} {
 		err := models.FollowingAPI.AddFollowing(params)
 		if err != nil {
-			log.Fatalf("Init test case fail, aborted. Error: %v", err)
-			return
+			log.Printf("Init test case fail. Error: %v", err)
 		}
 	}
 }
@@ -108,6 +107,7 @@ func (a *mockFollowingAPI) DeleteFollowing(params map[string]string) error {
 }
 
 func (a *mockFollowingAPI) GetFollowing(params map[string]string) (interface{}, error) {
+
 	switch {
 	case params["subject"] == "unknown@user.who":
 		return nil, errors.New("Not Found")
@@ -128,6 +128,32 @@ func (a *mockFollowingAPI) GetFollowing(params map[string]string) (interface{}, 
 	}
 }
 
+func (a *mockFollowingAPI) GetFollowed(resource string, ids []string) (interface{}, error) {
+	type followedCount struct {
+		Resourceid string
+		Count      int
+	}
+	switch {
+	case ids[0] == "1001":
+		return []followedCount{}, nil
+	case resource == "member":
+		return []followedCount{
+			followedCount{"followtest1@mirrormedia.mg", 1},
+			followedCount{"followtest2@mirrormedia.mg", 1},
+		}, nil
+	case resource == "post":
+		return []followedCount{
+			followedCount{"42", 2},
+		}, nil
+	case resource == "project":
+		return []followedCount{
+			followedCount{"420", 2},
+		}, nil
+	default:
+		return nil, nil
+	}
+}
+
 func TestFollowingGet(t *testing.T) {
 
 	initFollowTest()
@@ -142,7 +168,7 @@ func TestFollowingGet(t *testing.T) {
 		resp     string
 	}
 
-	var TestRouteName = "/following"
+	var TestRouteName = "/following/byuser"
 	var TestRouteMethod = "GET"
 
 	var TestFollowingGetCases = []struct {
@@ -158,7 +184,73 @@ func TestFollowingGet(t *testing.T) {
 
 	for _, testcase := range TestFollowingGetCases {
 
-		req, _ := http.NewRequest(TestRouteMethod, TestRouteName+"/"+testcase.in.Subject+"/"+testcase.in.Resource, nil)
+		jsonStr, err := json.Marshal(&testcase.in)
+		if err != nil {
+			t.Errorf("Fail to marshal input objects, error: %v", err.Error())
+			t.Fail()
+		}
+
+		req, _ := http.NewRequest(TestRouteMethod, TestRouteName, bytes.NewBuffer(jsonStr))
+		req.Header.Set("Content-Type", "application/json")
+
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+
+		if w.Code != testcase.out.httpcode {
+			t.Errorf("Want %d but get %d, testcase %s", testcase.out.httpcode, w.Code, testcase.name)
+			t.Fail()
+		}
+
+		if w.Body.String() != testcase.out.resp {
+			t.Errorf("Expect get error message %v but get %v, testcase %s", testcase.out.resp, w.Body.String(), testcase.name)
+			t.Fail()
+		}
+
+	}
+	clearFollowTest()
+}
+
+func TestFollowedGet(t *testing.T) {
+
+	initFollowTest()
+
+	type CaseIn struct {
+		ResourceName string   `json:"resource",omitempty`
+		ResourceId   []string `json:"ids",omitempty`
+	}
+
+	type CaseOut struct {
+		httpcode int
+		resp     string
+	}
+
+	var TestRouteName = "/following/byresource"
+	var TestRouteMethod = "GET"
+
+	var TestFollowingGetCases = []struct {
+		name string
+		in   CaseIn
+		out  CaseOut
+	}{
+		{"GetFollowedPostOK", CaseIn{"post", []string{"42", "84"}}, CaseOut{http.StatusOK, `[{"Resourceid":"42","Count":2}]`}},
+		{"GetFollowedMemberOK", CaseIn{"member", []string{"followtest1@mirrormedia.mg", "followtest2@mirrormedia.mg"}}, CaseOut{http.StatusOK, `[{"Resourceid":"followtest1@mirrormedia.mg","Count":1},{"Resourceid":"followtest2@mirrormedia.mg","Count":1}]`}},
+		{"GetFollowedProjectOK", CaseIn{"project", []string{"420", "840"}}, CaseOut{http.StatusOK, `[{"Resourceid":"420","Count":2}]`}},
+		{"GetFollowedMissingResource", CaseIn{"", []string{"420", "840"}}, CaseOut{http.StatusBadRequest, `{"Error":"Unsupported Resource"}`}},
+		{"GetFollowedMissingID", CaseIn{"post", []string{}}, CaseOut{http.StatusBadRequest, `{"Error":"Bad Resource ID"}`}},
+		{"GetFollowedPostNotExist", CaseIn{"post", []string{"1001", "1000"}}, CaseOut{http.StatusOK, `[]`}},
+		{"GetFollowedPostStringID", CaseIn{"post", []string{"unintegerable"}}, CaseOut{http.StatusBadRequest, `{"Error":"Bad Resource ID"}`}},
+		{"GetFollowedProjectStringID", CaseIn{"project", []string{"unintegerable"}}, CaseOut{http.StatusBadRequest, `{"Error":"Bad Resource ID"}`}},
+	}
+
+	for _, testcase := range TestFollowingGetCases {
+
+		jsonStr, err := json.Marshal(&testcase.in)
+		if err != nil {
+			t.Errorf("Fail to marshal input objects, error: %v", err.Error())
+			t.Fail()
+		}
+
+		req, _ := http.NewRequest(TestRouteMethod, TestRouteName, bytes.NewBuffer(jsonStr))
 		req.Header.Set("Content-Type", "application/json")
 
 		w := httptest.NewRecorder()
@@ -203,7 +295,7 @@ func TestFollowingAddDelete(t *testing.T) {
 		Error    string
 	}
 
-	var TestRouteName = "/api/pubsub"
+	var TestRouteName = "/restful/pubsub"
 	var TestRouteMethod = "POST"
 
 	var TestFollowingGetCases = []struct {

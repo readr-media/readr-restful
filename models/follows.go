@@ -7,6 +7,7 @@ import (
 	"database/sql"
 
 	"github.com/go-sql-driver/mysql"
+	"github.com/jmoiron/sqlx"
 )
 
 /* Types of Followings */
@@ -15,6 +16,12 @@ type follow interface {
 	Insert() (sql.Result, error)
 	Delete() (sql.Result, error)
 	GetFollowings(map[string]string) (interface{}, error)
+	GetFollowed([]string) (*sqlx.Rows, error)
+}
+
+type followedCount struct {
+	Resourceid string
+	Count      int
 }
 
 type followPost struct {
@@ -53,6 +60,18 @@ func (f followPost) GetFollowings(params map[string]string) (interface{}, error)
 	return followings, err
 }
 
+func (f followPost) GetFollowed(ids []string) (*sqlx.Rows, error) {
+	//rows, err := DB.Queryx("SELECT m.*, IFNULL(f.count, 0) FROM posts as m LEFT JOIN (SELECT post_id, COUNT(post_id) as count from following_posts GROUP BY post_id) as f ON f.post_id = m.post_id WHERE m.post_id IN ? ;", ids)
+	query, args, err := sqlx.In("SELECT post_id, COUNT(post_id) as count FROM following_posts WHERE post_id in ( ? ) GROUP BY post_id;", ids)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := DB.Queryx(query, args...)
+
+	return rows, err
+}
+
 type followMember struct {
 	ID     string
 	Object string
@@ -89,6 +108,16 @@ func (f followMember) GetFollowings(params map[string]string) (interface{}, erro
 
 	return followings, err
 }
+func (f followMember) GetFollowed(ids []string) (*sqlx.Rows, error) {
+	query, args, err := sqlx.In("SELECT member_id, COUNT(member_id) as count FROM following_members WHERE member_id in ( ? ) GROUP BY member_id;", ids)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := DB.Queryx(query, args...)
+
+	return rows, err
+}
 
 type followProject struct {
 	ID     string
@@ -124,6 +153,16 @@ func (f followProject) GetFollowings(params map[string]string) (interface{}, err
 	}
 
 	return followings, err
+}
+func (f followProject) GetFollowed(ids []string) (*sqlx.Rows, error) {
+	query, args, err := sqlx.In("SELECT project_id, COUNT(project_id) as count FROM following_projects WHERE project_id in ( ? ) GROUP BY project_id;", ids)
+	if err != nil {
+		return nil, err
+	}
+
+	rows, err := DB.Queryx(query, args...)
+
+	return rows, err
 }
 
 /*
@@ -176,6 +215,7 @@ var (
 
 type FollowingAPIInterface interface {
 	GetFollowing(params map[string]string) (interface{}, error)
+	GetFollowed(resource string, ids []string) (interface{}, error)
 	AddFollowing(params map[string]string) error
 	DeleteFollowing(params map[string]string) error
 }
@@ -192,6 +232,35 @@ func (*followingAPI) GetFollowing(params map[string]string) (interface{}, error)
 	result, err := follow.GetFollowings(params)
 
 	return result, err
+}
+func (*followingAPI) GetFollowed(resource string, ids []string) (interface{}, error) {
+	follow, err := CreateFollow(map[string]string{"resource": resource})
+	if err != nil {
+		log.Println(err.Error())
+		return nil, err
+	}
+
+	rows, err := follow.GetFollowed(ids)
+	if err != nil {
+		log.Println(err.Error())
+		return nil, err
+	}
+
+	followed := []followedCount{}
+	for rows.Next() {
+		var (
+			resourceId string
+			count      int
+		)
+		err = rows.Scan(&resourceId, &count)
+		if err != nil {
+			log.Fatalln(err.Error())
+			return nil, err
+		}
+		followed = append(followed, followedCount{resourceId, count})
+	}
+
+	return followed, nil
 }
 func (*followingAPI) AddFollowing(params map[string]string) error {
 	follow, err := CreateFollow(params)
