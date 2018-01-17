@@ -13,10 +13,10 @@ import (
 /* Types of Followings */
 
 type follow interface {
-	Insert() (sql.Result, error)
 	Delete() (sql.Result, error)
-	GetFollowings(map[string]string) (interface{}, error)
 	GetFollowed([]string) (*sqlx.Rows, error)
+	GetFollowings(map[string]string) (interface{}, error)
+	Insert() (sql.Result, error)
 }
 
 type followedCount struct {
@@ -214,10 +214,10 @@ var (
 )
 
 type FollowingAPIInterface interface {
-	GetFollowing(params map[string]string) (interface{}, error)
-	GetFollowed(resource string, ids []string) (interface{}, error)
 	AddFollowing(params map[string]string) error
 	DeleteFollowing(params map[string]string) error
+	GetFollowing(params map[string]string) (interface{}, error)
+	GetFollowed(resource string, ids []string) (interface{}, error)
 }
 
 type followingAPI struct{}

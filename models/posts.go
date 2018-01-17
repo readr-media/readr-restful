@@ -39,12 +39,12 @@ type postAPI struct{}
 var PostAPI PostInterface = new(postAPI)
 
 type PostInterface interface {
-	GetPosts(maxResult uint8, page uint16, sortMethod string) ([]PostMember, error)
-	GetPost(id uint32) (PostMember, error)
-	InsertPost(p Post) error
-	UpdatePost(p Post) error
 	DeletePost(id uint32) error
+	GetPost(id uint32) (PostMember, error)
+	GetPosts(maxResult uint8, page uint16, sortMethod string) ([]PostMember, error)
+	InsertPost(p Post) error
 	SetMultipleActive(ids []uint32, active int) error
+	UpdatePost(p Post) error
 }
 
 // UpdatedBy wraps Member for embedded field updated_by

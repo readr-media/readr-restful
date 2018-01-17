@@ -35,11 +35,11 @@ type projectAPI struct{}
 var ProjectAPI ProjectAPIInterface = new(projectAPI)
 
 type ProjectAPIInterface interface {
+	DeleteProjects(p Project) error
 	GetProject(p Project) (Project, error)
 	GetProjects(ps ...Project) ([]Project, error)
 	InsertProject(p Project) error
 	UpdateProjects(p Project) error
-	DeleteProjects(p Project) error
 }
 
 func (a *projectAPI) GetProject(p Project) (Project, error) {

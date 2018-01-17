@@ -49,12 +49,12 @@ type memberAPI struct{}
 var MemberAPI MemberInterface = new(memberAPI)
 
 type MemberInterface interface {
-	GetMembers(maxResult uint8, page uint16, sortMethod string) ([]Member, error)
-	GetMember(id string) (Member, error)
-	InsertMember(m Member) error
-	UpdateMember(m Member) error
-	SetMultipleActive(ids []string, active int) error
 	DeleteMember(id string) error
+	GetMember(id string) (Member, error)
+	GetMembers(maxResult uint8, page uint16, sortMethod string) ([]Member, error)
+	InsertMember(m Member) error
+	SetMultipleActive(ids []string, active int) error
+	UpdateMember(m Member) error
 }
 
 func (a *memberAPI) GetMembers(maxResult uint8, page uint16, sortMethod string) ([]Member, error) {
