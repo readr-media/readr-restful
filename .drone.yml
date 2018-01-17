@@ -80,8 +80,8 @@ pipeline:
       event: [push]
     template: >
       {{#success build.status}}
-        *success* ${DRONE_REPO_NAME}:${DRONE_COMMIT_AUTHOR}_${DRONE_BUILD_NUMBER} was well served.
-        Check out our new <https://gcr.io/mirrormedia-1470651750304/readr-restful|docker>
+        Build<${DRONE_BUILD_LINK}|#{{build.number}}> *success* ${DRONE_REPO_NAME}:${DRONE_COMMIT_AUTHOR}_${DRONE_BUILD_NUMBER} was well served.
+        Check out our new <https://gcr.io/mirrormedia-1470651750304/readr-restful|rest>
       {{else}}
         Houston, we have a problem. Build <${DRONE_BUILD_LINK}|#{{build.number}}> failed. Fix me please, {{build.author}}
       {{/success}}

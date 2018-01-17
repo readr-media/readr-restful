@@ -10,6 +10,8 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
+var PostStatus map[string]interface{}
+
 // Post could use json:"omitempty" tag to ignore null field
 // However, struct type field like NullTime, NullString must be declared as pointer,
 // like *NullTime, *NullString to be used with omitempty
@@ -69,8 +71,8 @@ func (a *postAPI) GetPosts(maxResult uint8, page uint16, sortMethod string) ([]P
 	query := fmt.Sprintf(`SELECT posts.*, %s, %s FROM posts 
 		LEFT JOIN members AS author ON posts.author = author.member_id 
 		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.member_id 
-		where posts.active != 0 ORDER BY %s LIMIT ? OFFSET ?`,
-		strings.Join(author, ","), strings.Join(updatedBy, ","), orderByHelper(sortMethod))
+		where posts.active != %d ORDER BY %s LIMIT ? OFFSET ?`,
+		strings.Join(author, ","), strings.Join(updatedBy, ","), int(PostStatus["deactive"].(float64)), orderByHelper(sortMethod))
 
 	err = DB.Select(&result, query, maxResult, (page-1)*uint16(maxResult))
 	if err != nil || len(result) == 0 {
@@ -164,7 +166,7 @@ func (a *postAPI) UpdatePost(p Post) error {
 func (a *postAPI) DeletePost(id uint32) error {
 
 	// result := Post{}
-	result, err := DB.Exec("UPDATE posts SET active = 0 WHERE post_id = ?", id)
+	result, err := DB.Exec(fmt.Sprintf("UPDATE posts SET active = %d WHERE post_id = ?", int(PostStatus["deactive"].(float64))), id)
 	if err != nil {
 		return err
 	}

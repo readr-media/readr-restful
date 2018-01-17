@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/readr-media/readr-restful/models"
+	"github.com/spf13/viper"
 )
 
 var r *gin.Engine
@@ -26,6 +27,9 @@ func TestMain(m *testing.M) {
 	PermissionHandler.SetRoutes(r)
 	MiscHandler.SetRoutes(r, initMailDialer())
 	FollowingHandler.SetRoutes(r)
+
+	models.MemberStatus = viper.GetStringMap("models.members")
+	models.PostStatus = viper.GetStringMap("models.posts")
 
 	models.ProjectAPI = new(mockProjectAPI)
 	models.MemberAPI = new(mockMemberAPI)

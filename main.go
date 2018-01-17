@@ -65,6 +65,9 @@ func main() {
 
 	// init mail sender
 
+	models.MemberStatus = viper.GetStringMap("models.members")
+	models.PostStatus = viper.GetStringMap("models.posts")
+
 	dialer := gomail.NewDialer(
 		viper.Get("mail.host").(string),
 		int(viper.Get("mail.port").(float64)),

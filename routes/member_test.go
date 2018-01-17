@@ -99,7 +99,7 @@ func (a *mockMemberAPI) DeleteMember(id string) error {
 	err := errors.New("User Not Found")
 	for index, value := range mockMemberDS {
 		if id == value.ID {
-			mockMemberDS[index].Active = models.NullInt{Int: 0, Valid: true}
+			mockMemberDS[index].Active = models.NullInt{Int: int64(models.MemberStatus["delete"].(float64)), Valid: true}
 			return nil
 		}
 	}
@@ -380,8 +380,8 @@ func TestRouteActivateMultipleMembers(t *testing.T) {
 		payload string
 		expect  ExpectResp
 	}{
-		{"CurrentMembers", `{"member_ids": ["superman@mirrormedia.mg","test6743"], "active": 1}`, ExpectResp{http.StatusOK, ``}},
-		{"NotFound", `{"member_ids": ["ironman", "spiderman"], "active": 3}`, ExpectResp{http.StatusNotFound, `{"Error":"Members Not Found"}`}},
+		{"CurrentMembers", `{"ids": ["superman@mirrormedia.mg","test6743"]}`, ExpectResp{http.StatusOK, ``}},
+		{"NotFound", `{"ids": ["ironman", "spiderman"]}`, ExpectResp{http.StatusNotFound, `{"Error":"Members Not Found"}`}},
 		{"InvalidPayload", `{}`, ExpectResp{http.StatusBadRequest, `{"Error":"Invalid Request Body"}`}},
 	}
 	for _, tc := range testCase {

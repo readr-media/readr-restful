@@ -145,7 +145,7 @@ func (a *mockPostAPI) SetMultipleActive(ids []uint32, active int) (err error) {
 	for _, value := range ids {
 		for i, v := range mockPostDS {
 			if v.ID == value {
-				mockPostDS[i].Active = models.NullInt{Int: int64(active), Valid: true}
+				mockPostDS[i].Active = models.NullInt{Int: int64(models.PostStatus["active"].(float64)), Valid: true}
 				result = append(result, i)
 			}
 		}
@@ -162,7 +162,7 @@ func (a *mockPostAPI) DeletePost(id uint32) error {
 	err := errors.New("Post Not Found")
 	for index, value := range mockPostDS {
 		if value.ID == id {
-			mockPostDS[index].Active = models.NullInt{Int: 0, Valid: true}
+			mockPostDS[index].Active = models.NullInt{Int: int64(models.PostStatus["deactive"].(float64)), Valid: true}
 			// result = mockPostDS[index]
 			return nil
 		}
@@ -380,9 +380,9 @@ func TestRoutePublishMultiplePosts(t *testing.T) {
 		payload string
 		expect  ExpectResp
 	}{
-		{"CurrentPost", `{"post_ids": [1,6], "active": 1}`, ExpectResp{http.StatusOK, ``}},
-		{"NotFound", `{"post_ids": [3,5], "active": 3}`, ExpectResp{http.StatusNotFound, `{"Error":"Posts Not Found"}`}},
-		{"InvalidPayload", `{"active": 2}`, ExpectResp{http.StatusBadRequest, `{"Error":"Invalid Request Body"}`}},
+		{"CurrentPost", `{"ids": [1,6]}`, ExpectResp{http.StatusOK, ``}},
+		{"NotFound", `{"ids": [3,5]}`, ExpectResp{http.StatusNotFound, `{"Error":"Posts Not Found"}`}},
+		{"InvalidPayload", `{}`, ExpectResp{http.StatusBadRequest, `{"Error":"Invalid Request Body"}`}},
 	}
 	for _, tc := range testCase {
 		t.Run(tc.name, func(t *testing.T) {
