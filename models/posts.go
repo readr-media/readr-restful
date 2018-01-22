@@ -2,9 +2,11 @@ package models
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"reflect"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -36,14 +38,65 @@ type Post struct {
 	LinkImage       NullString `json:"link_image" db:"link_image"`
 }
 
+type PostArgs struct {
+	MaxResult uint8  `form:"max_result"`
+	Page      uint16 `form:"page"`
+	Sorting   string `form:"sort"`
+	Active    string `form:"active"`
+	Author    string `form:"author"`
+}
+
+func (args *PostArgs) parse(prefix string) (restrict string, whereValues []interface{}) {
+	input := reflect.ValueOf(args).Elem()
+	whereString := make([]string, 0)
+	for i := 0; i < input.NumField(); i++ {
+		tag := input.Type().Field(i).Tag.Get("form")
+		switch tag {
+		case "active":
+			if args.Active != "" {
+				tmp := map[string][]uint32{}
+				err := json.Unmarshal([]byte(args.Active), &tmp)
+				if err != nil {
+					fmt.Println("active ", err.Error())
+				} else {
+					for operator, values := range tmp {
+						whereString = append(whereString, fmt.Sprintf("%s.active %s (?)", prefix, operatorHelper(operator)))
+						whereValues = append(whereValues, values)
+					}
+				}
+			}
+		case "author":
+			if args.Author != "" {
+				tmp := map[string][]string{}
+				err := json.Unmarshal([]byte(args.Author), &tmp)
+				if err != nil {
+					fmt.Println("author: ", err.Error())
+				} else {
+					for operator, values := range tmp {
+						whereString = append(whereString, fmt.Sprintf("%s.author %s (?)", prefix, operatorHelper(operator)))
+						whereValues = append(whereValues, values)
+					}
+				}
+			}
+		}
+	}
+	if len(whereString) > 1 {
+		restrict = strings.Join(whereString, " AND ")
+	} else if len(whereString) == 1 {
+		restrict = whereString[0]
+	}
+	return restrict, whereValues
+}
+
 type postAPI struct{}
 
 var PostAPI PostInterface = new(postAPI)
 
 type PostInterface interface {
 	DeletePost(id uint32) error
+	GetPosts(args PostArgs) (result []PostMember, err error)
 	GetPost(id uint32) (PostMember, error)
-	GetPosts(maxResult uint8, page uint16, sortMethod string) ([]PostMember, error)
+	//GetPosts(maxResult uint8, page uint16, sortMethod string) ([]PostMember, error)
 	InsertPost(p Post) error
 	SetMultipleActive(ids []uint32, active int) error
 	UpdatePost(p Post) error
@@ -58,28 +111,52 @@ type PostMember struct {
 	UpdatedBy `json:"updated_by" db:"updated_by"`
 }
 
-func (a *postAPI) GetPosts(maxResult uint8, page uint16, sortMethod string) ([]PostMember, error) {
+// func (a *postAPI) GetPosts(maxResult uint8, page uint16, sortMethod string, where string) ([]PostMember, error) {
+func (a *postAPI) GetPosts(req PostArgs) (result []PostMember, err error) {
 
-	var (
-		result []PostMember
-		err    error
-	)
+	var singlePost PostMember
 
+	whereClauses, whereValues := req.parse("posts")
 	tags := getStructDBTags("full", Member{})
-	author := makeFieldString("get", `author.%s "author.%s"`, tags)
-	updatedBy := makeFieldString("get", `updated_by.%s "updated_by.%s"`, tags)
+
+	authorField := makeFieldString("get", `author.%s "author.%s"`, tags)
+	updatedByField := makeFieldString("get", `updated_by.%s "updated_by.%s"`, tags)
 	query := fmt.Sprintf(`SELECT posts.*, %s, %s FROM posts 
 		LEFT JOIN members AS author ON posts.author = author.member_id 
 		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.member_id 
-		where posts.active != %d ORDER BY %s LIMIT ? OFFSET ?`,
-		strings.Join(author, ","), strings.Join(updatedBy, ","), int(PostStatus["deactive"].(float64)), orderByHelper(sortMethod))
+		WHERE %s `,
+		strings.Join(authorField, ","), strings.Join(updatedByField, ","), whereClauses)
 
-	err = DB.Select(&result, query, maxResult, (page-1)*uint16(maxResult))
-	if err != nil || len(result) == 0 {
+	// To give adaptability to where clauses, have to use ... operator here
+	// Therefore split query into two parts, assembling them after sqlx.Rebind
+	query, args, err := sqlx.In(query, whereValues...)
+	if err != nil {
+		return nil, err
+	}
+	query = DB.Rebind(query)
+
+	// Attach the order part to query with expanded amounts of placeholder.
+	// Append limit and offset to args slice
+	query = query + fmt.Sprintf(`ORDER BY %s LIMIT ? OFFSET ?`, orderByHelper(req.Sorting))
+	args = append(args, req.MaxResult, (req.Page-1)*uint16(req.MaxResult))
+	rows, err := DB.Queryx(query, args...)
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil, err
+	}
+	for rows.Next() {
+		err = rows.StructScan(&singlePost)
+		if err != nil {
+			result = []PostMember{}
+			return result, err
+		}
+		result = append(result, singlePost)
+
+	}
+	// err = DB.Select(&result, query, args.MaxResult, (args.Page-1)*uint16(args.MaxResult))
+	if len(result) == 0 {
 		result = []PostMember{}
 		err = errors.New("Posts Not Found")
-		fmt.Println(err)
-		fmt.Println(result)
 	}
 	return result, err
 }
@@ -107,7 +184,6 @@ func (a *postAPI) GetPost(id uint32) (PostMember, error) {
 		log.Fatal(err)
 		post = PostMember{}
 	default:
-		// fmt.Printf("Successfully get post: %v\n", id)
 		err = nil
 	}
 	return post, err
@@ -119,7 +195,7 @@ func (a *postAPI) InsertPost(p Post) error {
 	tags := getStructDBTags("full", Post{})
 	query := fmt.Sprintf(`INSERT INTO posts (%s) VALUES (:%s)`,
 		strings.Join(tags, ","), strings.Join(tags, ",:"))
-	// fmt.Println("insert: ", query)
+
 	result, err := DB.NamedExec(query, p)
 	if err != nil {
 		if strings.Contains(err.Error(), "Duplicate entry") {
@@ -146,9 +222,7 @@ func (a *postAPI) UpdatePost(p Post) error {
 	fields := makeFieldString("update", `%s = :%s`, tags)
 	query := fmt.Sprintf(`UPDATE posts SET %s WHERE post_id = :post_id`,
 		strings.Join(fields, ", "))
-	// if err != nil {
-	// 	return errors.New("Generate SQL statement failed")
-	// }
+
 	result, err := DB.NamedExec(query, p)
 
 	if err != nil {
@@ -165,7 +239,6 @@ func (a *postAPI) UpdatePost(p Post) error {
 
 func (a *postAPI) DeletePost(id uint32) error {
 
-	// result := Post{}
 	result, err := DB.Exec(fmt.Sprintf("UPDATE posts SET active = %d WHERE post_id = ?", int(PostStatus["deactive"].(float64))), id)
 	if err != nil {
 		return err

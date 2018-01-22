@@ -14,17 +14,14 @@ type postHandler struct{}
 
 func (r *postHandler) GetAll(c *gin.Context) {
 
-	mr := c.DefaultQuery("max_result", "20")
-	u64MaxResult, _ := strconv.ParseUint(mr, 10, 8)
-	maxResult := uint8(u64MaxResult)
+	// Default query parameters
+	args := models.PostArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at", Active: `{"$nin":[0]}`}
+	err := c.Bind(&args)
 
-	pg := c.DefaultQuery("page", "1")
-	u64Page, _ := strconv.ParseUint(pg, 10, 16)
-	page := uint16(u64Page)
-
-	sorting := c.DefaultQuery("sort", "-updated_at")
-
-	result, err := models.PostAPI.GetPosts(maxResult, page, sorting)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+	}
+	result, err := models.PostAPI.GetPosts(args)
 	if err != nil {
 		switch err.Error() {
 		case "Posts Not Found":
@@ -40,9 +37,6 @@ func (r *postHandler) GetAll(c *gin.Context) {
 
 func (r *postHandler) Get(c *gin.Context) {
 
-	// input := models.Post{ID: c.Param("id")}
-	// post, err := models.DS.Get(input)
-	// id := c.Param("id")
 	iduint64, _ := strconv.ParseUint(c.Param("id"), 10, 32)
 	id := uint32(iduint64)
 	post, err := models.PostAPI.GetPost(id)
@@ -63,14 +57,13 @@ func (r *postHandler) Get(c *gin.Context) {
 func (r *postHandler) Post(c *gin.Context) {
 
 	post := models.Post{}
-	emptyPost := models.Post{}
 
 	err := c.Bind(&post)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
-	if post == emptyPost {
+	if post == (models.Post{}) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Post"})
 		return
 	}
@@ -116,11 +109,10 @@ func (r *postHandler) Post(c *gin.Context) {
 func (r *postHandler) Put(c *gin.Context) {
 
 	post := models.Post{}
-	emptyPost := models.Post{}
 
 	c.Bind(&post)
 	// Check if post struct was binded successfully
-	if post == emptyPost {
+	if post == (models.Post{}) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Post"})
 		return
 	}
@@ -132,6 +124,15 @@ func (r *postHandler) Put(c *gin.Context) {
 	if !post.UpdatedAt.Valid {
 		post.UpdatedAt.Time = time.Now()
 		post.UpdatedAt.Valid = true
+	}
+	if !post.UpdatedBy.Valid {
+		if post.Author.Valid {
+			post.UpdatedBy.String = post.Author.String
+			post.UpdatedBy.Valid = true
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"Error": "Neither author or updatedby is valid"})
+		}
+
 	}
 	// result, err := models.DS.Update(post)
 	err := models.PostAPI.UpdatePost(post)
@@ -145,13 +146,12 @@ func (r *postHandler) Put(c *gin.Context) {
 			return
 		}
 	}
-	// c.JSON(http.StatusOK, models.Post{})
 	c.Status(http.StatusOK)
 }
 func (r *postHandler) DeleteAll(c *gin.Context) {
 
 	ids := []uint32{}
-	// Disable to parse interface{} to []uint32
+	// Unable to parse interface{} to []uint32
 	// If change to []interface{} first, there's no way avoid for loop each time.
 	// So here use individual parsing instead of function(interface{}) (interface{})
 	err := json.Unmarshal([]byte(c.Query("ids")), &ids)
@@ -179,10 +179,6 @@ func (r *postHandler) DeleteAll(c *gin.Context) {
 
 func (r *postHandler) Delete(c *gin.Context) {
 
-	// input := models.Post{ID: c.Param("id")}
-	// var req models.Databox = &models.Member{ID: userID}
-	// post, err := models.DS.Delete(input)
-	// id := c.Param("id")
 	iduint64, _ := strconv.ParseUint(c.Param("id"), 10, 32)
 	id := uint32(iduint64)
 	err := models.PostAPI.DeletePost(id)
@@ -197,7 +193,6 @@ func (r *postHandler) Delete(c *gin.Context) {
 			return
 		}
 	}
-	// c.JSON(http.StatusOK, gin.H{"result": fmt.Sprintf("%d row affected", post)})
 	c.Status(http.StatusOK)
 }
 

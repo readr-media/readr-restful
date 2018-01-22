@@ -6,7 +6,6 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"sort"
 	"testing"
 
 	"github.com/readr-media/readr-restful/models"
@@ -27,64 +26,116 @@ type ExpectResp struct {
 	err      string
 }
 
-func (a *mockPostAPI) GetPosts(maxResult uint8, page uint16, sortMethod string) ([]models.PostMember, error) {
+func (a *mockPostAPI) GetPosts(args models.PostArgs) (result []models.PostMember, err error) {
 
-	var (
-		result    []models.PostMember
-		author    models.Member
-		updatedBy models.UpdatedBy
-		err       error
-	)
-	if len(mockPostDS) == 0 {
-		err = errors.New("Posts Not Found")
-		return result, err
-	}
+	err = errors.New(`Posts Not Found`)
+	if args.Author == `` && args.Active == `{"$nin":[0]}` {
+		if args.MaxResult == 20 {
+			if args.Sorting == "-updated_at" {
+				result = []models.PostMember{
+					{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
+					{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}},
+					{Post: mockPostDS[0], Member: mockMemberDS[0], UpdatedBy: models.UpdatedBy(mockMemberDS[0])},
+					{Post: mockPostDS[2], Member: mockMemberDS[2], UpdatedBy: models.UpdatedBy{}},
+				}
+				err = nil
+			} else if args.Sorting == "updated_at" {
+				result = []models.PostMember{
+					{Post: mockPostDS[2], Member: mockMemberDS[2], UpdatedBy: models.UpdatedBy{}},
+					{Post: mockPostDS[0], Member: mockMemberDS[0], UpdatedBy: models.UpdatedBy(mockMemberDS[0])},
+					{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}},
+					{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
+				}
 
-	// Create new copy of mockPostDS in case mockPostDS order is messed up by sort
-	sortedMockPostDS := make([]models.Post, len(mockPostDS))
-	copy(sortedMockPostDS, mockPostDS)
-
-	switch sortMethod {
-	// ascending
-	case "updated_at":
-		sort.SliceStable(sortedMockPostDS, func(i, j int) bool {
-			return sortedMockPostDS[i].UpdatedAt.Before(sortedMockPostDS[j].UpdatedAt)
-		})
-	// descending, newer
-	case "-updated_at":
-		sort.SliceStable(sortedMockPostDS, func(i, j int) bool {
-			return sortedMockPostDS[i].UpdatedAt.After(sortedMockPostDS[j].UpdatedAt)
-		})
-	}
-
-	// if maxResult >= uint8(len(sortedMockPostDS)) {
-	// 	result = sortedMockPostDS
-	// 	err = nil
-	// } else if maxResult < uint8(len(sortedMockPostDS)) {
-	if maxResult < uint8(len(sortedMockPostDS)) {
-		sortedMockPostDS = sortedMockPostDS[(page-1)*uint16(maxResult) : page*uint16(maxResult)]
-	}
-
-	for _, sortedpost := range sortedMockPostDS {
-		for _, member := range mockMemberDS {
-			if sortedpost.Author.Valid && member.ID == sortedpost.Author.String {
-				author = member
+				err = nil
 			}
-			if sortedpost.UpdatedBy.Valid && member.ID == sortedpost.UpdatedBy.String {
-				updatedBy = models.UpdatedBy(member)
+		} else if args.MaxResult == 2 {
+			result = []models.PostMember{
+				{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
+				{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}},
 			}
+			err = nil
 		}
-		result = append(result, models.PostMember{Post: sortedpost, Member: author, UpdatedBy: updatedBy})
-		// Clear up temp struct before next loop
-		author = models.Member{}
-		updatedBy = models.UpdatedBy{}
+	}
+	if args.Author == `{"$in":["superman@mirrormedia.mg", "Major.Tom@mirrormedia.mg"]}` && args.Active == `{"$nin":[0]}` {
+		result = []models.PostMember{
+			{Post: mockPostDS[0], Member: mockMemberDS[0], UpdatedBy: models.UpdatedBy(mockMemberDS[0])},
+			{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
+		}
+		err = nil
+	}
+	if args.Author == `` && args.Active == `{"$nin":[1,4]}` {
+		result = []models.PostMember{
+			{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}},
+			{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
+		}
+		err = nil
 	}
 
-	if result != nil {
+	if args.Author == `{"$in":["superman@superman.com", "test6743", "Major.Tom@mirrormedia.mg"]}` && args.Active == `{"$nin":[1,4]}` {
+		result = []models.PostMember{
+			{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}},
+			{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
+		}
 		err = nil
 	}
 	return result, err
 }
+
+// func (a *mockPostAPI) GetPosts(args models.PostArgs) ([]models.PostMember, error) {
+
+// 	var (
+// 		result    []models.PostMember
+// 		author    models.Member
+// 		updatedBy models.UpdatedBy
+// 		err       error
+// 	)
+// 	if len(mockPostDS) == 0 {
+// 		err = errors.New("Posts Not Found")
+// 		return result, err
+// 	}
+
+// 	// Create new copy of mockPostDS in case mockPostDS order is messed up by sort
+// 	sortedMockPostDS := make([]models.Post, len(mockPostDS))
+// 	copy(sortedMockPostDS, mockPostDS)
+
+// 	switch args.Sorting {
+// 	// ascending
+// 	case "updated_at":
+// 		sort.SliceStable(sortedMockPostDS, func(i, j int) bool {
+// 			return sortedMockPostDS[i].UpdatedAt.Before(sortedMockPostDS[j].UpdatedAt)
+// 		})
+// 	// descending, newer
+// 	case "-updated_at":
+// 		sort.SliceStable(sortedMockPostDS, func(i, j int) bool {
+// 			return sortedMockPostDS[i].UpdatedAt.After(sortedMockPostDS[j].UpdatedAt)
+// 		})
+// 	}
+
+// 	if args.MaxResult < uint8(len(sortedMockPostDS)) {
+// 		sortedMockPostDS = sortedMockPostDS[(args.Page-1)*uint16(args.MaxResult) : args.Page*uint16(args.MaxResult)]
+// 	}
+
+// 	for _, sortedpost := range sortedMockPostDS {
+// 		for _, member := range mockMemberDS {
+// 			if sortedpost.Author.Valid && member.ID == sortedpost.Author.String {
+// 				author = member
+// 			}
+// 			if sortedpost.UpdatedBy.Valid && member.ID == sortedpost.UpdatedBy.String {
+// 				updatedBy = models.UpdatedBy(member)
+// 			}
+// 		}
+// 		result = append(result, models.PostMember{Post: sortedpost, Member: author, UpdatedBy: updatedBy})
+// 		// Clear up temp struct before next loop
+// 		author = models.Member{}
+// 		updatedBy = models.UpdatedBy{}
+// 	}
+
+// 	if result != nil {
+// 		err = nil
+// 	}
+// 	return result, err
+// }
 
 func (a *mockPostAPI) GetPost(id uint32) (models.PostMember, error) {
 	var (
@@ -184,20 +235,42 @@ func TestRouteGetPosts(t *testing.T) {
 		route  string
 		expect ExpectGetsResp
 	}{
-		{"Descending", "/posts", ExpectGetsResp{ExpectResp{http.StatusOK, ""},
+		{"UpdatedAtDescending", "/posts", ExpectGetsResp{ExpectResp{http.StatusOK, ""},
 			[]models.PostMember{
 				{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
 				{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}},
 				{Post: mockPostDS[0], Member: mockMemberDS[0], UpdatedBy: models.UpdatedBy(mockMemberDS[0])},
 				{Post: mockPostDS[2], Member: mockMemberDS[2], UpdatedBy: models.UpdatedBy{}},
 			}}},
-		{"Ascending", "/posts?sort=updated_at", ExpectGetsResp{ExpectResp{http.StatusOK, ""},
+		{"UpdatedAtAscending", "/posts?sort=updated_at", ExpectGetsResp{ExpectResp{http.StatusOK, ""},
 			[]models.PostMember{
 				{Post: mockPostDS[2], Member: mockMemberDS[2], UpdatedBy: models.UpdatedBy{}},
 				{Post: mockPostDS[0], Member: mockMemberDS[0], UpdatedBy: models.UpdatedBy(mockMemberDS[0])},
 				{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}},
 				{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
 			}}},
+		{"max_result", "/posts?max_result=2", ExpectGetsResp{ExpectResp{http.StatusOK, ""},
+			[]models.PostMember{
+				{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
+				{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}},
+			}}},
+		{"AuthorFilter", `/posts?author={"$in":["superman@mirrormedia.mg", "Major.Tom@mirrormedia.mg"]}`, ExpectGetsResp{ExpectResp{http.StatusOK, ""},
+			[]models.PostMember{
+				{Post: mockPostDS[0], Member: mockMemberDS[0], UpdatedBy: models.UpdatedBy(mockMemberDS[0])},
+				{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
+			}}},
+		{"ActiveFilter", `/posts?active={"$nin":[1,4]}`, ExpectGetsResp{ExpectResp{http.StatusOK, ""},
+			[]models.PostMember{
+				{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}},
+				{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
+			}}},
+		{"ActiveAndAuthorFilter", `/posts?author={"$in":["superman@superman.com", "test6743", "Major.Tom@mirrormedia.mg"]}&active={"$nin":[1,4]}`, ExpectGetsResp{ExpectResp{http.StatusOK, ""},
+			[]models.PostMember{
+				{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}},
+				{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
+			}}},
+		{"NotFound", `/posts?author={"$in":["flash@flash.com"]}&active={"$nin:[1,4]}`, ExpectGetsResp{ExpectResp{http.StatusNotFound, `{"Error":"Posts Not Found"}`},
+			[]models.PostMember{}}},
 	}
 	for _, tc := range testPostsGetCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -211,7 +284,6 @@ func TestRouteGetPosts(t *testing.T) {
 			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
 				t.Errorf("%s expect to get error message %v but get %v", tc.name, w.Body.String(), tc.expect.err)
 			}
-
 			expected, _ := json.Marshal(map[string][]models.PostMember{"_items": tc.expect.resp})
 			if w.Code == http.StatusOK && w.Body.String() != string(expected) {
 				t.Errorf("%s incorrect response", tc.name)
@@ -262,7 +334,7 @@ func TestRouteGetPost(t *testing.T) {
 	}
 	clearPostTest()
 }
-func TestRoutePostPost(t *testing.T) {
+func TestRouteInsertPost(t *testing.T) {
 	initPostTest()
 	testCase := []struct {
 		name    string
