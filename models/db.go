@@ -42,13 +42,29 @@ func makeFieldString(mode string, pattern string, tags []string) (result []strin
 	return result
 }
 
+func operatorHelper(ops string) (result string) {
+	switch ops {
+	case "$in":
+		result = `IN`
+	case "$nin":
+		result = `NOT IN`
+	default:
+		result = `IN`
+	}
+	return result
+}
+
 func orderByHelper(sortMethod string) (result string) {
 	// if strings.Contains(sortMethod, )
-	if strings.HasPrefix(sortMethod, "-") {
-		result = sortMethod[1:] + " DESC"
-	} else {
-		result = sortMethod
+	tmp := strings.Split(sortMethod, ",")
+	for i, v := range tmp {
+		if v := strings.TrimSpace(v); strings.HasPrefix(v, "-") {
+			tmp[i] = v[1:] + " DESC"
+		} else {
+			tmp[i] = v
+		}
 	}
+	result = strings.Join(tmp, ",")
 	return result
 }
 
