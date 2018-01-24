@@ -16,7 +16,7 @@ type postHandler struct{}
 func (r *postHandler) GetAll(c *gin.Context) {
 
 	// Default query parameters
-	args := models.PostArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at", Active: `{"$nin":[0]}`}
+	args := models.PostArgs{BasicArgs: models.BasicArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at"}, Active: `{"$nin":[0]}`}
 	err := c.Bind(&args)
 
 	if err != nil {

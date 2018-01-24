@@ -36,14 +36,13 @@ type Post struct {
 	LinkTitle       NullString `json:"link_title" db:"link_title"`
 	LinkDescription NullString `json:"link_description" db:"link_description"`
 	LinkImage       NullString `json:"link_image" db:"link_image"`
+	LinkName        NullString `json:"link_name" db:"link_name"`
 }
 
 type PostArgs struct {
-	MaxResult uint8  `form:"max_result"`
-	Page      uint16 `form:"page"`
-	Sorting   string `form:"sort"`
-	Active    string `form:"active"`
-	Author    string `form:"author"`
+	BasicArgs
+	Active string `form:"active"`
+	Author string `form:"author"`
 }
 
 type PostUpdateArgs struct {
@@ -122,7 +121,7 @@ type PostMember struct {
 func (a *postAPI) GetPosts(req PostArgs) (result []PostMember, err error) {
 
 	var singlePost PostMember
-
+	fmt.Println(req)
 	whereClauses, whereValues := req.parse("posts")
 	tags := getStructDBTags("full", Member{})
 
