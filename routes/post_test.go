@@ -190,23 +190,35 @@ func (a *mockPostAPI) UpdatePost(p models.Post) error {
 	}
 	return err
 }
-func (a *mockPostAPI) SetMultipleActive(ids []uint32, active int) (err error) {
+func (a *mockPostAPI) UpdateAll(req models.PostUpdateArgs) (err error) {
 
-	result := make([]int, 0)
-	for _, value := range ids {
-		for i, v := range mockPostDS {
-			if v.ID == value {
-				mockPostDS[i].Active = models.NullInt{Int: int64(models.PostStatus["active"].(float64)), Valid: true}
-				result = append(result, i)
-			}
+	for _, v := range req.IDs {
+		if v == 1 || v == 2 || v == 4 || v == 6 {
+			err = nil
+		} else {
+			err = errors.New("Posts Not Found")
 		}
-	}
-	if len(result) == 0 {
-		err = errors.New("Posts Not Found")
-		return err
 	}
 	return err
 }
+
+// func (a *mockPostAPI) UpdateAll(req models.PostUpdateArgs) (err error) {
+
+// 	result := make([]int, 0)
+// 	for _, value := range ids {
+// 		for i, v := range mockPostDS {
+// 			if v.ID == value {
+// 				mockPostDS[i].Active = models.NullInt{Int: int64(models.PostStatus["active"].(float64)), Valid: true}
+// 				result = append(result, i)
+// 			}
+// 		}
+// 	}
+// 	if len(result) == 0 {
+// 		err = errors.New("Posts Not Found")
+// 		return err
+// 	}
+// 	return err
+// }
 
 func (a *mockPostAPI) DeletePost(id uint32) error {
 	// result := models.Post{}
