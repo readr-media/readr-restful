@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -71,26 +72,22 @@ func (r *postHandler) Post(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Author"})
 		return
 	}
-	if !post.CreatedAt.Valid {
-		post.CreatedAt.Time = time.Now()
-		post.CreatedAt.Valid = true
-	}
-	if !post.UpdatedAt.Valid {
-		post.UpdatedAt.Time = time.Now()
-		post.UpdatedAt.Valid = true
-	}
-	// When insert post set default active to 3
+	// CreatedAt and UpdatedAt set default to now
+	post.CreatedAt = models.NullTime{Time: time.Now(), Valid: true}
+	post.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
+
 	if !post.Active.Valid {
 		post.Active.Int = 3
 	}
 	if !post.UpdatedBy.Valid {
-		post.UpdatedBy = post.Author
+		if post.Author.Valid {
+			post.UpdatedBy.String = post.Author.String
+			post.UpdatedBy.Valid = true
+		} else {
+			c.JSON(http.StatusBadRequest, gin.H{"Error": "Neither updated_by or author is valid"})
+		}
+
 	}
-	// if !post.UpdatedBy.Valid {
-	// 	post.UpdatedBy.String = post.Author.String
-	// 	post.UpdatedBy.Valid = true
-	// }
-	// result, err := models.DS.Create(post)
 	err = models.PostAPI.InsertPost(post)
 	if err != nil {
 		switch err.Error() {
@@ -102,7 +99,6 @@ func (r *postHandler) Post(c *gin.Context) {
 			return
 		}
 	}
-	// c.JSON(http.StatusOK, models.Post{})
 	c.Status(http.StatusOK)
 }
 
@@ -110,32 +106,32 @@ func (r *postHandler) Put(c *gin.Context) {
 
 	post := models.Post{}
 
-	c.Bind(&post)
+	err := c.ShouldBindJSON(&post)
 	// Check if post struct was binded successfully
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
+	}
 	if post == (models.Post{}) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Post"})
 		return
 	}
-	// CreatedAt would be list in the updating tag list
+	// Discard CreatedAt even if there is data
 	if post.CreatedAt.Valid {
 		post.CreatedAt.Time = time.Time{}
 		post.CreatedAt.Valid = false
 	}
-	if !post.UpdatedAt.Valid {
-		post.UpdatedAt.Time = time.Now()
-		post.UpdatedAt.Valid = true
-	}
+	post.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
 	if !post.UpdatedBy.Valid {
 		if post.Author.Valid {
 			post.UpdatedBy.String = post.Author.String
 			post.UpdatedBy.Valid = true
 		} else {
-			c.JSON(http.StatusBadRequest, gin.H{"Error": "Neither author or updatedby is valid"})
+			c.JSON(http.StatusBadRequest, gin.H{"Error": "Neither updated_by or author is valid"})
 		}
 
 	}
-	// result, err := models.DS.Update(post)
-	err := models.PostAPI.UpdatePost(post)
+	err = models.PostAPI.UpdatePost(post)
 	if err != nil {
 		switch err.Error() {
 		case "Post Not Found":
@@ -150,20 +146,34 @@ func (r *postHandler) Put(c *gin.Context) {
 }
 func (r *postHandler) DeleteAll(c *gin.Context) {
 
-	ids := []uint32{}
+	params := models.PostUpdateArgs{}
+	// Bind params. If err return 400
+	err := c.BindQuery(&params)
 	// Unable to parse interface{} to []uint32
 	// If change to []interface{} first, there's no way avoid for loop each time.
 	// So here use individual parsing instead of function(interface{}) (interface{})
-	err := json.Unmarshal([]byte(c.Query("ids")), &ids)
+	if c.Query("ids") == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "ID List Empty"})
+		return
+	}
+	err = json.Unmarshal([]byte(c.Query("ids")), &params.IDs)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
-	if len(ids) == 0 {
+	if len(params.IDs) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "ID List Empty"})
 		return
 	}
-	err = models.PostAPI.SetMultipleActive(ids, int(models.PostStatus["deactive"].(float64)))
+	if strings.HasPrefix(params.UpdatedBy, `"`) {
+		params.UpdatedBy = strings.TrimPrefix(params.UpdatedBy, `"`)
+	}
+	if strings.HasSuffix(params.UpdatedBy, `"`) {
+		params.UpdatedBy = strings.TrimSuffix(params.UpdatedBy, `"`)
+	}
+	params.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
+	params.Active = models.NullInt{Int: int64(models.PostStatus["deactive"].(float64)), Valid: true}
+	err = models.PostAPI.UpdateAll(params)
 	if err != nil {
 		switch err.Error() {
 		case "Posts Not Found":
@@ -182,7 +192,6 @@ func (r *postHandler) Delete(c *gin.Context) {
 	iduint64, _ := strconv.ParseUint(c.Param("id"), 10, 32)
 	id := uint32(iduint64)
 	err := models.PostAPI.DeletePost(id)
-	// member, err := req.Delete()
 	if err != nil {
 		switch err.Error() {
 		case "Post Not Found":
@@ -197,10 +206,9 @@ func (r *postHandler) Delete(c *gin.Context) {
 }
 
 func (r *postHandler) PublishAll(c *gin.Context) {
-	payload := struct {
-		IDs []uint32 `json:"ids"`
-	}{}
-	err := c.Bind(&payload)
+	payload := models.PostUpdateArgs{}
+
+	err := c.ShouldBindJSON(&payload)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
@@ -209,7 +217,9 @@ func (r *postHandler) PublishAll(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Request Body"})
 		return
 	}
-	err = models.PostAPI.SetMultipleActive(payload.IDs, int(models.PostStatus["active"].(float64)))
+	payload.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
+	payload.Active = models.NullInt{Int: int64(models.PostStatus["active"].(float64)), Valid: true}
+	err = models.PostAPI.UpdateAll(payload)
 	if err != nil {
 		switch err.Error() {
 		case "Posts Not Found":
@@ -224,8 +234,6 @@ func (r *postHandler) PublishAll(c *gin.Context) {
 }
 
 func (r *postHandler) SetRoutes(router *gin.Engine) {
-
-	// router.GET("posts", r.PostsGetHandler)
 
 	postRouter := router.Group("/post")
 	{

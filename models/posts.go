@@ -46,6 +46,13 @@ type PostArgs struct {
 	Author    string `form:"author"`
 }
 
+type PostUpdateArgs struct {
+	IDs       []int    `json:"ids"`
+	UpdatedBy string   `form:"updated_by" json:"updated_by" db:"updated_by"`
+	UpdatedAt NullTime `json:"-" db:"updated_at"`
+	Active    NullInt  `json:"-" db:"active"`
+}
+
 func (args *PostArgs) parse(prefix string) (restrict string, whereValues []interface{}) {
 	input := reflect.ValueOf(args).Elem()
 	whereString := make([]string, 0)
@@ -98,7 +105,7 @@ type PostInterface interface {
 	GetPost(id uint32) (PostMember, error)
 	//GetPosts(maxResult uint8, page uint16, sortMethod string) ([]PostMember, error)
 	InsertPost(p Post) error
-	SetMultipleActive(ids []uint32, active int) error
+	UpdateAll(req PostUpdateArgs) error
 	UpdatePost(p Post) error
 }
 
@@ -217,6 +224,7 @@ func (a *postAPI) InsertPost(p Post) error {
 
 func (a *postAPI) UpdatePost(p Post) error {
 
+	fmt.Println(p)
 	// query, err := generateSQLStmt("partial_update", "posts", p)
 	tags := getStructDBTags("partial", p)
 	fields := makeFieldString("update", `%s = :%s`, tags)
@@ -252,9 +260,9 @@ func (a *postAPI) DeletePost(id uint32) error {
 	return err
 }
 
-func (a *postAPI) SetMultipleActive(ids []uint32, active int) error {
-	prep := fmt.Sprintf("Update posts SET active = %d WHERE post_id IN (?);", active)
-	query, args, err := sqlx.In(prep, ids)
+func (a *postAPI) UpdateAll(req PostUpdateArgs) error {
+
+	query, args, err := sqlx.In(`UPDATE posts SET updated_by = ?, updated_at = ?, active = ? WHERE post_id IN (?)`, req.UpdatedBy, req.UpdatedAt, req.Active, req.IDs)
 	if err != nil {
 		return err
 	}
@@ -264,7 +272,7 @@ func (a *postAPI) SetMultipleActive(ids []uint32, active int) error {
 		return err
 	}
 	rowCnt, err := result.RowsAffected()
-	if rowCnt > int64(len(ids)) {
+	if rowCnt > int64(len(req.IDs)) {
 		return errors.New("More Rows Affected")
 	} else if rowCnt == 0 {
 		return errors.New("Posts Not Found")
