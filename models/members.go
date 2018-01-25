@@ -2,9 +2,11 @@ package models
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"reflect"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -53,26 +55,78 @@ var MemberAPI MemberInterface = new(memberAPI)
 type MemberInterface interface {
 	DeleteMember(id string) error
 	GetMember(id string) (Member, error)
-	GetMembers(maxResult uint8, page uint16, sortMethod string) ([]Member, error)
+	// GetMembers(maxResult uint8, page uint16, sortMethod string) ([]Member, error)
+	GetMembers(req MemberArgs) ([]Member, error)
 	InsertMember(m Member) error
 	SetMultipleActive(ids []string, active int) error
 	UpdateMember(m Member) error
 }
 
-func (a *memberAPI) GetMembers(maxResult uint8, page uint16, sortMethod string) ([]Member, error) {
-	var (
-		result []Member
-		err    error
-	)
-	query := fmt.Sprintf(`SELECT * FROM members where active != %d ORDER BY %s LIMIT ? OFFSET ?`, int(MemberStatus["delete"].(float64)), orderByHelper(sortMethod))
-	// query, _ := generateSQLStmt("get_all", "members", sortString)
+// MemberArgs is used to hold url/payload parameters while querys
+// NullBool types should be put last, so that default type like string,
+// could be parsed during form parsing
+type MemberArgs struct {
+	BasicArgs
+	Active       string   `form:"active" db:"active"`
+	CustomEditor NullBool `form:"custom_editor" db:"custom_editor"`
+}
 
-	err = DB.Select(&result, query, maxResult, (page-1)*uint16(maxResult))
+func (args *MemberArgs) parse() (restricts string, values []interface{}) {
+	input := reflect.ValueOf(args).Elem()
+	whereString := make([]string, 0)
+	for i := 0; i < input.NumField(); i++ {
+		tag := input.Type().Field(i).Tag.Get("form")
+		switch tag {
+		case "custom_editor":
+			if args.CustomEditor.Valid {
+				whereString = append(whereString, "custom_editor = ?")
+				values = append(values, args.CustomEditor.Bool)
+			}
+		case "active":
+			if args.Active != "" {
+				tmp := map[string][]int{}
+				err := json.Unmarshal([]byte(args.Active), &tmp)
+				if err != nil {
+					fmt.Println("active ", err.Error())
+				} else {
+					for k, v := range tmp {
+						whereString = append(whereString, fmt.Sprintf("%s %s (?)", tag, operatorHelper(k)))
+						values = append(values, v)
+					}
+				}
+			}
+		}
+	}
+	if len(whereString) > 1 {
+		restricts = strings.Join(whereString, " AND ")
+	} else if len(whereString) == 1 {
+		restricts = whereString[0]
+	}
+	return restricts, values
+}
+
+// func (a *memberAPI) GetMembers(maxResult uint8, page uint16, sortMethod string) ([]Member, error) {
+func (a *memberAPI) GetMembers(req MemberArgs) (result []Member, err error) {
+
+	restricts, values := req.parse()
+	query := fmt.Sprintf(`SELECT * FROM members where %s `, restricts)
+	// // query := fmt.Sprintf(`SELECT * FROM members where active != %d ORDER BY %s LIMIT ? OFFSET ?`, int(MemberStatus["delete"].(float64)), orderByHelper(req.Sorting))
+	// // // query, _ := generateSQLStmt("get_all", "members", sortString)
+
+	query, args, err := sqlx.In(query, values...)
+	if err != nil {
+		return nil, err
+	}
+	query = DB.Rebind(query)
+	query = query + fmt.Sprintf(`ORDER BY %s LIMIT ? OFFSET ?`, orderByHelper(req.Sorting))
+	args = append(args, req.MaxResult, (req.Page-1)*uint16(req.MaxResult))
+
+	err = DB.Select(&result, query, args...)
 	if err != nil || len(result) == 0 {
 		result = []Member{}
 		err = errors.New("Members Not Found")
 	}
-	// fmt.Println(result)
+
 	return result, err
 }
 

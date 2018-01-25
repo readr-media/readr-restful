@@ -40,6 +40,29 @@ type Post struct {
 	LinkName        NullString `json:"link_name" db:"link_name"`
 }
 
+type postAPI struct{}
+
+var PostAPI PostInterface = new(postAPI)
+
+type PostInterface interface {
+	DeletePost(id uint32) error
+	GetPosts(args PostArgs) (result []PostMember, err error)
+	GetPost(id uint32) (PostMember, error)
+	//GetPosts(maxResult uint8, page uint16, sortMethod string) ([]PostMember, error)
+	InsertPost(p Post) error
+	UpdateAll(req PostUpdateArgs) error
+	UpdatePost(p Post) error
+}
+
+// UpdatedBy wraps Member for embedded field updated_by
+// in the usage of anonymous struct in PostMember
+type UpdatedBy Member
+type PostMember struct {
+	Post
+	Member    `json:"author" db:"author"`
+	UpdatedBy `json:"updated_by" db:"updated_by"`
+}
+
 type PostArgs struct {
 	BasicArgs
 	Active string `form:"active"`
@@ -93,29 +116,6 @@ func (args *PostArgs) parse(prefix string) (restrict string, whereValues []inter
 		restrict = whereString[0]
 	}
 	return restrict, whereValues
-}
-
-type postAPI struct{}
-
-var PostAPI PostInterface = new(postAPI)
-
-type PostInterface interface {
-	DeletePost(id uint32) error
-	GetPosts(args PostArgs) (result []PostMember, err error)
-	GetPost(id uint32) (PostMember, error)
-	//GetPosts(maxResult uint8, page uint16, sortMethod string) ([]PostMember, error)
-	InsertPost(p Post) error
-	UpdateAll(req PostUpdateArgs) error
-	UpdatePost(p Post) error
-}
-
-// UpdatedBy wraps Member for embedded field updated_by
-// in the usage of anonymous struct in PostMember
-type UpdatedBy Member
-type PostMember struct {
-	Post
-	Member    `json:"author" db:"author"`
-	UpdatedBy `json:"updated_by" db:"updated_by"`
 }
 
 // func (a *postAPI) GetPosts(maxResult uint8, page uint16, sortMethod string, where string) ([]PostMember, error) {

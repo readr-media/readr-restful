@@ -16,18 +16,23 @@ type memberHandler struct{}
 
 func (r *memberHandler) GetAll(c *gin.Context) {
 
-	mr := c.DefaultQuery("max_result", "20")
-	u64MaxResult, _ := strconv.ParseUint(mr, 10, 8)
-	maxResult := uint8(u64MaxResult)
+	// First bind BasicArgs instead of MemberArgs
+	// to Avoid gin set status code to 400, and latter status overwritten
+	// Directly bind MemberArgs works in real request, but fails in test
+	basic := models.BasicArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at"}
+	err := c.Bind(&basic)
 
-	pg := c.DefaultQuery("page", "1")
-	u64Page, _ := strconv.ParseUint(pg, 10, 16)
-	page := uint16(u64Page)
+	args := models.MemberArgs{
+		BasicArgs: basic,
+	}
 
-	sorting := c.DefaultQuery("sort", "-updated_at")
-
-	result, err := models.MemberAPI.GetMembers(maxResult, page, sorting)
-	// fmt.Println(result)
+	if s, err := strconv.ParseBool(c.Query("custom_editor")); err == nil {
+		args.CustomEditor = models.NullBool{Bool: s, Valid: true}
+	}
+	if args.Active = c.Query("active"); args.Active == "" {
+		args.Active = `{"$nin":[` + strconv.FormatFloat(models.MemberStatus["delete"].(float64), 'f', -1, 64) + `]}`
+	}
+	result, err := models.MemberAPI.GetMembers(args)
 	if err != nil {
 		switch err.Error() {
 		case "Members Not Found":
@@ -40,6 +45,7 @@ func (r *memberHandler) GetAll(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, gin.H{"_items": result})
 }
+
 func (r *memberHandler) Get(c *gin.Context) {
 
 	// input := models.Member{ID: c.Param("id")}

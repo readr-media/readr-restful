@@ -16,11 +16,16 @@ type postHandler struct{}
 func (r *postHandler) GetAll(c *gin.Context) {
 
 	// Default query parameters
-	args := models.PostArgs{BasicArgs: models.BasicArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at"}, Active: `{"$nin":[0]}`}
+	args := models.PostArgs{
+		BasicArgs: models.BasicArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at"},
+	}
 	err := c.Bind(&args)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+	}
+	if args.Active == "" {
+		args.Active = `{"$nin":[` + strconv.FormatFloat(models.PostStatus["deactive"].(float64), 'f', -1, 64) + `]}`
 	}
 	result, err := models.PostAPI.GetPosts(args)
 	if err != nil {
