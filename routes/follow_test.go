@@ -24,7 +24,7 @@ func initFollowTest() {
 	} {
 		err := models.MemberAPI.InsertMember(params)
 		if err != nil {
-			log.Printf("Init test case fail. Error: %v", err)
+			log.Printf("Insert member fail when init test case. Error: %v", err)
 		}
 	}
 
@@ -34,7 +34,7 @@ func initFollowTest() {
 	} {
 		err := models.PostAPI.InsertPost(params)
 		if err != nil {
-			log.Printf("Init test case fail. Error: %v", err)
+			log.Printf("Insert post fail when init test case. Error: %v", err)
 		}
 	}
 
@@ -44,7 +44,7 @@ func initFollowTest() {
 	} {
 		err := models.ProjectAPI.InsertProject(params)
 		if err != nil {
-			log.Printf("Init test case fail. Error: %v", err)
+			log.Printf("Insert Project fail when init test case. Error: %v", err)
 		}
 	}
 
@@ -179,7 +179,7 @@ func TestFollowingGet(t *testing.T) {
 		{"GetFollowingPostOK", CaseIn{"post", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, `[{"id":42,"author":null,"created_at":null,"like_amount":null,"comment_amount":null,"title":null,"content":null,"link":null,"og_title":null,"og_description":null,"og_image":null,"active":1,"updated_at":null,"updated_by":null,"published_at":null,"link_title":null,"link_description":null,"link_image":null,"link_name":null}]`}},
 		{"GetFollowingMemberOK", CaseIn{"member", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, `[{"id":"followtest2@mirrormedia.mg","name":null,"nickname":null,"birthday":null,"gender":null,"work":null,"mail":null,"register_mode":null,"social_id":null,"created_at":null,"updated_at":null,"updated_by":null,"description":null,"profile_image":null,"identity":null,"role":null,"active":1,"custom_editor":null,"hide_profile":null,"profile_push":null,"post_push":null,"comment_push":null}]`}},
 		{"GetFollowingProjectOK", CaseIn{"project", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, `[{"id":420,"created_at":null,"updated_at":null,"updated_by":null,"published_at":null,"post_id":42,"like_amount":null,"comment_amount":null,"active":1,"hero_image":null,"title":null,"description":null,"author":null,"og_title":null,"og_description":null,"og_image":null}]`}},
-		{"GetFollowingFollowerNotExist", CaseIn{"project", "unknown@user.who"}, CaseOut{http.StatusNotFound, `{"Error":"Not Found"}`}},
+		{"GetFollowingFollowerNotExist", CaseIn{"project", "unknown@user.who"}, CaseOut{http.StatusNotFound, `[]`}},
 	}
 
 	for _, testcase := range TestFollowingGetCases {
