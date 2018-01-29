@@ -25,6 +25,7 @@ type Post struct {
 	CommentAmount   NullInt    `json:"comment_amount" db:"comment_amount"`
 	Title           NullString `json:"title" db:"title"`
 	Content         NullString `json:"content" db:"content"`
+	Type            NullInt    `json:"type" db:"type"`
 	Link            NullString `json:"link" db:"link"`
 	OgTitle         NullString `json:"og_title" db:"og_title"`
 	OgDescription   NullString `json:"og_description" db:"og_description"`
