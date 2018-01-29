@@ -41,7 +41,8 @@ func (r *followingHandler) Push(c *gin.Context) {
 	var body PubsubMessageBody
 	err := json.Unmarshal(input.Message.Body, &body)
 	if err != nil {
-		log.Fatalf("%v", err)
+		c.JSON(http.StatusOK, gin.H{"Error": "Bad Request"})
+		return
 	}
 
 	//log.Printf("%v", body)
@@ -97,7 +98,7 @@ func (r *followingHandler) GetByUser(c *gin.Context) {
 	if err != nil {
 		switch err.Error() {
 		case "Not Found":
-			c.JSON(http.StatusNotFound, gin.H{"Error": err.Error()})
+			c.JSON(http.StatusNotFound, make([]string, 0))
 			return
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
