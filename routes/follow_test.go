@@ -132,22 +132,23 @@ func (a *mockFollowingAPI) GetFollowed(resource string, ids []string) (interface
 	type followedCount struct {
 		Resourceid string
 		Count      int
+		Follower   []string
 	}
 	switch {
 	case ids[0] == "1001":
 		return []followedCount{}, nil
 	case resource == "member":
 		return []followedCount{
-			followedCount{"followtest1@mirrormedia.mg", 1},
-			followedCount{"followtest2@mirrormedia.mg", 1},
+			followedCount{"followtest1@mirrormedia.mg", 1, []string{"followtest2@mirrormedia.mg"}},
+			followedCount{"followtest2@mirrormedia.mg", 1, []string{"followtest1@mirrormedia.mg"}},
 		}, nil
 	case resource == "post":
 		return []followedCount{
-			followedCount{"42", 2},
+			followedCount{"42", 2, []string{"followtest1@mirrormedia.mg", "followtest2@mirrormedia.mg"}},
 		}, nil
 	case resource == "project":
 		return []followedCount{
-			followedCount{"420", 2},
+			followedCount{"420", 2, []string{"followtest1@mirrormedia.mg", "followtest2@mirrormedia.mg"}},
 		}, nil
 	default:
 		return nil, nil
@@ -232,9 +233,9 @@ func TestFollowedGet(t *testing.T) {
 		in   CaseIn
 		out  CaseOut
 	}{
-		{"GetFollowedPostOK", CaseIn{"post", []string{"42", "84"}}, CaseOut{http.StatusOK, `[{"Resourceid":"42","Count":2}]`}},
-		{"GetFollowedMemberOK", CaseIn{"member", []string{"followtest1@mirrormedia.mg", "followtest2@mirrormedia.mg"}}, CaseOut{http.StatusOK, `[{"Resourceid":"followtest1@mirrormedia.mg","Count":1},{"Resourceid":"followtest2@mirrormedia.mg","Count":1}]`}},
-		{"GetFollowedProjectOK", CaseIn{"project", []string{"420", "840"}}, CaseOut{http.StatusOK, `[{"Resourceid":"420","Count":2}]`}},
+		{"GetFollowedPostOK", CaseIn{"post", []string{"42", "84"}}, CaseOut{http.StatusOK, `[{"Resourceid":"42","Count":2,"Follower":["followtest1@mirrormedia.mg","followtest2@mirrormedia.mg"]}]`}},
+		{"GetFollowedMemberOK", CaseIn{"member", []string{"followtest1@mirrormedia.mg", "followtest2@mirrormedia.mg"}}, CaseOut{http.StatusOK, `[{"Resourceid":"followtest1@mirrormedia.mg","Count":1,"Follower":["followtest2@mirrormedia.mg"]},{"Resourceid":"followtest2@mirrormedia.mg","Count":1,"Follower":["followtest1@mirrormedia.mg"]}]`}},
+		{"GetFollowedProjectOK", CaseIn{"project", []string{"420", "840"}}, CaseOut{http.StatusOK, `[{"Resourceid":"420","Count":2,"Follower":["followtest1@mirrormedia.mg","followtest2@mirrormedia.mg"]}]`}},
 		{"GetFollowedMissingResource", CaseIn{"", []string{"420", "840"}}, CaseOut{http.StatusBadRequest, `{"Error":"Unsupported Resource"}`}},
 		{"GetFollowedMissingID", CaseIn{"post", []string{}}, CaseOut{http.StatusBadRequest, `{"Error":"Bad Resource ID"}`}},
 		{"GetFollowedPostNotExist", CaseIn{"post", []string{"1001", "1000"}}, CaseOut{http.StatusOK, `[]`}},
