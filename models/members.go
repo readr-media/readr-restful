@@ -2,7 +2,6 @@ package models
 
 import (
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -67,8 +66,8 @@ type MemberInterface interface {
 // could be parsed during form parsing
 type MemberArgs struct {
 	BasicArgs
-	Active       string   `form:"active" db:"active"`
-	CustomEditor NullBool `form:"custom_editor" db:"custom_editor"`
+	Active       map[string][]int `form:"active" db:"active"`
+	CustomEditor NullBool         `form:"custom_editor" db:"custom_editor"`
 }
 
 func (args *MemberArgs) parse() (restricts string, values []interface{}) {
@@ -83,26 +82,52 @@ func (args *MemberArgs) parse() (restricts string, values []interface{}) {
 				values = append(values, args.CustomEditor.Bool)
 			}
 		case "active":
-			if args.Active != "" {
-				tmp := map[string][]int{}
-				err := json.Unmarshal([]byte(args.Active), &tmp)
-				if err != nil {
-					fmt.Println("active ", err.Error())
-				} else {
-					for k, v := range tmp {
-						whereString = append(whereString, fmt.Sprintf("%s %s (?)", tag, operatorHelper(k)))
-						values = append(values, v)
-					}
+			if args.Active != nil {
+				for k, v := range args.Active {
+					whereString = append(whereString, fmt.Sprintf("%s %s (?)", tag, operatorHelper(k)))
+					values = append(values, v)
 				}
 			}
 		}
 	}
+
 	if len(whereString) > 1 {
 		restricts = strings.Join(whereString, " AND ")
 	} else if len(whereString) == 1 {
 		restricts = whereString[0]
 	}
 	return restricts, values
+}
+
+func (args MemberArgs) ValidateActive() (err error) {
+
+	if len(args.Active) > 1 {
+		return errors.New("Too many active lists")
+	}
+	valid := make([]int, 0)
+	result := make([]int, 0)
+	for _, v := range MemberStatus {
+		valid = append(valid, int(v.(float64)))
+	}
+	activeCount := 0
+	// Extract active slice from map
+	for _, activeSlice := range args.Active {
+		activeCount = len(activeSlice)
+		for _, target := range activeSlice {
+			for _, value := range valid {
+				if target == value {
+					result = append(result, target)
+				}
+			}
+		}
+	}
+	if len(result) != activeCount {
+		err = errors.New("Not all active elements are valid")
+	}
+	if len(result) == 0 {
+		err = errors.New("No valid active request")
+	}
+	return err
 }
 
 // func (a *memberAPI) GetMembers(maxResult uint8, page uint16, sortMethod string) ([]Member, error) {

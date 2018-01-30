@@ -2,6 +2,7 @@ package routes
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -19,19 +20,37 @@ func (r *memberHandler) GetAll(c *gin.Context) {
 	// First bind BasicArgs instead of MemberArgs
 	// to Avoid gin set status code to 400, and latter status overwritten
 	// Directly bind MemberArgs works in real request, but fails in test
-	basic := models.BasicArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at"}
-	err := c.Bind(&basic)
-
 	args := models.MemberArgs{
-		BasicArgs: basic,
+		BasicArgs:    models.BasicArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at"},
+		CustomEditor: models.NullBool{Bool: false, Valid: false},
+	}
+	if err := c.ShouldBindQuery(&args); err != nil {
+		log.Printf(fmt.Sprintf("Binding query error: %s", err.Error()))
 	}
 
-	if s, err := strconv.ParseBool(c.Query("custom_editor")); err == nil {
-		args.CustomEditor = models.NullBool{Bool: s, Valid: true}
+	if c.Query("custom_editor") != "" {
+		if s, err := strconv.ParseBool(c.Query("custom_editor")); err == nil {
+			args.CustomEditor = models.NullBool{Bool: s, Valid: true}
+		} else if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid custom_editor setting: %s", c.Query("custom_editor"))})
+			return
+		}
 	}
-	if args.Active = c.Query("active"); args.Active == "" {
-		args.Active = `{"$nin":[` + strconv.FormatFloat(models.MemberStatus["delete"].(float64), 'f', -1, 64) + `]}`
+	if c.Query("active") != "" {
+		if err := json.Unmarshal([]byte(c.Query("active")), &args.Active); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid active list: %s", err.Error())})
+			return
+		} else if err == nil {
+			if err = args.ValidateActive(); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid active list: %s", err.Error())})
+				return
+			}
+		}
+	} else {
+		args.Active = map[string][]int{"$nin": []int{int(models.MemberStatus["delete"].(float64))}}
 	}
+
+	fmt.Println(args)
 	result, err := models.MemberAPI.GetMembers(args)
 	if err != nil {
 		switch err.Error() {
