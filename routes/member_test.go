@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"sort"
 	"testing"
 
@@ -22,41 +23,83 @@ func initMemberTest() {
 func clearMemberTest() {
 	mockMemberDS = mockMemberDSBack
 }
+func (a *mockMemberAPI) GetMembers(args models.MemberArgs) (result []models.Member, err error) {
 
-func (a *mockMemberAPI) GetMembers(maxResult uint8, page uint16, sortMethod string) ([]models.Member, error) {
-
-	var (
-		result []models.Member
-		err    error
-	)
-	if len(mockMemberDS) == 0 {
-		err = errors.New("Members Not Found")
+	if args.CustomEditor == (models.NullBool{Bool: true, Valid: true}) {
+		result = []models.Member{mockMemberDS[0]}
+		err = nil
 		return result, err
 	}
 
-	sortedMockMemberDS := make([]models.Member, len(mockMemberDS))
-	copy(sortedMockMemberDS, mockMemberDS)
-
-	switch sortMethod {
-	case "updated_at":
-		sort.SliceStable(sortedMockMemberDS, func(i, j int) bool {
-			return sortedMockMemberDS[i].UpdatedAt.Before(sortedMockMemberDS[j].UpdatedAt)
-		})
-	case "-updated_at":
-		sort.SliceStable(sortedMockMemberDS, func(i, j int) bool {
-			return sortedMockMemberDS[i].UpdatedAt.After(sortedMockMemberDS[j].UpdatedAt)
-		})
+	if len(args.Active) > 1 {
+		return []models.Member{}, errors.New("Too many active lists")
+	}
+	for k, v := range args.Active {
+		if k == "$nin" && reflect.DeepEqual(v, []int{0, -1}) {
+			return []models.Member{mockMemberDS[0]}, nil
+		} else if k == "$nin" && reflect.DeepEqual(v, []int{-1, 0, 1}) {
+			return []models.Member{}, errors.New("Members Not Found")
+		} else if reflect.DeepEqual(v, []int{-3, 0, 1}) {
+			return []models.Member{}, errors.New("Not all active elements are valid")
+		} else if reflect.DeepEqual(v, []int{3, 4}) {
+			return []models.Member{}, errors.New("No valid active request")
+		}
 	}
 
-	if maxResult >= uint8(len(sortedMockMemberDS)) {
-		result = sortedMockMemberDS
+	result = make([]models.Member, len(mockMemberDS))
+	copy(result, mockMemberDS)
+	switch args.Sorting {
+	case "updated_at":
+		sort.SliceStable(result, func(i, j int) bool {
+			return result[i].UpdatedAt.Before(result[j].UpdatedAt)
+		})
 		err = nil
-	} else if maxResult < uint8(len(sortedMockMemberDS)) {
-		result = sortedMockMemberDS[(page-1)*uint16(maxResult) : page*uint16(maxResult)]
+	case "-updated_at":
+		sort.SliceStable(result, func(i, j int) bool {
+			return result[i].UpdatedAt.After(result[j].UpdatedAt)
+		})
 		err = nil
+	}
+	if args.MaxResult == 2 {
+		result = result[0:2]
 	}
 	return result, err
 }
+
+// func (a *mockMemberAPI) GetMembers(maxResult uint8, page uint16, sortMethod string) ([]models.Member, error) {
+
+// 	var (
+// 		result []models.Member
+// 		err    error
+// 	)
+// 	if len(mockMemberDS) == 0 {
+// 		err = errors.New("Members Not Found")
+// 		return result, err
+// 	}
+
+// 	sortedMockMemberDS := make([]models.Member, len(mockMemberDS))
+// 	copy(sortedMockMemberDS, mockMemberDS)
+
+// 	switch sortMethod {
+// 	case "updated_at":
+// 		sort.SliceStable(sortedMockMemberDS, func(i, j int) bool {
+// 			return sortedMockMemberDS[i].UpdatedAt.Before(sortedMockMemberDS[j].UpdatedAt)
+// 		})
+// 	case "-updated_at":
+// 		sort.SliceStable(sortedMockMemberDS, func(i, j int) bool {
+// 			return sortedMockMemberDS[i].UpdatedAt.After(sortedMockMemberDS[j].UpdatedAt)
+// 		})
+// 	}
+
+// 	if maxResult >= uint8(len(sortedMockMemberDS)) {
+// 		result = sortedMockMemberDS
+// 		err = nil
+// 	} else if maxResult < uint8(len(sortedMockMemberDS)) {
+// 		result = sortedMockMemberDS[(page-1)*uint16(maxResult) : page*uint16(maxResult)]
+// 		err = nil
+// 	}
+// 	return result, err
+// }
 
 func (a *mockMemberAPI) GetMember(id string) (models.Member, error) {
 	result := models.Member{}
@@ -137,10 +180,36 @@ func TestRouteGetMembers(t *testing.T) {
 		route  string
 		expect ExpectGetsResp
 	}{
-		{"Descending", "/members", ExpectGetsResp{ExpectResp{http.StatusOK, ""},
+		{"UpdatedAtDescending", "/members", ExpectGetsResp{ExpectResp{http.StatusOK, ""},
 			[]models.Member{mockMemberDS[1], mockMemberDS[0], mockMemberDS[2]}}},
-		{"Ascending", "/members?sort=updated_at", ExpectGetsResp{ExpectResp{http.StatusOK, ""},
+		{"UpdatedAtAscending", "/members?sort=updated_at", ExpectGetsResp{ExpectResp{http.StatusOK, ""},
 			[]models.Member{mockMemberDS[2], mockMemberDS[0], mockMemberDS[1]}}},
+		{"max_result", "/members?max_result=2", ExpectGetsResp{ExpectResp{http.StatusOK, ""},
+			[]models.Member{mockMemberDS[1], mockMemberDS[0]}}},
+		{"ActiveFilter", `/members?active={"$nin":[0,-1]}`, ExpectGetsResp{ExpectResp{http.StatusOK, ""},
+			[]models.Member{mockMemberDS[0]}}},
+		{"CustomEditorFilter", `/members?custom_editor=true`, ExpectGetsResp{ExpectResp{http.StatusOK, ""},
+			[]models.Member{mockMemberDS[0]}}},
+		{"NotFound", `/members?active={"$nin":[-1,0,1]}`,
+			ExpectGetsResp{ExpectResp{
+				http.StatusNotFound, `{"Error":"Members Not Found"}`},
+				[]models.Member{}}},
+		{"MoreThanOneActive", `/members?active={"$nin":[1,0], "$in":[-1,3]}`,
+			ExpectGetsResp{
+				ExpectResp{http.StatusBadRequest, `{"Error":"Invalid active list: Too many active lists"}`},
+				[]models.Member{}}},
+		{"NotEnoughValidActive", `/members?active={"$in":[-3,0,1]}`,
+			ExpectGetsResp{
+				ExpectResp{http.StatusBadRequest, `{"Error":"Invalid active list: Not all active elements are valid"}`},
+				[]models.Member{}}},
+		{"NoValidActive", `/members?active={"$nin":[3,4]}`,
+			ExpectGetsResp{
+				ExpectResp{http.StatusBadRequest, `{"Error":"Invalid active list: No valid active request"}`},
+				[]models.Member{}}},
+		{"InvalidCustomEditor", `/members?custom_editor=neutron`,
+			ExpectGetsResp{
+				ExpectResp{http.StatusBadRequest, `{"Error":"Invalid custom_editor setting: neutron"}`},
+				[]models.Member{}}},
 	}
 	for _, tc := range testCase {
 		t.Run(tc.name, func(t *testing.T) {
@@ -152,12 +221,13 @@ func TestRouteGetMembers(t *testing.T) {
 				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
 			}
 			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
-				t.Errorf("%s expect errro message %v but get %v", tc.name, tc.expect.err, w.Body.String())
+				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
 			}
 
 			expected, _ := json.Marshal(map[string][]models.Member{"_items": tc.expect.resp})
+
 			if w.Code == http.StatusOK && w.Body.String() != string(expected) {
-				t.Errorf("%s incorrect response", tc.name)
+				t.Errorf("%s incorrect response.\nWant\n%s\nBut get\n%s\n", tc.name, string(expected), w.Body.String())
 			}
 		})
 	}
