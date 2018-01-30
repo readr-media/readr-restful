@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"log"
 	"os"
 	"testing"
 	"time"
@@ -10,6 +11,16 @@ import (
 	"github.com/readr-media/readr-restful/models"
 	"github.com/spf13/viper"
 )
+
+func init() {
+	viper.AddConfigPath("../config")
+	viper.SetConfigName("main")
+
+	if err := viper.ReadInConfig(); err != nil {
+		log.Fatalf("Error reading config file, %s", err)
+	}
+
+}
 
 var r *gin.Engine
 

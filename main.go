@@ -12,27 +12,8 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
-// var (
-// 	sqlUser    = flag.String("sql-user", "root", "User account to SQL server")
-// 	sqlAddress = flag.String("sql-address", "127.0.0.1:3306", "Address to the SQL server")
-// 	sqlAuth    = flag.String("sql-auth", "", "Password to SQL server")
-// )
+func init() {
 
-// func sqlMiddleware(connString string) gin.HandlerFunc {
-// 	db := sqlx.MustConnect("mysql", connString)
-
-// 	return func(c *gin.Context) {
-// 		// Registered sqlx db session as "DB" in middleware
-// 		c.Set("DB", db)
-// 		c.Next()
-// 	}
-// }
-
-// type Env struct {
-//	db models.Datastore
-// }
-
-func main() {
 	viper.AddConfigPath("./config")
 	viper.SetConfigName("main")
 
@@ -41,11 +22,15 @@ func main() {
 	}
 
 	fmt.Printf("Using config: %s\n", viper.ConfigFileUsed())
+}
+
+func main() {
 
 	sqlHost := viper.Get("sql.host")
 	sqlPort := viper.GetInt("sql.port")
 	sqlUser := viper.Get("sql.user")
 	sqlPass := viper.Get("sql.password")
+
 	// flag.Parse()
 	// fmt.Printf("sql user:%s, sql address:%s, auth:%s \n", *sqlUser, *sqlAddress, *sqlAuth)
 	// fmt.Println(sqlPort)
@@ -54,17 +39,14 @@ func main() {
 	// db, err := sqlx.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s)/memberdb", *sqlUser, *sqlAuth, *sqlAddress))
 	// dbURI := fmt.Sprintf("%s:%s@tcp(%s)/memberdb?parseTime=true", *sqlUser, *sqlAuth, *sqlAddress)
 	dbURI := fmt.Sprintf("%s:%s@tcp(%s)/memberdb?parseTime=true", sqlUser, sqlPass, fmt.Sprintf("%s:%v", sqlHost, sqlPort))
+
 	// Start with default middleware
 	router := gin.Default()
 
 	// models.InitDB(dbURI)
 	models.Connect(dbURI)
 
-	// Plug in mySQL middleware
-	// router.Use(sqlMiddleware(dbConn))
-
 	// init mail sender
-
 	models.MemberStatus = viper.GetStringMap("models.members")
 	models.PostStatus = viper.GetStringMap("models.posts")
 
