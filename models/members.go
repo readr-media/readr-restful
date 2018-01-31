@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"reflect"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -58,12 +57,12 @@ type MemberInterface interface {
 	InsertMember(m Member) error
 	SetMultipleActive(ids []string, active int) error
 	UpdateMember(m Member) error
-	Count(args MemberMap) (result int, err error)
+	Count(req MemberArgs) (result int, err error)
 }
 
-type MemberMap map[string]interface{}
+type MemberArgs map[string]interface{}
 
-func (m *MemberMap) parse() (restricts string, values []interface{}) {
+func (m *MemberArgs) parse() (restricts string, values []interface{}) {
 	whereString := make([]string, 0)
 	for arg, value := range *m {
 		switch arg {
@@ -86,7 +85,7 @@ func (m *MemberMap) parse() (restricts string, values []interface{}) {
 	return restricts, values
 }
 
-func (m *MemberMap) ValidateActive(args map[string][]int) (err error) {
+func (m *MemberArgs) ValidateActive(args map[string][]int) (err error) {
 
 	if len(args) > 1 {
 		return errors.New("Too many active lists")
@@ -117,75 +116,6 @@ func (m *MemberMap) ValidateActive(args map[string][]int) (err error) {
 	return err
 }
 
-// MemberArgs is used to hold url/payload parameters while querys
-// NullBool types should be put last, so that default type like string,
-// could be parsed during form parsing
-type MemberArgs struct {
-	BasicArgs
-	Active       map[string][]int `form:"active" db:"active"`
-	CustomEditor NullBool         `form:"custom_editor" db:"custom_editor"`
-}
-
-func (args *MemberArgs) parse() (restricts string, values []interface{}) {
-	input := reflect.ValueOf(args).Elem()
-	whereString := make([]string, 0)
-	for i := 0; i < input.NumField(); i++ {
-		tag := input.Type().Field(i).Tag.Get("form")
-		switch tag {
-		case "custom_editor":
-			if args.CustomEditor.Valid {
-				whereString = append(whereString, "custom_editor = ?")
-				values = append(values, args.CustomEditor.Bool)
-			}
-		case "active":
-			if args.Active != nil {
-				for k, v := range args.Active {
-					whereString = append(whereString, fmt.Sprintf("%s %s (?)", tag, operatorHelper(k)))
-					values = append(values, v)
-				}
-			}
-		}
-	}
-
-	if len(whereString) > 1 {
-		restricts = strings.Join(whereString, " AND ")
-	} else if len(whereString) == 1 {
-		restricts = whereString[0]
-	}
-	return restricts, values
-}
-
-func (args MemberArgs) ValidateActive() (err error) {
-
-	if len(args.Active) > 1 {
-		return errors.New("Too many active lists")
-	}
-	valid := make([]int, 0)
-	result := make([]int, 0)
-	for _, v := range MemberStatus {
-		valid = append(valid, int(v.(float64)))
-	}
-	activeCount := 0
-	// Extract active slice from map
-	for _, activeSlice := range args.Active {
-		activeCount = len(activeSlice)
-		for _, target := range activeSlice {
-			for _, value := range valid {
-				if target == value {
-					result = append(result, target)
-				}
-			}
-		}
-	}
-	if len(result) != activeCount {
-		err = errors.New("Not all active elements are valid")
-	}
-	if len(result) == 0 {
-		err = errors.New("No valid active request")
-	}
-	return err
-}
-
 func (a *memberAPI) GetMembers(req MemberArgs) (result []Member, err error) {
 
 	restricts, values := req.parse()
@@ -197,9 +127,10 @@ func (a *memberAPI) GetMembers(req MemberArgs) (result []Member, err error) {
 		return nil, err
 	}
 	query = DB.Rebind(query)
-	query = query + fmt.Sprintf(`ORDER BY %s LIMIT ? OFFSET ?`, orderByHelper(req.Sorting))
-	args = append(args, req.MaxResult, (req.Page-1)*uint16(req.MaxResult))
-
+	query = query + fmt.Sprintf(`ORDER BY %s LIMIT ? OFFSET ?`, orderByHelper(req["sort"].(string)))
+	args = append(args, req["max_result"].(uint8), (req["page"].(uint16)-1)*uint16(req["max_result"].(uint8)))
+	fmt.Println(query)
+	fmt.Println(args)
 	err = DB.Select(&result, query, args...)
 	if err != nil || len(result) == 0 {
 		result = []Member{}
@@ -310,9 +241,9 @@ func (a *memberAPI) SetMultipleActive(ids []string, active int) (err error) {
 	return err
 }
 
-func (a *memberAPI) Count(args MemberMap) (result int, err error) {
+func (a *memberAPI) Count(req MemberArgs) (result int, err error) {
 
-	if len(args) == 0 {
+	if len(req) == 0 {
 
 		rows, err := DB.Queryx(`SELECT COUNT(*) FROM (SELECT member_id FROM members) AS subquery`)
 		if err != nil {
@@ -322,9 +253,9 @@ func (a *memberAPI) Count(args MemberMap) (result int, err error) {
 			err = rows.Scan(&result)
 		}
 
-	} else if len(args) > 0 {
+	} else if len(req) > 0 {
 
-		restricts, values := args.parse()
+		restricts, values := req.parse()
 		query := fmt.Sprintf(`SELECT COUNT(*) FROM (SELECT member_id FROM members WHERE %s) AS subquery`, restricts)
 
 		query, args, err := sqlx.In(query, values...)
