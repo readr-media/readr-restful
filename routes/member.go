@@ -121,7 +121,6 @@ func (r *memberHandler) Post(c *gin.Context) {
 			return
 		}
 	}
-	// c.JSON(http.StatusOK, models.Member{})
 	c.Status(http.StatusOK)
 }
 
@@ -205,7 +204,6 @@ func (r *memberHandler) Delete(c *gin.Context) {
 			return
 		}
 	}
-	// c.JSON(http.StatusOK, member)
 	c.Status(http.StatusOK)
 }
 
@@ -307,9 +305,52 @@ func (r *memberHandler) PutPassword(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-func (r *memberHandler) SetRoutes(router *gin.Engine) {
+func (r *memberHandler) Count(c *gin.Context) {
 
-	// router.GET("/members", r.MembersGetHandler)
+	var params models.MemberMap = make(map[string]interface{})
+
+	args := struct {
+		CustomEditor string `form:"custom_editor"`
+		Active       string `form:"active"`
+	}{}
+	if err := c.ShouldBindQuery(&args); err != nil {
+		log.Printf(fmt.Sprintf("Binding query error: %s", err.Error()))
+	}
+
+	if c.Query("custom_editor") != "" {
+		if s, err := strconv.ParseBool(c.Query("custom_editor")); err == nil {
+			params["custom_editor"] = s
+		} else if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid custom_editor setting: %s", c.Query("custom_editor"))})
+			return
+		}
+	}
+	if c.Query("active") != "" {
+		activemap := map[string][]int{}
+		if err := json.Unmarshal([]byte(c.Query("active")), &activemap); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid active list: %s", err.Error())})
+			return
+		} else if err == nil {
+			if err = params.ValidateActive(activemap); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid active list: %s", err.Error())})
+				return
+			}
+			params["active"] = activemap
+		}
+	} else {
+		params["active"] = map[string][]int{"$nin": []int{int(models.MemberStatus["delete"].(float64))}}
+	}
+
+	fmt.Println(params)
+	count, err := models.MemberAPI.Count(params)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"_meta": count})
+}
+
+func (r *memberHandler) SetRoutes(router *gin.Engine) {
 
 	memberRouter := router.Group("/member")
 	{
@@ -325,6 +366,8 @@ func (r *memberHandler) SetRoutes(router *gin.Engine) {
 		membersRouter.GET("", r.GetAll)
 		membersRouter.PUT("", r.ActivateAll)
 		membersRouter.DELETE("", r.DeleteAll)
+
+		membersRouter.GET("/count", r.Count)
 	}
 }
 

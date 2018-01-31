@@ -54,11 +54,67 @@ var MemberAPI MemberInterface = new(memberAPI)
 type MemberInterface interface {
 	DeleteMember(id string) error
 	GetMember(id string) (Member, error)
-	// GetMembers(maxResult uint8, page uint16, sortMethod string) ([]Member, error)
 	GetMembers(req MemberArgs) ([]Member, error)
 	InsertMember(m Member) error
 	SetMultipleActive(ids []string, active int) error
 	UpdateMember(m Member) error
+	Count(args MemberMap) (result int, err error)
+}
+
+type MemberMap map[string]interface{}
+
+func (m *MemberMap) parse() (restricts string, values []interface{}) {
+	whereString := make([]string, 0)
+	for arg, value := range *m {
+		switch arg {
+		case "custom_editor":
+			whereString = append(whereString, "custom_editor = ?")
+			values = append(values, value)
+		case "active":
+			for k, v := range value.(map[string][]int) {
+				whereString = append(whereString, fmt.Sprintf("%s %s (?)", arg, operatorHelper(k)))
+				values = append(values, v)
+			}
+		}
+	}
+
+	if len(whereString) > 1 {
+		restricts = strings.Join(whereString, " AND ")
+	} else if len(whereString) == 1 {
+		restricts = whereString[0]
+	}
+	return restricts, values
+}
+
+func (m *MemberMap) ValidateActive(args map[string][]int) (err error) {
+
+	if len(args) > 1 {
+		return errors.New("Too many active lists")
+	}
+	valid := make([]int, 0)
+	result := make([]int, 0)
+	for _, v := range MemberStatus {
+		valid = append(valid, int(v.(float64)))
+	}
+	activeCount := 0
+	// Extract active slice from map
+	for _, activeSlice := range args {
+		activeCount = len(activeSlice)
+		for _, target := range activeSlice {
+			for _, value := range valid {
+				if target == value {
+					result = append(result, target)
+				}
+			}
+		}
+	}
+	if len(result) != activeCount {
+		err = errors.New("Not all active elements are valid")
+	}
+	if len(result) == 0 {
+		err = errors.New("No valid active request")
+	}
+	return err
 }
 
 // MemberArgs is used to hold url/payload parameters while querys
@@ -130,13 +186,11 @@ func (args MemberArgs) ValidateActive() (err error) {
 	return err
 }
 
-// func (a *memberAPI) GetMembers(maxResult uint8, page uint16, sortMethod string) ([]Member, error) {
 func (a *memberAPI) GetMembers(req MemberArgs) (result []Member, err error) {
 
 	restricts, values := req.parse()
 	query := fmt.Sprintf(`SELECT * FROM members where %s `, restricts)
-	// // query := fmt.Sprintf(`SELECT * FROM members where active != %d ORDER BY %s LIMIT ? OFFSET ?`, int(MemberStatus["delete"].(float64)), orderByHelper(req.Sorting))
-	// // // query, _ := generateSQLStmt("get_all", "members", sortString)
+	// query := fmt.Sprintf(`SELECT * FROM members where active != %d ORDER BY %s LIMIT ? OFFSET ?`, int(MemberStatus["delete"].(float64)), orderByHelper(req.Sorting))
 
 	query, args, err := sqlx.In(query, values...)
 	if err != nil {
@@ -254,4 +308,40 @@ func (a *memberAPI) SetMultipleActive(ids []string, active int) (err error) {
 		return errors.New("Members Not Found")
 	}
 	return err
+}
+
+func (a *memberAPI) Count(args MemberMap) (result int, err error) {
+
+	if len(args) == 0 {
+
+		rows, err := DB.Queryx(`SELECT COUNT(*) FROM (SELECT member_id FROM members) AS subquery`)
+		if err != nil {
+			return 0, err
+		}
+		for rows.Next() {
+			err = rows.Scan(&result)
+		}
+
+	} else if len(args) > 0 {
+
+		restricts, values := args.parse()
+		query := fmt.Sprintf(`SELECT COUNT(*) FROM (SELECT member_id FROM members WHERE %s) AS subquery`, restricts)
+
+		query, args, err := sqlx.In(query, values...)
+		if err != nil {
+			return 0, err
+		}
+		query = DB.Rebind(query)
+		// fmt.Println(query, args)
+		count, err := DB.Queryx(query, args...)
+		if err != nil {
+			return 0, err
+		}
+		for count.Next() {
+			if err = count.Scan(&result); err != nil {
+				return 0, err
+			}
+		}
+	}
+	return result, err
 }
