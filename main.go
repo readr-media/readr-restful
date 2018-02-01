@@ -8,31 +8,13 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/routes"
+	"github.com/robfig/cron"
 	"github.com/spf13/viper"
 	"gopkg.in/gomail.v2"
 )
 
-// var (
-// 	sqlUser    = flag.String("sql-user", "root", "User account to SQL server")
-// 	sqlAddress = flag.String("sql-address", "127.0.0.1:3306", "Address to the SQL server")
-// 	sqlAuth    = flag.String("sql-auth", "", "Password to SQL server")
-// )
+func init() {
 
-// func sqlMiddleware(connString string) gin.HandlerFunc {
-// 	db := sqlx.MustConnect("mysql", connString)
-
-// 	return func(c *gin.Context) {
-// 		// Registered sqlx db session as "DB" in middleware
-// 		c.Set("DB", db)
-// 		c.Next()
-// 	}
-// }
-
-// type Env struct {
-//	db models.Datastore
-// }
-
-func main() {
 	viper.AddConfigPath("./config")
 	viper.SetConfigName("main")
 
@@ -41,11 +23,18 @@ func main() {
 	}
 
 	fmt.Printf("Using config: %s\n", viper.ConfigFileUsed())
+}
+
+func main() {
 
 	sqlHost := viper.Get("sql.host")
 	sqlPort := viper.GetInt("sql.port")
 	sqlUser := viper.Get("sql.user")
 	sqlPass := viper.Get("sql.password")
+
+	models.MemberStatus = viper.GetStringMap("models.members")
+	models.PostStatus = viper.GetStringMap("models.posts")
+
 	// flag.Parse()
 	// fmt.Printf("sql user:%s, sql address:%s, auth:%s \n", *sqlUser, *sqlAddress, *sqlAuth)
 	// fmt.Println(sqlPort)
@@ -54,26 +43,33 @@ func main() {
 	// db, err := sqlx.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s)/memberdb", *sqlUser, *sqlAuth, *sqlAddress))
 	// dbURI := fmt.Sprintf("%s:%s@tcp(%s)/memberdb?parseTime=true", *sqlUser, *sqlAuth, *sqlAddress)
 	dbURI := fmt.Sprintf("%s:%s@tcp(%s)/memberdb?parseTime=true", sqlUser, sqlPass, fmt.Sprintf("%s:%v", sqlHost, sqlPort))
+
 	// Start with default middleware
 	router := gin.Default()
 
 	// models.InitDB(dbURI)
 	models.Connect(dbURI)
 
-	// Plug in mySQL middleware
-	// router.Use(sqlMiddleware(dbConn))
+	// Init Redis connetions
+	models.RedisConn(map[string]string{
+		"url":      fmt.Sprint(viper.Get("redis.host"), ":", viper.Get("redis.port")),
+		"password": fmt.Sprint(viper.Get("redis.password")),
+	})
 
 	// init mail sender
-
-	models.MemberStatus = viper.GetStringMap("models.members")
-	models.PostStatus = viper.GetStringMap("models.posts")
-
 	dialer := gomail.NewDialer(
 		viper.Get("mail.host").(string),
 		int(viper.Get("mail.port").(float64)),
 		viper.Get("mail.user").(string),
 		viper.Get("mail.password").(string),
 	)
+
+	//Init cron jobs
+	c := cron.New()
+	c.AddFunc("@hourly", func() { models.PostCache.SyncFromDataStorage() })
+	c.Start()
+
+	models.PostCache.SyncFromDataStorage()
 
 	routes.AuthHandler.SetRoutes(router)
 	routes.FollowingHandler.SetRoutes(router)

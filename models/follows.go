@@ -3,6 +3,7 @@ package models
 import (
 	"errors"
 	"log"
+	"strings"
 
 	"database/sql"
 
@@ -22,6 +23,7 @@ type follow interface {
 type followedCount struct {
 	Resourceid string
 	Count      int
+	Follower   []string
 }
 
 type followPost struct {
@@ -61,8 +63,7 @@ func (f followPost) GetFollowings(params map[string]string) (interface{}, error)
 }
 
 func (f followPost) GetFollowed(ids []string) (*sqlx.Rows, error) {
-	//rows, err := DB.Queryx("SELECT m.*, IFNULL(f.count, 0) FROM posts as m LEFT JOIN (SELECT post_id, COUNT(post_id) as count from following_posts GROUP BY post_id) as f ON f.post_id = m.post_id WHERE m.post_id IN ? ;", ids)
-	query, args, err := sqlx.In("SELECT post_id, COUNT(post_id) as count FROM following_posts WHERE post_id in ( ? ) GROUP BY post_id;", ids)
+	query, args, err := sqlx.In("SELECT f.post_id, COUNT(m.member_id) as count, GROUP_CONCAT(m.member_id SEPARATOR ',') as follower FROM following_posts as f LEFT JOIN members as m ON f.member_id = m.member_id WHERE f.post_id IN (?) GROUP BY f.post_id;", ids)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +110,7 @@ func (f followMember) GetFollowings(params map[string]string) (interface{}, erro
 	return followings, err
 }
 func (f followMember) GetFollowed(ids []string) (*sqlx.Rows, error) {
-	query, args, err := sqlx.In("SELECT member_id, COUNT(member_id) as count FROM following_members WHERE member_id in ( ? ) GROUP BY member_id;", ids)
+	query, args, err := sqlx.In("SELECT f.custom_editor, COUNT(m.member_id) as count, GROUP_CONCAT(m.member_id SEPARATOR ',') as follower FROM following_members as f LEFT JOIN members as m ON f.member_id = m.member_id WHERE f.custom_editor IN (?) GROUP BY f.custom_editor;", ids)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +156,7 @@ func (f followProject) GetFollowings(params map[string]string) (interface{}, err
 	return followings, err
 }
 func (f followProject) GetFollowed(ids []string) (*sqlx.Rows, error) {
-	query, args, err := sqlx.In("SELECT project_id, COUNT(project_id) as count FROM following_projects WHERE project_id in ( ? ) GROUP BY project_id;", ids)
+	query, args, err := sqlx.In("SELECT f.project_id, COUNT(m.member_id) as count, GROUP_CONCAT(m.member_id SEPARATOR ',') as follower FROM following_projects as f LEFT JOIN members as m ON f.member_id = m.member_id WHERE f.project_id IN (?) GROUP BY f.project_id;", ids)
 	if err != nil {
 		return nil, err
 	}
@@ -251,13 +252,14 @@ func (*followingAPI) GetFollowed(resource string, ids []string) (interface{}, er
 		var (
 			resourceId string
 			count      int
+			follower   string
 		)
-		err = rows.Scan(&resourceId, &count)
+		err = rows.Scan(&resourceId, &count, &follower)
 		if err != nil {
 			log.Fatalln(err.Error())
 			return nil, err
 		}
-		followed = append(followed, followedCount{resourceId, count})
+		followed = append(followed, followedCount{resourceId, count, strings.Split(follower, ",")})
 	}
 
 	return followed, nil
@@ -287,6 +289,10 @@ func (*followingAPI) AddFollowing(params map[string]string) error {
 		return SQLInsertionFail
 	}
 
+	if params["resource"] == "post" {
+		PostCache.UpdateFollowing("follow", params["subject"], params["object"])
+	}
+
 	return nil
 }
 func (*followingAPI) DeleteFollowing(params map[string]string) error {
@@ -300,6 +306,11 @@ func (*followingAPI) DeleteFollowing(params map[string]string) error {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	if params["resource"] == "post" {
+		PostCache.UpdateFollowing("unfollow", params["subject"], params["object"])
+	}
+
 	return err
 }
 

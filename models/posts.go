@@ -18,26 +18,26 @@ var PostStatus map[string]interface{}
 // However, struct type field like NullTime, NullString must be declared as pointer,
 // like *NullTime, *NullString to be used with omitempty
 type Post struct {
-	ID              uint32     `json:"id" db:"post_id"`
-	Author          NullString `json:"author" db:"author"`
-	CreatedAt       NullTime   `json:"created_at" db:"created_at"`
-	LikeAmount      NullInt    `json:"like_amount" db:"like_amount"`
-	CommentAmount   NullInt    `json:"comment_amount" db:"comment_amount"`
-	Title           NullString `json:"title" db:"title"`
-	Content         NullString `json:"content" db:"content"`
-	Type            NullInt    `json:"type" db:"type"`
-	Link            NullString `json:"link" db:"link"`
-	OgTitle         NullString `json:"og_title" db:"og_title"`
-	OgDescription   NullString `json:"og_description" db:"og_description"`
-	OgImage         NullString `json:"og_image" db:"og_image"`
-	Active          NullInt    `json:"active" db:"active"`
-	UpdatedAt       NullTime   `json:"updated_at" db:"updated_at"`
-	UpdatedBy       NullString `json:"updated_by" db:"updated_by"`
-	PublishedAt     NullTime   `json:"published_at" db:"published_at"`
-	LinkTitle       NullString `json:"link_title" db:"link_title"`
-	LinkDescription NullString `json:"link_description" db:"link_description"`
-	LinkImage       NullString `json:"link_image" db:"link_image"`
-	LinkName        NullString `json:"link_name" db:"link_name"`
+	ID              uint32     `json:"id" db:"post_id" redis:"post_id"`
+	Author          NullString `json:"author" db:"author" redis:"author"`
+	CreatedAt       NullTime   `json:"created_at" db:"created_at" redis:"created_at"`
+	LikeAmount      NullInt    `json:"like_amount" db:"like_amount" redis:"like_amount"`
+	CommentAmount   NullInt    `json:"comment_amount" db:"comment_amount" redis:"comment_amount"`
+	Title           NullString `json:"title" db:"title" redis:"title"`
+	Content         NullString `json:"content" db:"content" redis:"content"`
+	Type            NullInt    `json:"type" db:"type" redis:"type"`
+	Link            NullString `json:"link" db:"link" redis:"link"`
+	OgTitle         NullString `json:"og_title" db:"og_title" redis:"og_title"`
+	OgDescription   NullString `json:"og_description" db:"og_description" redis:"og_description"`
+	OgImage         NullString `json:"og_image" db:"og_image" redis:"og_image"`
+	Active          NullInt    `json:"active" db:"active" redis:"active"`
+	UpdatedAt       NullTime   `json:"updated_at" db:"updated_at" redis:"updated_at"`
+	UpdatedBy       NullString `json:"updated_by" db:"updated_by" redis:"updated_by"`
+	PublishedAt     NullTime   `json:"published_at" db:"published_at" redis:"published_at"`
+	LinkTitle       NullString `json:"link_title" db:"link_title" redis:"link_title"`
+	LinkDescription NullString `json:"link_description" db:"link_description" redis:"link_description"`
+	LinkImage       NullString `json:"link_image" db:"link_image" redis:"link_image"`
+	LinkName        NullString `json:"link_name" db:"link_name" redis:"link_name"`
 }
 
 type postAPI struct{}
@@ -219,6 +219,8 @@ func (a *postAPI) InsertPost(p Post) error {
 	} else if rowCnt == 0 {
 		return errors.New("Post Not Found")
 	}
+	PostCache.Insert(p)
+
 	return err
 }
 
@@ -242,6 +244,9 @@ func (a *postAPI) UpdatePost(p Post) error {
 	} else if rowCnt == 0 {
 		return errors.New("Post Not Found")
 	}
+
+	PostCache.Update(p)
+
 	return err
 }
 
@@ -257,6 +262,9 @@ func (a *postAPI) DeletePost(id uint32) error {
 	} else if rowCnt == 0 {
 		return errors.New("Post Not Found")
 	}
+
+	PostCache.Delete(id)
+
 	return err
 }
 
@@ -277,5 +285,8 @@ func (a *postAPI) UpdateAll(req PostUpdateArgs) error {
 	} else if rowCnt == 0 {
 		return errors.New("Posts Not Found")
 	}
+
+	PostCache.UpdateMulti(req)
+
 	return nil
 }

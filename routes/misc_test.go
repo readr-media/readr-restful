@@ -2,7 +2,6 @@ package routes
 
 import (
 	"bytes"
-	"log"
 	"testing"
 
 	"encoding/json"
@@ -14,13 +13,6 @@ import (
 )
 
 func initMailDialer() gomail.Dialer {
-	viper.AddConfigPath("../config")
-	viper.SetConfigName("main")
-
-	if err := viper.ReadInConfig(); err != nil {
-		log.Fatalf("Error reading config file, %s", err)
-	}
-
 	dialer := gomail.NewDialer(
 		viper.Get("mail.host").(string),
 		int(viper.Get("mail.port").(float64)),

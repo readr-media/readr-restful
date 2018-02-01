@@ -1,6 +1,8 @@
 package routes
 
 import (
+	//"fmt"
+	"log"
 	"os"
 	"testing"
 	"time"
@@ -11,12 +13,40 @@ import (
 	"github.com/spf13/viper"
 )
 
+func init() {
+	viper.AddConfigPath("../config")
+	viper.SetConfigName("main")
+
+	if err := viper.ReadInConfig(); err != nil {
+		log.Fatalf("Error reading config file, %s", err)
+	}
+
+}
+
 var r *gin.Engine
 
 type mockDatastore struct{}
 
 func TestMain(m *testing.M) {
-
+	/*
+		// TODO: Should implement test set for MODELS
+		// Init Sql connetions
+		dbURI := "root:qwerty@tcp(127.0.0.1)/memberdb?parseTime=true"
+		models.Connect(dbURI)
+		_, _ = models.DB.Exec("truncate table projects;")
+		_, _ = models.DB.Exec("truncate table members;")
+		_, _ = models.DB.Exec("truncate table permissions;")
+		_, _ = models.DB.Exec("truncate table posts;")
+		_, _ = models.DB.Exec("truncate table following_members;")
+		_, _ = models.DB.Exec("truncate table following_posts;")
+		_, _ = models.DB.Exec("truncate table following_projects;")
+		_ = models.ProjectAPI.InsertProject(mockProjectDS[0])
+		// Init Redis connetions
+		models.RedisConn(map[string]string{
+			"url":      fmt.Sprint(viper.Get("redis.host"), ":", viper.Get("redis.port")),
+			"password": fmt.Sprint(viper.Get("redis.password")),
+		})
+	*/
 	gin.SetMode(gin.TestMode)
 
 	r = gin.New()

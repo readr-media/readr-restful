@@ -5,6 +5,11 @@
         "user": "",
         "password": ""
     },
+    "redis":{
+        "host": "",
+        "port": 0,
+        "password": ""
+    },
     "mail":{
         "host": "",
         "port": 0,
