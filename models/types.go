@@ -11,11 +11,11 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-type BasicArgs struct {
-	MaxResult uint8  `form:"max_result"`
-	Page      uint16 `form:"page"`
-	Sorting   string `form:"sort"`
-}
+// type BasicArgs struct {
+// 	MaxResult uint8  `form:"max_result"`
+// 	Page      uint16 `form:"page"`
+// 	Sorting   string `form:"sort"`
+// }
 
 // ------------------------------  NULLABLE TYPE DEFINITION -----------------------------
 

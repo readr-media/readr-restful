@@ -17,41 +17,49 @@ type memberHandler struct{}
 
 func (r *memberHandler) GetAll(c *gin.Context) {
 
-	// First bind BasicArgs instead of MemberArgs
-	// to Avoid gin set status code to 400, and latter status overwritten
-	// Directly bind MemberArgs works in real request, but fails in test
-	args := models.MemberArgs{
-		BasicArgs:    models.BasicArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at"},
-		CustomEditor: models.NullBool{Bool: false, Valid: false},
-	}
+	var params models.MemberArgs = make(map[string]interface{})
+
+	args := struct {
+		MaxResult    uint8  `form:"max_result"`
+		Page         uint16 `form:"page"`
+		Sorting      string `form:"sort"`
+		CustomEditor string `form:"custom_editor"`
+		Active       string `form:"active"`
+	}{MaxResult: 20, Page: 1, Sorting: "-updated_at"}
+
 	if err := c.ShouldBindQuery(&args); err != nil {
 		log.Printf(fmt.Sprintf("Binding query error: %s", err.Error()))
 	}
 
-	if c.Query("custom_editor") != "" {
-		if s, err := strconv.ParseBool(c.Query("custom_editor")); err == nil {
-			args.CustomEditor = models.NullBool{Bool: s, Valid: true}
+	if args.CustomEditor != "" {
+		if s, err := strconv.ParseBool(args.CustomEditor); err == nil {
+			params["custom_editor"] = s
 		} else if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid custom_editor setting: %s", c.Query("custom_editor"))})
+			c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid custom_editor setting: %s", args.CustomEditor)})
 			return
 		}
 	}
-	if c.Query("active") != "" {
-		if err := json.Unmarshal([]byte(c.Query("active")), &args.Active); err != nil {
+	if args.Active != "" {
+		activemap := map[string][]int{}
+		if err := json.Unmarshal([]byte(args.Active), &activemap); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid active list: %s", err.Error())})
 			return
 		} else if err == nil {
-			if err = args.ValidateActive(); err != nil {
+			if err = models.ValidateActive(activemap, models.MemberStatus); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid active list: %s", err.Error())})
 				return
 			}
+			params["active"] = activemap
 		}
 	} else {
-		args.Active = map[string][]int{"$nin": []int{int(models.MemberStatus["delete"].(float64))}}
+		params["active"] = map[string][]int{"$nin": []int{int(models.MemberStatus["delete"].(float64))}}
 	}
 
-	fmt.Println(args)
-	result, err := models.MemberAPI.GetMembers(args)
+	params["max_result"] = args.MaxResult
+	params["page"] = args.Page
+	params["sort"] = args.Sorting
+
+	result, err := models.MemberAPI.GetMembers(params)
 	if err != nil {
 		switch err.Error() {
 		case "Members Not Found":
@@ -67,8 +75,6 @@ func (r *memberHandler) GetAll(c *gin.Context) {
 
 func (r *memberHandler) Get(c *gin.Context) {
 
-	// input := models.Member{ID: c.Param("id")}
-	// member, err := models.DS.Get(input)
 	id := c.Param("id")
 	member, err := models.MemberAPI.GetMember(id)
 	if err != nil {
@@ -108,9 +114,6 @@ func (r *memberHandler) Post(c *gin.Context) {
 	}
 
 	err := models.MemberAPI.InsertMember(member)
-	// result, err := models.DS.Create(member)
-	// var req models.Databox = &member
-	// result, err := req.Create()
 	if err != nil {
 		switch err.Error() {
 		case "Duplicate entry":
@@ -121,7 +124,6 @@ func (r *memberHandler) Post(c *gin.Context) {
 			return
 		}
 	}
-	// c.JSON(http.StatusOK, models.Member{})
 	c.Status(http.StatusOK)
 }
 
@@ -143,9 +145,7 @@ func (r *memberHandler) Put(c *gin.Context) {
 		member.UpdatedAt.Time = time.Now()
 		member.UpdatedAt.Valid = true
 	}
-	// var req models.Databox = &member
-	// result, err := req.Update()
-	// result, err := models.DS.Update(member)
+
 	err := models.MemberAPI.UpdateMember(member)
 	if err != nil {
 		switch err.Error() {
@@ -157,7 +157,6 @@ func (r *memberHandler) Put(c *gin.Context) {
 			return
 		}
 	}
-	// c.JSON(http.StatusOK, models.Member{})
 	c.Status(http.StatusOK)
 }
 
@@ -189,12 +188,8 @@ func (r *memberHandler) DeleteAll(c *gin.Context) {
 
 func (r *memberHandler) Delete(c *gin.Context) {
 
-	// input := models.Member{ID: c.Param("id")}
-	// var req models.Databox = &models.Member{ID: userID}
-	// member, err := models.DS.Delete(input)
 	id := c.Param("id")
 	err := models.MemberAPI.DeleteMember(id)
-	// member, err := req.Delete()
 	if err != nil {
 		switch err.Error() {
 		case "User Not Found":
@@ -205,7 +200,6 @@ func (r *memberHandler) Delete(c *gin.Context) {
 			return
 		}
 	}
-	// c.JSON(http.StatusOK, member)
 	c.Status(http.StatusOK)
 }
 
@@ -307,9 +301,52 @@ func (r *memberHandler) PutPassword(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-func (r *memberHandler) SetRoutes(router *gin.Engine) {
+func (r *memberHandler) Count(c *gin.Context) {
 
-	// router.GET("/members", r.MembersGetHandler)
+	var params models.MemberArgs = make(map[string]interface{})
+
+	args := struct {
+		CustomEditor string `form:"custom_editor"`
+		Active       string `form:"active"`
+	}{}
+	if err := c.ShouldBindQuery(&args); err != nil {
+		log.Printf(fmt.Sprintf("Binding query error: %s", err.Error()))
+	}
+
+	if args.CustomEditor != "" {
+		if s, err := strconv.ParseBool(args.CustomEditor); err == nil {
+			params["custom_editor"] = s
+		} else if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid custom_editor setting: %s", args.CustomEditor)})
+			return
+		}
+	}
+	if args.Active != "" {
+		activemap := map[string][]int{}
+		if err := json.Unmarshal([]byte(args.Active), &activemap); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid active list: %s", err.Error())})
+			return
+		} else if err == nil {
+			if err = models.ValidateActive(activemap, models.MemberStatus); err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid active list: %s", err.Error())})
+				return
+			}
+			params["active"] = activemap
+		}
+	} else {
+		params["active"] = map[string][]int{"$nin": []int{int(models.MemberStatus["delete"].(float64))}}
+	}
+
+	count, err := models.MemberAPI.Count(params)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		return
+	}
+	resp := map[string]int{"total": count}
+	c.JSON(http.StatusOK, gin.H{"_meta": resp})
+}
+
+func (r *memberHandler) SetRoutes(router *gin.Engine) {
 
 	memberRouter := router.Group("/member")
 	{
@@ -325,6 +362,8 @@ func (r *memberHandler) SetRoutes(router *gin.Engine) {
 		membersRouter.GET("", r.GetAll)
 		membersRouter.PUT("", r.ActivateAll)
 		membersRouter.DELETE("", r.DeleteAll)
+
+		membersRouter.GET("/count", r.Count)
 	}
 }
 

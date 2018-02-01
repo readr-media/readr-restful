@@ -23,18 +23,18 @@ func initMemberTest() {
 func clearMemberTest() {
 	mockMemberDS = mockMemberDSBack
 }
-func (a *mockMemberAPI) GetMembers(args models.MemberArgs) (result []models.Member, err error) {
+func (a *mockMemberAPI) GetMembers(req models.MemberArgs) (result []models.Member, err error) {
 
-	if args.CustomEditor == (models.NullBool{Bool: true, Valid: true}) {
+	if req["custom_editor"] == true {
 		result = []models.Member{mockMemberDS[0]}
 		err = nil
 		return result, err
 	}
 
-	if len(args.Active) > 1 {
+	if len(req["active"].(map[string][]int)) > 1 {
 		return []models.Member{}, errors.New("Too many active lists")
 	}
-	for k, v := range args.Active {
+	for k, v := range req["active"].(map[string][]int) {
 		if k == "$nin" && reflect.DeepEqual(v, []int{0, -1}) {
 			return []models.Member{mockMemberDS[0]}, nil
 		} else if k == "$nin" && reflect.DeepEqual(v, []int{-1, 0, 1}) {
@@ -48,7 +48,7 @@ func (a *mockMemberAPI) GetMembers(args models.MemberArgs) (result []models.Memb
 
 	result = make([]models.Member, len(mockMemberDS))
 	copy(result, mockMemberDS)
-	switch args.Sorting {
+	switch req["sort"] {
 	case "updated_at":
 		sort.SliceStable(result, func(i, j int) bool {
 			return result[i].UpdatedAt.Before(result[j].UpdatedAt)
@@ -60,7 +60,7 @@ func (a *mockMemberAPI) GetMembers(args models.MemberArgs) (result []models.Memb
 		})
 		err = nil
 	}
-	if args.MaxResult == 2 {
+	if req["max_result"].(uint8) == 2 {
 		result = result[0:2]
 	}
 	return result, err
@@ -164,10 +164,25 @@ func (a *mockMemberAPI) SetMultipleActive(ids []string, active int) (err error) 
 		err = errors.New("Members Not Found")
 		return err
 	}
-	// fmt.Println(mockMemberDS)
 	return err
 }
 
+func (a *mockMemberAPI) Count(req models.MemberArgs) (result int, err error) {
+	result = 0
+	err = errors.New("Members Not Found")
+	if req["custom_editor"] == true {
+		return 1, nil
+	}
+	for k, v := range req["active"].(map[string][]int) {
+		if k == "$in" && reflect.DeepEqual(v, []int{1, -1}) {
+			return 2, nil
+		}
+		if k == "$nin" && reflect.DeepEqual(v, []int{-1}) {
+			return 2, nil
+		}
+	}
+	return result, err
+}
 func TestRouteGetMembers(t *testing.T) {
 
 	initMemberTest()
@@ -198,7 +213,7 @@ func TestRouteGetMembers(t *testing.T) {
 			ExpectGetsResp{
 				ExpectResp{http.StatusBadRequest, `{"Error":"Invalid active list: Too many active lists"}`},
 				[]models.Member{}}},
-		{"NotEnoughValidActive", `/members?active={"$in":[-3,0,1]}`,
+		{"NotEntirelyValidActive", `/members?active={"$in":[-3,0,1]}`,
 			ExpectGetsResp{
 				ExpectResp{http.StatusBadRequest, `{"Error":"Invalid active list: Not all active elements are valid"}`},
 				[]models.Member{}}},
@@ -263,7 +278,6 @@ func TestRouteGetMember(t *testing.T) {
 				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
 			}
 
-			// expected, _ := json.Marshal(tc.expect.resp)
 			expected, _ := json.Marshal(map[string][]models.Member{"_items": []models.Member{tc.expect.resp}})
 			if w.Code == http.StatusOK && w.Body.String() != string(expected) {
 				t.Errorf("%s incorrect response", tc.name)
@@ -466,6 +480,54 @@ func TestRouteActivateMultipleMembers(t *testing.T) {
 			}
 			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
 				t.Errorf("%s expect error message %s but get %s", tc.name, tc.expect.err, w.Body.String())
+			}
+		})
+	}
+	clearMemberTest()
+}
+
+func TestRouteCountMembers(t *testing.T) {
+	initMemberTest()
+	type ExpectCountResp struct {
+		httpcode int
+		resp     string
+		err      string
+	}
+	testCase := []struct {
+		name   string
+		route  string
+		expect ExpectCountResp
+	}{
+		{"SimpleCount", `/members/count`, ExpectCountResp{http.StatusOK, `{"_meta":{"total":2}}`, ``}},
+		{"CountActive", `/members/count?active={"$in":[1,-1]}`, ExpectCountResp{http.StatusOK, `{"_meta":{"total":2}}`, ``}},
+		{"CountCustomEditor", `/members/count?custom_editor=true`, ExpectCountResp{http.StatusOK, `{"_meta":{"total":1}}`, ``}},
+		{"InvalidCustomEditor", `/members/count?custom_editor=tron`,
+			ExpectCountResp{http.StatusBadRequest, ``,
+				`{"Error":"Invalid custom_editor setting: tron"}`}},
+		{"MoreThanOneActive", `/members/count?active={"$nin":[1,0], "$in":[-1,3]}`,
+			ExpectCountResp{http.StatusBadRequest, ``,
+				`{"Error":"Invalid active list: Too many active lists"}`}},
+		{"NotEntirelyValidActive", `/members?active={"$in":[-3,0,1]}`,
+			ExpectCountResp{http.StatusBadRequest, ``,
+				`{"Error":"Invalid active list: Not all active elements are valid"}`}},
+		{"NoValidActive", `/members?active={"$nin":[3,4]}`,
+			ExpectCountResp{http.StatusBadRequest, ``,
+				`{"Error":"Invalid active list: No valid active request"}`}},
+	}
+	for _, tc := range testCase {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest("GET", tc.route, nil)
+			r.ServeHTTP(w, req)
+
+			if w.Code != tc.expect.httpcode {
+				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
+			}
+			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
+				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
+			}
+			if w.Code == http.StatusOK && w.Body.String() != tc.expect.resp {
+				t.Errorf("%s incorrect response.\nWant\n%s\nBut get\n%s\n", tc.name, tc.expect.resp, w.Body.String())
 			}
 		})
 	}
