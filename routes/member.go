@@ -45,7 +45,7 @@ func (r *memberHandler) GetAll(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid active list: %s", err.Error())})
 			return
 		} else if err == nil {
-			if err = params.ValidateActive(activemap); err != nil {
+			if err = models.ValidateActive(activemap, models.MemberStatus); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid active list: %s", err.Error())})
 				return
 			}
@@ -327,7 +327,7 @@ func (r *memberHandler) Count(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid active list: %s", err.Error())})
 			return
 		} else if err == nil {
-			if err = params.ValidateActive(activemap); err != nil {
+			if err = models.ValidateActive(activemap, models.MemberStatus); err != nil {
 				c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid active list: %s", err.Error())})
 				return
 			}

@@ -129,8 +129,6 @@ func (a *memberAPI) GetMembers(req MemberArgs) (result []Member, err error) {
 	query = DB.Rebind(query)
 	query = query + fmt.Sprintf(`ORDER BY %s LIMIT ? OFFSET ?`, orderByHelper(req["sort"].(string)))
 	args = append(args, req["max_result"].(uint8), (req["page"].(uint16)-1)*uint16(req["max_result"].(uint8)))
-	fmt.Println(query)
-	fmt.Println(args)
 	err = DB.Select(&result, query, args...)
 	if err != nil || len(result) == 0 {
 		result = []Member{}
@@ -245,7 +243,7 @@ func (a *memberAPI) Count(req MemberArgs) (result int, err error) {
 
 	if len(req) == 0 {
 
-		rows, err := DB.Queryx(`SELECT COUNT(*) FROM (SELECT member_id FROM members) AS subquery`)
+		rows, err := DB.Queryx(`SELECT COUNT(*) FROM members`)
 		if err != nil {
 			return 0, err
 		}

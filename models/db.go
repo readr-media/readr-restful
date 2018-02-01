@@ -2,6 +2,7 @@ package models
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log"
 	"reflect"
@@ -26,6 +27,35 @@ func Connect(dbURI string) {
 		log.Panic(err)
 	}
 	DB = database{d}
+}
+
+func ValidateActive(args map[string][]int, status map[string]interface{}) (err error) {
+	if len(args) > 1 {
+		return errors.New("Too many active lists")
+	}
+	valid := make([]int, 0)
+	result := make([]int, 0)
+	for _, v := range status {
+		valid = append(valid, int(v.(float64)))
+	}
+	activeCount := 0
+	for _, activeSlice := range args {
+		activeCount = len(activeSlice)
+		for _, target := range activeSlice {
+			for _, value := range valid {
+				if target == value {
+					result = append(result, target)
+				}
+			}
+		}
+	}
+	if len(result) != activeCount {
+		err = errors.New("Not all active elements are valid")
+	}
+	if len(result) == 0 {
+		err = errors.New("No valid active request")
+	}
+	return err
 }
 
 func makeFieldString(mode string, pattern string, tags []string) (result []string) {

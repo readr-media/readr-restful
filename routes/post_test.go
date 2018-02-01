@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 
 	"github.com/readr-media/readr-restful/models"
@@ -29,55 +30,69 @@ type ExpectResp struct {
 func (a *mockPostAPI) GetPosts(args models.PostArgs) (result []models.PostMember, err error) {
 
 	err = errors.New(`Posts Not Found`)
-	if args.Author == `` && args.Active == `{"$nin":[0]}` {
-		if args.MaxResult == 20 {
-			if args.Sorting == "-updated_at" {
-				result = []models.PostMember{
-					{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
-					{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}},
-					{Post: mockPostDS[0], Member: mockMemberDS[0], UpdatedBy: models.UpdatedBy(mockMemberDS[0])},
-					{Post: mockPostDS[2], Member: mockMemberDS[2], UpdatedBy: models.UpdatedBy{}},
-				}
-				err = nil
-			} else if args.Sorting == "updated_at" {
-				result = []models.PostMember{
-					{Post: mockPostDS[2], Member: mockMemberDS[2], UpdatedBy: models.UpdatedBy{}},
-					{Post: mockPostDS[0], Member: mockMemberDS[0], UpdatedBy: models.UpdatedBy(mockMemberDS[0])},
-					{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}},
-					{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
-				}
+	for oactive, vactive := range args["posts.active"].(map[string][]int) {
+		if oactive == "$nin" && reflect.DeepEqual(vactive, []int{0}) {
+			if args["max_result"].(uint8) == 20 {
+				if args["sort"].(string) == "-updated_at" {
+					// Descending
+					result = []models.PostMember{
+						{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
+						{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}},
+						{Post: mockPostDS[0], Member: mockMemberDS[0], UpdatedBy: models.UpdatedBy(mockMemberDS[0])},
+						{Post: mockPostDS[2], Member: mockMemberDS[2], UpdatedBy: models.UpdatedBy{}},
+					}
+					err = nil
 
+				} else if args["sort"].(string) == "updated_at" {
+					// Ascending
+					result = []models.PostMember{
+						{Post: mockPostDS[2], Member: mockMemberDS[2], UpdatedBy: models.UpdatedBy{}},
+						{Post: mockPostDS[0], Member: mockMemberDS[0], UpdatedBy: models.UpdatedBy(mockMemberDS[0])},
+						{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}},
+						{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
+					}
+
+					err = nil
+				}
+			} else if args["max_result"].(uint8) == 2 {
+				// max_result
+				result = []models.PostMember{
+					{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
+					{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}},
+				}
 				err = nil
 			}
-		} else if args.MaxResult == 2 {
+
+			if _, ok := args["posts.author"]; ok {
+				// ActiveFilter
+				for oauthor, vauthor := range args["posts.author"].(map[string][]string) {
+					if oauthor == "$in" && reflect.DeepEqual(vauthor, []string{"superman@mirrormedia.mg", "Major.Tom@mirrormedia.mg"}) {
+						result = []models.PostMember{
+							{Post: mockPostDS[0], Member: mockMemberDS[0], UpdatedBy: models.UpdatedBy(mockMemberDS[0])},
+							{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
+						}
+						err = nil
+					}
+				}
+			}
+		} else if oactive == "$nin" && reflect.DeepEqual(vactive, []int{1, 4}) {
+			// ActiveFilter
 			result = []models.PostMember{
-				{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
 				{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}},
+				{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
 			}
 			err = nil
-		}
-	}
-	if args.Author == `{"$in":["superman@mirrormedia.mg", "Major.Tom@mirrormedia.mg"]}` && args.Active == `{"$nin":[0]}` {
-		result = []models.PostMember{
-			{Post: mockPostDS[0], Member: mockMemberDS[0], UpdatedBy: models.UpdatedBy(mockMemberDS[0])},
-			{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
-		}
-		err = nil
-	}
-	if args.Author == `` && args.Active == `{"$nin":[1,4]}` {
-		result = []models.PostMember{
-			{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}},
-			{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
-		}
-		err = nil
-	}
 
-	if args.Author == `{"$in":["superman@superman.com", "test6743", "Major.Tom@mirrormedia.mg"]}` && args.Active == `{"$nin":[1,4]}` {
-		result = []models.PostMember{
-			{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}},
-			{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
+			if _, ok := args["posts.author"]; ok {
+				// NotFound
+				for oauthor, vauthor := range args["posts.author"].(map[string][]string) {
+					if oauthor == "$in" && reflect.DeepEqual(vauthor, []string{"flash@flash.com"}) {
+						result = []models.PostMember{}
+						err = errors.New("Posts Not Found")
+					}
+				}
+			}
 		}
-		err = nil
 	}
 	return result, err
 }
@@ -165,25 +180,20 @@ func (a *mockPostAPI) GetPost(id uint32) (models.PostMember, error) {
 func (a *mockPostAPI) InsertPost(p models.Post) error {
 	for _, post := range mockPostDS {
 		if post.ID == p.ID {
-			// result = models.Post{}
 			err := errors.New("Duplicate entry")
 			return err
 		}
 	}
 	mockPostDS = append(mockPostDS, p)
-	// result := mockPostDS[len(mockPostDS)-1]
-	// err := nil
 	return nil
 }
 
 func (a *mockPostAPI) UpdatePost(p models.Post) error {
-	// result = models.Post{}
 	err := errors.New("Post Not Found")
 	for index, value := range mockPostDS {
 		if value.ID == p.ID {
 			mockPostDS[index].LikeAmount = p.LikeAmount
 			mockPostDS[index].Title = p.Title
-			// return mockPostDS[index], nil
 			err = nil
 			return err
 		}
@@ -231,6 +241,31 @@ func (a *mockPostAPI) DeletePost(id uint32) error {
 		}
 	}
 	return err
+}
+
+func (a *mockPostAPI) Count(req models.PostArgs) (result int, err error) {
+	result = 0
+	err = errors.New("Posts Not Found")
+	for k, v := range req["active"].(map[string][]int) {
+
+		if k == "$nin" && reflect.DeepEqual(v, []int{0}) {
+			if _, ok := req["author"]; ok {
+				// CountAuthor
+				for k, v := range req["author"].(map[string][]string) {
+					if k == "$nin" && reflect.DeepEqual(v, []string{"superman@mirrormedia.mg"}) {
+						return 3, nil
+					}
+				}
+			}
+			// SimpleCount
+			return 4, nil
+		}
+		// CountActive
+		if k == "$in" && reflect.DeepEqual(v, []int{2, 3}) {
+			return 2, nil
+		}
+	}
+	return result, err
 }
 
 // // ---------------------------------- Post Test -------------------------------
@@ -281,7 +316,7 @@ func TestRouteGetPosts(t *testing.T) {
 				{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}},
 				{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
 			}}},
-		{"NotFound", `/posts?author={"$in":["flash@flash.com"]}&active={"$nin:[1,4]}`, ExpectGetsResp{ExpectResp{http.StatusNotFound, `{"Error":"Posts Not Found"}`},
+		{"NotFound", `/posts?author={"$in":["flash@flash.com"]}&active={"$nin":[1,4]}`, ExpectGetsResp{ExpectResp{http.StatusNotFound, `{"Error":"Posts Not Found"}`},
 			[]models.PostMember{}}},
 	}
 	for _, tc := range testPostsGetCases {
@@ -298,7 +333,7 @@ func TestRouteGetPosts(t *testing.T) {
 			}
 			expected, _ := json.Marshal(map[string][]models.PostMember{"_items": tc.expect.resp})
 			if w.Code == http.StatusOK && w.Body.String() != string(expected) {
-				t.Errorf("%s incorrect response", tc.name)
+				t.Errorf("%s response want\n%s\nbut get\n%s", tc.name, string(expected), w.Body.String())
 			}
 			// Do we have to test Active for testRouteDelete ?
 		})
@@ -480,6 +515,51 @@ func TestRoutePublishMultiplePosts(t *testing.T) {
 			}
 			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
 				t.Errorf("%s expect error message %s but get %s", tc.name, tc.expect.err, w.Body.String())
+			}
+		})
+	}
+	clearPostTest()
+}
+
+func TestRouteCountPosts(t *testing.T) {
+	initPostTest()
+	type ExpectCountResp struct {
+		httpcode int
+		resp     string
+		err      string
+	}
+	testCase := []struct {
+		name   string
+		route  string
+		expect ExpectCountResp
+	}{
+		{"SimpleCount", `/posts/count`, ExpectCountResp{http.StatusOK, `{"_meta":{"total":4}}`, ``}},
+		{"CountActive", `/posts/count?active={"$in":[2,3]}`, ExpectCountResp{http.StatusOK, `{"_meta":{"total":2}}`, ``}},
+		{"CountAuthor", `/posts/count?author={"$nin":["superman@mirrormedia.mg"]}`, ExpectCountResp{http.StatusOK, `{"_meta":{"total":3}}`, ``}},
+		{"MoreThanOneActive", `/posts/count?active={"$nin":[1,0], "$in":[-1,3]}`,
+			ExpectCountResp{http.StatusBadRequest, ``,
+				`{"Error":"Invalid active list: Too many active lists"}`}},
+		{"NotEntirelyValidActive", `/posts?active={"$in":[-3,0,1]}`,
+			ExpectCountResp{http.StatusBadRequest, ``,
+				`{"Error":"Invalid active list: Not all active elements are valid"}`}},
+		{"NoValidActive", `/members?active={"$nin":[-3,-4]}`,
+			ExpectCountResp{http.StatusBadRequest, ``,
+				`{"Error":"Invalid active list: No valid active request"}`}},
+	}
+	for _, tc := range testCase {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest("GET", tc.route, nil)
+			r.ServeHTTP(w, req)
+
+			if w.Code != tc.expect.httpcode {
+				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
+			}
+			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
+				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
+			}
+			if w.Code == http.StatusOK && w.Body.String() != tc.expect.resp {
+				t.Errorf("%s incorrect response.\nWant\n%s\nBut get\n%s\n", tc.name, tc.expect.resp, w.Body.String())
 			}
 		})
 	}
