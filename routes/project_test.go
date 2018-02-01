@@ -13,21 +13,6 @@ import (
 
 type mockProjectAPI struct{}
 
-/* Should implement test set for MODELS
-func (a *mockProjectAPI) Init() {
-	//realsql test
-	dbURI := "root:qwerty@tcp(127.0.0.1)/memberdb?parseTime=true"
-	models.Connect(dbURI)
-	_, _ = models.DB.Exec("truncate table projects;")
-	_, _ = models.DB.Exec("truncate table members;")
-	_, _ = models.DB.Exec("truncate table permissions;")
-	_, _ = models.DB.Exec("truncate table posts;")
-	_, _ = models.DB.Exec("truncate table following_members;")
-	_, _ = models.DB.Exec("truncate table following_posts;")
-	_, _ = models.DB.Exec("truncate table following_projects;")
-	_ = models.ProjectAPI.InsertProject(mockProjectDS[0])
-}*/
-
 func (a *mockProjectAPI) GetProject(p models.Project) (models.Project, error) {
 	result := models.Project{}
 	err := errors.New("Project Not Found")
