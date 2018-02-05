@@ -24,11 +24,13 @@ type Member struct {
 
 	RegisterMode NullString `json:"register_mode" db:"register_mode"`
 	SocialID     NullString `json:"social_id,omitempty" db:"social_id"`
-	CreatedAt    NullTime   `json:"created_at" db:"created_at"`
-	UpdatedAt    NullTime   `json:"updated_at" db:"updated_at"`
-	UpdatedBy    NullString `json:"updated_by" db:"updated_by"`
-	Password     NullString `json:"-" db:"password"`
-	Salt         NullString `json:"-" db:"salt"`
+	TalkID       NullString `json:"talk_id" db:"talk_id"`
+
+	CreatedAt NullTime   `json:"created_at" db:"created_at"`
+	UpdatedAt NullTime   `json:"updated_at" db:"updated_at"`
+	UpdatedBy NullString `json:"updated_by" db:"updated_by"`
+	Password  NullString `json:"-" db:"password"`
+	Salt      NullString `json:"-" db:"salt"`
 	// Ignore password JSON marshall for now
 
 	Description  NullString `json:"description" db:"description"`
@@ -130,7 +132,11 @@ func (a *memberAPI) GetMembers(req MemberArgs) (result []Member, err error) {
 	query = query + fmt.Sprintf(`ORDER BY %s LIMIT ? OFFSET ?`, orderByHelper(req["sort"].(string)))
 	args = append(args, req["max_result"].(uint8), (req["page"].(uint16)-1)*uint16(req["max_result"].(uint8)))
 	err = DB.Select(&result, query, args...)
-	if err != nil || len(result) == 0 {
+	if err != nil {
+		return []Member{}, err
+	}
+
+	if len(result) == 0 {
 		result = []Member{}
 		err = errors.New("Members Not Found")
 	}

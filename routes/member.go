@@ -66,7 +66,7 @@ func (r *memberHandler) GetAll(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"Error": "Members Not Found"})
 			return
 		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 			return
 		}
 	}
