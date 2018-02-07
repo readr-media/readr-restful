@@ -38,13 +38,6 @@ func main() {
 	models.TagStatus = viper.GetStringMap("models.tags")
 	models.ProjectStatus = viper.GetStringMap("models.projects")
 
-	// flag.Parse()
-	// fmt.Printf("sql user:%s, sql address:%s, auth:%s \n", *sqlUser, *sqlAddress, *sqlAuth)
-	// fmt.Println(sqlPort)
-	fmt.Printf("sql user:%s, sql address:%s, auth:%s \n", sqlUser, fmt.Sprintf("%s:%v", sqlHost, sqlPort), sqlPass)
-
-	// db, err := sqlx.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s)/memberdb", *sqlUser, *sqlAuth, *sqlAddress))
-	// dbURI := fmt.Sprintf("%s:%s@tcp(%s)/memberdb?parseTime=true", *sqlUser, *sqlAuth, *sqlAddress)
 	dbURI := fmt.Sprintf("%s:%s@tcp(%s)/memberdb?parseTime=true", sqlUser, sqlPass, fmt.Sprintf("%s:%v", sqlHost, sqlPort))
 
 	// Start with default middleware

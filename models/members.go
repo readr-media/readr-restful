@@ -57,7 +57,7 @@ type MemberInterface interface {
 	GetMember(id string) (Member, error)
 	GetMembers(req MemberArgs) ([]Member, error)
 	InsertMember(m Member) error
-	SetMultipleActive(ids []string, active int) error
+	UpdateAll(ids []string, active int) error
 	UpdateMember(m Member) error
 	Count(req MemberArgs) (result int, err error)
 }
@@ -222,7 +222,7 @@ func (a *memberAPI) DeleteMember(id string) error {
 	return err
 }
 
-func (a *memberAPI) SetMultipleActive(ids []string, active int) (err error) {
+func (a *memberAPI) UpdateAll(ids []string, active int) (err error) {
 	prep := fmt.Sprintf("UPDATE members SET active = %d WHERE member_id IN (?);", active)
 	query, args, err := sqlx.In(prep, ids)
 	if err != nil {

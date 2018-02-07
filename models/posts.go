@@ -48,7 +48,6 @@ type PostInterface interface {
 	DeletePost(id uint32) error
 	GetPosts(args PostArgs) (result []PostMember, err error)
 	GetPost(id uint32) (TaggedPostMember, error)
-	//GetPosts(maxResult uint8, page uint16, sortMethod string) ([]PostMember, error)
 	InsertPost(p Post) (int, error)
 	UpdateAll(req PostUpdateArgs) error
 	UpdatePost(p Post) error
@@ -96,12 +95,6 @@ type PostMember struct {
 	Member    `json:"author" db:"author"`
 	UpdatedBy `json:"updated_by" db:"updated_by"`
 }
-
-// type PostArgs struct {
-// 	BasicArgs
-// 	Active string `form:"active"`
-// 	Author string `form:"author"`
-// }
 
 type PostUpdateArgs struct {
 	IDs       []int    `json:"ids"`

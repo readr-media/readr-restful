@@ -149,7 +149,7 @@ func (a *mockMemberAPI) DeleteMember(id string) error {
 	return err
 }
 
-func (a *mockMemberAPI) SetMultipleActive(ids []string, active int) (err error) {
+func (a *mockMemberAPI) UpdateAll(ids []string, active int) (err error) {
 
 	result := make([]int, 0)
 	for _, value := range ids {
