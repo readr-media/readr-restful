@@ -40,6 +40,8 @@ func TestMain(m *testing.M) {
 		_, _ = models.DB.Exec("truncate table following_members;")
 		_, _ = models.DB.Exec("truncate table following_posts;")
 		_, _ = models.DB.Exec("truncate table following_projects;")
+		_, _ = models.DB.Exec("truncate table tags;")
+		_, _ = models.DB.Exec("truncate table post_tags;")
 		_ = models.ProjectAPI.InsertProject(mockProjectDS[0])
 		// Init Redis connetions
 		models.RedisConn(map[string]string{
@@ -57,15 +59,19 @@ func TestMain(m *testing.M) {
 	PermissionHandler.SetRoutes(r)
 	MiscHandler.SetRoutes(r, initMailDialer())
 	FollowingHandler.SetRoutes(r)
+	TagHandler.SetRoutes(r)
 
 	models.MemberStatus = viper.GetStringMap("models.members")
 	models.PostStatus = viper.GetStringMap("models.posts")
+	models.PostType = viper.GetStringMap("models.post_type")
+	models.TagStatus = viper.GetStringMap("models.tags")
 
 	models.ProjectAPI = new(mockProjectAPI)
 	models.MemberAPI = new(mockMemberAPI)
 	models.PostAPI = new(mockPostAPI)
 	models.PermissionAPI = new(mockPermissionAPI)
 	models.FollowingAPI = new(mockFollowingAPI)
+	models.TagAPI = new(mockTagAPI)
 
 	os.Exit(m.Run())
 }

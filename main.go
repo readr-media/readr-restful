@@ -34,6 +34,8 @@ func main() {
 
 	models.MemberStatus = viper.GetStringMap("models.members")
 	models.PostStatus = viper.GetStringMap("models.posts")
+	models.PostType = viper.GetStringMap("models.post_type")
+	models.TagStatus = viper.GetStringMap("models.tags")
 
 	// flag.Parse()
 	// fmt.Printf("sql user:%s, sql address:%s, auth:%s \n", *sqlUser, *sqlAddress, *sqlAuth)
@@ -77,6 +79,7 @@ func main() {
 	routes.PermissionHandler.SetRoutes(router)
 	routes.PostHandler.SetRoutes(router)
 	routes.ProjectHandler.SetRoutes(router)
+	routes.TagHandler.SetRoutes(router)
 
 	routes.MiscHandler.SetRoutes(router, *dialer)
 

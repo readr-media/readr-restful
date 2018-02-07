@@ -11,6 +11,7 @@ import (
 )
 
 var PostStatus map[string]interface{}
+var PostType map[string]interface{}
 
 // Post could use json:"omitempty" tag to ignore null field
 // However, struct type field like NullTime, NullString must be declared as pointer,
@@ -45,12 +46,22 @@ var PostAPI PostInterface = new(postAPI)
 type PostInterface interface {
 	DeletePost(id uint32) error
 	GetPosts(args PostArgs) (result []PostMember, err error)
-	GetPost(id uint32) (PostMember, error)
+	GetPost(id uint32) (TaggedPostMember, error)
 	//GetPosts(maxResult uint8, page uint16, sortMethod string) ([]PostMember, error)
-	InsertPost(p Post) error
+	InsertPost(p Post) (int, error)
 	UpdateAll(req PostUpdateArgs) error
 	UpdatePost(p Post) error
 	Count(req PostArgs) (result int, err error)
+}
+
+type TaggedPost struct {
+	Post
+	Tags []int `json:"tags" db:"tags"`
+}
+
+type TaggedPostMember struct {
+	PostMember
+	Tags string `json:"tags" db:"tags"`
 }
 
 // UpdatedBy wraps Member for embedded field updated_by
@@ -149,33 +160,35 @@ func (a *postAPI) GetPosts(req PostArgs) (result []PostMember, err error) {
 	return result, err
 }
 
-func (a *postAPI) GetPost(id uint32) (PostMember, error) {
+func (a *postAPI) GetPost(id uint32) (TaggedPostMember, error) {
 
-	post := PostMember{}
+	post := TaggedPostMember{}
 	tags := getStructDBTags("full", Member{})
 	author := makeFieldString("get", `author.%s "author.%s"`, tags)
 	updatedBy := makeFieldString("get", `updated_by.%s "updated_by.%s"`, tags)
-	query := fmt.Sprintf(`SELECT posts.*, %s, %s FROM posts 
+	query := fmt.Sprintf(`SELECT posts.*, %s, %s, tags.ids AS tags FROM posts
 		LEFT JOIN members AS author ON posts.author = author.member_id 
 		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.member_id 
-		WHERE post_id = ?`,
+		LEFT JOIN (SELECT post_id, GROUP_CONCAT(tag_id) as ids FROM post_tags GROUP BY post_id) AS tags ON tags.post_id = posts.post_id
+		WHERE posts.post_id = ?`,
 		strings.Join(author, ","), strings.Join(updatedBy, ","))
 
 	err := DB.Get(&post, query, id)
 	switch {
 	case err == sql.ErrNoRows:
 		err = errors.New("Post Not Found")
-		post = PostMember{}
+		post = TaggedPostMember{}
 	case err != nil:
 		log.Fatal(err)
-		post = PostMember{}
+		post = TaggedPostMember{}
 	default:
 		err = nil
 	}
 	return post, err
 }
 
-func (a *postAPI) InsertPost(p Post) error {
+func (a *postAPI) InsertPost(p Post) (int, error) {
+	// query, _ := generateSQLStmt("insert", "posts", p)
 
 	tags := getStructDBTags("full", Post{})
 	query := fmt.Sprintf(`INSERT INTO posts (%s) VALUES (:%s)`,
@@ -184,22 +197,28 @@ func (a *postAPI) InsertPost(p Post) error {
 	result, err := DB.NamedExec(query, p)
 	if err != nil {
 		if strings.Contains(err.Error(), "Duplicate entry") {
-			return errors.New("Duplicate entry")
+			return 0, errors.New("Duplicate entry")
 		}
-		return err
+		return 0, err
 	}
 	rowCnt, err := result.RowsAffected()
 	if err != nil {
 		log.Fatal(err)
 	}
 	if rowCnt > 1 {
-		return errors.New("More Than One Rows Affected")
+		return 0, errors.New("More Than One Rows Affected")
 	} else if rowCnt == 0 {
-		return errors.New("Post Not Found")
+		return 0, errors.New("Post Not Found")
 	}
+	lastID, err := result.LastInsertId()
+	if err != nil {
+		log.Printf("Fail to get last insert ID when insert a tag: %v", err)
+		return 0, err
+	}
+
 	PostCache.Insert(p)
 
-	return err
+	return int(lastID), err
 }
 
 func (a *postAPI) UpdatePost(p Post) error {

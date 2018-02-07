@@ -94,19 +94,20 @@ func (r *postHandler) Get(c *gin.Context) {
 			return
 		}
 	}
-	c.JSON(http.StatusOK, gin.H{"_items": []models.PostMember{post}})
+	c.JSON(http.StatusOK, gin.H{"_items": []models.TaggedPostMember{post}})
 }
 
 func (r *postHandler) Post(c *gin.Context) {
 
-	post := models.Post{}
+	post := models.TaggedPost{}
 
 	err := c.Bind(&post)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
-	if post == (models.Post{}) {
+
+	if post.Post == (models.Post{}) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Post"})
 		return
 	}
@@ -131,7 +132,7 @@ func (r *postHandler) Post(c *gin.Context) {
 		}
 
 	}
-	err = models.PostAPI.InsertPost(post)
+	post_id, err := models.PostAPI.InsertPost(post.Post)
 	if err != nil {
 		switch err.Error() {
 		case "Duplicate entry":
@@ -142,12 +143,20 @@ func (r *postHandler) Post(c *gin.Context) {
 			return
 		}
 	}
+	if len(post.Tags) > 0 {
+		err = models.TagAPI.UpdatePostTags(post_id, post.Tags)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+			return
+		}
+	}
+
 	c.Status(http.StatusOK)
 }
 
 func (r *postHandler) Put(c *gin.Context) {
 
-	post := models.Post{}
+	post := models.TaggedPost{}
 
 	err := c.ShouldBindJSON(&post)
 	// Check if post struct was binded successfully
@@ -155,7 +164,7 @@ func (r *postHandler) Put(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
-	if post == (models.Post{}) {
+	if post.Post == (models.Post{}) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Post"})
 		return
 	}
@@ -165,16 +174,21 @@ func (r *postHandler) Put(c *gin.Context) {
 		post.CreatedAt.Valid = false
 	}
 	post.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
-	if !post.UpdatedBy.Valid {
-		if post.Author.Valid {
-			post.UpdatedBy.String = post.Author.String
-			post.UpdatedBy.Valid = true
-		} else {
-			c.JSON(http.StatusBadRequest, gin.H{"Error": "Neither updated_by or author is valid"})
-		}
 
+	switch {
+	case post.UpdatedBy.Valid:
+		fallthrough
+	case len(post.Tags) > 0:
+		fallthrough
+	case post.Author.Valid:
+		post.UpdatedBy.String = post.Author.String
+		post.UpdatedBy.Valid = true
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Neither updated_by or author is valid"})
+		return
 	}
-	err = models.PostAPI.UpdatePost(post)
+
+	err = models.PostAPI.UpdatePost(post.Post)
 	if err != nil {
 		switch err.Error() {
 		case "Post Not Found":
@@ -185,6 +199,15 @@ func (r *postHandler) Put(c *gin.Context) {
 			return
 		}
 	}
+
+	if len(post.Tags) > 0 {
+		err = models.TagAPI.UpdatePostTags(int(post.ID), post.Tags)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+			return
+		}
+	}
+
 	c.Status(http.StatusOK)
 }
 func (r *postHandler) DeleteAll(c *gin.Context) {

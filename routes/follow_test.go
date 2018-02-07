@@ -29,10 +29,10 @@ func initFollowTest() {
 	}
 
 	for _, params := range []models.Post{
-		models.Post{ID: 42, Active: models.NullInt{1, true}},
-		models.Post{ID: 84, Active: models.NullInt{1, true}},
+		models.Post{ID: 42, Active: models.NullInt{1, true}, Type: models.NullInt{0, true}},
+		models.Post{ID: 84, Active: models.NullInt{1, true}, Type: models.NullInt{1, true}},
 	} {
-		err := models.PostAPI.InsertPost(params)
+		_, err := models.PostAPI.InsertPost(params)
 		if err != nil {
 			log.Printf("Insert post fail when init test case. Error: %v", err)
 		}
