@@ -152,9 +152,9 @@ func (a *mockPostAPI) GetPosts(args models.PostArgs) (result []models.PostMember
 // 	return result, err
 // }
 
-func (a *mockPostAPI) GetPost(id uint32) (models.PostMember, error) {
+func (a *mockPostAPI) GetPost(id uint32) (models.TaggedPostMember, error) {
 	var (
-		result    models.PostMember
+		result    models.TaggedPostMember
 		author    models.Member
 		updatedBy models.UpdatedBy
 	)
@@ -169,7 +169,7 @@ func (a *mockPostAPI) GetPost(id uint32) (models.PostMember, error) {
 					updatedBy = models.UpdatedBy(member)
 				}
 			}
-			result = models.PostMember{Post: value, Member: author, UpdatedBy: updatedBy}
+			result = models.TaggedPostMember{PostMember: models.PostMember{Post: value, Member: author, UpdatedBy: updatedBy}}
 			err = nil
 			break
 		}
@@ -177,15 +177,15 @@ func (a *mockPostAPI) GetPost(id uint32) (models.PostMember, error) {
 	return result, err
 }
 
-func (a *mockPostAPI) InsertPost(p models.Post) error {
+func (a *mockPostAPI) InsertPost(p models.Post) (int, error) {
 	for _, post := range mockPostDS {
 		if post.ID == p.ID {
 			err := errors.New("Duplicate entry")
-			return err
+			return 0, err
 		}
 	}
 	mockPostDS = append(mockPostDS, p)
-	return nil
+	return len(mockPostDS) - 1, nil
 }
 
 func (a *mockPostAPI) UpdatePost(p models.Post) error {
@@ -345,7 +345,7 @@ func TestRouteGetPost(t *testing.T) {
 
 	type ExpectGetResp struct {
 		ExpectResp
-		resp models.PostMember
+		resp models.TaggedPostMember
 	}
 	testPostGetCases := []struct {
 		name   string
@@ -353,11 +353,13 @@ func TestRouteGetPost(t *testing.T) {
 		expect ExpectGetResp
 	}{
 		{"Current", "/post/1", ExpectGetResp{ExpectResp{http.StatusOK, ""},
-			models.PostMember{
-				Post:      mockPostDS[0],
-				Member:    mockMemberDS[0],
-				UpdatedBy: models.UpdatedBy(mockMemberDS[0])}}},
-		{"NotExisted", "/post/3", ExpectGetResp{ExpectResp{http.StatusNotFound, `{"Error":"Post Not Found"}`}, models.PostMember{}}},
+			models.TaggedPostMember{
+				PostMember: models.PostMember{
+					Post:      mockPostDS[0],
+					Member:    mockMemberDS[0],
+					UpdatedBy: models.UpdatedBy(mockMemberDS[0])},
+				Tags: ""}}},
+		{"NotExisted", "/post/3", ExpectGetResp{ExpectResp{http.StatusNotFound, `{"Error":"Post Not Found"}`}, models.TaggedPostMember{}}},
 	}
 	for _, tc := range testPostGetCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -373,7 +375,7 @@ func TestRouteGetPost(t *testing.T) {
 			}
 
 			// expected, _ := json.Marshal(tc.expect.resp)
-			expected, _ := json.Marshal(map[string][]models.PostMember{"_items": []models.PostMember{tc.expect.resp}})
+			expected, _ := json.Marshal(map[string][]models.TaggedPostMember{"_items": []models.TaggedPostMember{tc.expect.resp}})
 			if w.Code == http.StatusOK && w.Body.String() != string(expected) {
 				t.Errorf("%s incorrect response", tc.name)
 			}
@@ -391,6 +393,7 @@ func TestRouteInsertPost(t *testing.T) {
 		{"New", `{"author":"superman@mirrormedia.mg","title":"You can't save the world alone, but I can"}`, ExpectResp{http.StatusOK, ""}},
 		{"EmptyPayload", `{}`, ExpectResp{http.StatusBadRequest, `{"Error":"Invalid Post"}`}},
 		{"Existing", `{"id":1, "author":"superman@mirrormedia.mg"}`, ExpectResp{http.StatusBadRequest, `{"Error":"Post ID Already Taken"}`}},
+		{"WithTags", `{"id":53,"author":"Joker@mirrormedia.mg","title":"Why so serious?", "tags":[1,2]}`, ExpectResp{http.StatusOK, ""}},
 	}
 	for _, tc := range testCase {
 		t.Run(tc.name, func(t *testing.T) {
@@ -404,7 +407,7 @@ func TestRouteInsertPost(t *testing.T) {
 				t.Errorf("%s want %d but get %d", tc.name, tc.expect.httpcode, w.Code)
 			}
 			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
-				t.Errorf("%s expect error message %v but get %v", tc.name, w.Body.String(), tc.expect.err)
+				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
 			}
 		})
 	}
@@ -420,6 +423,7 @@ func TestRoutePutPost(t *testing.T) {
 	}{
 		{"Current", `{"id":1,"author":"wonderwoman@mirrormedia.mg"}`, ExpectResp{http.StatusOK, ""}},
 		{"NotExisted", `{"id":12345, "author":"superman@mirrormedia.mg"}`, ExpectResp{http.StatusBadRequest, `{"Error":"Post Not Found"}`}},
+		{"UpdateTags", `{"id":1, "tags":[5,3]}`, ExpectResp{http.StatusOK, ``}},
 	}
 	for _, tc := range testCase {
 		t.Run(tc.name, func(t *testing.T) {
@@ -432,7 +436,7 @@ func TestRoutePutPost(t *testing.T) {
 				t.Errorf("%s want %d but get %d", tc.name, tc.expect.httpcode, w.Code)
 			}
 			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
-				t.Errorf("%s expect error message %v but get %v", tc.name, w.Body.String(), tc.expect.err)
+				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
 			}
 		})
 	}

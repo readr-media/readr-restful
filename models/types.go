@@ -1,6 +1,7 @@
 package models
 
 import (
+	"errors"
 	"time"
 
 	"database/sql"
@@ -11,11 +12,14 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-// type BasicArgs struct {
-// 	MaxResult uint8  `form:"max_result"`
-// 	Page      uint16 `form:"page"`
-// 	Sorting   string `form:"sort"`
-// }
+var (
+	DuplicateError           = errors.New("Duplicate Entry")
+	InternalServerError      = errors.New("Internal Server Error")
+	ItemNotFoundError        = errors.New("Itme Not Found")
+	MultipleRowAffectedError = errors.New("More Than One Rows Affected")
+
+	SQLInsertionFail = errors.New("SQL Insertion Fail")
+)
 
 // ------------------------------  NULLABLE TYPE DEFINITION -----------------------------
 

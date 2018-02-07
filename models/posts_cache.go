@@ -22,18 +22,12 @@ func (c *latestPostCache) Insert(post Post) {
 		return
 	}
 
-	conn := GetRedisConn()
+	conn := RedisHelper.Conn()
 	defer conn.Close()
 
-	keyres, err := redis.Values(conn.Do("KEYS", c.Key+"[^follower]*"))
+	keys, err := RedisHelper.GetRedisKeys(c.Key + "[^follower]*")
 	if err != nil {
-		log.Printf("Error get cache keys: %v", err)
-		return
-	}
-
-	var keys []string
-	if err := redis.ScanSlice(keyres, &keys); err != nil {
-		log.Printf("Error scan keys cache: %v", err)
+		log.Println(err)
 		return
 	}
 
@@ -82,18 +76,12 @@ func (c *latestPostCache) Update(post Post) {
 		return
 	}
 
-	conn := GetRedisConn()
+	conn := RedisHelper.Conn()
 	defer conn.Close()
 
-	keyres, err := redis.Values(conn.Do("KEYS", c.Key+"*"))
+	keys, err := RedisHelper.GetRedisKeys(c.Key + "*")
 	if err != nil {
-		log.Printf("Error get cache keys: %v", err)
-		return
-	}
-
-	var keys []string
-	if err := redis.ScanSlice(keyres, &keys); err != nil {
-		log.Printf("Error scan keys cache: %v", err)
+		log.Println(err)
 		return
 	}
 
@@ -145,18 +133,9 @@ func (c *latestPostCache) Update(post Post) {
 
 func (c *latestPostCache) Delete(post_id uint32) {
 
-	conn := GetRedisConn()
-	defer conn.Close()
-
-	keyres, err := redis.Values(conn.Do("KEYS", c.Key+fmt.Sprint(post_id)))
+	keys, err := RedisHelper.GetRedisKeys(c.Key + fmt.Sprint(post_id))
 	if err != nil {
-		log.Printf("Error get cache keys: %v", err)
-		return
-	}
-
-	var keys []string
-	if err := redis.ScanSlice(keyres, &keys); err != nil {
-		log.Printf("Error scan keys cache: %v", err)
+		log.Println(err)
 		return
 	}
 
@@ -173,18 +152,12 @@ func (c *latestPostCache) UpdateMulti(params PostUpdateArgs) {
 		return
 	}
 
-	conn := GetRedisConn()
+	conn := RedisHelper.Conn()
 	defer conn.Close()
 
-	keyres, err := redis.Values(conn.Do("KEYS", c.Key+"*"))
+	keys, err := RedisHelper.GetRedisKeys(c.Key + "*")
 	if err != nil {
-		log.Printf("Error get cache keys: %v", err)
-		return
-	}
-
-	var keys []string
-	if err := redis.ScanSlice(keyres, &keys); err != nil {
-		log.Printf("Error scan keys cache: %v", err)
+		log.Println(err)
 		return
 	}
 
@@ -211,7 +184,7 @@ func (c *latestPostCache) UpdateMulti(params PostUpdateArgs) {
 }
 
 func (c *latestPostCache) UpdateFollowing(action string, user_id string, post_id string) {
-	conn := GetRedisConn()
+	conn := RedisHelper.Conn()
 	defer conn.Close()
 
 	if action == "follow" {
@@ -228,18 +201,12 @@ func (c *latestPostCache) UpdateFollowing(action string, user_id string, post_id
 }
 
 func (c *latestPostCache) SyncFromDataStorage() {
-	conn := GetRedisConn()
+	conn := RedisHelper.Conn()
 	defer conn.Close()
 
-	keyres, err := redis.Values(conn.Do("KEYS", c.Key+"*"))
+	keys, err := RedisHelper.GetRedisKeys(c.Key + "*")
 	if err != nil {
-		log.Printf("Error get cache keys: %v", err)
-		return
-	}
-
-	var keys []string
-	if err := redis.ScanSlice(keyres, &keys); err != nil {
-		log.Printf("Error scan keys cache: %v", err)
+		log.Println(err)
 		return
 	}
 

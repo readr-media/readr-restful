@@ -208,12 +208,6 @@ func CreateFollow(config map[string]string) (follow, error) {
 Follower API
 */
 
-var (
-	DuplicateError      = errors.New("Duplicate Entry")
-	SQLInsertionFail    = errors.New("SQL Insertion Fail")
-	InternalServerError = errors.New("Internal Server Error")
-)
-
 type FollowingAPIInterface interface {
 	AddFollowing(params map[string]string) error
 	DeleteFollowing(params map[string]string) error

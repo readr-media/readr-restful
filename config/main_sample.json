@@ -28,6 +28,15 @@
             "pending": 9,
             "draft": 9,
             "unpublish": 9
+        },
+        "post_type":{
+            "review": 9,
+            "news": 9,
+            "video": 9
+        },
+        "tags":{
+            "deactive": 9,
+            "active": 9
         }
     }
 }
