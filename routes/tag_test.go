@@ -1,13 +1,10 @@
 package routes
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -92,16 +89,7 @@ func (t *mockTagAPI) UpdatePostTags(postId int, tag_ids []int) error {
 	return nil
 }
 
-type tagtc struct {
-	name     string
-	method   string
-	url      string
-	body     string
-	httpcode int
-	resp     interface{}
-}
-
-func TestTags(t *testing.T) {
+func TestRouteTags(t *testing.T) {
 
 	tags := []models.Tag{
 		models.Tag{Text: "tag1"},
@@ -135,117 +123,96 @@ func TestTags(t *testing.T) {
 		{44, []int{1, 3}},
 	} {
 		err := models.TagAPI.UpdatePostTags(params.post_id, params.tag_ids)
+		log.Printf("Insert post tag fail when init test case. Error: %v", err)
+	}
+
+	asserter := func(resp string, tc genericTestcase, t *testing.T) {
+		type response struct {
+			Items []models.Tag `json:"_items"`
+		}
+
+		var Response response
+		var expected []models.Tag = tc.resp.([]models.Tag)
+
+		err := json.Unmarshal([]byte(resp), &Response)
 		if err != nil {
-			log.Printf("Insert post tag fail when init test case. Error: %v", err)
+			t.Errorf("%s, Unexpected result body: %v", resp)
+		}
+
+		if len(Response.Items) != len(expected) {
+			t.Errorf("%s expect tag length to be %v but get %v", tc.name, len(expected), len(Response.Items))
+		}
+
+	OuterLoop:
+		for _, resptag := range Response.Items {
+			for _, exptag := range expected {
+				if resptag.ID == exptag.ID &&
+					resptag.Text == exptag.Text &&
+					resptag.Active == exptag.Active &&
+					resptag.RelatedReviews == exptag.RelatedReviews &&
+					resptag.RelatedNews == exptag.RelatedNews {
+					continue OuterLoop
+				}
+			}
+			t.Errorf("%s, Not expect to get %v ", tc.name, resptag)
+
 		}
 	}
 
 	t.Run("GetTags", func(t *testing.T) {
-		testcases := []tagtc{
-			tagtc{"GetTagBasicOK", "GET", "/tags?stats=0", ``, http.StatusOK, []models.Tag{
+		testcases := []genericTestcase{
+			genericTestcase{"GetTagBasicOK", "GET", "/tags?stats=0", ``, http.StatusOK, []models.Tag{
 				models.Tag{ID: 1, Text: "tag1", Active: models.NullInt{1, true}},
 				models.Tag{ID: 2, Text: "tag2", Active: models.NullInt{1, true}},
 				models.Tag{ID: 3, Text: "tag3", Active: models.NullInt{1, true}},
 				models.Tag{ID: 4, Text: "tag4", Active: models.NullInt{1, true}},
 			}},
-			tagtc{"GetTagMaxresultOK", "GET", "/tags?stats=0&max_result=1", ``, http.StatusOK, []models.Tag{
+			genericTestcase{"GetTagMaxresultOK", "GET", "/tags?stats=0&max_result=1", ``, http.StatusOK, []models.Tag{
 				models.Tag{ID: 1, Text: "tag1", Active: models.NullInt{1, true}},
 			}},
-			tagtc{"GetTagPaginationOK", "GET", "/tags?stats=0&max_result=1&page=2", ``, http.StatusOK, []models.Tag{
+			genericTestcase{"GetTagPaginationOK", "GET", "/tags?stats=0&max_result=1&page=2", ``, http.StatusOK, []models.Tag{
 				models.Tag{ID: 2, Text: "tag2", Active: models.NullInt{1, true}},
 			}},
-			tagtc{"GetTagKeywordAndStatsOK", "GET", "/tags?stats=1&keyword=tag2", ``, http.StatusOK, []models.Tag{
+			genericTestcase{"GetTagKeywordAndStatsOK", "GET", "/tags?stats=1&keyword=tag2", ``, http.StatusOK, []models.Tag{
 				models.Tag{ID: 2, Text: "tag2", Active: models.NullInt{1, true}, RelatedReviews: models.NullInt{0, true}, RelatedNews: models.NullInt{1, true}},
 			}},
-			tagtc{"GetTagSortingOK", "GET", "/tags?keyword=tag&sort=updated_at", ``, http.StatusOK, []models.Tag{
+			genericTestcase{"GetTagSortingOK", "GET", "/tags?keyword=tag&sort=updated_at", ``, http.StatusOK, []models.Tag{
 				models.Tag{ID: 1, Text: "tag1", Active: models.NullInt{1, true}},
 				models.Tag{ID: 2, Text: "tag2", Active: models.NullInt{1, true}},
 				models.Tag{ID: 3, Text: "tag3", Active: models.NullInt{1, true}},
 				models.Tag{ID: 4, Text: "tag4", Active: models.NullInt{1, true}},
 			}},
-			tagtc{"GetTagKeywordNotFound", "GET", "/tags?keyword=1024", ``, http.StatusOK, `{"_items":[]}`},
-			tagtc{"GetTagUnknownSortingKey", "GET", "/tags?sort=unknown", ``, http.StatusBadRequest, `{"Error":"Bad Sorting Option"}`},
+			genericTestcase{"GetTagKeywordNotFound", "GET", "/tags?keyword=1024", ``, http.StatusOK, `{"_items":[]}`},
+			genericTestcase{"GetTagUnknownSortingKey", "GET", "/tags?sort=unknown", ``, http.StatusBadRequest, `{"Error":"Bad Sorting Option"}`},
 		}
 		for _, tc := range testcases {
-			doTagTest(tc, t)
+			genericDoTest(tc, t, asserter)
 		}
 	})
 	t.Run("InsertTag", func(t *testing.T) {
-		testcases := []tagtc{
-			tagtc{"PostTagOK", "POST", "/tags", `{"name":"insert1"}`, http.StatusOK, `{"tag_id":5}`},
-			tagtc{"PostTagDupe", "POST", "/tags", `{"name":"insert1"}`, http.StatusBadRequest, `{"Error":"Duplicate Entry"}`},
+		testcases := []genericTestcase{
+			genericTestcase{"PostTagOK", "POST", "/tags", `{"name":"insert1"}`, http.StatusOK, `{"tag_id":5}`},
+			genericTestcase{"PostTagDupe", "POST", "/tags", `{"name":"insert1"}`, http.StatusBadRequest, `{"Error":"Duplicate Entry"}`},
 		}
 		for _, tc := range testcases {
-			doTagTest(tc, t)
+			genericDoTest(tc, t, asserter)
 		}
 	})
 	t.Run("UpdateTag", func(t *testing.T) {
-		testcases := []tagtc{
-			tagtc{"UpdateTagOK", "PUT", "/tags", `{"id":1, "text":"text5566"}`, http.StatusOK, ``},
-			tagtc{"UpdateTagDupe", "PUT", "/tags", `{"id":2, "text":"tag3"}`, http.StatusBadRequest, `{"Error":"Duplicate Entry"}`},
+		testcases := []genericTestcase{
+			genericTestcase{"UpdateTagOK", "PUT", "/tags", `{"id":1, "text":"text5566"}`, http.StatusOK, ``},
+			genericTestcase{"UpdateTagDupe", "PUT", "/tags", `{"id":2, "text":"tag3"}`, http.StatusBadRequest, `{"Error":"Duplicate Entry"}`},
 		}
 		for _, tc := range testcases {
-			doTagTest(tc, t)
+			genericDoTest(tc, t, asserter)
 		}
 	})
 	t.Run("DaleteTags", func(t *testing.T) {
-		testcases := []tagtc{
-			tagtc{"DeleteTagOK", "DELETE", "/tags?ids=[1, 2, 3, 4]", ``, http.StatusOK, ``},
+		testcases := []genericTestcase{
+			genericTestcase{"DeleteTagOK", "DELETE", "/tags?ids=[1, 2, 3, 4]", ``, http.StatusOK, ``},
 		}
 		for _, tc := range testcases {
-			doTagTest(tc, t)
+			genericDoTest(tc, t, asserter)
 		}
-	})
-}
-
-func doTagTest(tc tagtc, t *testing.T) {
-	t.Run(tc.name, func(t *testing.T) {
-		w := httptest.NewRecorder()
-		var jsonStr = []byte(tc.body)
-		req, _ := http.NewRequest(tc.method, tc.url, bytes.NewBuffer(jsonStr))
-		req.Header.Set("Content-Type", "application/json")
-		r.ServeHTTP(w, req)
-
-		if w.Code != tc.httpcode {
-			t.Errorf("%s want %d but get %d", tc.name, tc.httpcode, w.Code)
-		}
-		switch tc.resp.(type) {
-		case string:
-			if w.Body.String() != tc.resp {
-				t.Errorf("%s expect (error) message %v but get %v", tc.name, tc.resp, w.Body.String())
-			}
-		default:
-			type response struct {
-				Items []models.Tag `json:"_items"`
-			}
-
-			var Response response
-			var expected []models.Tag = tc.resp.([]models.Tag)
-
-			err := json.Unmarshal([]byte(w.Body.String()), &Response)
-			if err != nil {
-				fmt.Println("active ", err.Error())
-			}
-
-			if len(Response.Items) != len(expected) {
-				t.Errorf("%s expect tag length to be %v but get %v", tc.name, len(expected), len(Response.Items))
-			}
-
-		OuterLoop:
-			for _, resptag := range Response.Items {
-				for _, exptag := range expected {
-					if resptag.ID == exptag.ID &&
-						resptag.Text == exptag.Text &&
-						resptag.Active == exptag.Active &&
-						resptag.RelatedReviews == exptag.RelatedReviews &&
-						resptag.RelatedNews == exptag.RelatedNews {
-						continue OuterLoop
-					}
-				}
-				t.Errorf("%s, Not expect to get %v ", tc.name, resptag)
-
-			}
-		}
-
 	})
 }

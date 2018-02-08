@@ -37,6 +37,11 @@
         "tags":{
             "deactive": 9,
             "active": 9
+        },
+        "projects":{
+            "active": 1,
+            "deactive": 0,
+            "pending": 2
         }
     }
 }

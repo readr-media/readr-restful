@@ -1,11 +1,15 @@
 package models
 
 import (
-	"database/sql"
+	"bytes"
 	"errors"
-	//"fmt"
+	"fmt"
 	"log"
 	"strings"
+
+	"database/sql"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type Project struct {
@@ -28,18 +32,28 @@ type Project struct {
 	OgTitle       NullString `json:"og_title" db:"og_title"`
 	OgDescription NullString `json:"og_description" db:"og_description"`
 	OgImage       NullString `json:"og_image" db:"og_image"`
+	Order         NullInt    `json:"order" db:"project_order" redis:"order"`
 }
 
 type projectAPI struct{}
 
-var ProjectAPI ProjectAPIInterface = new(projectAPI)
-
 type ProjectAPIInterface interface {
 	DeleteProjects(p Project) error
-	GetProject(p Project) (Project, error)
-	GetProjects(ps ...Project) ([]Project, error)
+	//GetProject(p Project) (Project, error)
+	GetProjects(args GetProjectArgs) ([]Project, error)
 	InsertProject(p Project) error
 	UpdateProjects(p Project) error
+}
+
+type GetProjectArgs struct {
+	IDs       []int `form:"ids" json:"ids"`
+	MaxResult int   `form:"max_result" json:"max_result"`
+	Page      int   `form:"page" json:"page"`
+}
+
+func (g *GetProjectArgs) Init() {
+	g.MaxResult = 50
+	g.Page = 1
 }
 
 func (a *projectAPI) GetProject(p Project) (Project, error) {
@@ -54,14 +68,49 @@ func (a *projectAPI) GetProject(p Project) (Project, error) {
 		log.Fatal(err)
 		project = Project{}
 	default:
-		//fmt.Printf("Successfully get project: %v\n", p.ID)
 		err = nil
 	}
 	return project, err
 }
 
-func (a *projectAPI) GetProjects(ps ...Project) ([]Project, error) {
-	return nil, nil
+func (a *projectAPI) GetProjects(args GetProjectArgs) ([]Project, error) {
+	var query bytes.Buffer
+	var bindvars []interface{}
+	query.WriteString(fmt.Sprintf(`SELECT p.* FROM projects as p WHERE active = %d`, int(ProjectStatus["active"].(float64))))
+	log.Println(args.IDs)
+	if len(args.IDs) > 0 {
+		inquery, inargs, err := sqlx.In(` AND project_id IN (?)`, args.IDs)
+		if err != nil {
+			log.Println(err.Error())
+			return nil, err
+		}
+
+		bindvars = inargs
+		inquery = DB.Rebind(inquery)
+		query.WriteString(inquery)
+
+	}
+	query.WriteString(` ORDER BY project_order DESC, updated_at DESC LIMIT ? OFFSET ?;`)
+	bindvars = append(bindvars, args.MaxResult, (args.Page-1)*args.MaxResult)
+
+	log.Println(query.String(), bindvars)
+
+	rows, err := DB.Queryx(query.String(), bindvars...)
+	if err != nil {
+		return nil, err
+	}
+
+	var result = []Project{}
+	for rows.Next() {
+		var project Project
+		if err = rows.StructScan(&project); err != nil {
+			result = []Project{}
+			return result, err
+		}
+		result = append(result, project)
+	}
+
+	return result, nil
 }
 
 func (a *projectAPI) InsertProject(p Project) error {
@@ -119,3 +168,6 @@ func (a *projectAPI) DeleteProjects(p Project) error {
 	}
 	return err
 }
+
+var ProjectAPI ProjectAPIInterface = new(projectAPI)
+var ProjectStatus map[string]interface{}

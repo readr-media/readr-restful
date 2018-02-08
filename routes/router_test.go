@@ -1,11 +1,15 @@
 package routes
 
 import (
+	"bytes"
 	//"fmt"
 	"log"
 	"os"
 	"testing"
 	"time"
+
+	"net/http"
+	"net/http/httptest"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
@@ -42,7 +46,6 @@ func TestMain(m *testing.M) {
 		_, _ = models.DB.Exec("truncate table following_projects;")
 		_, _ = models.DB.Exec("truncate table tags;")
 		_, _ = models.DB.Exec("truncate table post_tags;")
-		_ = models.ProjectAPI.InsertProject(mockProjectDS[0])
 		// Init Redis connetions
 		models.RedisConn(map[string]string{
 			"url":      fmt.Sprint(viper.Get("redis.host"), ":", viper.Get("redis.port")),
@@ -65,6 +68,7 @@ func TestMain(m *testing.M) {
 	models.PostStatus = viper.GetStringMap("models.posts")
 	models.PostType = viper.GetStringMap("models.post_type")
 	models.TagStatus = viper.GetStringMap("models.tags")
+	models.ProjectStatus = viper.GetStringMap("models.projects")
 
 	models.ProjectAPI = new(mockProjectAPI)
 	models.MemberAPI = new(mockMemberAPI)
@@ -74,6 +78,39 @@ func TestMain(m *testing.M) {
 	models.TagAPI = new(mockTagAPI)
 
 	os.Exit(m.Run())
+}
+
+type genericTestcase struct {
+	name     string
+	method   string
+	url      string
+	body     string
+	httpcode int
+	resp     interface{}
+}
+
+func genericDoTest(tc genericTestcase, t *testing.T, function interface{}) {
+	t.Run(tc.name, func(t *testing.T) {
+		w := httptest.NewRecorder()
+		var jsonStr = []byte(tc.body)
+		req, _ := http.NewRequest(tc.method, tc.url, bytes.NewBuffer(jsonStr))
+		req.Header.Set("Content-Type", "application/json")
+		r.ServeHTTP(w, req)
+
+		if w.Code != tc.httpcode {
+			t.Errorf("%s want %d but get %d", tc.name, tc.httpcode, w.Code)
+		}
+		switch tc.resp.(type) {
+		case string:
+			if w.Body.String() != tc.resp {
+				t.Errorf("%s expect (error) message %v but get %v", tc.name, tc.resp, w.Body.String())
+			}
+		default:
+			if fn, ok := function.(func(resp string, tc genericTestcase, t *testing.T)); ok {
+				fn(w.Body.String(), tc, t)
+			}
+		}
+	})
 }
 
 // Declare a backup struct for member test data
@@ -136,17 +173,6 @@ var mockPostDS = []models.Post{
 		Author:    models.NullString{String: "Major.Tom@mirrormedia.mg", Valid: true},
 		UpdatedAt: models.NullTime{Time: time.Date(2018, 1, 3, 12, 22, 20, 0, time.UTC), Valid: true},
 		CreatedAt: models.NullTime{Time: time.Date(2017, 12, 31, 23, 59, 59, 999, time.UTC), Valid: true},
-	},
-}
-
-var mockProjectDS = []models.Project{
-	models.Project{
-		ID:            32767,
-		Title:         models.NullString{String: "Hello", Valid: true},
-		PostID:        0,
-		LikeAmount:    models.NullInt{Int: 0, Valid: true},
-		CommentAmount: models.NullInt{Int: 0, Valid: true},
-		Active:        models.NullInt{Int: 1, Valid: true},
 	},
 }
 
