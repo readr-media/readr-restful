@@ -36,6 +36,7 @@ func main() {
 	models.PostStatus = viper.GetStringMap("models.posts")
 	models.PostType = viper.GetStringMap("models.post_type")
 	models.TagStatus = viper.GetStringMap("models.tags")
+	models.ProjectStatus = viper.GetStringMap("models.projects")
 
 	// flag.Parse()
 	// fmt.Printf("sql user:%s, sql address:%s, auth:%s \n", *sqlUser, *sqlAddress, *sqlAuth)

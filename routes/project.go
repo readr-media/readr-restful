@@ -1,9 +1,11 @@
 package routes
 
 import (
+	"log"
 	"strconv"
 	"time"
 
+	"encoding/json"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -14,25 +16,29 @@ type projectHandler struct {
 }
 
 func (r *projectHandler) Get(c *gin.Context) {
-	id, err := strconv.Atoi(c.Param("id"))
+	var args models.GetProjectArgs
+	args.Init()
+
+	err := c.Bind(&args)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": "ID Must Be Integer"})
+		log.Println(err)
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
-	input := models.Project{ID: id}
-	project, err := models.ProjectAPI.GetProject(input)
+
+	_ = json.Unmarshal([]byte(c.Query("ids")), &args.IDs)
+
+	projects, err := models.ProjectAPI.GetProjects(args)
 
 	if err != nil {
 		switch err.Error() {
-		case "Project Not Found":
-			c.JSON(http.StatusNotFound, gin.H{"Error": "Project Not Found"})
-			return
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 			return
 		}
 	}
-	c.JSON(http.StatusOK, project)
+
+	c.JSON(http.StatusOK, gin.H{"_items": projects})
 }
 
 func (r *projectHandler) Post(c *gin.Context) {
@@ -65,7 +71,7 @@ func (r *projectHandler) Post(c *gin.Context) {
 			return
 		}
 	}
-	c.JSON(http.StatusOK, nil)
+	c.Status(http.StatusOK)
 }
 
 func (r *projectHandler) Put(c *gin.Context) {
@@ -95,7 +101,7 @@ func (r *projectHandler) Put(c *gin.Context) {
 			return
 		}
 	}
-	c.String(http.StatusOK, "ok")
+	c.Status(http.StatusOK)
 }
 
 func (r *projectHandler) Delete(c *gin.Context) {
@@ -118,13 +124,13 @@ func (r *projectHandler) Delete(c *gin.Context) {
 			return
 		}
 	}
-	c.String(http.StatusOK, "ok")
+	c.Status(http.StatusOK)
 }
 
 func (r *projectHandler) SetRoutes(router *gin.Engine) {
 	projectRouter := router.Group("/project")
 	{
-		projectRouter.GET("/:id", r.Get)
+		projectRouter.GET("/list", r.Get)
 		projectRouter.POST("", r.Post)
 		projectRouter.PUT("", r.Put)
 		projectRouter.DELETE("/:id", r.Delete)
