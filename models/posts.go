@@ -2,6 +2,7 @@ package models
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -61,7 +62,30 @@ type TaggedPost struct {
 
 type TaggedPostMember struct {
 	PostMember
-	Tags string `json:"tags" db:"tags"`
+	Tags NullString `json:"-" db:"tags"`
+}
+
+func (t *TaggedPostMember) MarshalJSON() ([]byte, error) {
+	type TPM TaggedPostMember
+	var Tags []map[string]string
+
+	if t.Tags.Valid != false {
+		tags := strings.Split(t.Tags.String, ",")
+		for _, value := range tags {
+			tag := strings.Split(value, ":")
+			Tags = append(Tags, map[string]string{
+				"id":   tag[0],
+				"text": tag[1],
+			})
+		}
+	}
+	return json.Marshal(&struct {
+		LastSeen []map[string]string `json:"tags"`
+		*TPM
+	}{
+		LastSeen: Tags,
+		TPM:      (*TPM)(t),
+	})
 }
 
 // UpdatedBy wraps Member for embedded field updated_by
@@ -155,7 +179,6 @@ func (a *postAPI) GetPosts(req PostArgs) (result []PostMember, err error) {
 	// err = DB.Select(&result, query, args.MaxResult, (args.Page-1)*uint16(args.MaxResult))
 	if len(result) == 0 {
 		result = []PostMember{}
-		err = errors.New("Posts Not Found")
 	}
 	return result, err
 }
@@ -166,24 +189,31 @@ func (a *postAPI) GetPost(id uint32) (TaggedPostMember, error) {
 	tags := getStructDBTags("full", Member{})
 	author := makeFieldString("get", `author.%s "author.%s"`, tags)
 	updatedBy := makeFieldString("get", `updated_by.%s "updated_by.%s"`, tags)
-	query := fmt.Sprintf(`SELECT posts.*, %s, %s, tags.ids AS tags FROM posts
+	query := fmt.Sprintf(`SELECT posts.*, %s, %s, tags.tags as tags FROM posts
 		LEFT JOIN members AS author ON posts.author = author.member_id 
 		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.member_id 
-		LEFT JOIN (SELECT post_id, GROUP_CONCAT(tag_id) as ids FROM post_tags GROUP BY post_id) AS tags ON tags.post_id = posts.post_id
-		WHERE posts.post_id = ?`,
+		LEFT JOIN (
+			SELECT pt.post_id as post_id, GROUP_CONCAT(CONCAT(t.tag_id, ":", t.tag_content) SEPARATOR ',') as tags 
+			FROM post_tags as pt LEFT JOIN tags as t ON t.tag_id = pt.tag_id 
+			GROUP BY pt.post_id
+		) AS tags ON tags.post_id = posts.post_id WHERE posts.post_id = ?`,
 		strings.Join(author, ","), strings.Join(updatedBy, ","))
 
 	err := DB.Get(&post, query, id)
-	switch {
-	case err == sql.ErrNoRows:
-		err = errors.New("Post Not Found")
-		post = TaggedPostMember{}
-	case err != nil:
-		log.Fatal(err)
-		post = TaggedPostMember{}
-	default:
-		err = nil
+	if err != nil {
+		log.Println(err.Error())
+		switch {
+		case err == sql.ErrNoRows:
+			err = errors.New("Post Not Found")
+			return TaggedPostMember{}, err
+		case err != nil:
+			log.Fatal(err)
+			return TaggedPostMember{}, err
+		default:
+			err = nil
+		}
 	}
+
 	return post, err
 }
 

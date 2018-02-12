@@ -98,7 +98,7 @@ func (r *followingHandler) GetByUser(c *gin.Context) {
 	if err != nil {
 		switch err.Error() {
 		case "Not Found":
-			c.JSON(http.StatusNotFound, make([]string, 0))
+			c.JSON(http.StatusOK, make([]string, 0))
 			return
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})

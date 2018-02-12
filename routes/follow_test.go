@@ -117,7 +117,7 @@ func (a *mockFollowingAPI) GetFollowing(params map[string]string) (interface{}, 
 		}, nil
 	case params["resource"] == "post":
 		return []models.Post{
-			models.Post{ID: 42, Active: models.NullInt{1, true}},
+			models.Post{ID: 42, Active: models.NullInt{1, true}, Type: models.NullInt{0, true}},
 		}, nil
 	case params["resource"] == "project":
 		return []models.Project{
@@ -177,10 +177,10 @@ func TestFollowingGet(t *testing.T) {
 		in   CaseIn
 		out  CaseOut
 	}{
-		{"GetFollowingPostOK", CaseIn{"post", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, `[{"id":42,"author":null,"created_at":null,"like_amount":null,"comment_amount":null,"title":null,"content":null,"type":null,"link":null,"og_title":null,"og_description":null,"og_image":null,"active":1,"updated_at":null,"updated_by":null,"published_at":null,"link_title":null,"link_description":null,"link_image":null,"link_name":null}]`}},
+		{"GetFollowingPostOK", CaseIn{"post", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, `[{"id":42,"author":null,"created_at":null,"like_amount":null,"comment_amount":null,"title":null,"content":null,"type":0,"link":null,"og_title":null,"og_description":null,"og_image":null,"active":1,"updated_at":null,"updated_by":null,"published_at":null,"link_title":null,"link_description":null,"link_image":null,"link_name":null}]`}},
 		{"GetFollowingMemberOK", CaseIn{"member", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, `[{"id":"followtest2@mirrormedia.mg","name":null,"nickname":null,"birthday":null,"gender":null,"work":null,"mail":null,"register_mode":null,"social_id":null,"talk_id":null,"created_at":null,"updated_at":null,"updated_by":null,"description":null,"profile_image":null,"identity":null,"role":null,"active":1,"custom_editor":null,"hide_profile":null,"profile_push":null,"post_push":null,"comment_push":null}]`}},
 		{"GetFollowingProjectOK", CaseIn{"project", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, `[{"id":420,"created_at":null,"updated_at":null,"updated_by":null,"published_at":null,"post_id":42,"like_amount":null,"comment_amount":null,"active":1,"hero_image":null,"title":null,"description":null,"author":null,"og_title":null,"og_description":null,"og_image":null,"order":null}]`}},
-		{"GetFollowingFollowerNotExist", CaseIn{"project", "unknown@user.who"}, CaseOut{http.StatusNotFound, `[]`}},
+		{"GetFollowingFollowerNotExist", CaseIn{"project", "unknown@user.who"}, CaseOut{http.StatusOK, `[]`}},
 	}
 
 	for _, testcase := range TestFollowingGetCases {
@@ -258,12 +258,12 @@ func TestFollowedGet(t *testing.T) {
 		r.ServeHTTP(w, req)
 
 		if w.Code != testcase.out.httpcode {
-			t.Errorf("Want %d but get %d, testcase %s", testcase.out.httpcode, w.Code, testcase.name)
+			t.Errorf("Want %d but get %d, testcase %s", w.Code, testcase.out.httpcode, testcase.name)
 			t.Fail()
 		}
 
 		if w.Body.String() != testcase.out.resp {
-			t.Errorf("Expect get error message %v but get %v, testcase %s", testcase.out.resp, w.Body.String(), testcase.name)
+			t.Errorf("Expect get error message %v but get %v, testcase %s", w.Body.String(), testcase.out.resp, testcase.name)
 			t.Fail()
 		}
 

@@ -88,7 +88,6 @@ func (a *mockPostAPI) GetPosts(args models.PostArgs) (result []models.PostMember
 				for oauthor, vauthor := range args["posts.author"].(map[string][]string) {
 					if oauthor == "$in" && reflect.DeepEqual(vauthor, []string{"flash@flash.com"}) {
 						result = []models.PostMember{}
-						err = errors.New("Posts Not Found")
 					}
 				}
 			}
@@ -316,7 +315,7 @@ func TestRouteGetPosts(t *testing.T) {
 				{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}},
 				{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
 			}}},
-		{"NotFound", `/posts?author={"$in":["flash@flash.com"]}&active={"$nin":[1,4]}`, ExpectGetsResp{ExpectResp{http.StatusNotFound, `{"Error":"Posts Not Found"}`},
+		{"NotFound", `/posts?author={"$in":["flash@flash.com"]}&active={"$nin":[1,4]}`, ExpectGetsResp{ExpectResp{http.StatusOK, ``},
 			[]models.PostMember{}}},
 	}
 	for _, tc := range testPostsGetCases {
@@ -329,7 +328,7 @@ func TestRouteGetPosts(t *testing.T) {
 				t.Errorf("%s Want %d but get %d", tc.name, tc.expect.httpcode, w.Code)
 			}
 			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
-				t.Errorf("%s expect to get error message %v but get %v", tc.name, w.Body.String(), tc.expect.err)
+				t.Errorf("%s expect to get error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
 			}
 			expected, _ := json.Marshal(map[string][]models.PostMember{"_items": tc.expect.resp})
 			if w.Code == http.StatusOK && w.Body.String() != string(expected) {
@@ -358,7 +357,7 @@ func TestRouteGetPost(t *testing.T) {
 					Post:      mockPostDS[0],
 					Member:    mockMemberDS[0],
 					UpdatedBy: models.UpdatedBy(mockMemberDS[0])},
-				Tags: ""}}},
+				Tags: models.NullString{}}}},
 		{"NotExisted", "/post/3", ExpectGetResp{ExpectResp{http.StatusNotFound, `{"Error":"Post Not Found"}`}, models.TaggedPostMember{}}},
 	}
 	for _, tc := range testPostGetCases {
@@ -371,7 +370,7 @@ func TestRouteGetPost(t *testing.T) {
 				t.Errorf("%s Want %d but get %d", tc.name, tc.expect.httpcode, w.Code)
 			}
 			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
-				t.Errorf("%s expect to get error message %v but get %v", tc.name, w.Body.String(), tc.expect.err)
+				t.Errorf("%s expect to get error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
 			}
 
 			// expected, _ := json.Marshal(tc.expect.resp)

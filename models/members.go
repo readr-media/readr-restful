@@ -138,7 +138,6 @@ func (a *memberAPI) GetMembers(req MemberArgs) (result []Member, err error) {
 
 	if len(result) == 0 {
 		result = []Member{}
-		err = errors.New("Members Not Found")
 	}
 
 	return result, err
