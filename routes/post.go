@@ -66,16 +66,8 @@ func (r *postHandler) GetAll(c *gin.Context) {
 	// fmt.Println(params)
 	result, err := models.PostAPI.GetPosts(params)
 	if err != nil {
-		switch err.Error() {
-		/*
-			case "Posts Not Found":
-				c.JSON(http.StatusNotFound, gin.H{"Error": "Posts Not Found"})
-				return
-		*/
-		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
-			return
-		}
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		return
 	}
 	c.JSON(http.StatusOK, gin.H{"_items": result})
 }

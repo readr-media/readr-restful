@@ -170,9 +170,10 @@ func (a *postAPI) GetPosts(req PostArgs) (result []PostMember, err error) {
 		result = append(result, singlePost)
 	}
 	// err = DB.Select(&result, query, args.MaxResult, (args.Page-1)*uint16(args.MaxResult))
-	if len(result) == 0 {
-		result = []PostMember{}
-	}
+	// if len(result) == 0 {
+	// 	result = []PostMember{}
+	// 	err = errors.New("Posts Not Found")
+	// }
 	return result, err
 }
 
