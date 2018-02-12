@@ -89,6 +89,10 @@ func (t *mockTagAPI) UpdatePostTags(postId int, tag_ids []int) error {
 	return nil
 }
 
+func (t *mockTagAPI) CountTags() (int, error) {
+	return len(mockTagDS), nil
+}
+
 func TestRouteTags(t *testing.T) {
 
 	tags := []models.Tag{
@@ -220,6 +224,14 @@ func TestRouteTags(t *testing.T) {
 	t.Run("DaleteTags", func(t *testing.T) {
 		testcases := []genericTestcase{
 			genericTestcase{"DeleteTagOK", "DELETE", "/tags?ids=[1, 2, 3, 4]", ``, http.StatusOK, ``},
+		}
+		for _, tc := range testcases {
+			genericDoTest(tc, t, asserter)
+		}
+	})
+	t.Run("CountTags", func(t *testing.T) {
+		testcases := []genericTestcase{
+			genericTestcase{"CountTagsOK", "GET", "/tags/count", ``, http.StatusOK, `{"_meta":{"total":5}}`},
 		}
 		for _, tc := range testcases {
 			genericDoTest(tc, t, asserter)

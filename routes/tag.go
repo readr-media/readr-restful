@@ -105,6 +105,16 @@ func (r *tagHandler) Delete(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
+func (r *tagHandler) Count(c *gin.Context) {
+	count, err := models.TagAPI.CountTags()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		return
+	}
+	resp := map[string]int{"total": count}
+	c.JSON(http.StatusOK, gin.H{"_meta": resp})
+}
+
 func (r *tagHandler) SetRoutes(router *gin.Engine) {
 
 	tagRouter := router.Group("/tags")
@@ -113,6 +123,8 @@ func (r *tagHandler) SetRoutes(router *gin.Engine) {
 		tagRouter.POST("", r.Post)
 		tagRouter.PUT("", r.Put)
 		tagRouter.DELETE("", r.Delete)
+
+		tagRouter.GET("/count", r.Count)
 	}
 }
 
