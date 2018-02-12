@@ -89,6 +89,10 @@ func (t *mockTagAPI) UpdatePostTags(postId int, tag_ids []int) error {
 	return nil
 }
 
+func (t *mockTagAPI) CountTags() (int, error) {
+	return len(mockTagDS), nil
+}
+
 func TestRouteTags(t *testing.T) {
 
 	tags := []models.Tag{
@@ -106,10 +110,19 @@ func TestRouteTags(t *testing.T) {
 	}
 
 	for _, params := range []models.Post{
-		models.Post{ID: 43, Active: models.NullInt{1, true}, Type: models.NullInt{1, true}},
-		models.Post{ID: 44, Active: models.NullInt{1, true}, Type: models.NullInt{0, true}},
+		models.Post{ID: 43, Active: models.NullInt{1, true}, Type: models.NullInt{1, true}, Author: models.NullString{"AMI@mirrormedia.mg", true}, UpdatedBy: models.NullString{"AMI@mirrormedia.mg", true}},
+		models.Post{ID: 44, Active: models.NullInt{1, true}, Type: models.NullInt{0, true}, Author: models.NullString{"AMI@mirrormedia.mg", true}, UpdatedBy: models.NullString{"AMI@mirrormedia.mg", true}},
 	} {
 		_, err := models.PostAPI.InsertPost(params)
+		if err != nil {
+			log.Printf("Insert post fail when init test case. Error: %v", err)
+		}
+	}
+
+	for _, params := range []models.Member{
+		models.Member{ID: "AMI@mirrormedia.mg", Active: models.NullInt{1, true}},
+	} {
+		err := models.MemberAPI.InsertMember(params)
 		if err != nil {
 			log.Printf("Insert post fail when init test case. Error: %v", err)
 		}
@@ -122,8 +135,9 @@ func TestRouteTags(t *testing.T) {
 		{43, []int{1, 2}},
 		{44, []int{1, 3}},
 	} {
-		err := models.TagAPI.UpdatePostTags(params.post_id, params.tag_ids)
-		log.Printf("Insert post tag fail when init test case. Error: %v", err)
+		if err := models.TagAPI.UpdatePostTags(params.post_id, params.tag_ids); err != nil {
+			log.Printf("Insert post tag fail when init test case. Error: %v", err)
+		}
 	}
 
 	asserter := func(resp string, tc genericTestcase, t *testing.T) {
@@ -215,4 +229,22 @@ func TestRouteTags(t *testing.T) {
 			genericDoTest(tc, t, asserter)
 		}
 	})
+	t.Run("CountTags", func(t *testing.T) {
+		testcases := []genericTestcase{
+			genericTestcase{"CountTagsOK", "GET", "/tags/count", ``, http.StatusOK, `{"_meta":{"total":5}}`},
+		}
+		for _, tc := range testcases {
+			genericDoTest(tc, t, asserter)
+		}
+	})
+	/*
+		t.Run("GetPostWithTags", func(t *testing.T) {
+			testcases := []genericTestcase{
+				genericTestcase{"GetPostWithTagsOK", "GET", "/post/43", ``, http.StatusOK, `{"_items":[{"tags":[{"id":"1","text":"text5566"},{"id":"2","text":"tag2"}],"id":43,"created_at":null,"like_amount":null,"comment_amount":null,"title":null,"content":null,"type":1,"link":null,"og_title":null,"og_description":null,"og_image":null,"active":1,"updated_at":null,"published_at":null,"link_title":null,"link_description":null,"link_image":null,"link_name":null,"author":{"id":"AMI@mirrormedia.mg","name":null,"nickname":null,"birthday":null,"gender":null,"work":null,"mail":null,"register_mode":null,"social_id":null,"talk_id":null,"created_at":null,"updated_at":null,"updated_by":null,"description":null,"profile_image":null,"identity":null,"role":null,"active":1,"custom_editor":null,"hide_profile":null,"profile_push":null,"post_push":null,"comment_push":null},"updated_by":{"id":"AMI@mirrormedia.mg","name":null,"nickname":null,"birthday":null,"gender":null,"work":null,"mail":null,"register_mode":null,"social_id":null,"talk_id":null,"created_at":null,"updated_at":null,"updated_by":null,"description":null,"profile_image":null,"identity":null,"role":null,"active":1,"custom_editor":null,"hide_profile":null,"profile_push":null,"post_push":null,"comment_push":null}}]}`},
+			}
+			for _, tc := range testcases {
+				genericDoTest(tc, t, asserter)
+			}
+		})
+	*/
 }

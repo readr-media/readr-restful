@@ -62,9 +62,11 @@ func (r *memberHandler) GetAll(c *gin.Context) {
 	result, err := models.MemberAPI.GetMembers(params)
 	if err != nil {
 		switch err.Error() {
-		case "Members Not Found":
-			c.JSON(http.StatusNotFound, gin.H{"Error": "Members Not Found"})
-			return
+		/*
+			case "Members Not Found":
+				c.JSON(http.StatusNotFound, gin.H{"Error": "Members Not Found"})
+				return
+		*/
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 			return

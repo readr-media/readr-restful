@@ -27,6 +27,7 @@ type TagInterface interface {
 	InsertTag(text string) (int, error)
 	UpdateTag(tag Tag) error
 	UpdatePostTags(postId int, tag_ids []int) error
+	CountTags() (int, error)
 }
 
 type GetTagsArgs struct {
@@ -114,6 +115,14 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []Tag, err error) {
 			tags = []Tag{}
 			log.Println(err.Error())
 			return tags, err
+		}
+		if args.ShowStats {
+			if !singleTag.RelatedNews.Valid {
+				singleTag.RelatedNews = NullInt{0, true}
+			}
+			if !singleTag.RelatedReviews.Valid {
+				singleTag.RelatedReviews = NullInt{0, true}
+			}
 		}
 		tags = append(tags, singleTag)
 	}
@@ -207,7 +216,16 @@ func (t *tagApi) UpdatePostTags(post_id int, tag_ids []int) error {
 	tx.Commit()
 
 	return nil
+}
 
+func (a *tagApi) CountTags() (result int, err error) {
+
+	err = DB.Get(&result, `SELECT COUNT(*) FROM tags`)
+	if err != nil {
+		return 0, err
+	}
+
+	return result, err
 }
 
 var TagStatus map[string]interface{}

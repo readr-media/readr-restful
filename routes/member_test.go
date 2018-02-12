@@ -38,7 +38,7 @@ func (a *mockMemberAPI) GetMembers(req models.MemberArgs) (result []models.Membe
 		if k == "$nin" && reflect.DeepEqual(v, []int{0, -1}) {
 			return []models.Member{mockMemberDS[0]}, nil
 		} else if k == "$nin" && reflect.DeepEqual(v, []int{-1, 0, 1}) {
-			return []models.Member{}, errors.New("Members Not Found")
+			return []models.Member{}, nil
 		} else if reflect.DeepEqual(v, []int{-3, 0, 1}) {
 			return []models.Member{}, errors.New("Not all active elements are valid")
 		} else if reflect.DeepEqual(v, []int{3, 4}) {
@@ -207,7 +207,7 @@ func TestRouteGetMembers(t *testing.T) {
 			[]models.Member{mockMemberDS[0]}}},
 		{"NotFound", `/members?active={"$nin":[-1,0,1]}`,
 			ExpectGetsResp{ExpectResp{
-				http.StatusNotFound, `{"Error":"Members Not Found"}`},
+				http.StatusOK, ``},
 				[]models.Member{}}},
 		{"MoreThanOneActive", `/members?active={"$nin":[1,0], "$in":[-1,3]}`,
 			ExpectGetsResp{
