@@ -220,7 +220,7 @@ func (t *tagApi) UpdatePostTags(post_id int, tag_ids []int) error {
 
 func (a *tagApi) CountTags() (result int, err error) {
 
-	err = DB.Get(&result, `SELECT COUNT(*) FROM tags`)
+	err = DB.Get(&result, `SELECT COUNT(*) FROM tags WHERE active = 1`)
 	if err != nil {
 		return 0, err
 	}
