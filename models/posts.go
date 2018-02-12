@@ -121,6 +121,11 @@ func (p *PostArgs) parse() (restricts string, values []interface{}) {
 				where = append(where, fmt.Sprintf("%s %s (?)", arg, operatorHelper(k)))
 				values = append(values, v)
 			}
+		case "type", "posts.type":
+			for k, v := range value.(map[string][]int) {
+				where = append(where, fmt.Sprintf("%s %s (?)", arg, operatorHelper(k)))
+				values = append(values, v)
+			}
 		}
 	}
 	if len(where) > 1 {

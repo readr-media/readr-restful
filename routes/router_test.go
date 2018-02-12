@@ -150,6 +150,7 @@ var mockPostDS = []models.Post{
 		Active:    models.NullInt{Int: 1, Valid: true},
 		UpdatedAt: models.NullTime{Time: time.Date(2017, 11, 8, 16, 27, 52, 0, time.UTC), Valid: true},
 		UpdatedBy: models.NullString{String: "superman@mirrormedia.mg", Valid: true},
+		Type:      models.NullInt{Int: 1, Valid: true},
 	},
 	models.Post{
 		ID:         2,
@@ -158,6 +159,7 @@ var mockPostDS = []models.Post{
 		Title:      models.NullString{String: "", Valid: true},
 		LikeAmount: models.NullInt{Int: 256, Valid: true},
 		UpdatedAt:  models.NullTime{Time: time.Date(2017, 12, 18, 23, 11, 37, 0, time.UTC), Valid: true},
+		Type:       models.NullInt{Int: 2, Valid: true},
 	},
 	models.Post{
 		ID:         6,
@@ -166,6 +168,7 @@ var mockPostDS = []models.Post{
 		Title:      models.NullString{String: "", Valid: true},
 		LikeAmount: models.NullInt{Int: 257, Valid: true},
 		UpdatedAt:  models.NullTime{Time: time.Date(2017, 10, 23, 7, 55, 25, 0, time.UTC), Valid: true},
+		Type:       models.NullInt{Int: 0, Valid: true},
 	},
 	models.Post{
 		ID:        4,
@@ -173,6 +176,7 @@ var mockPostDS = []models.Post{
 		Author:    models.NullString{String: "Major.Tom@mirrormedia.mg", Valid: true},
 		UpdatedAt: models.NullTime{Time: time.Date(2018, 1, 3, 12, 22, 20, 0, time.UTC), Valid: true},
 		CreatedAt: models.NullTime{Time: time.Date(2017, 12, 31, 23, 59, 59, 999, time.UTC), Valid: true},
+		Type:      models.NullInt{Int: 1, Valid: true},
 	},
 }
 

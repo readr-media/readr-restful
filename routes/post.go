@@ -15,6 +15,15 @@ import (
 
 type postHandler struct{}
 
+type postArgs struct {
+	MaxResult uint8  `form:"max_result"`
+	Page      uint16 `form:"page"`
+	Sorting   string `form:"sort"`
+	Active    string `form:"active"`
+	Author    string `form:"author"`
+	Type      string `form:"type"`
+}
+
 func (r *postHandler) GetAll(c *gin.Context) {
 
 	var params models.PostArgs = make(map[string]interface{})
@@ -28,6 +37,7 @@ func (r *postHandler) GetAll(c *gin.Context) {
 		Sorting   string `form:"sort"`
 		Active    string `form:"active"`
 		Author    string `form:"author"`
+		Type      string `form:"type"`
 	}{MaxResult: 20, Page: 1, Sorting: "-updated_at"}
 
 	if err := c.ShouldBindQuery(&args); err != nil {
@@ -57,6 +67,14 @@ func (r *postHandler) GetAll(c *gin.Context) {
 		}
 	} else {
 		params["posts.active"] = map[string][]int{"$nin": []int{int(models.PostStatus["deactive"].(float64))}}
+	}
+	if args.Type != "" {
+		typemap := map[string][]int{}
+		if err := json.Unmarshal([]byte(args.Type), &typemap); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid type list: %s", err.Error())})
+			return
+		}
+		params["posts.type"] = typemap
 	}
 
 	params["max_result"] = args.MaxResult
@@ -300,6 +318,7 @@ func (r *postHandler) Count(c *gin.Context) {
 	args := struct {
 		Active string `form:"active"`
 		Author string `form:"author"`
+		Type   string `form:"type"`
 	}{}
 	if err := c.ShouldBindQuery(&args); err != nil {
 		log.Printf(fmt.Sprintf("Binding query error: %s", err.Error()))
@@ -329,7 +348,16 @@ func (r *postHandler) Count(c *gin.Context) {
 	} else {
 		params["active"] = map[string][]int{"$nin": []int{int(models.PostStatus["deactive"].(float64))}}
 	}
+	if args.Type != "" {
+		typemap := map[string][]int{}
+		if err := json.Unmarshal([]byte(args.Type), &typemap); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid type list: %s", err.Error())})
+			return
+		}
+		params["type"] = typemap
+	}
 
+	fmt.Println(params)
 	count, err := models.PostAPI.Count(params)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
