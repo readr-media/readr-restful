@@ -48,7 +48,6 @@ type PostInterface interface {
 	DeletePost(id uint32) error
 	GetPosts(args PostArgs) (result []PostMember, err error)
 	GetPost(id uint32) (TaggedPostMember, error)
-	//GetPosts(maxResult uint8, page uint16, sortMethod string) ([]PostMember, error)
 	InsertPost(p Post) (int, error)
 	UpdateAll(req PostUpdateArgs) error
 	UpdatePost(p Post) error
@@ -97,12 +96,6 @@ type PostMember struct {
 	UpdatedBy `json:"updated_by" db:"updated_by"`
 }
 
-// type PostArgs struct {
-// 	BasicArgs
-// 	Active string `form:"active"`
-// 	Author string `form:"author"`
-// }
-
 type PostUpdateArgs struct {
 	IDs       []int    `json:"ids"`
 	UpdatedBy string   `form:"updated_by" json:"updated_by" db:"updated_by"`
@@ -125,6 +118,11 @@ func (p *PostArgs) parse() (restricts string, values []interface{}) {
 		//      Count, GetAll
 		case "author", "posts.author":
 			for k, v := range value.(map[string][]string) {
+				where = append(where, fmt.Sprintf("%s %s (?)", arg, operatorHelper(k)))
+				values = append(values, v)
+			}
+		case "type", "posts.type":
+			for k, v := range value.(map[string][]int) {
 				where = append(where, fmt.Sprintf("%s %s (?)", arg, operatorHelper(k)))
 				values = append(values, v)
 			}
@@ -177,9 +175,10 @@ func (a *postAPI) GetPosts(req PostArgs) (result []PostMember, err error) {
 		result = append(result, singlePost)
 	}
 	// err = DB.Select(&result, query, args.MaxResult, (args.Page-1)*uint16(args.MaxResult))
-	if len(result) == 0 {
-		result = []PostMember{}
-	}
+	// if len(result) == 0 {
+	// 	result = []PostMember{}
+	// 	err = errors.New("Posts Not Found")
+	// }
 	return result, err
 }
 

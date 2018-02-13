@@ -61,16 +61,8 @@ func (r *memberHandler) GetAll(c *gin.Context) {
 
 	result, err := models.MemberAPI.GetMembers(params)
 	if err != nil {
-		switch err.Error() {
-		/*
-			case "Members Not Found":
-				c.JSON(http.StatusNotFound, gin.H{"Error": "Members Not Found"})
-				return
-		*/
-		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
-			return
-		}
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		return
 	}
 	c.JSON(http.StatusOK, gin.H{"_items": result})
 }
@@ -174,7 +166,7 @@ func (r *memberHandler) DeleteAll(c *gin.Context) {
 		return
 	}
 
-	err = models.MemberAPI.SetMultipleActive(ids, int(models.MemberStatus["delete"].(float64)))
+	err = models.MemberAPI.UpdateAll(ids, int(models.MemberStatus["delete"].(float64)))
 	if err != nil {
 		switch err.Error() {
 		case "Members Not Found":
@@ -218,7 +210,7 @@ func (r *memberHandler) ActivateAll(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Request Body"})
 		return
 	}
-	err = models.MemberAPI.SetMultipleActive(payload.IDs, int(models.MemberStatus["active"].(float64)))
+	err = models.MemberAPI.UpdateAll(payload.IDs, int(models.MemberStatus["active"].(float64)))
 	if err != nil {
 		switch err.Error() {
 		case "Members Not Found":

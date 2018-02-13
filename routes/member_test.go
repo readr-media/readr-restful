@@ -149,7 +149,7 @@ func (a *mockMemberAPI) DeleteMember(id string) error {
 	return err
 }
 
-func (a *mockMemberAPI) SetMultipleActive(ids []string, active int) (err error) {
+func (a *mockMemberAPI) UpdateAll(ids []string, active int) (err error) {
 
 	result := make([]int, 0)
 	for _, value := range ids {
@@ -205,7 +205,7 @@ func TestRouteGetMembers(t *testing.T) {
 			[]models.Member{mockMemberDS[0]}}},
 		{"CustomEditorFilter", `/members?custom_editor=true`, ExpectGetsResp{ExpectResp{http.StatusOK, ""},
 			[]models.Member{mockMemberDS[0]}}},
-		{"NotFound", `/members?active={"$nin":[-1,0,1]}`,
+		{"NoMatchMembers", `/members?active={"$nin":[-1,0,1]}`,
 			ExpectGetsResp{ExpectResp{
 				http.StatusOK, ``},
 				[]models.Member{}}},
