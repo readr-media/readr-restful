@@ -10,6 +10,13 @@
         "port": 0,
         "password": ""
     },
+    "mongo":{
+        "talk": {
+            "host": "",
+            "port": 0,
+            "password": ""
+        }
+    },
     "mail":{
         "host": "",
         "port": 0,
