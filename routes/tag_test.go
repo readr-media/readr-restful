@@ -19,16 +19,23 @@ type mockTagAPI struct{}
 func (t *mockTagAPI) ToggleTags(ids []int, active string) error { return nil }
 
 func (t *mockTagAPI) GetTags(args models.GetTagsArgs) (tags []models.Tag, err error) {
-	var result = mockTagDS
+	var result []models.Tag
 	var offset = int(args.Page-1) * int(args.MaxResult)
 
+	for _, t := range mockTagDS {
+		if t.Active.Int != 0 {
+			result = append(result, t)
+		}
+	}
+
 	if args.Keyword != "" {
-		result = []models.Tag{}
-		for _, t := range mockTagDS {
+		newResult := []models.Tag{}
+		for _, t := range result {
 			if strings.HasPrefix(t.Text, args.Keyword) {
-				result = append(result, t)
+				newResult = append(newResult, t)
 			}
 		}
+		result = newResult
 	}
 
 	if offset > len(mockTagDS) {
@@ -206,7 +213,6 @@ func TestRouteTags(t *testing.T) {
 	t.Run("InsertTag", func(t *testing.T) {
 		testcases := []genericTestcase{
 			genericTestcase{"PostTagOK", "POST", "/tags", `{"name":"insert1"}`, http.StatusOK, `{"tag_id":5}`},
-			genericTestcase{"PostTagDupe", "POST", "/tags", `{"name":"insert1"}`, http.StatusBadRequest, `{"Error":"Duplicate Entry"}`},
 		}
 		for _, tc := range testcases {
 			genericDoTest(tc, t, asserter)
@@ -231,7 +237,17 @@ func TestRouteTags(t *testing.T) {
 	})
 	t.Run("CountTags", func(t *testing.T) {
 		testcases := []genericTestcase{
-			genericTestcase{"CountTagsOK", "GET", "/tags/count", ``, http.StatusOK, `{"_meta":{"total":5}}`},
+			genericTestcase{"CountTagsOK", "GET", "/tags/count", ``, http.StatusOK, `{"_meta":{"total":1}}`},
+		}
+		for _, tc := range testcases {
+			genericDoTest(tc, t, asserter)
+		}
+	})
+	t.Run("InsertDupeTag", func(t *testing.T) {
+		testcases := []genericTestcase{
+			genericTestcase{"PostTagDupe", "POST", "/tags", `{"name":"insert1"}`, http.StatusBadRequest, `{"Error":"Duplicate Entry"}`},
+			genericTestcase{"PostSameAsInactiveTagOK", "POST", "/tags", `{"name":"text5566"}`, http.StatusOK, `{"tag_id":6}`},
+			genericTestcase{"PostSameAsActiveTag", "POST", "/tags", `{"name":"text5566"}`, http.StatusBadRequest, `{"Error":"Duplicate Entry"}`},
 		}
 		for _, tc := range testcases {
 			genericDoTest(tc, t, asserter)
