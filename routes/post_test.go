@@ -267,7 +267,7 @@ func TestRouteGetPosts(t *testing.T) {
 
 	type ExpectGetsResp struct {
 		ExpectResp
-		resp []models.PostMember
+		resp []models.TaggedPostMember
 	}
 	testPostsGetCases := []struct {
 		name   string
@@ -275,41 +275,41 @@ func TestRouteGetPosts(t *testing.T) {
 		expect ExpectGetsResp
 	}{
 		{"UpdatedAtDescending", "/posts", ExpectGetsResp{ExpectResp{http.StatusOK, ""},
-			[]models.PostMember{
-				{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
-				{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}},
-				{Post: mockPostDS[0], Member: mockMemberDS[0], UpdatedBy: models.UpdatedBy(mockMemberDS[0])},
-				{Post: mockPostDS[2], Member: mockMemberDS[2], UpdatedBy: models.UpdatedBy{}},
+			[]models.TaggedPostMember{
+				{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}}},
+				{PostMember: models.PostMember{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}}},
+				{PostMember: models.PostMember{Post: mockPostDS[0], Member: mockMemberDS[0], UpdatedBy: models.UpdatedBy(mockMemberDS[0])}},
+				{PostMember: models.PostMember{Post: mockPostDS[2], Member: mockMemberDS[2], UpdatedBy: models.UpdatedBy{}}},
 			}}},
 		{"UpdatedAtAscending", "/posts?sort=updated_at", ExpectGetsResp{ExpectResp{http.StatusOK, ""},
-			[]models.PostMember{
-				{Post: mockPostDS[2], Member: mockMemberDS[2], UpdatedBy: models.UpdatedBy{}},
-				{Post: mockPostDS[0], Member: mockMemberDS[0], UpdatedBy: models.UpdatedBy(mockMemberDS[0])},
-				{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}},
-				{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
+			[]models.TaggedPostMember{
+				{PostMember: models.PostMember{Post: mockPostDS[2], Member: mockMemberDS[2], UpdatedBy: models.UpdatedBy{}}},
+				{PostMember: models.PostMember{Post: mockPostDS[0], Member: mockMemberDS[0], UpdatedBy: models.UpdatedBy(mockMemberDS[0])}},
+				{PostMember: models.PostMember{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}}},
+				{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}}},
 			}}},
 		{"max_result", "/posts?max_result=2", ExpectGetsResp{ExpectResp{http.StatusOK, ""},
-			[]models.PostMember{
-				{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
-				{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}},
+			[]models.TaggedPostMember{
+				{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}}},
+				{PostMember: models.PostMember{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}}},
 			}}},
 		{"AuthorFilter", `/posts?author={"$in":["superman@mirrormedia.mg", "Major.Tom@mirrormedia.mg"]}`, ExpectGetsResp{ExpectResp{http.StatusOK, ""},
-			[]models.PostMember{
-				{Post: mockPostDS[0], Member: mockMemberDS[0], UpdatedBy: models.UpdatedBy(mockMemberDS[0])},
-				{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
+			[]models.TaggedPostMember{
+				{PostMember: models.PostMember{Post: mockPostDS[0], Member: mockMemberDS[0], UpdatedBy: models.UpdatedBy(mockMemberDS[0])}},
+				{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}}},
 			}}},
 		{"ActiveFilter", `/posts?active={"$nin":[1,4]}`, ExpectGetsResp{ExpectResp{http.StatusOK, ""},
-			[]models.PostMember{
-				{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}},
-				{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
+			[]models.TaggedPostMember{
+				{PostMember: models.PostMember{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}}},
+				{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}}},
 			}}},
 		{"NotFound", `/posts?active={"$nin":[0,1,2,3,4]}`, ExpectGetsResp{ExpectResp{http.StatusOK, ``},
-			[]models.PostMember{}}},
+			[]models.TaggedPostMember{}}},
 		{"Type", `/posts?type={"$in":[1,2]}`, ExpectGetsResp{ExpectResp{http.StatusOK, ``},
-			[]models.PostMember{
-				{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}},
-				{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}},
-				{Post: mockPostDS[0], Member: mockMemberDS[0], UpdatedBy: models.UpdatedBy(mockMemberDS[0])},
+			[]models.TaggedPostMember{
+				{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}}},
+				{PostMember: models.PostMember{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}}},
+				{PostMember: models.PostMember{Post: mockPostDS[0], Member: mockMemberDS[0], UpdatedBy: models.UpdatedBy(mockMemberDS[0])}},
 			}}},
 	}
 	for _, tc := range testPostsGetCases {
@@ -324,7 +324,7 @@ func TestRouteGetPosts(t *testing.T) {
 			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
 				t.Errorf("%s expect to get error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
 			}
-			expected, _ := json.Marshal(map[string][]models.PostMember{"_items": tc.expect.resp})
+			expected, _ := json.Marshal(map[string][]models.TaggedPostMember{"_items": tc.expect.resp})
 			if w.Code == http.StatusOK && w.Body.String() != string(expected) {
 				t.Errorf("%s response want\n%s\nbut get\n%s", tc.name, string(expected), w.Body.String())
 			}
