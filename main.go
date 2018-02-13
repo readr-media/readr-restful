@@ -52,6 +52,9 @@ func main() {
 		"password": fmt.Sprint(viper.Get("redis.password")),
 	})
 
+	// Init Mongodb connection
+	models.MongoConn(fmt.Sprint("mongodb://", viper.Get("mongo.talk.host"), ":", viper.Get("mongo.talk.port"), "/talk"))
+
 	// init mail sender
 	dialer := gomail.NewDialer(
 		viper.Get("mail.host").(string),
@@ -65,7 +68,7 @@ func main() {
 	c.AddFunc("@hourly", func() { models.PostCache.SyncFromDataStorage() })
 	c.Start()
 
-	models.PostCache.SyncFromDataStorage()
+	models.InitPostCache()
 
 	routes.AuthHandler.SetRoutes(router)
 	routes.FollowingHandler.SetRoutes(router)
