@@ -16,7 +16,20 @@ var mockPostTagDS []map[string]int
 
 type mockTagAPI struct{}
 
-func (t *mockTagAPI) ToggleTags(ids []int, active string) error { return nil }
+func (t *mockTagAPI) ToggleTags(ids []int, active string) error {
+	for _, id := range ids {
+		for index, tags := range mockTagDS {
+			if tags.ID == id {
+				if active == "active" {
+					mockTagDS[index].Active = models.NullInt{1, true}
+				} else {
+					mockTagDS[index].Active = models.NullInt{0, true}
+				}
+			}
+		}
+	}
+	return nil
+}
 
 func (t *mockTagAPI) GetTags(args models.GetTagsArgs) (tags []models.Tag, err error) {
 	var result []models.Tag
@@ -63,7 +76,7 @@ func (t *mockTagAPI) GetTags(args models.GetTagsArgs) (tags []models.Tag, err er
 func (t *mockTagAPI) InsertTag(text string) (int, error) {
 	index := len(mockTagDS) + 1
 	for _, t := range mockTagDS {
-		if t.Text == text {
+		if t.Text == text && t.Active.Int == 1 {
 			return 0, errors.New(`Duplicate Entry`)
 		}
 	}
@@ -73,7 +86,7 @@ func (t *mockTagAPI) InsertTag(text string) (int, error) {
 
 func (t *mockTagAPI) UpdateTag(tag models.Tag) error {
 	for _, t := range mockTagDS {
-		if t.Text == tag.Text {
+		if t.Text == tag.Text && t.Active.Int == 1 {
 			return errors.New(`Duplicate Entry`)
 		}
 	}
@@ -97,7 +110,15 @@ func (t *mockTagAPI) UpdatePostTags(postId int, tag_ids []int) error {
 }
 
 func (t *mockTagAPI) CountTags() (int, error) {
-	return len(mockTagDS), nil
+	var result []models.Tag
+
+	for _, t := range mockTagDS {
+		if t.Active.Int != 0 {
+			result = append(result, t)
+		}
+	}
+
+	return len(result), nil
 }
 
 func TestRouteTags(t *testing.T) {
