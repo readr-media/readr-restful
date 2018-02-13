@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"database/sql"
+
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 )
@@ -131,8 +133,17 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []Tag, err error) {
 }
 
 func (t *tagApi) InsertTag(text string) (int, error) {
+	var existTag Tag
+	query := fmt.Sprint("SELECT * FROM tags WHERE active=", TagStatus["active"].(float64), " AND tag_content=?;")
+	err := DB.Get(&existTag, query, text)
+	if err != nil && err != sql.ErrNoRows {
+		return 0, err
+	}
+	if existTag.ID > 0 {
+		return 0, DuplicateError
+	}
 
-	query := fmt.Sprintf(`INSERT INTO tags (tag_content) VALUES (?);`)
+	query = fmt.Sprintf(`INSERT INTO tags (tag_content) VALUES (?);`)
 
 	result, err := DB.Exec(query, text)
 	if err != nil {
@@ -154,9 +165,19 @@ func (t *tagApi) InsertTag(text string) (int, error) {
 
 func (t *tagApi) UpdateTag(tag Tag) error {
 
+	var existTag Tag
+	query := fmt.Sprint("SELECT * FROM tags WHERE active=", TagStatus["active"].(float64), " AND tag_content=?;")
+	err := DB.Get(&existTag, query, tag.Text)
+	if err != nil && err != sql.ErrNoRows {
+		return err
+	}
+	if existTag.ID > 0 {
+		return DuplicateError
+	}
+
 	dbTags := getStructDBTags("partial", tag)
 	fields := makeFieldString("update", `%s = :%s`, dbTags)
-	query := fmt.Sprintf(`UPDATE tags SET %s WHERE tag_id = :tag_id`,
+	query = fmt.Sprintf(`UPDATE tags SET %s WHERE tag_id = :tag_id`,
 		strings.Join(fields, ", "))
 
 	result, err := DB.NamedExec(query, tag)

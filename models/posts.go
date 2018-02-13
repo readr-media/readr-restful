@@ -46,7 +46,7 @@ var PostAPI PostInterface = new(postAPI)
 
 type PostInterface interface {
 	DeletePost(id uint32) error
-	GetPosts(args PostArgs) (result []PostMember, err error)
+	GetPosts(args PostArgs) (result []TaggedPostMember, err error)
 	GetPost(id uint32) (TaggedPostMember, error)
 	InsertPost(p Post) (int, error)
 	UpdateAll(req PostUpdateArgs) error
@@ -136,18 +136,21 @@ func (p *PostArgs) parse() (restricts string, values []interface{}) {
 	return restricts, values
 }
 
-func (a *postAPI) GetPosts(req PostArgs) (result []PostMember, err error) {
-
-	var singlePost PostMember
+func (a *postAPI) GetPosts(req PostArgs) (result []TaggedPostMember, err error) {
 
 	restricts, values := req.parse()
 
 	tags := getStructDBTags("full", Member{})
 	authorField := makeFieldString("get", `author.%s "author.%s"`, tags)
 	updatedByField := makeFieldString("get", `updated_by.%s "updated_by.%s"`, tags)
-	query := fmt.Sprintf(`SELECT posts.*, %s, %s FROM posts
+	query := fmt.Sprintf(`SELECT posts.*, %s, %s, t.tags as tags  FROM posts
 		LEFT JOIN members AS author ON posts.author = author.member_id
 		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.member_id
+		LEFT JOIN (
+			SELECT pt.post_id as post_id, GROUP_CONCAT(CONCAT(t.tag_id, ":", t.tag_content) SEPARATOR ',') as tags 
+			FROM post_tags as pt LEFT JOIN tags as t ON t.tag_id = pt.tag_id 
+			GROUP BY pt.post_id
+		) AS t ON t.post_id = posts.post_id
 		WHERE %s `,
 		strings.Join(authorField, ","), strings.Join(updatedByField, ","), restricts)
 
@@ -168,8 +171,9 @@ func (a *postAPI) GetPosts(req PostArgs) (result []PostMember, err error) {
 		return nil, err
 	}
 	for rows.Next() {
+		var singlePost TaggedPostMember
 		if err = rows.StructScan(&singlePost); err != nil {
-			result = []PostMember{}
+			result = []TaggedPostMember{}
 			return result, err
 		}
 		result = append(result, singlePost)
@@ -188,14 +192,14 @@ func (a *postAPI) GetPost(id uint32) (TaggedPostMember, error) {
 	tags := getStructDBTags("full", Member{})
 	author := makeFieldString("get", `author.%s "author.%s"`, tags)
 	updatedBy := makeFieldString("get", `updated_by.%s "updated_by.%s"`, tags)
-	query := fmt.Sprintf(`SELECT posts.*, %s, %s, tags.tags as tags FROM posts
+	query := fmt.Sprintf(`SELECT posts.*, %s, %s, t.tags as tags FROM posts
 		LEFT JOIN members AS author ON posts.author = author.member_id 
 		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.member_id 
 		LEFT JOIN (
 			SELECT pt.post_id as post_id, GROUP_CONCAT(CONCAT(t.tag_id, ":", t.tag_content) SEPARATOR ',') as tags 
 			FROM post_tags as pt LEFT JOIN tags as t ON t.tag_id = pt.tag_id 
 			GROUP BY pt.post_id
-		) AS tags ON tags.post_id = posts.post_id WHERE posts.post_id = ?`,
+		) AS t ON t.post_id = posts.post_id WHERE posts.post_id = ?`,
 		strings.Join(author, ","), strings.Join(updatedBy, ","))
 
 	err := DB.Get(&post, query, id)
