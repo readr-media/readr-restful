@@ -46,12 +46,12 @@ var PostAPI PostInterface = new(postAPI)
 
 type PostInterface interface {
 	DeletePost(id uint32) error
-	GetPosts(args PostArgs) (result []TaggedPostMember, err error)
+	GetPosts(args *PostArgs) (result []TaggedPostMember, err error)
 	GetPost(id uint32) (TaggedPostMember, error)
 	InsertPost(p Post) (int, error)
 	UpdateAll(req PostUpdateArgs) error
 	UpdatePost(p Post) error
-	Count(req PostArgs) (result int, err error)
+	Count(req *PostArgs) (result int, err error)
 }
 
 type TaggedPost struct {
@@ -103,29 +103,49 @@ type PostUpdateArgs struct {
 	Active    NullInt  `json:"-" db:"active"`
 }
 
-type PostArgs map[string]interface{}
+// type PostArgs map[string]interface{}
+type PostArgs struct {
+	MaxResult uint8               `form:"max_result"`
+	Page      uint16              `form:"page"`
+	Sorting   string              `form:"sort"`
+	Active    map[string][]int    `form:"active"`
+	Author    map[string][]string `form:"author"`
+	Type      map[string][]int    `form:"type"`
+}
 
+func (p *PostArgs) Default() (result *PostArgs) {
+	return &PostArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at"}
+}
+
+func (p *PostArgs) DefaultActive() {
+	p.Active = map[string][]int{"$nin": []int{int(PostStatus["deactive"].(float64))}}
+}
+
+func (p *PostArgs) anyFilter() (result bool) {
+	return p.Active != nil || p.Author != nil || p.Type != nil
+}
 func (p *PostArgs) parse() (restricts string, values []interface{}) {
 	where := make([]string, 0)
-	for arg, value := range *p {
-		switch arg {
-		//	  Count  , GetAll
-		case "active", "posts.active":
-			for k, v := range value.(map[string][]int) {
-				where = append(where, fmt.Sprintf("%s %s (?)", arg, operatorHelper(k)))
-				values = append(values, v)
-			}
-		//      Count, GetAll
-		case "author", "posts.author":
-			for k, v := range value.(map[string][]string) {
-				where = append(where, fmt.Sprintf("%s %s (?)", arg, operatorHelper(k)))
-				values = append(values, v)
-			}
-		case "type", "posts.type":
-			for k, v := range value.(map[string][]int) {
-				where = append(where, fmt.Sprintf("%s %s (?)", arg, operatorHelper(k)))
-				values = append(values, v)
-			}
+
+	if p.Active != nil {
+		fmt.Println("Active!")
+		for k, v := range p.Active {
+			where = append(where, fmt.Sprintf("%s %s (?)", "posts.active", operatorHelper(k)))
+			values = append(values, v)
+		}
+	}
+
+	if p.Author != nil {
+		for k, v := range p.Author {
+			where = append(where, fmt.Sprintf("%s %s (?)", "posts.author", operatorHelper(k)))
+			values = append(values, v)
+		}
+	}
+
+	if p.Type != nil {
+		for k, v := range p.Type {
+			where = append(where, fmt.Sprintf("%s %s (?)", "posts.type", operatorHelper(k)))
+			values = append(values, v)
 		}
 	}
 	if len(where) > 1 {
@@ -136,10 +156,42 @@ func (p *PostArgs) parse() (restricts string, values []interface{}) {
 	return restricts, values
 }
 
-func (a *postAPI) GetPosts(req PostArgs) (result []TaggedPostMember, err error) {
+// func (p *PostArgs) parse() (restricts string, values []interface{}) {
+// 	where := make([]string, 0)
+// 	for arg, value := range *p {
+// 		switch arg {
+// 		//	  Count  , GetAll
+// 		case "active", "posts.active":
+// 			for k, v := range value.(map[string][]int) {
+// 				where = append(where, fmt.Sprintf("%s %s (?)", arg, operatorHelper(k)))
+// 				values = append(values, v)
+// 			}
+// 		//      Count, GetAll
+// 		case "author", "posts.author":
+// 			for k, v := range value.(map[string][]string) {
+// 				where = append(where, fmt.Sprintf("%s %s (?)", arg, operatorHelper(k)))
+// 				values = append(values, v)
+// 			}
+// 		case "type", "posts.type":
+// 			for k, v := range value.(map[string][]int) {
+// 				where = append(where, fmt.Sprintf("%s %s (?)", arg, operatorHelper(k)))
+// 				values = append(values, v)
+// 			}
+// 		}
+// 	}
+// 	if len(where) > 1 {
+// 		restricts = strings.Join(where, " AND ")
+// 	} else if len(where) == 1 {
+// 		restricts = where[0]
+// 	}
+// 	return restricts, values
+// }
+
+func (a *postAPI) GetPosts(req *PostArgs) (result []TaggedPostMember, err error) {
 
 	restricts, values := req.parse()
-
+	fmt.Println(restricts)
+	fmt.Println(values)
 	tags := getStructDBTags("full", Member{})
 	authorField := makeFieldString("get", `author.%s "author.%s"`, tags)
 	updatedByField := makeFieldString("get", `updated_by.%s "updated_by.%s"`, tags)
@@ -147,8 +199,8 @@ func (a *postAPI) GetPosts(req PostArgs) (result []TaggedPostMember, err error) 
 		LEFT JOIN members AS author ON posts.author = author.member_id
 		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.member_id
 		LEFT JOIN (
-			SELECT pt.post_id as post_id, GROUP_CONCAT(CONCAT(t.tag_id, ":", t.tag_content) SEPARATOR ',') as tags 
-			FROM post_tags as pt LEFT JOIN tags as t ON t.tag_id = pt.tag_id 
+			SELECT pt.post_id as post_id, GROUP_CONCAT(CONCAT(t.tag_id, ":", t.tag_content) SEPARATOR ',') as tags
+			FROM post_tags as pt LEFT JOIN tags as t ON t.tag_id = pt.tag_id
 			GROUP BY pt.post_id
 		) AS t ON t.post_id = posts.post_id
 		WHERE %s `,
@@ -164,8 +216,8 @@ func (a *postAPI) GetPosts(req PostArgs) (result []TaggedPostMember, err error) 
 
 	// Attach the order part to query with expanded amounts of placeholder.
 	// Append limit and offset to args slice
-	query = query + fmt.Sprintf(`ORDER BY %s LIMIT ? OFFSET ?`, orderByHelper(req["sort"].(string)))
-	args = append(args, req["max_result"].(uint8), (req["page"].(uint16)-1)*uint16(req["max_result"].(uint8)))
+	query = query + fmt.Sprintf(`ORDER BY %s LIMIT ? OFFSET ?`, orderByHelper(req.Sorting))
+	args = append(args, req.MaxResult, (req.Page-1)*uint16(req.MaxResult))
 	rows, err := DB.Queryx(query, args...)
 	if err != nil {
 		return nil, err
@@ -179,10 +231,6 @@ func (a *postAPI) GetPosts(req PostArgs) (result []TaggedPostMember, err error) 
 		result = append(result, singlePost)
 	}
 	// err = DB.Select(&result, query, args.MaxResult, (args.Page-1)*uint16(args.MaxResult))
-	// if len(result) == 0 {
-	// 	result = []PostMember{}
-	// 	err = errors.New("Posts Not Found")
-	// }
 	return result, err
 }
 
@@ -319,9 +367,9 @@ func (a *postAPI) UpdateAll(req PostUpdateArgs) error {
 	return nil
 }
 
-func (a *postAPI) Count(req PostArgs) (result int, err error) {
+func (a *postAPI) Count(req *PostArgs) (result int, err error) {
 
-	if len(req) == 0 {
+	if !req.anyFilter() {
 		rows, err := DB.Queryx(`SELECT COUNT(*) FROM posts`)
 		if err != nil {
 			return 0, err
@@ -331,7 +379,7 @@ func (a *postAPI) Count(req PostArgs) (result int, err error) {
 				return 0, err
 			}
 		}
-	} else if len(req) > 0 {
+	} else {
 
 		restricts, values := req.parse()
 		query := fmt.Sprintf(`SELECT COUNT(*) FROM (SELECT post_id FROM posts WHERE %s) AS subquery`, restricts)
@@ -342,6 +390,7 @@ func (a *postAPI) Count(req PostArgs) (result int, err error) {
 		}
 		query = DB.Rebind(query)
 		count, err := DB.Queryx(query, args...)
+		fmt.Println(query, args)
 		if err != nil {
 			return 0, err
 		}

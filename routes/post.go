@@ -2,8 +2,6 @@ package routes
 
 import (
 	"encoding/json"
-	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -24,65 +22,44 @@ type postArgs struct {
 	Type      string `form:"type"`
 }
 
+func (r *postHandler) bindQuery(c *gin.Context, args *models.PostArgs) (err error) {
+	if err = c.ShouldBindQuery(args); err == nil {
+		return nil
+	}
+	// Start parsing rest of request arguments
+	if c.Query("author") != "" && args.Author == nil {
+		if err = json.Unmarshal([]byte(c.Query("author")), &args.Author); err != nil {
+			return err
+		}
+	}
+	if c.Query("active") != "" && args.Active == nil {
+		if err = json.Unmarshal([]byte(c.Query("active")), &args.Active); err != nil {
+			return err
+		} else if err == nil {
+			if err = models.ValidateActive(args.Active, models.PostStatus); err != nil {
+				return err
+			}
+		}
+	}
+	if c.Query("type") != "" && args.Type == nil {
+		if err = json.Unmarshal([]byte(c.Query("type")), &args.Type); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (r *postHandler) GetAll(c *gin.Context) {
-
-	var params models.PostArgs = make(map[string]interface{})
-	// Default query parameters
-	// args := models.PostArgs{
-	// 	BasicArgs: models.BasicArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at"},
-	// }
-	args := struct {
-		MaxResult uint8  `form:"max_result"`
-		Page      uint16 `form:"page"`
-		Sorting   string `form:"sort"`
-		Active    string `form:"active"`
-		Author    string `form:"author"`
-		Type      string `form:"type"`
-	}{MaxResult: 20, Page: 1, Sorting: "-updated_at"}
-
-	if err := c.ShouldBindQuery(&args); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Bind query error: %s", err.Error())})
+	var args = &models.PostArgs{}
+	args = args.Default()
+	if err := r.bindQuery(c, args); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
-
-	if args.Author != "" {
-		authormap := map[string][]string{}
-		if err := json.Unmarshal([]byte(args.Author), &authormap); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid author list: %s", err.Error())})
-			return
-		}
-		params["posts.author"] = authormap
+	if args.Active == nil {
+		args.DefaultActive()
 	}
-	if args.Active != "" {
-		activemap := map[string][]int{}
-		if err := json.Unmarshal([]byte(args.Active), &activemap); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid active list: %s", err.Error())})
-			return
-		} else if err == nil {
-			if err = models.ValidateActive(activemap, models.PostStatus); err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid active list: %s", err.Error())})
-				return
-			}
-			params["posts.active"] = activemap
-		}
-	} else {
-		params["posts.active"] = map[string][]int{"$nin": []int{int(models.PostStatus["deactive"].(float64))}}
-	}
-	if args.Type != "" {
-		typemap := map[string][]int{}
-		if err := json.Unmarshal([]byte(args.Type), &typemap); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid type list: %s", err.Error())})
-			return
-		}
-		params["posts.type"] = typemap
-	}
-
-	params["max_result"] = args.MaxResult
-	params["page"] = args.Page
-	params["sort"] = args.Sorting
-
-	// fmt.Println(params)
-	result, err := models.PostAPI.GetPosts(params)
+	result, err := models.PostAPI.GetPosts(args)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 		return
@@ -312,53 +289,13 @@ func (r *postHandler) PublishAll(c *gin.Context) {
 }
 
 func (r *postHandler) Count(c *gin.Context) {
-
-	var params models.PostArgs = make(map[string]interface{})
-
-	args := struct {
-		Active string `form:"active"`
-		Author string `form:"author"`
-		Type   string `form:"type"`
-	}{}
-	if err := c.ShouldBindQuery(&args); err != nil {
-		log.Printf(fmt.Sprintf("Binding query error: %s", err.Error()))
+	var args = &models.PostArgs{}
+	args = args.Default()
+	if err := r.bindQuery(c, args); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
 	}
-
-	if args.Author != "" {
-		authormap := map[string][]string{}
-		if err := json.Unmarshal([]byte(args.Author), &authormap); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid author list: %s", err.Error())})
-			return
-		}
-		params["author"] = authormap
-	}
-
-	if args.Active != "" {
-		activemap := map[string][]int{}
-		if err := json.Unmarshal([]byte(args.Active), &activemap); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid active list: %s", err.Error())})
-			return
-		} else if err == nil {
-			if err = models.ValidateActive(activemap, models.PostStatus); err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid active list: %s", err.Error())})
-				return
-			}
-			params["active"] = activemap
-		}
-	} else {
-		params["active"] = map[string][]int{"$nin": []int{int(models.PostStatus["deactive"].(float64))}}
-	}
-	if args.Type != "" {
-		typemap := map[string][]int{}
-		if err := json.Unmarshal([]byte(args.Type), &typemap); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid type list: %s", err.Error())})
-			return
-		}
-		params["type"] = typemap
-	}
-
-	fmt.Println(params)
-	count, err := models.PostAPI.Count(params)
+	count, err := models.PostAPI.Count(args)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 		return
