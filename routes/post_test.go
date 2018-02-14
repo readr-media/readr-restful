@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -27,8 +28,8 @@ type ExpectResp struct {
 	err      string
 }
 
-func (a *mockPostAPI) GetPosts(args models.PostArgs) (result []models.TaggedPostMember, err error) {
-
+func (a *mockPostAPI) GetPosts(args *models.PostArgs) (result []models.TaggedPostMember, err error) {
+	fmt.Println(args)
 	result = []models.TaggedPostMember{
 		{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}}},
 		{PostMember: models.PostMember{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}}},
@@ -37,7 +38,7 @@ func (a *mockPostAPI) GetPosts(args models.PostArgs) (result []models.TaggedPost
 	}
 	err = nil
 
-	if args["sort"].(string) == "updated_at" {
+	if args.Sorting == "updated_at" {
 		result = []models.TaggedPostMember{
 			{PostMember: models.PostMember{Post: mockPostDS[2], Member: mockMemberDS[2], UpdatedBy: models.UpdatedBy{}}},
 			{PostMember: models.PostMember{Post: mockPostDS[0], Member: mockMemberDS[0], UpdatedBy: models.UpdatedBy(mockMemberDS[0])}},
@@ -46,15 +47,15 @@ func (a *mockPostAPI) GetPosts(args models.PostArgs) (result []models.TaggedPost
 		}
 		err = nil
 	}
-	if args["max_result"].(uint8) == 2 {
+	if args.MaxResult == 2 {
 		result = result[:2]
 	}
 
-	if reflect.DeepEqual(args["posts.active"], map[string][]int{"$nin": {0, 1, 2, 3, 4}}) {
+	if reflect.DeepEqual(args.Active, map[string][]int{"$nin": {0, 1, 2, 3, 4}}) {
 		return []models.TaggedPostMember{}, nil
 	}
 	// Active filter
-	if reflect.DeepEqual(args["posts.active"], map[string][]int{"$nin": {1, 4}}) {
+	if reflect.DeepEqual(args.Active, map[string][]int{"$nin": {1, 4}}) {
 		result = []models.TaggedPostMember{
 			{PostMember: models.PostMember{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}}},
 			{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}}},
@@ -63,8 +64,8 @@ func (a *mockPostAPI) GetPosts(args models.PostArgs) (result []models.TaggedPost
 		return result, err
 	}
 	// Author filter
-	if _, ok := args["posts.author"]; ok {
-		if reflect.DeepEqual(args["posts.author"], map[string][]string{"$in": {"superman@mirrormedia.mg", "Major.Tom@mirrormedia.mg"}}) {
+	if args.Author != nil {
+		if reflect.DeepEqual(args.Author, map[string][]string{"$in": {"superman@mirrormedia.mg", "Major.Tom@mirrormedia.mg"}}) {
 			result = []models.TaggedPostMember{
 				{PostMember: models.PostMember{Post: mockPostDS[0], Member: mockMemberDS[0], UpdatedBy: models.UpdatedBy(mockMemberDS[0])}},
 				{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}}},
@@ -74,8 +75,8 @@ func (a *mockPostAPI) GetPosts(args models.PostArgs) (result []models.TaggedPost
 		}
 	}
 	// Type
-	if _, ok := args["posts.type"]; ok {
-		if reflect.DeepEqual(args["posts.type"], map[string][]int{"$in": {1, 2}}) {
+	if args.Type != nil {
+		if reflect.DeepEqual(args.Type, map[string][]int{"$in": {1, 2}}) {
 			result = []models.TaggedPostMember{
 				{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}}},
 				{PostMember: models.PostMember{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}}},
@@ -234,27 +235,27 @@ func (a *mockPostAPI) DeletePost(id uint32) error {
 	return err
 }
 
-func (a *mockPostAPI) Count(req models.PostArgs) (result int, err error) {
+func (a *mockPostAPI) Count(req *models.PostArgs) (result int, err error) {
 	result = 4
 	err = nil
 	// Type
-	if _, ok := req["type"]; ok {
-		if reflect.DeepEqual(req["type"], map[string][]int{"$in": {1, 2}}) {
+	if req.Type != nil {
+		if reflect.DeepEqual(req.Type, map[string][]int{"$in": {1, 2}}) {
 			return 3, nil
 		}
 	}
 
-	if reflect.DeepEqual(req["active"], map[string][]int{"$nin": {0}}) {
-		// CountAuthor
-		if _, ok := req["author"]; ok {
-			if reflect.DeepEqual(req["author"], map[string][]string{"$nin": {"superman@mirrormedia.mg"}}) {
-				return 3, nil
-			}
+	// CountAuthor
+	if req.Author != nil {
+		if reflect.DeepEqual(req.Author, map[string][]string{"$nin": {"superman@mirrormedia.mg", "Major.Tom@mirrormedia.mg"}}) {
+			return 3, nil
 		}
+	}
+	if reflect.DeepEqual(req.Active, map[string][]int{"$nin": {0}}) {
 		return 4, nil
 	}
 	// CountActive
-	if reflect.DeepEqual(req["active"], map[string][]int{"$in": {2, 3}}) {
+	if reflect.DeepEqual(req.Active, map[string][]int{"$in": {2, 3}}) {
 		return 2, nil
 	}
 	return result, err
@@ -532,16 +533,16 @@ func TestRouteCountPosts(t *testing.T) {
 	}{
 		{"SimpleCount", `/posts/count`, ExpectCountResp{http.StatusOK, `{"_meta":{"total":4}}`, ``}},
 		{"CountActive", `/posts/count?active={"$in":[2,3]}`, ExpectCountResp{http.StatusOK, `{"_meta":{"total":2}}`, ``}},
-		{"CountAuthor", `/posts/count?author={"$nin":["superman@mirrormedia.mg"]}`, ExpectCountResp{http.StatusOK, `{"_meta":{"total":3}}`, ``}},
+		{"CountAuthor", `/posts/count?author={"$nin":["superman@mirrormedia.mg", "Major.Tom@mirrormedia.mg"]}`, ExpectCountResp{http.StatusOK, `{"_meta":{"total":3}}`, ``}},
 		{"MoreThanOneActive", `/posts/count?active={"$nin":[1,0], "$in":[-1,3]}`,
 			ExpectCountResp{http.StatusBadRequest, ``,
-				`{"Error":"Invalid active list: Too many active lists"}`}},
+				`{"Error":"Too many active lists"}`}},
 		{"NotEntirelyValidActive", `/posts/count?active={"$in":[-3,0,1]}`,
 			ExpectCountResp{http.StatusBadRequest, ``,
-				`{"Error":"Invalid active list: Not all active elements are valid"}`}},
+				`{"Error":"Not all active elements are valid"}`}},
 		{"NoValidActive", `/posts/count?active={"$nin":[-3,-4]}`,
 			ExpectCountResp{http.StatusBadRequest, ``,
-				`{"Error":"Invalid active list: No valid active request"}`}},
+				`{"Error":"No valid active request"}`}},
 		{"Type", `/posts/count?type={"$in":[1,2]}`,
 			ExpectCountResp{http.StatusOK, `{"_meta":{"total":3}}`, ``}},
 	}
