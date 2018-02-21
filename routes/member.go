@@ -2,10 +2,8 @@ package routes
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -15,51 +13,35 @@ import (
 
 type memberHandler struct{}
 
+func (r *memberHandler) bindQuery(c *gin.Context, args *models.MemberArgs) (err error) {
+
+	if err = c.ShouldBindQuery(args); err == nil {
+		// No active pass in parameter. Set default
+		args.DefaultActive()
+		return nil
+	}
+	if c.Query("active") != "" && args.Active == nil {
+		if err := json.Unmarshal([]byte(c.Query("active")), &args.Active); err != nil {
+			return err
+		} else if err == nil {
+			if err = models.ValidateActive(args.Active, models.MemberStatus); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func (r *memberHandler) GetAll(c *gin.Context) {
 
-	var params models.MemberArgs = make(map[string]interface{})
-
-	args := struct {
-		MaxResult    uint8  `form:"max_result"`
-		Page         uint16 `form:"page"`
-		Sorting      string `form:"sort"`
-		CustomEditor string `form:"custom_editor"`
-		Active       string `form:"active"`
-	}{MaxResult: 20, Page: 1, Sorting: "-updated_at"}
-
-	if err := c.ShouldBindQuery(&args); err != nil {
-		log.Printf(fmt.Sprintf("Binding query error: %s", err.Error()))
+	var args = &models.MemberArgs{}
+	args = args.Default()
+	if err := r.bindQuery(c, args); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
 	}
 
-	if args.CustomEditor != "" {
-		if s, err := strconv.ParseBool(args.CustomEditor); err == nil {
-			params["custom_editor"] = s
-		} else if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid custom_editor setting: %s", args.CustomEditor)})
-			return
-		}
-	}
-	if args.Active != "" {
-		activemap := map[string][]int{}
-		if err := json.Unmarshal([]byte(args.Active), &activemap); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid active list: %s", err.Error())})
-			return
-		} else if err == nil {
-			if err = models.ValidateActive(activemap, models.MemberStatus); err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid active list: %s", err.Error())})
-				return
-			}
-			params["active"] = activemap
-		}
-	} else {
-		params["active"] = map[string][]int{"$nin": []int{int(models.MemberStatus["delete"].(float64))}}
-	}
-
-	params["max_result"] = args.MaxResult
-	params["page"] = args.Page
-	params["sort"] = args.Sorting
-
-	result, err := models.MemberAPI.GetMembers(params)
+	result, err := models.MemberAPI.GetMembers(args)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 		return
@@ -297,41 +279,14 @@ func (r *memberHandler) PutPassword(c *gin.Context) {
 
 func (r *memberHandler) Count(c *gin.Context) {
 
-	var params models.MemberArgs = make(map[string]interface{})
-
-	args := struct {
-		CustomEditor string `form:"custom_editor"`
-		Active       string `form:"active"`
-	}{}
-	if err := c.ShouldBindQuery(&args); err != nil {
-		log.Printf(fmt.Sprintf("Binding query error: %s", err.Error()))
+	var args = &models.MemberArgs{}
+	args = args.Default()
+	if err := r.bindQuery(c, args); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
 	}
 
-	if args.CustomEditor != "" {
-		if s, err := strconv.ParseBool(args.CustomEditor); err == nil {
-			params["custom_editor"] = s
-		} else if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid custom_editor setting: %s", args.CustomEditor)})
-			return
-		}
-	}
-	if args.Active != "" {
-		activemap := map[string][]int{}
-		if err := json.Unmarshal([]byte(args.Active), &activemap); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid active list: %s", err.Error())})
-			return
-		} else if err == nil {
-			if err = models.ValidateActive(activemap, models.MemberStatus); err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Invalid active list: %s", err.Error())})
-				return
-			}
-			params["active"] = activemap
-		}
-	} else {
-		params["active"] = map[string][]int{"$nin": []int{int(models.MemberStatus["delete"].(float64))}}
-	}
-
-	count, err := models.MemberAPI.Count(params)
+	count, err := models.MemberAPI.Count(args)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 		return

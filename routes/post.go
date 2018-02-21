@@ -24,6 +24,7 @@ type postArgs struct {
 
 func (r *postHandler) bindQuery(c *gin.Context, args *models.PostArgs) (err error) {
 	if err = c.ShouldBindQuery(args); err == nil {
+		args.DefaultActive()
 		return nil
 	}
 	// Start parsing rest of request arguments
@@ -55,9 +56,6 @@ func (r *postHandler) GetAll(c *gin.Context) {
 	if err := r.bindQuery(c, args); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
-	}
-	if args.Active == nil {
-		args.DefaultActive()
 	}
 	result, err := models.PostAPI.GetPosts(args)
 	if err != nil {
