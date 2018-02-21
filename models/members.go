@@ -14,6 +14,7 @@ var MemberStatus map[string]interface{}
 
 type Member struct {
 	ID       string     `json:"id" db:"member_id"`
+	Points   NullInt    `json:"points" db:"points"`
 	Name     NullString `json:"name" db:"name"`
 	Nickname NullString `json:"nickname" db:"nickname"`
 	// Cannot parse Date format
