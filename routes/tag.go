@@ -2,8 +2,11 @@ package routes
 
 import (
 	"encoding/json"
+	//"log"
 	"net/http"
 	"regexp"
+	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/models"
@@ -36,16 +39,21 @@ func (r *tagHandler) Get(c *gin.Context) {
 }
 
 func (r *tagHandler) Post(c *gin.Context) {
-	args := struct {
-		Name string `json:"name"`
-	}{}
+	args := models.Tag{}
 	err := c.Bind(&args)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
 
-	tag_id, err := models.TagAPI.InsertTag(args.Name)
+	if args.UpdatedBy.Valid == false {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Updater Not Sepcified"})
+		return
+	}
+	args.UpdatedAt = models.NullTime{Valid: false}
+	args.CreatedAt = models.NullTime{Valid: false}
+
+	tag_id, err := models.TagAPI.InsertTag(args)
 	if err != nil {
 		switch err.Error() {
 		case "Duplicate Entry":
@@ -64,15 +72,25 @@ func (r *tagHandler) Put(c *gin.Context) {
 	err := c.Bind(&args)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
 	}
 
-	tag := models.Tag{ID: args.ID, Text: args.Text}
+	if args.UpdatedBy.Valid == false {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Updater Not Sepcified"})
+		return
+	}
+	args.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
+	args.CreatedAt = models.NullTime{Valid: false}
 
-	err = models.TagAPI.UpdateTag(tag)
+	err = models.TagAPI.UpdateTag(args)
 	if err != nil {
 		switch err.Error() {
 		case "Duplicate Entry":
 			c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+			return
+		case models.ItemNotFoundError.Error():
+			c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+			return
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 			return
@@ -82,10 +100,11 @@ func (r *tagHandler) Put(c *gin.Context) {
 }
 
 func (r *tagHandler) Delete(c *gin.Context) {
+
 	var IDs []int
 	err := json.Unmarshal([]byte(c.Query("ids")), &IDs)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Tag IDs"})
 		return
 	}
 
@@ -94,7 +113,14 @@ func (r *tagHandler) Delete(c *gin.Context) {
 		return
 	}
 
-	err = models.TagAPI.ToggleTags(IDs, "deactive")
+	updater := c.Query("updated_by")
+	if updater == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Updater"})
+		return
+	}
+	args := models.UpdateMultipleTagsArgs{IDs: IDs, UpdatedBy: updater, Active: strconv.FormatFloat(models.TagStatus["deactive"].(float64), 'f', 6, 64)}
+
+	err = models.TagAPI.ToggleTags(args)
 	if err != nil {
 		switch err.Error() {
 		default:
