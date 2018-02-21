@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"log"
-	"strconv"
 	"strings"
 
 	"database/sql"
@@ -14,19 +13,20 @@ import (
 )
 
 type Tag struct {
-	ID             int      `json:"id" db:"tag_id"`
-	Text           string   `json:"text" db:"tag_content"`
-	CreateAt       NullTime `json:"created_at" db:"created_at"`
-	UpdateAt       NullTime `json:"updated_at" db:"updated_at"`
-	Active         NullInt  `json:"active" db:"active"`
-	RelatedReviews NullInt  `json:"related_reviews" db:"related_reviews"`
-	RelatedNews    NullInt  `json:"related_news" db:"related_news"`
+	ID             int        `json:"id" db:"tag_id"`
+	Text           string     `json:"text" db:"tag_content"`
+	CreatedAt      NullTime   `json:"created_at" db:"created_at"`
+	UpdatedAt      NullTime   `json:"updated_at" db:"updated_at"`
+	UpdatedBy      NullString `json:"updated_by" db:"updated_by"`
+	Active         NullInt    `json:"active" db:"active"`
+	RelatedReviews NullInt    `json:"related_reviews" db:"related_reviews"`
+	RelatedNews    NullInt    `json:"related_news" db:"related_news"`
 }
 
 type TagInterface interface {
-	ToggleTags(ids []int, active string) error
+	ToggleTags(args UpdateMultipleTagsArgs) error
 	GetTags(args GetTagsArgs) ([]Tag, error)
-	InsertTag(text string) (int, error)
+	InsertTag(tag Tag) (int, error)
 	UpdateTag(tag Tag) error
 	UpdatePostTags(postId int, tag_ids []int) error
 	CountTags() (int, error)
@@ -49,6 +49,13 @@ func DefaultGetTagsArgs() GetTagsArgs {
 	}
 }
 
+type UpdateMultipleTagsArgs struct {
+	IDs       []int    `json:"ids"`
+	UpdatedBy string   `form:"updated_by" json:"updated_by" db:"updated_by"`
+	UpdatedAt NullTime `json:"-" db:"updated_at"`
+	Active    string   `json:"-" db:"active"`
+}
+
 type tagApi struct{}
 
 func (t *tagApi) inCondition(isIn bool) string {
@@ -59,17 +66,17 @@ func (t *tagApi) inCondition(isIn bool) string {
 	}
 }
 
-func (t *tagApi) ToggleTags(ids []int, active string) error {
+func (t *tagApi) ToggleTags(args UpdateMultipleTagsArgs) error {
 
-	query := fmt.Sprintf("UPDATE tags SET active=%s WHERE tag_id IN (?);", strconv.FormatFloat(PostStatus[active].(float64), 'g', 1, 64))
-	query, args, err := sqlx.In(query, ids)
+	query := fmt.Sprintf("UPDATE tags SET active=%s WHERE tag_id IN (?);", args.Active)
+	query, sqlArgs, err := sqlx.In(query, args.IDs)
 	if err != nil {
 		log.Println(err.Error())
 		return err
 	}
 	query = DB.Rebind(query)
 
-	_, err = DB.Exec(query, args...)
+	_, err = DB.Exec(query, sqlArgs...)
 	if err != nil {
 		log.Println(err.Error())
 		return err
@@ -132,10 +139,10 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []Tag, err error) {
 	return tags, nil
 }
 
-func (t *tagApi) InsertTag(text string) (int, error) {
+func (t *tagApi) InsertTag(tag Tag) (int, error) {
 	var existTag Tag
 	query := fmt.Sprint("SELECT * FROM tags WHERE active=", TagStatus["active"].(float64), " AND tag_content=?;")
-	err := DB.Get(&existTag, query, text)
+	err := DB.Get(&existTag, query, tag.Text)
 	if err != nil && err != sql.ErrNoRows {
 		return 0, err
 	}
@@ -143,9 +150,9 @@ func (t *tagApi) InsertTag(text string) (int, error) {
 		return 0, DuplicateError
 	}
 
-	query = fmt.Sprintf(`INSERT INTO tags (tag_content) VALUES (?);`)
+	query = fmt.Sprintf(`INSERT INTO tags (tag_content, updated_by) VALUES (?, ?);`)
 
-	result, err := DB.Exec(query, text)
+	result, err := DB.Exec(query, tag.Text, tag.UpdatedBy)
 	if err != nil {
 		sqlerr, ok := err.(*mysql.MySQLError)
 		if ok && sqlerr.Number == 1062 {

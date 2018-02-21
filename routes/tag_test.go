@@ -16,11 +16,11 @@ var mockPostTagDS []map[string]int
 
 type mockTagAPI struct{}
 
-func (t *mockTagAPI) ToggleTags(ids []int, active string) error {
-	for _, id := range ids {
+func (t *mockTagAPI) ToggleTags(args models.UpdateMultipleTagsArgs) error {
+	for _, id := range args.IDs {
 		for index, tags := range mockTagDS {
 			if tags.ID == id {
-				if active == "active" {
+				if args.Active == "0" {
 					mockTagDS[index].Active = models.NullInt{1, true}
 				} else {
 					mockTagDS[index].Active = models.NullInt{0, true}
@@ -73,14 +73,14 @@ func (t *mockTagAPI) GetTags(args models.GetTagsArgs) (tags []models.Tag, err er
 	return result, err
 }
 
-func (t *mockTagAPI) InsertTag(text string) (int, error) {
+func (t *mockTagAPI) InsertTag(tag models.Tag) (int, error) {
 	index := len(mockTagDS) + 1
 	for _, t := range mockTagDS {
-		if t.Text == text && t.Active.Int == 1 {
+		if t.Text == tag.Text && t.Active.Int == 1 {
 			return 0, errors.New(`Duplicate Entry`)
 		}
 	}
-	mockTagDS = append(mockTagDS, models.Tag{ID: index, Text: text, Active: models.NullInt{1, true}})
+	mockTagDS = append(mockTagDS, models.Tag{ID: index, Text: tag.Text, Active: models.NullInt{1, true}})
 	return index, nil
 }
 
@@ -89,6 +89,9 @@ func (t *mockTagAPI) UpdateTag(tag models.Tag) error {
 		if t.Text == tag.Text && t.Active.Int == 1 {
 			return errors.New(`Duplicate Entry`)
 		}
+	}
+	if tag.ID > len(mockTagDS) {
+		return models.ItemNotFoundError
 	}
 	mockTagDS[tag.ID-1].Text = tag.Text
 	return nil
@@ -124,14 +127,14 @@ func (t *mockTagAPI) CountTags() (int, error) {
 func TestRouteTags(t *testing.T) {
 
 	tags := []models.Tag{
-		models.Tag{Text: "tag1"},
-		models.Tag{Text: "tag2"},
-		models.Tag{Text: "tag3"},
-		models.Tag{Text: "tag4"},
+		models.Tag{Text: "tag1", UpdatedBy: models.NullString{"AMI@mirrormedia.mg", true}},
+		models.Tag{Text: "tag2", UpdatedBy: models.NullString{"AMI@mirrormedia.mg", true}},
+		models.Tag{Text: "tag3", UpdatedBy: models.NullString{"AMI@mirrormedia.mg", true}},
+		models.Tag{Text: "tag4", UpdatedBy: models.NullString{"AMI@mirrormedia.mg", true}},
 	}
 
 	for _, tag := range tags {
-		_, err := models.TagAPI.InsertTag(tag.Text)
+		_, err := models.TagAPI.InsertTag(tag)
 		if err != nil {
 			log.Printf("Init tag test fail %s", err.Error())
 		}
@@ -181,6 +184,7 @@ func TestRouteTags(t *testing.T) {
 			t.Errorf("%s, Unexpected result body: %v", resp)
 		}
 
+		log.Println(Response)
 		if len(Response.Items) != len(expected) {
 			t.Errorf("%s expect tag length to be %v but get %v", tc.name, len(expected), len(Response.Items))
 		}
@@ -197,7 +201,6 @@ func TestRouteTags(t *testing.T) {
 				}
 			}
 			t.Errorf("%s, Not expect to get %v ", tc.name, resptag)
-
 		}
 	}
 
@@ -233,7 +236,7 @@ func TestRouteTags(t *testing.T) {
 	})
 	t.Run("InsertTag", func(t *testing.T) {
 		testcases := []genericTestcase{
-			genericTestcase{"PostTagOK", "POST", "/tags", `{"name":"insert1"}`, http.StatusOK, `{"tag_id":5}`},
+			genericTestcase{"PostTagOK", "POST", "/tags", `{"name":"insert1", "updated_by":"AMI@mirrormedia.mg"}`, http.StatusOK, `{"tag_id":5}`},
 		}
 		for _, tc := range testcases {
 			genericDoTest(tc, t, asserter)
@@ -241,8 +244,10 @@ func TestRouteTags(t *testing.T) {
 	})
 	t.Run("UpdateTag", func(t *testing.T) {
 		testcases := []genericTestcase{
-			genericTestcase{"UpdateTagOK", "PUT", "/tags", `{"id":1, "text":"text5566"}`, http.StatusOK, ``},
-			genericTestcase{"UpdateTagDupe", "PUT", "/tags", `{"id":2, "text":"tag3"}`, http.StatusBadRequest, `{"Error":"Duplicate Entry"}`},
+			genericTestcase{"UpdateTagOK", "PUT", "/tags", `{"id":5, "text":"text5566", "updated_by":"AMI@mirrormedia.mg"}`, http.StatusOK, ``},
+			genericTestcase{"UpdateTagNoSuchTag", "PUT", "/tags", `{"id":6, "text":"text7788", "updated_by":"AMI@mirrormedia.mg"}`, http.StatusBadRequest, `{"Error":"Itme Not Found"}`},
+			genericTestcase{"UpdateTagDupe", "PUT", "/tags", `{"id":2, "text":"tag3", "updated_by":"AMI@mirrormedia.mg"}`, http.StatusBadRequest, `{"Error":"Duplicate Entry"}`},
+			genericTestcase{"UpdateTagNoID", "PUT", "/tags", `{"text":"tag3"}`, http.StatusBadRequest, `{"Error":"Updater Not Sepcified"}`},
 		}
 		for _, tc := range testcases {
 			genericDoTest(tc, t, asserter)
@@ -250,7 +255,9 @@ func TestRouteTags(t *testing.T) {
 	})
 	t.Run("DaleteTags", func(t *testing.T) {
 		testcases := []genericTestcase{
-			genericTestcase{"DeleteTagOK", "DELETE", "/tags?ids=[1, 2, 3, 4]", ``, http.StatusOK, ``},
+			genericTestcase{"DeleteTagOK", "DELETE", "/tags?ids=[1, 2, 3, 4]&updated_by=AMI@mirrormedia.mg", ``, http.StatusOK, ``},
+			genericTestcase{"DeleteTagWithoutUpdater", "DELETE", "/tags?ids=[1, 2, 3, 4]", ``, http.StatusBadRequest, `{"Error":"Bad Updater"}`},
+			genericTestcase{"DeleteTagNoIds", "DELETE", "/tags?", ``, http.StatusBadRequest, `{"Error":"Bad Tag IDs"}`},
 		}
 		for _, tc := range testcases {
 			genericDoTest(tc, t, asserter)
@@ -266,9 +273,9 @@ func TestRouteTags(t *testing.T) {
 	})
 	t.Run("InsertDupeTag", func(t *testing.T) {
 		testcases := []genericTestcase{
-			genericTestcase{"PostTagDupe", "POST", "/tags", `{"name":"insert1"}`, http.StatusBadRequest, `{"Error":"Duplicate Entry"}`},
-			genericTestcase{"PostSameAsInactiveTagOK", "POST", "/tags", `{"name":"text5566"}`, http.StatusOK, `{"tag_id":6}`},
-			genericTestcase{"PostSameAsActiveTag", "POST", "/tags", `{"name":"text5566"}`, http.StatusBadRequest, `{"Error":"Duplicate Entry"}`},
+			genericTestcase{"PostTagDupe", "POST", "/tags", `{"text":"text5566","updated_by":"AMI@mirrormedia.mg"}`, http.StatusBadRequest, `{"Error":"Duplicate Entry"}`},
+			genericTestcase{"PostSameAsInactiveTagOK", "POST", "/tags", `{"text":"tag1", "updated_by":"AMI@mirrormedia.mg"}`, http.StatusOK, `{"tag_id":6}`},
+			genericTestcase{"PostSameAsActiveTag", "POST", "/tags", `{"text":"text5566", "updated_by":"AMI@mirrormedia.mg"}`, http.StatusBadRequest, `{"Error":"Duplicate Entry"}`},
 		}
 		for _, tc := range testcases {
 			genericDoTest(tc, t, asserter)
