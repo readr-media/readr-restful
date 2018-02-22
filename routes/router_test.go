@@ -123,6 +123,7 @@ var mockMemberDS = []models.Member{
 		UpdatedAt:    models.NullTime{Time: time.Date(2017, 6, 8, 16, 27, 52, 0, time.UTC), Valid: true},
 		Mail:         models.NullString{String: "superman@mirrormedia.mg", Valid: true},
 		CustomEditor: models.NullBool{Bool: true, Valid: true},
+		Role:         models.NullInt{Int: 9, Valid: true},
 	},
 	models.Member{
 		ID:        "test6743",
@@ -130,6 +131,7 @@ var mockMemberDS = []models.Member{
 		Birthday:  models.NullTime{Time: time.Date(2001, 1, 3, 0, 0, 0, 0, time.UTC), Valid: true},
 		UpdatedAt: models.NullTime{Time: time.Date(2017, 11, 11, 23, 11, 37, 0, time.UTC), Valid: true},
 		Mail:      models.NullString{String: "Lulu_Brakus@yahoo.com", Valid: true},
+		Role:      models.NullInt{Int: 3, Valid: true},
 	},
 	models.Member{
 		ID:        "Barney.Corwin@hotmail.com",
@@ -138,6 +140,7 @@ var mockMemberDS = []models.Member{
 		UpdatedAt: models.NullTime{Time: time.Date(2017, 1, 3, 19, 32, 37, 0, time.UTC), Valid: true},
 		Birthday:  models.NullTime{Time: time.Date(1939, 11, 9, 0, 0, 0, 0, time.UTC), Valid: true},
 		Mail:      models.NullString{String: "Barney.Corwin@hotmail.com", Valid: true},
+		Role:      models.NullInt{Int: 1, Valid: true},
 	},
 }
 

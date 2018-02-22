@@ -69,6 +69,7 @@ type MemberArgs struct {
 	Sorting      string           `form:"sort"`
 	CustomEditor bool             `form:"custom_editor"`
 	Active       map[string][]int `form:"active"`
+	Role         *int64           `form:"role"`
 }
 
 func (m *MemberArgs) Default() (result *MemberArgs) {
@@ -96,6 +97,10 @@ func (m *MemberArgs) parse() (restricts string, values []interface{}) {
 			values = append(values, v)
 		}
 	}
+	if m.Role != nil {
+		where = append(where, "role = ?")
+		values = append(values, *m.Role)
+	}
 	if len(where) > 1 {
 		restricts = strings.Join(where, " AND ")
 	} else if len(where) == 1 {
@@ -117,7 +122,7 @@ func (a *memberAPI) GetMembers(req *MemberArgs) (result []Member, err error) {
 	query = DB.Rebind(query)
 	query = query + fmt.Sprintf(`ORDER BY %s LIMIT ? OFFSET ?`, orderByHelper(req.Sorting))
 	args = append(args, req.MaxResult, (req.Page-1)*uint16(req.MaxResult))
-	fmt.Println(query, args)
+	// fmt.Println(query, args)
 	err = DB.Select(&result, query, args...)
 	if err != nil {
 		return []Member{}, err

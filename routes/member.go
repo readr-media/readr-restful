@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -17,7 +18,6 @@ func (r *memberHandler) bindQuery(c *gin.Context, args *models.MemberArgs) (err 
 
 	if err = c.ShouldBindQuery(args); err == nil {
 		// No active pass in parameter. Set default
-		args.DefaultActive()
 		return nil
 	}
 	if c.Query("active") != "" && args.Active == nil {
@@ -28,6 +28,13 @@ func (r *memberHandler) bindQuery(c *gin.Context, args *models.MemberArgs) (err 
 				return err
 			}
 		}
+	}
+	if c.Query("role") != "" && args.Role == nil {
+		var role int64
+		if role, err = strconv.ParseInt(c.Query("role"), 10, 64); err != nil {
+			return err
+		}
+		args.Role = &role
 	}
 	return nil
 }
@@ -40,7 +47,9 @@ func (r *memberHandler) GetAll(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
-
+	if args.Active == nil {
+		args.DefaultActive()
+	}
 	result, err := models.MemberAPI.GetMembers(args)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
@@ -285,7 +294,9 @@ func (r *memberHandler) Count(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
-
+	if args.Active == nil {
+		args.DefaultActive()
+	}
 	count, err := models.MemberAPI.Count(args)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})

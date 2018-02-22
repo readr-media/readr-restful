@@ -31,6 +31,11 @@ func (a *mockMemberAPI) GetMembers(req *models.MemberArgs) (result []models.Memb
 		return result, err
 	}
 
+	if req.Role != nil {
+		result = []models.Member{mockMemberDS[1]}
+		err = nil
+		return result, err
+	}
 	if len(req.Active) > 1 {
 		return []models.Member{}, errors.New("Too many active lists")
 	}
@@ -173,6 +178,9 @@ func (a *mockMemberAPI) Count(req *models.MemberArgs) (result int, err error) {
 	if req.CustomEditor == true {
 		return 1, nil
 	}
+	if req.Role != nil && *req.Role == int64(9) {
+		return 1, nil
+	}
 	for k, v := range req.Active {
 		if k == "$in" && reflect.DeepEqual(v, []int{1, -1}) {
 			return 2, nil
@@ -221,6 +229,7 @@ func TestRouteGetMembers(t *testing.T) {
 			ExpectGetsResp{
 				ExpectResp{http.StatusBadRequest, `{"Error":"No valid active request"}`},
 				[]models.Member{}}},
+		{"Role", `/members?role=1`, ExpectGetsResp{ExpectResp{http.StatusOK, ``}, []models.Member{mockMemberDS[1]}}},
 	}
 	for _, tc := range testCase {
 		t.Run(tc.name, func(t *testing.T) {
@@ -500,12 +509,13 @@ func TestRouteCountMembers(t *testing.T) {
 		{"MoreThanOneActive", `/members/count?active={"$nin":[1,0], "$in":[-1,3]}`,
 			ExpectCountResp{http.StatusBadRequest, ``,
 				`{"Error":"Too many active lists"}`}},
-		{"NotEntirelyValidActive", `/members?active={"$in":[-3,0,1]}`,
+		{"NotEntirelyValidActive", `/members/count?active={"$in":[-3,0,1]}`,
 			ExpectCountResp{http.StatusBadRequest, ``,
 				`{"Error":"Not all active elements are valid"}`}},
-		{"NoValidActive", `/members?active={"$nin":[3,4]}`,
+		{"NoValidActive", `/members/count?active={"$nin":[3,4]}`,
 			ExpectCountResp{http.StatusBadRequest, ``,
 				`{"Error":"No valid active request"}`}},
+		{"Role", "/members/count?role=9", ExpectCountResp{http.StatusOK, `{"_meta":{"total":1}}`, ``}},
 	}
 	for _, tc := range testCase {
 		t.Run(tc.name, func(t *testing.T) {
