@@ -124,6 +124,7 @@ func (p *PostArgs) DefaultActive() {
 func (p *PostArgs) anyFilter() (result bool) {
 	return p.Active != nil || p.Author != nil || p.Type != nil
 }
+
 func (p *PostArgs) parse() (restricts string, values []interface{}) {
 	where := make([]string, 0)
 
@@ -134,14 +135,12 @@ func (p *PostArgs) parse() (restricts string, values []interface{}) {
 			values = append(values, v)
 		}
 	}
-
 	if p.Author != nil {
 		for k, v := range p.Author {
 			where = append(where, fmt.Sprintf("%s %s (?)", "posts.author", operatorHelper(k)))
 			values = append(values, v)
 		}
 	}
-
 	if p.Type != nil {
 		for k, v := range p.Type {
 			where = append(where, fmt.Sprintf("%s %s (?)", "posts.type", operatorHelper(k)))
@@ -190,8 +189,6 @@ func (p *PostArgs) parse() (restricts string, values []interface{}) {
 func (a *postAPI) GetPosts(req *PostArgs) (result []TaggedPostMember, err error) {
 
 	restricts, values := req.parse()
-	fmt.Println(restricts)
-	fmt.Println(values)
 	tags := getStructDBTags("full", Member{})
 	authorField := makeFieldString("get", `author.%s "author.%s"`, tags)
 	updatedByField := makeFieldString("get", `updated_by.%s "updated_by.%s"`, tags)

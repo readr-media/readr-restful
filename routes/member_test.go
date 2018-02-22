@@ -23,18 +23,23 @@ func initMemberTest() {
 func clearMemberTest() {
 	mockMemberDS = mockMemberDSBack
 }
-func (a *mockMemberAPI) GetMembers(req models.MemberArgs) (result []models.Member, err error) {
+func (a *mockMemberAPI) GetMembers(req *models.MemberArgs) (result []models.Member, err error) {
 
-	if req["custom_editor"] == true {
+	if req.CustomEditor == true {
 		result = []models.Member{mockMemberDS[0]}
 		err = nil
 		return result, err
 	}
 
-	if len(req["active"].(map[string][]int)) > 1 {
+	if req.Role != nil {
+		result = []models.Member{mockMemberDS[1]}
+		err = nil
+		return result, err
+	}
+	if len(req.Active) > 1 {
 		return []models.Member{}, errors.New("Too many active lists")
 	}
-	for k, v := range req["active"].(map[string][]int) {
+	for k, v := range req.Active {
 		if k == "$nin" && reflect.DeepEqual(v, []int{0, -1}) {
 			return []models.Member{mockMemberDS[0]}, nil
 		} else if k == "$nin" && reflect.DeepEqual(v, []int{-1, 0, 1}) {
@@ -48,7 +53,7 @@ func (a *mockMemberAPI) GetMembers(req models.MemberArgs) (result []models.Membe
 
 	result = make([]models.Member, len(mockMemberDS))
 	copy(result, mockMemberDS)
-	switch req["sort"] {
+	switch req.Sorting {
 	case "updated_at":
 		sort.SliceStable(result, func(i, j int) bool {
 			return result[i].UpdatedAt.Before(result[j].UpdatedAt)
@@ -60,7 +65,7 @@ func (a *mockMemberAPI) GetMembers(req models.MemberArgs) (result []models.Membe
 		})
 		err = nil
 	}
-	if req["max_result"].(uint8) == 2 {
+	if req.MaxResult == 2 {
 		result = result[0:2]
 	}
 	return result, err
@@ -167,13 +172,16 @@ func (a *mockMemberAPI) UpdateAll(ids []string, active int) (err error) {
 	return err
 }
 
-func (a *mockMemberAPI) Count(req models.MemberArgs) (result int, err error) {
+func (a *mockMemberAPI) Count(req *models.MemberArgs) (result int, err error) {
 	result = 0
 	err = errors.New("Members Not Found")
-	if req["custom_editor"] == true {
+	if req.CustomEditor == true {
 		return 1, nil
 	}
-	for k, v := range req["active"].(map[string][]int) {
+	if req.Role != nil && *req.Role == int64(9) {
+		return 1, nil
+	}
+	for k, v := range req.Active {
 		if k == "$in" && reflect.DeepEqual(v, []int{1, -1}) {
 			return 2, nil
 		}
@@ -211,20 +219,17 @@ func TestRouteGetMembers(t *testing.T) {
 				[]models.Member{}}},
 		{"MoreThanOneActive", `/members?active={"$nin":[1,0], "$in":[-1,3]}`,
 			ExpectGetsResp{
-				ExpectResp{http.StatusBadRequest, `{"Error":"Invalid active list: Too many active lists"}`},
+				ExpectResp{http.StatusBadRequest, `{"Error":"Too many active lists"}`},
 				[]models.Member{}}},
 		{"NotEntirelyValidActive", `/members?active={"$in":[-3,0,1]}`,
 			ExpectGetsResp{
-				ExpectResp{http.StatusBadRequest, `{"Error":"Invalid active list: Not all active elements are valid"}`},
+				ExpectResp{http.StatusBadRequest, `{"Error":"Not all active elements are valid"}`},
 				[]models.Member{}}},
 		{"NoValidActive", `/members?active={"$nin":[3,4]}`,
 			ExpectGetsResp{
-				ExpectResp{http.StatusBadRequest, `{"Error":"Invalid active list: No valid active request"}`},
+				ExpectResp{http.StatusBadRequest, `{"Error":"No valid active request"}`},
 				[]models.Member{}}},
-		{"InvalidCustomEditor", `/members?custom_editor=neutron`,
-			ExpectGetsResp{
-				ExpectResp{http.StatusBadRequest, `{"Error":"Invalid custom_editor setting: neutron"}`},
-				[]models.Member{}}},
+		{"Role", `/members?role=1`, ExpectGetsResp{ExpectResp{http.StatusOK, ``}, []models.Member{mockMemberDS[1]}}},
 	}
 	for _, tc := range testCase {
 		t.Run(tc.name, func(t *testing.T) {
@@ -501,18 +506,16 @@ func TestRouteCountMembers(t *testing.T) {
 		{"SimpleCount", `/members/count`, ExpectCountResp{http.StatusOK, `{"_meta":{"total":2}}`, ``}},
 		{"CountActive", `/members/count?active={"$in":[1,-1]}`, ExpectCountResp{http.StatusOK, `{"_meta":{"total":2}}`, ``}},
 		{"CountCustomEditor", `/members/count?custom_editor=true`, ExpectCountResp{http.StatusOK, `{"_meta":{"total":1}}`, ``}},
-		{"InvalidCustomEditor", `/members/count?custom_editor=tron`,
-			ExpectCountResp{http.StatusBadRequest, ``,
-				`{"Error":"Invalid custom_editor setting: tron"}`}},
 		{"MoreThanOneActive", `/members/count?active={"$nin":[1,0], "$in":[-1,3]}`,
 			ExpectCountResp{http.StatusBadRequest, ``,
-				`{"Error":"Invalid active list: Too many active lists"}`}},
-		{"NotEntirelyValidActive", `/members?active={"$in":[-3,0,1]}`,
+				`{"Error":"Too many active lists"}`}},
+		{"NotEntirelyValidActive", `/members/count?active={"$in":[-3,0,1]}`,
 			ExpectCountResp{http.StatusBadRequest, ``,
-				`{"Error":"Invalid active list: Not all active elements are valid"}`}},
-		{"NoValidActive", `/members?active={"$nin":[3,4]}`,
+				`{"Error":"Not all active elements are valid"}`}},
+		{"NoValidActive", `/members/count?active={"$nin":[3,4]}`,
 			ExpectCountResp{http.StatusBadRequest, ``,
-				`{"Error":"Invalid active list: No valid active request"}`}},
+				`{"Error":"No valid active request"}`}},
+		{"Role", "/members/count?role=9", ExpectCountResp{http.StatusOK, `{"_meta":{"total":1}}`, ``}},
 	}
 	for _, tc := range testCase {
 		t.Run(tc.name, func(t *testing.T) {

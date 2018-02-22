@@ -55,70 +55,61 @@ var MemberAPI MemberInterface = new(memberAPI)
 type MemberInterface interface {
 	DeleteMember(id string) error
 	GetMember(id string) (Member, error)
-	GetMembers(req MemberArgs) ([]Member, error)
+	GetMembers(req *MemberArgs) ([]Member, error)
 	InsertMember(m Member) error
 	UpdateAll(ids []string, active int) error
 	UpdateMember(m Member) error
-	Count(req MemberArgs) (result int, err error)
+	Count(req *MemberArgs) (result int, err error)
 }
 
-type MemberArgs map[string]interface{}
+// type MemberArgs map[string]interface{}
+type MemberArgs struct {
+	MaxResult    uint8            `form:"max_result"`
+	Page         uint16           `form:"page"`
+	Sorting      string           `form:"sort"`
+	CustomEditor bool             `form:"custom_editor"`
+	Active       map[string][]int `form:"active"`
+	Role         *int64           `form:"role"`
+}
+
+func (m *MemberArgs) Default() (result *MemberArgs) {
+	return &MemberArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at"}
+}
+
+func (m *MemberArgs) DefaultActive() {
+	m.Active = map[string][]int{"$nin": []int{int(MemberStatus["delete"].(float64))}}
+}
+
+func (m *MemberArgs) anyFilter() bool {
+	return m.Active != nil || m.CustomEditor == true
+}
 
 func (m *MemberArgs) parse() (restricts string, values []interface{}) {
-	whereString := make([]string, 0)
-	for arg, value := range *m {
-		switch arg {
-		case "custom_editor":
-			whereString = append(whereString, "custom_editor = ?")
-			values = append(values, value)
-		case "active":
-			for k, v := range value.(map[string][]int) {
-				whereString = append(whereString, fmt.Sprintf("%s %s (?)", arg, operatorHelper(k)))
-				values = append(values, v)
-			}
+	where := make([]string, 0)
+
+	if m.CustomEditor {
+		where = append(where, "custom_editor = ?")
+		values = append(values, m.CustomEditor)
+	}
+	if m.Active != nil {
+		for k, v := range m.Active {
+			where = append(where, fmt.Sprintf("%s %s (?)", "members.active", operatorHelper(k)))
+			values = append(values, v)
 		}
 	}
-
-	if len(whereString) > 1 {
-		restricts = strings.Join(whereString, " AND ")
-	} else if len(whereString) == 1 {
-		restricts = whereString[0]
+	if m.Role != nil {
+		where = append(where, "role = ?")
+		values = append(values, *m.Role)
+	}
+	if len(where) > 1 {
+		restricts = strings.Join(where, " AND ")
+	} else if len(where) == 1 {
+		restricts = where[0]
 	}
 	return restricts, values
 }
 
-func (m *MemberArgs) ValidateActive(args map[string][]int) (err error) {
-
-	if len(args) > 1 {
-		return errors.New("Too many active lists")
-	}
-	valid := make([]int, 0)
-	result := make([]int, 0)
-	for _, v := range MemberStatus {
-		valid = append(valid, int(v.(float64)))
-	}
-	activeCount := 0
-	// Extract active slice from map
-	for _, activeSlice := range args {
-		activeCount = len(activeSlice)
-		for _, target := range activeSlice {
-			for _, value := range valid {
-				if target == value {
-					result = append(result, target)
-				}
-			}
-		}
-	}
-	if len(result) != activeCount {
-		err = errors.New("Not all active elements are valid")
-	}
-	if len(result) == 0 {
-		err = errors.New("No valid active request")
-	}
-	return err
-}
-
-func (a *memberAPI) GetMembers(req MemberArgs) (result []Member, err error) {
+func (a *memberAPI) GetMembers(req *MemberArgs) (result []Member, err error) {
 
 	restricts, values := req.parse()
 	query := fmt.Sprintf(`SELECT * FROM members where %s `, restricts)
@@ -129,18 +120,13 @@ func (a *memberAPI) GetMembers(req MemberArgs) (result []Member, err error) {
 		return nil, err
 	}
 	query = DB.Rebind(query)
-	query = query + fmt.Sprintf(`ORDER BY %s LIMIT ? OFFSET ?`, orderByHelper(req["sort"].(string)))
-	args = append(args, req["max_result"].(uint8), (req["page"].(uint16)-1)*uint16(req["max_result"].(uint8)))
+	query = query + fmt.Sprintf(`ORDER BY %s LIMIT ? OFFSET ?`, orderByHelper(req.Sorting))
+	args = append(args, req.MaxResult, (req.Page-1)*uint16(req.MaxResult))
+	// fmt.Println(query, args)
 	err = DB.Select(&result, query, args...)
 	if err != nil {
 		return []Member{}, err
 	}
-
-	// if len(result) == 0 {
-	// 	result = []Member{}
-	// 	err = errors.New("Members Not Found")
-	// }
-
 	return result, err
 }
 
@@ -209,7 +195,6 @@ func (a *memberAPI) UpdateMember(m Member) error {
 
 func (a *memberAPI) DeleteMember(id string) error {
 
-	// result := Member{}
 	result, err := DB.Exec(fmt.Sprintf("UPDATE members SET active = %d WHERE member_id = ?", int(MemberStatus["delete"].(float64))), id)
 	if err != nil {
 		return err
@@ -245,9 +230,9 @@ func (a *memberAPI) UpdateAll(ids []string, active int) (err error) {
 	return err
 }
 
-func (a *memberAPI) Count(req MemberArgs) (result int, err error) {
+func (a *memberAPI) Count(req *MemberArgs) (result int, err error) {
 
-	if len(req) == 0 {
+	if !req.anyFilter() {
 
 		rows, err := DB.Queryx(`SELECT COUNT(*) FROM members`)
 		if err != nil {
@@ -257,7 +242,7 @@ func (a *memberAPI) Count(req MemberArgs) (result int, err error) {
 			err = rows.Scan(&result)
 		}
 
-	} else if len(req) > 0 {
+	} else {
 
 		restricts, values := req.parse()
 		query := fmt.Sprintf(`SELECT COUNT(*) FROM (SELECT member_id FROM members WHERE %s) AS subquery`, restricts)
@@ -267,7 +252,6 @@ func (a *memberAPI) Count(req MemberArgs) (result int, err error) {
 			return 0, err
 		}
 		query = DB.Rebind(query)
-		// fmt.Println(query, args)
 		count, err := DB.Queryx(query, args...)
 		if err != nil {
 			return 0, err

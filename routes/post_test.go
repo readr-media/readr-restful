@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -29,7 +28,6 @@ type ExpectResp struct {
 }
 
 func (a *mockPostAPI) GetPosts(args *models.PostArgs) (result []models.TaggedPostMember, err error) {
-	fmt.Println(args)
 	result = []models.TaggedPostMember{
 		{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.Member{}, UpdatedBy: models.UpdatedBy{}}},
 		{PostMember: models.PostMember{Post: mockPostDS[1], Member: mockMemberDS[1], UpdatedBy: models.UpdatedBy{}}},
@@ -368,7 +366,6 @@ func TestRouteGetPost(t *testing.T) {
 				t.Errorf("%s expect to get error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
 			}
 
-			// expected, _ := json.Marshal(tc.expect.resp)
 			expected, _ := json.Marshal(map[string][]models.TaggedPostMember{"_items": []models.TaggedPostMember{tc.expect.resp}})
 			if w.Code == http.StatusOK && w.Body.String() != string(expected) {
 				t.Errorf("%s incorrect response", tc.name)
