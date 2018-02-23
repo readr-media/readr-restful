@@ -235,7 +235,7 @@ func TestRouteTags(t *testing.T) {
 	})
 	t.Run("InsertTag", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"PostTagOK", "POST", "/tags", `{"name":"insert1", "updated_by":"AMI@mirrormedia.mg"}`, http.StatusOK, `{"tag_id":5}`},
+			genericTestcase{"PostTagOK", "POST", "/tags", `{"text":"insert1", "updated_by":"AMI@mirrormedia.mg"}`, http.StatusOK, `{"tag_id":5}`},
 		} {
 			genericDoTest(testcase, t, asserter)
 		}
