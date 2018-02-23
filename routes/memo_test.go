@@ -15,7 +15,6 @@ var mockMemoDS []models.Memo
 type mockMemoAPI struct{}
 
 func (m *mockMemoAPI) CountMemos(args *models.MemoGetArgs) (count int, err error) {
-	log.Println(args)
 	switch {
 	case len(args.Author) > 0 && len(args.Project) > 0:
 		return 1, nil
@@ -133,7 +132,6 @@ func TestRouteMemos(t *testing.T) {
 			t.Errorf("%s, Unexpected result body: %v", resp)
 		}
 
-		log.Println(Response)
 		if len(Response.Items) != len(expected) {
 			t.Errorf("%s expect tag length to be %v but get %v", tc.name, len(expected), len(Response.Items))
 		}

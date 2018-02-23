@@ -414,7 +414,7 @@ func TestRoutePutPost(t *testing.T) {
 	}{
 		{"Current", `{"id":1,"author":"wonderwoman@mirrormedia.mg"}`, ExpectResp{http.StatusOK, ""}},
 		{"NotExisted", `{"id":12345, "author":"superman@mirrormedia.mg"}`, ExpectResp{http.StatusBadRequest, `{"Error":"Post Not Found"}`}},
-		{"UpdateTags", `{"id":1, "tags":[5,3]}`, ExpectResp{http.StatusOK, ``}},
+		{"UpdateTags", `{"id":1, "tags":[5,3], "updated_by":"superman@mirrormedia.mg"}`, ExpectResp{http.StatusOK, ``}},
 	}
 	for _, tc := range testCase {
 		t.Run(tc.name, func(t *testing.T) {
