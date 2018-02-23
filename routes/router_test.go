@@ -46,6 +46,7 @@ func TestMain(m *testing.M) {
 		_, _ = models.DB.Exec("truncate table following_projects;")
 		_, _ = models.DB.Exec("truncate table tags;")
 		_, _ = models.DB.Exec("truncate table post_tags;")
+		_, _ = models.DB.Exec("truncate table memos;")
 		// Init Redis connetions
 		models.RedisConn(map[string]string{
 			"url":      fmt.Sprint(viper.Get("redis.host"), ":", viper.Get("redis.port")),
@@ -55,20 +56,22 @@ func TestMain(m *testing.M) {
 	gin.SetMode(gin.TestMode)
 
 	r = gin.New()
-	PostHandler.SetRoutes(r)
-	MemberHandler.SetRoutes(r)
-	ProjectHandler.SetRoutes(r)
 	AuthHandler.SetRoutes(r)
-	PermissionHandler.SetRoutes(r)
-	MiscHandler.SetRoutes(r, initMailDialer())
 	FollowingHandler.SetRoutes(r)
+	MemberHandler.SetRoutes(r)
+	MemoHandler.SetRoutes(r)
+	PermissionHandler.SetRoutes(r)
+	PostHandler.SetRoutes(r)
+	ProjectHandler.SetRoutes(r)
 	TagHandler.SetRoutes(r)
+	MiscHandler.SetRoutes(r, initMailDialer())
 
 	models.MemberStatus = viper.GetStringMap("models.members")
+	models.MemoStatus = viper.GetStringMap("models.memos")
 	models.PostStatus = viper.GetStringMap("models.posts")
 	models.PostType = viper.GetStringMap("models.post_type")
-	models.TagStatus = viper.GetStringMap("models.tags")
 	models.ProjectStatus = viper.GetStringMap("models.projects")
+	models.TagStatus = viper.GetStringMap("models.tags")
 
 	models.ProjectAPI = new(mockProjectAPI)
 	models.MemberAPI = new(mockMemberAPI)
@@ -76,6 +79,7 @@ func TestMain(m *testing.M) {
 	models.PermissionAPI = new(mockPermissionAPI)
 	models.FollowingAPI = new(mockFollowingAPI)
 	models.TagAPI = new(mockTagAPI)
+	models.MemoAPI = new(mockMemoAPI)
 
 	os.Exit(m.Run())
 }

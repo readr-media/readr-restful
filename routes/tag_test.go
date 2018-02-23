@@ -205,7 +205,7 @@ func TestRouteTags(t *testing.T) {
 	}
 
 	t.Run("GetTags", func(t *testing.T) {
-		testcases := []genericTestcase{
+		for _, testcase := range []genericTestcase{
 			genericTestcase{"GetTagBasicOK", "GET", "/tags?stats=0", ``, http.StatusOK, []models.Tag{
 				models.Tag{ID: 1, Text: "tag1", Active: models.NullInt{1, true}},
 				models.Tag{ID: 2, Text: "tag2", Active: models.NullInt{1, true}},
@@ -229,65 +229,58 @@ func TestRouteTags(t *testing.T) {
 			}},
 			genericTestcase{"GetTagKeywordNotFound", "GET", "/tags?keyword=1024", ``, http.StatusOK, `{"_items":[]}`},
 			genericTestcase{"GetTagUnknownSortingKey", "GET", "/tags?sort=unknown", ``, http.StatusBadRequest, `{"Error":"Bad Sorting Option"}`},
-		}
-		for _, tc := range testcases {
-			genericDoTest(tc, t, asserter)
+		} {
+			genericDoTest(testcase, t, asserter)
 		}
 	})
 	t.Run("InsertTag", func(t *testing.T) {
-		testcases := []genericTestcase{
+		for _, testcase := range []genericTestcase{
 			genericTestcase{"PostTagOK", "POST", "/tags", `{"name":"insert1", "updated_by":"AMI@mirrormedia.mg"}`, http.StatusOK, `{"tag_id":5}`},
-		}
-		for _, tc := range testcases {
-			genericDoTest(tc, t, asserter)
+		} {
+			genericDoTest(testcase, t, asserter)
 		}
 	})
 	t.Run("UpdateTag", func(t *testing.T) {
-		testcases := []genericTestcase{
+		for _, testcase := range []genericTestcase{
 			genericTestcase{"UpdateTagOK", "PUT", "/tags", `{"id":5, "text":"text5566", "updated_by":"AMI@mirrormedia.mg"}`, http.StatusOK, ``},
 			genericTestcase{"UpdateTagNoSuchTag", "PUT", "/tags", `{"id":6, "text":"text7788", "updated_by":"AMI@mirrormedia.mg"}`, http.StatusBadRequest, `{"Error":"Itme Not Found"}`},
 			genericTestcase{"UpdateTagDupe", "PUT", "/tags", `{"id":2, "text":"tag3", "updated_by":"AMI@mirrormedia.mg"}`, http.StatusBadRequest, `{"Error":"Duplicate Entry"}`},
 			genericTestcase{"UpdateTagNoID", "PUT", "/tags", `{"text":"tag3"}`, http.StatusBadRequest, `{"Error":"Updater Not Sepcified"}`},
-		}
-		for _, tc := range testcases {
-			genericDoTest(tc, t, asserter)
+		} {
+			genericDoTest(testcase, t, asserter)
 		}
 	})
 	t.Run("DaleteTags", func(t *testing.T) {
-		testcases := []genericTestcase{
+		for _, testcase := range []genericTestcase{
 			genericTestcase{"DeleteTagOK", "DELETE", "/tags?ids=[1, 2, 3, 4]&updated_by=AMI@mirrormedia.mg", ``, http.StatusOK, ``},
 			genericTestcase{"DeleteTagWithoutUpdater", "DELETE", "/tags?ids=[1, 2, 3, 4]", ``, http.StatusBadRequest, `{"Error":"Bad Updater"}`},
 			genericTestcase{"DeleteTagNoIds", "DELETE", "/tags?", ``, http.StatusBadRequest, `{"Error":"Bad Tag IDs"}`},
-		}
-		for _, tc := range testcases {
-			genericDoTest(tc, t, asserter)
+		} {
+			genericDoTest(testcase, t, asserter)
 		}
 	})
 	t.Run("CountTags", func(t *testing.T) {
-		testcases := []genericTestcase{
+		for _, testcase := range []genericTestcase{
 			genericTestcase{"CountTagsOK", "GET", "/tags/count", ``, http.StatusOK, `{"_meta":{"total":1}}`},
-		}
-		for _, tc := range testcases {
-			genericDoTest(tc, t, asserter)
+		} {
+			genericDoTest(testcase, t, asserter)
 		}
 	})
 	t.Run("InsertDupeTag", func(t *testing.T) {
-		testcases := []genericTestcase{
+		for _, testcase := range []genericTestcase{
 			genericTestcase{"PostTagDupe", "POST", "/tags", `{"text":"text5566","updated_by":"AMI@mirrormedia.mg"}`, http.StatusBadRequest, `{"Error":"Duplicate Entry"}`},
 			genericTestcase{"PostSameAsInactiveTagOK", "POST", "/tags", `{"text":"tag1", "updated_by":"AMI@mirrormedia.mg"}`, http.StatusOK, `{"tag_id":6}`},
 			genericTestcase{"PostSameAsActiveTag", "POST", "/tags", `{"text":"text5566", "updated_by":"AMI@mirrormedia.mg"}`, http.StatusBadRequest, `{"Error":"Duplicate Entry"}`},
-		}
-		for _, tc := range testcases {
-			genericDoTest(tc, t, asserter)
+		} {
+			genericDoTest(testcase, t, asserter)
 		}
 	})
 	/*
 		t.Run("GetPostWithTags", func(t *testing.T) {
-			testcases := []genericTestcase{
+			for _, testcase := range []genericTestcase{
 				genericTestcase{"GetPostWithTagsOK", "GET", "/post/43", ``, http.StatusOK, `{"_items":[{"tags":[{"id":"1","text":"text5566"},{"id":"2","text":"tag2"}],"id":43,"created_at":null,"like_amount":null,"comment_amount":null,"title":null,"content":null,"type":1,"link":null,"og_title":null,"og_description":null,"og_image":null,"active":1,"updated_at":null,"published_at":null,"link_title":null,"link_description":null,"link_image":null,"link_name":null,"author":{"id":"AMI@mirrormedia.mg","name":null,"nickname":null,"birthday":null,"gender":null,"work":null,"mail":null,"register_mode":null,"social_id":null,"talk_id":null,"created_at":null,"updated_at":null,"updated_by":null,"description":null,"profile_image":null,"identity":null,"role":null,"active":1,"custom_editor":null,"hide_profile":null,"profile_push":null,"post_push":null,"comment_push":null},"updated_by":{"id":"AMI@mirrormedia.mg","name":null,"nickname":null,"birthday":null,"gender":null,"work":null,"mail":null,"register_mode":null,"social_id":null,"talk_id":null,"created_at":null,"updated_at":null,"updated_by":null,"description":null,"profile_image":null,"identity":null,"role":null,"active":1,"custom_editor":null,"hide_profile":null,"profile_push":null,"post_push":null,"comment_push":null}}]}`},
-			}
-			for _, tc := range testcases {
-				genericDoTest(tc, t, asserter)
+			} {
+				genericDoTest(testcase, t, asserter)
 			}
 		})
 	*/

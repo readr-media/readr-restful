@@ -166,9 +166,6 @@ func (r *postHandler) Put(c *gin.Context) {
 
 	switch {
 	case post.UpdatedBy.Valid:
-		fallthrough
-	case len(post.Tags) > 0:
-		fallthrough
 	case post.Author.Valid:
 		post.UpdatedBy.String = post.Author.String
 		post.UpdatedBy.Valid = true
