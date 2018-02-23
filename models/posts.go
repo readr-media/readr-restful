@@ -97,10 +97,39 @@ type PostMember struct {
 }
 
 type PostUpdateArgs struct {
-	IDs       []int    `json:"ids"`
-	UpdatedBy string   `form:"updated_by" json:"updated_by" db:"updated_by"`
-	UpdatedAt NullTime `json:"-" db:"updated_at"`
-	Active    NullInt  `json:"-" db:"active"`
+	IDs         []int    `json:"ids"`
+	UpdatedBy   string   `form:"updated_by" json:"updated_by" db:"updated_by"`
+	UpdatedAt   NullTime `json:"-" db:"updated_at"`
+	PublishedAt NullTime `json:"-" db:"published_at"`
+	Active      NullInt  `json:"-" db:"active"`
+}
+
+func (p *PostUpdateArgs) parse() (updates string, values []interface{}) {
+	setQuery := make([]string, 0)
+
+	if p.Active.Valid {
+		setQuery = append(setQuery, "active = ?")
+		values = append(values, p.Active.Int)
+	}
+	if p.PublishedAt.Valid {
+		setQuery = append(setQuery, "published_at = ?")
+		values = append(values, p.PublishedAt.Time)
+	}
+	if p.UpdatedAt.Valid {
+		setQuery = append(setQuery, "updated_at = ?")
+		values = append(values, p.UpdatedAt.Time)
+	}
+	if p.UpdatedBy != "" {
+		setQuery = append(setQuery, "updated_by = ?")
+		values = append(values, p.UpdatedBy)
+	}
+	if len(setQuery) > 1 {
+		updates = fmt.Sprintf(" %s", strings.Join(setQuery, " , "))
+	} else if len(setQuery) == 1 {
+		updates = fmt.Sprintf(" %s", setQuery[0])
+	}
+
+	return updates, values
 }
 
 // type PostArgs map[string]interface{}
@@ -342,13 +371,18 @@ func (a *postAPI) DeletePost(id uint32) error {
 }
 
 func (a *postAPI) UpdateAll(req PostUpdateArgs) error {
+	updateQuery, updateArgs := req.parse()
+	updateQuery = fmt.Sprintf("UPDATE posts SET %s ", updateQuery)
 
-	query, args, err := sqlx.In(`UPDATE posts SET updated_by = ?, updated_at = ?, active = ? WHERE post_id IN (?)`, req.UpdatedBy, req.UpdatedAt, req.Active, req.IDs)
+	restrictQuery, restrictArgs, err := sqlx.In(`WHERE post_id IN (?)`, req.IDs)
 	if err != nil {
 		return err
 	}
-	query = DB.Rebind(query)
-	result, err := DB.Exec(query, args...)
+
+	restrictQuery = DB.Rebind(restrictQuery)
+	updateArgs = append(updateArgs, restrictArgs...)
+
+	result, err := DB.Exec(fmt.Sprintf("%s %s", updateQuery, restrictQuery), updateArgs...)
 	if err != nil {
 		return err
 	}
