@@ -33,10 +33,11 @@ func main() {
 	sqlPass := viper.Get("sql.password")
 
 	models.MemberStatus = viper.GetStringMap("models.members")
+	models.MemoStatus = viper.GetStringMap("models.memos")
 	models.PostStatus = viper.GetStringMap("models.posts")
 	models.PostType = viper.GetStringMap("models.post_type")
-	models.TagStatus = viper.GetStringMap("models.tags")
 	models.ProjectStatus = viper.GetStringMap("models.projects")
+	models.TagStatus = viper.GetStringMap("models.tags")
 
 	dbURI := fmt.Sprintf("%s:%s@tcp(%s)/memberdb?parseTime=true", sqlUser, sqlPass, fmt.Sprintf("%s:%v", sqlHost, sqlPort))
 
@@ -73,6 +74,7 @@ func main() {
 	routes.AuthHandler.SetRoutes(router)
 	routes.FollowingHandler.SetRoutes(router)
 	routes.MemberHandler.SetRoutes(router)
+	routes.MemoHandler.SetRoutes(router)
 	routes.PermissionHandler.SetRoutes(router)
 	routes.PostHandler.SetRoutes(router)
 	routes.ProjectHandler.SetRoutes(router)
