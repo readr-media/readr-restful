@@ -52,6 +52,7 @@ func TestMain(m *testing.M) {
 			"url":      fmt.Sprint(viper.Get("redis.host"), ":", viper.Get("redis.port")),
 			"password": fmt.Sprint(viper.Get("redis.password")),
 		})
+		models.Algolia.Init()
 	*/
 	gin.SetMode(gin.TestMode)
 

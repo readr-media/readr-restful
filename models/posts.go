@@ -221,6 +221,12 @@ func (a *postAPI) GetPosts(req *PostArgs) (result []TaggedPostMember, err error)
 	tags := getStructDBTags("full", Member{})
 	authorField := makeFieldString("get", `author.%s "author.%s"`, tags)
 	updatedByField := makeFieldString("get", `updated_by.%s "updated_by.%s"`, tags)
+
+	authorIDQuery := strings.Split(authorField[0], " ")
+	authorField[0] = fmt.Sprintf(`IFNULL(%s, "") %s`, authorIDQuery[0], authorIDQuery[1])
+	updatedByIDQuery := strings.Split(updatedByField[0], " ")
+	updatedByField[0] = fmt.Sprintf(`IFNULL(%s, "") %s`, updatedByIDQuery[0], updatedByIDQuery[1])
+
 	query := fmt.Sprintf(`SELECT posts.*, %s, %s, t.tags as tags  FROM posts
 		LEFT JOIN members AS author ON posts.author = author.member_id
 		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.member_id
@@ -266,6 +272,12 @@ func (a *postAPI) GetPost(id uint32) (TaggedPostMember, error) {
 	tags := getStructDBTags("full", Member{})
 	author := makeFieldString("get", `author.%s "author.%s"`, tags)
 	updatedBy := makeFieldString("get", `updated_by.%s "updated_by.%s"`, tags)
+
+	authorIDQuery := strings.Split(author[0], " ")
+	author[0] = fmt.Sprintf(`IFNULL(%s, "") %s`, authorIDQuery[0], authorIDQuery[1])
+	updatedByIDQuery := strings.Split(updatedBy[0], " ")
+	updatedBy[0] = fmt.Sprintf(`IFNULL(%s, "") %s`, updatedByIDQuery[0], updatedByIDQuery[1])
+
 	query := fmt.Sprintf(`SELECT posts.*, %s, %s, t.tags as tags FROM posts
 		LEFT JOIN members AS author ON posts.author = author.member_id 
 		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.member_id 
@@ -284,7 +296,7 @@ func (a *postAPI) GetPost(id uint32) (TaggedPostMember, error) {
 			err = errors.New("Post Not Found")
 			return TaggedPostMember{}, err
 		case err != nil:
-			log.Fatal(err)
+			log.Println(err.Error())
 			return TaggedPostMember{}, err
 		default:
 			err = nil
@@ -323,7 +335,22 @@ func (a *postAPI) InsertPost(p Post) (int, error) {
 		return 0, err
 	}
 
-	PostCache.Insert(p)
+	// Only insert a post when it's published
+	if p.Active.Valid == true && p.Active.Int == 1 {
+		if p.ID == 0 {
+			p.ID = uint32(lastID)
+		}
+		PostCache.Insert(p)
+		// Write to new post data to search feed
+		post, err := PostAPI.GetPost(p.ID)
+		if err != nil {
+			return 0, err
+		}
+		err = Algolia.InsertPost([]TaggedPostMember{post})
+		if err != nil {
+			return 0, err
+		}
+	}
 
 	return int(lastID), err
 }
@@ -349,6 +376,22 @@ func (a *postAPI) UpdatePost(p Post) error {
 
 	PostCache.Update(p)
 
+	if p.Active.Valid == true && p.Active.Int == 1 {
+		// Case: Set a post to unpublished state, Delete the post from cache/searcher
+		err := Algolia.DeletePost([]int{int(p.ID)})
+		if err != nil {
+			return err
+		}
+	} else {
+		// Case: Publish a post. Read whole post from database, then store to cache/searcher
+		// Case: Update a post.
+		tpm, err := a.GetPost(p.ID)
+		if err != nil {
+			return err
+		}
+		Algolia.InsertPost([]TaggedPostMember{tpm})
+	}
+
 	return err
 }
 
@@ -366,6 +409,7 @@ func (a *postAPI) DeletePost(id uint32) error {
 	}
 
 	PostCache.Delete(id)
+	Algolia.DeletePost([]int{int(id)})
 
 	return err
 }
@@ -394,6 +438,22 @@ func (a *postAPI) UpdateAll(req PostUpdateArgs) error {
 	}
 
 	PostCache.UpdateMulti(req)
+
+	if req.Active.Valid == true && req.Active.Int == 1 {
+		// Case: Publish posts. Read those post from database, then store to cache/searcher
+		tpms := []TaggedPostMember{}
+		for _, id := range req.IDs {
+			tpm, err := a.GetPost(uint32(id))
+			if err != nil {
+				return err
+			}
+			tpms = append(tpms, tpm)
+		}
+		Algolia.InsertPost(tpms)
+	} else if req.Active.Valid == true {
+		// Case: Set a post to unpublished state, Delete the post from cache/searcher
+		Algolia.DeletePost(req.IDs)
+	}
 
 	return nil
 }

@@ -23,6 +23,11 @@
         "user": "",
         "password": ""
     },
+    "search_feed":{
+        "app_id":"",
+        "app_key":"",
+        "index":"",
+    },
     "models":{
         "members":{
             "active": 9,
