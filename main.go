@@ -83,6 +83,7 @@ func main() {
 	routes.PostHandler.SetRoutes(router)
 	routes.ProjectHandler.SetRoutes(router)
 	routes.TagHandler.SetRoutes(router)
+	routes.PointsHandler.SetRoutes(router)
 
 	router.Run()
 }
