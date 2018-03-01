@@ -6,6 +6,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/algolia/algoliasearch-client-go/algoliasearch"
 	"github.com/spf13/viper"
@@ -32,21 +33,41 @@ func (a *algolia) Init() {
 }
 
 func (a *algolia) insert(objects []algoliasearch.Object) error {
-	res, err := a.index.AddObjects(objects)
-	log.Println("Insert to Algolia: ", res, err)
-	if err != nil {
-		return err
+	var (
+		retry     int   = 0
+		max_retry int   = int(viper.Get("search_feed.max_retry").(float64))
+		err       error = nil
+	)
+	for retry < max_retry {
+		_, err = a.index.AddObjects(objects)
+		if err != nil {
+			retry += 1
+			time.Sleep(time.Second * 10 * time.Duration(retry))
+		} else {
+			return nil
+		}
 	}
-	return nil
+	err = fmt.Errorf("Search feed insert fail: %s, retry limit exceeded.", err.Error())
+	return err
 }
 
 func (a *algolia) delete(ids []string) error {
-	res, err := a.index.DeleteObjects(ids)
-	log.Println("Delete to Algolia: ", res, err)
-	if err != nil {
-		return err
+	var (
+		retry     int   = 0
+		max_retry int   = int(viper.Get("search_feed.max_retry").(float64))
+		err       error = nil
+	)
+	for retry < max_retry {
+		_, err = a.index.DeleteObjects(ids)
+		if err != nil {
+			retry += 1
+			time.Sleep(time.Second * 10 * time.Duration(retry))
+		} else {
+			return nil
+		}
 	}
-	return nil
+	err = fmt.Errorf("Search feed delete fail: %s, retry limit exceeded.", err.Error())
+	return err
 }
 
 func (a *algolia) InsertPost(tpms []TaggedPostMember) error {
@@ -89,6 +110,7 @@ func (a *algolia) InsertPost(tpms []TaggedPostMember) error {
 
 	err := a.insert(objects)
 	if err != nil {
+		log.Println(err.Error())
 		return err
 	}
 
@@ -102,6 +124,7 @@ func (a *algolia) DeletePost(post_ids []int) error {
 	}
 	err := a.delete(ids)
 	if err != nil {
+		log.Println(err.Error())
 		return err
 	}
 

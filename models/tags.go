@@ -248,7 +248,7 @@ func (t *tagApi) UpdatePostTags(post_id int, tag_ids []int) error {
 	if err != nil {
 		return err
 	}
-	Algolia.InsertPost([]TaggedPostMember{post})
+	go Algolia.InsertPost([]TaggedPostMember{post})
 
 	return nil
 }

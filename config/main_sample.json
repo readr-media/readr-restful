@@ -27,6 +27,7 @@
         "app_id":"",
         "app_key":"",
         "index":"",
+        "max_retry": 0
     },
     "models":{
         "members":{

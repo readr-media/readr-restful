@@ -340,16 +340,13 @@ func (a *postAPI) InsertPost(p Post) (int, error) {
 		if p.ID == 0 {
 			p.ID = uint32(lastID)
 		}
-		PostCache.Insert(p)
+		go PostCache.Insert(p)
 		// Write to new post data to search feed
 		post, err := PostAPI.GetPost(p.ID)
 		if err != nil {
 			return 0, err
 		}
-		err = Algolia.InsertPost([]TaggedPostMember{post})
-		if err != nil {
-			return 0, err
-		}
+		go Algolia.InsertPost([]TaggedPostMember{post})
 	}
 
 	return int(lastID), err
@@ -374,14 +371,11 @@ func (a *postAPI) UpdatePost(p Post) error {
 		return errors.New("Post Not Found")
 	}
 
-	PostCache.Update(p)
+	go PostCache.Update(p)
 
 	if p.Active.Valid == true && p.Active.Int == 1 {
 		// Case: Set a post to unpublished state, Delete the post from cache/searcher
-		err := Algolia.DeletePost([]int{int(p.ID)})
-		if err != nil {
-			return err
-		}
+		go Algolia.DeletePost([]int{int(p.ID)})
 	} else {
 		// Case: Publish a post. Read whole post from database, then store to cache/searcher
 		// Case: Update a post.
@@ -389,7 +383,7 @@ func (a *postAPI) UpdatePost(p Post) error {
 		if err != nil {
 			return err
 		}
-		Algolia.InsertPost([]TaggedPostMember{tpm})
+		go Algolia.InsertPost([]TaggedPostMember{tpm})
 	}
 
 	return err
@@ -408,8 +402,8 @@ func (a *postAPI) DeletePost(id uint32) error {
 		return errors.New("Post Not Found")
 	}
 
-	PostCache.Delete(id)
-	Algolia.DeletePost([]int{int(id)})
+	go PostCache.Delete(id)
+	go Algolia.DeletePost([]int{int(id)})
 
 	return err
 }
@@ -437,7 +431,7 @@ func (a *postAPI) UpdateAll(req PostUpdateArgs) error {
 		return errors.New("Posts Not Found")
 	}
 
-	PostCache.UpdateMulti(req)
+	go PostCache.UpdateMulti(req)
 
 	if req.Active.Valid == true && req.Active.Int == 1 {
 		// Case: Publish posts. Read those post from database, then store to cache/searcher
@@ -449,10 +443,10 @@ func (a *postAPI) UpdateAll(req PostUpdateArgs) error {
 			}
 			tpms = append(tpms, tpm)
 		}
-		Algolia.InsertPost(tpms)
+		go Algolia.InsertPost(tpms)
 	} else if req.Active.Valid == true {
 		// Case: Set a post to unpublished state, Delete the post from cache/searcher
-		Algolia.DeletePost(req.IDs)
+		go Algolia.DeletePost(req.IDs)
 	}
 
 	return nil
