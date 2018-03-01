@@ -97,10 +97,39 @@ type PostMember struct {
 }
 
 type PostUpdateArgs struct {
-	IDs       []int    `json:"ids"`
-	UpdatedBy string   `form:"updated_by" json:"updated_by" db:"updated_by"`
-	UpdatedAt NullTime `json:"-" db:"updated_at"`
-	Active    NullInt  `json:"-" db:"active"`
+	IDs         []int    `json:"ids"`
+	UpdatedBy   string   `form:"updated_by" json:"updated_by" db:"updated_by"`
+	UpdatedAt   NullTime `json:"-" db:"updated_at"`
+	PublishedAt NullTime `json:"-" db:"published_at"`
+	Active      NullInt  `json:"-" db:"active"`
+}
+
+func (p *PostUpdateArgs) parse() (updates string, values []interface{}) {
+	setQuery := make([]string, 0)
+
+	if p.Active.Valid {
+		setQuery = append(setQuery, "active = ?")
+		values = append(values, p.Active.Int)
+	}
+	if p.PublishedAt.Valid {
+		setQuery = append(setQuery, "published_at = ?")
+		values = append(values, p.PublishedAt.Time)
+	}
+	if p.UpdatedAt.Valid {
+		setQuery = append(setQuery, "updated_at = ?")
+		values = append(values, p.UpdatedAt.Time)
+	}
+	if p.UpdatedBy != "" {
+		setQuery = append(setQuery, "updated_by = ?")
+		values = append(values, p.UpdatedBy)
+	}
+	if len(setQuery) > 1 {
+		updates = fmt.Sprintf(" %s", strings.Join(setQuery, " , "))
+	} else if len(setQuery) == 1 {
+		updates = fmt.Sprintf(" %s", setQuery[0])
+	}
+
+	return updates, values
 }
 
 // type PostArgs map[string]interface{}
@@ -192,6 +221,12 @@ func (a *postAPI) GetPosts(req *PostArgs) (result []TaggedPostMember, err error)
 	tags := getStructDBTags("full", Member{})
 	authorField := makeFieldString("get", `author.%s "author.%s"`, tags)
 	updatedByField := makeFieldString("get", `updated_by.%s "updated_by.%s"`, tags)
+
+	authorIDQuery := strings.Split(authorField[0], " ")
+	authorField[0] = fmt.Sprintf(`IFNULL(%s, "") %s`, authorIDQuery[0], authorIDQuery[1])
+	updatedByIDQuery := strings.Split(updatedByField[0], " ")
+	updatedByField[0] = fmt.Sprintf(`IFNULL(%s, "") %s`, updatedByIDQuery[0], updatedByIDQuery[1])
+
 	query := fmt.Sprintf(`SELECT posts.*, %s, %s, t.tags as tags  FROM posts
 		LEFT JOIN members AS author ON posts.author = author.member_id
 		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.member_id
@@ -237,6 +272,12 @@ func (a *postAPI) GetPost(id uint32) (TaggedPostMember, error) {
 	tags := getStructDBTags("full", Member{})
 	author := makeFieldString("get", `author.%s "author.%s"`, tags)
 	updatedBy := makeFieldString("get", `updated_by.%s "updated_by.%s"`, tags)
+
+	authorIDQuery := strings.Split(author[0], " ")
+	author[0] = fmt.Sprintf(`IFNULL(%s, "") %s`, authorIDQuery[0], authorIDQuery[1])
+	updatedByIDQuery := strings.Split(updatedBy[0], " ")
+	updatedBy[0] = fmt.Sprintf(`IFNULL(%s, "") %s`, updatedByIDQuery[0], updatedByIDQuery[1])
+
 	query := fmt.Sprintf(`SELECT posts.*, %s, %s, t.tags as tags FROM posts
 		LEFT JOIN members AS author ON posts.author = author.member_id 
 		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.member_id 
@@ -255,7 +296,7 @@ func (a *postAPI) GetPost(id uint32) (TaggedPostMember, error) {
 			err = errors.New("Post Not Found")
 			return TaggedPostMember{}, err
 		case err != nil:
-			log.Fatal(err)
+			log.Println(err.Error())
 			return TaggedPostMember{}, err
 		default:
 			err = nil
@@ -294,7 +335,19 @@ func (a *postAPI) InsertPost(p Post) (int, error) {
 		return 0, err
 	}
 
-	PostCache.Insert(p)
+	// Only insert a post when it's published
+	if p.Active.Valid == true && p.Active.Int == 1 {
+		if p.ID == 0 {
+			p.ID = uint32(lastID)
+		}
+		go PostCache.Insert(p)
+		// Write to new post data to search feed
+		post, err := PostAPI.GetPost(p.ID)
+		if err != nil {
+			return 0, err
+		}
+		go Algolia.InsertPost([]TaggedPostMember{post})
+	}
 
 	return int(lastID), err
 }
@@ -318,7 +371,20 @@ func (a *postAPI) UpdatePost(p Post) error {
 		return errors.New("Post Not Found")
 	}
 
-	PostCache.Update(p)
+	go PostCache.Update(p)
+
+	if p.Active.Valid == true && p.Active.Int == 1 {
+		// Case: Set a post to unpublished state, Delete the post from cache/searcher
+		go Algolia.DeletePost([]int{int(p.ID)})
+	} else {
+		// Case: Publish a post. Read whole post from database, then store to cache/searcher
+		// Case: Update a post.
+		tpm, err := a.GetPost(p.ID)
+		if err != nil {
+			return err
+		}
+		go Algolia.InsertPost([]TaggedPostMember{tpm})
+	}
 
 	return err
 }
@@ -336,19 +402,25 @@ func (a *postAPI) DeletePost(id uint32) error {
 		return errors.New("Post Not Found")
 	}
 
-	PostCache.Delete(id)
+	go PostCache.Delete(id)
+	go Algolia.DeletePost([]int{int(id)})
 
 	return err
 }
 
 func (a *postAPI) UpdateAll(req PostUpdateArgs) error {
+	updateQuery, updateArgs := req.parse()
+	updateQuery = fmt.Sprintf("UPDATE posts SET %s ", updateQuery)
 
-	query, args, err := sqlx.In(`UPDATE posts SET updated_by = ?, updated_at = ?, active = ? WHERE post_id IN (?)`, req.UpdatedBy, req.UpdatedAt, req.Active, req.IDs)
+	restrictQuery, restrictArgs, err := sqlx.In(`WHERE post_id IN (?)`, req.IDs)
 	if err != nil {
 		return err
 	}
-	query = DB.Rebind(query)
-	result, err := DB.Exec(query, args...)
+
+	restrictQuery = DB.Rebind(restrictQuery)
+	updateArgs = append(updateArgs, restrictArgs...)
+
+	result, err := DB.Exec(fmt.Sprintf("%s %s", updateQuery, restrictQuery), updateArgs...)
 	if err != nil {
 		return err
 	}
@@ -359,7 +431,23 @@ func (a *postAPI) UpdateAll(req PostUpdateArgs) error {
 		return errors.New("Posts Not Found")
 	}
 
-	PostCache.UpdateMulti(req)
+	go PostCache.UpdateMulti(req)
+
+	if req.Active.Valid == true && req.Active.Int == 1 {
+		// Case: Publish posts. Read those post from database, then store to cache/searcher
+		tpms := []TaggedPostMember{}
+		for _, id := range req.IDs {
+			tpm, err := a.GetPost(uint32(id))
+			if err != nil {
+				return err
+			}
+			tpms = append(tpms, tpm)
+		}
+		go Algolia.InsertPost(tpms)
+	} else if req.Active.Valid == true {
+		// Case: Set a post to unpublished state, Delete the post from cache/searcher
+		go Algolia.DeletePost(req.IDs)
+	}
 
 	return nil
 }

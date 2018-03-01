@@ -71,6 +71,8 @@ func main() {
 
 	models.InitPostCache()
 
+	models.Algolia.Init()
+
 	routes.AuthHandler.SetRoutes(router)
 	routes.FollowingHandler.SetRoutes(router)
 	routes.MemberHandler.SetRoutes(router)

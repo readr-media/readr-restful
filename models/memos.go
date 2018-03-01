@@ -91,10 +91,38 @@ func (p *MemoGetArgs) parse() (restricts string, values []interface{}) {
 
 type MemoUpdateArgs struct {
 	IDs         []int    `json:"ids"`
-	UpdatedBy   string   `form:"updated_by" json:"updated_by" db:"updated_by"`
-	UpdatedAt   NullTime `json:"-" db:"updated_at"`
-	PublishedAt NullTime `json:"-" db:"published_at"`
-	Active      NullInt  `json:"-" db:"active"`
+	UpdatedBy   string   `json:"updated_by"`
+	UpdatedAt   NullTime `json:"-"`
+	PublishedAt NullTime `json:"-"`
+	Active      NullInt  `json:"-"`
+}
+
+func (p *MemoUpdateArgs) parse() (updates string, values []interface{}) {
+	setQuery := make([]string, 0)
+
+	if p.Active.Valid {
+		setQuery = append(setQuery, "active = ?")
+		values = append(values, p.Active.Int)
+	}
+	if p.PublishedAt.Valid {
+		setQuery = append(setQuery, "published_at = ?")
+		values = append(values, p.PublishedAt.Time)
+	}
+	if p.UpdatedAt.Valid {
+		setQuery = append(setQuery, "updated_at = ?")
+		values = append(values, p.UpdatedAt.Time)
+	}
+	if p.UpdatedBy != "" {
+		setQuery = append(setQuery, "updated_by = ?")
+		values = append(values, p.UpdatedBy)
+	}
+	if len(setQuery) > 1 {
+		updates = fmt.Sprintf(" %s", strings.Join(setQuery, " , "))
+	} else if len(setQuery) == 1 {
+		updates = fmt.Sprintf(" %s", setQuery[0])
+	}
+
+	return updates, values
 }
 
 type memoAPI struct{}
@@ -154,8 +182,6 @@ func (m *memoAPI) GetMemos(args *MemoGetArgs) (memos []Memo, err error) {
 
 	query = query + fmt.Sprintf(`ORDER BY %s LIMIT ? OFFSET ?`, orderByHelper(args.Sorting))
 	sqlArgs = append(sqlArgs, args.MaxResult, (args.Page-1)*args.MaxResult)
-
-	log.Println(query, sqlArgs)
 
 	rows, err := DB.Queryx(query, sqlArgs...)
 	if err != nil {
@@ -221,12 +247,17 @@ func (m *memoAPI) UpdateMemo(memo Memo) (err error) {
 }
 func (m *memoAPI) UpdateMemos(args MemoUpdateArgs) (err error) {
 
-	query, sqlArgs, err := sqlx.In(`UPDATE memos SET updated_by = ?, updated_at = ?, active = ? WHERE memo_id IN (?)`, args.UpdatedBy, args.UpdatedAt, args.Active, args.IDs)
+	updateQuery, updateArgs := args.parse()
+	updateQuery = fmt.Sprintf("UPDATE memos SET %s ", updateQuery)
+
+	restrictQuery, restrictArgs, err := sqlx.In(`WHERE memo_id IN (?)`, args.IDs)
 	if err != nil {
 		return err
 	}
-	query = DB.Rebind(query)
-	result, err := DB.Exec(query, sqlArgs...)
+	restrictQuery = DB.Rebind(restrictQuery)
+	updateArgs = append(updateArgs, restrictArgs...)
+
+	result, err := DB.Exec(fmt.Sprintf("%s %s", updateQuery, restrictQuery), updateArgs...)
 	if err != nil {
 		return err
 	}

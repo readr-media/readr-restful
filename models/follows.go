@@ -284,7 +284,7 @@ func (*followingAPI) AddFollowing(params map[string]string) error {
 	}
 
 	if params["resource"] == "post" {
-		PostCache.UpdateFollowing("follow", params["subject"], params["object"])
+		go PostCache.UpdateFollowing("follow", params["subject"], params["object"])
 	}
 
 	return nil
@@ -302,7 +302,7 @@ func (*followingAPI) DeleteFollowing(params map[string]string) error {
 	}
 
 	if params["resource"] == "post" {
-		PostCache.UpdateFollowing("unfollow", params["subject"], params["object"])
+		go PostCache.UpdateFollowing("unfollow", params["subject"], params["object"])
 	}
 
 	return err

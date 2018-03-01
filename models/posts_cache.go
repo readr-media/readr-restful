@@ -140,6 +140,9 @@ func (p *postCache) UpdateMulti(params PostUpdateArgs) {
 					if params.Active.Valid == true {
 						conn.Send("HSET", key, "active", params.Active)
 					}
+					if params.PublishedAt.Valid == true {
+						conn.Send("HSET", key, "published_at", params.PublishedAt)
+					}
 					break
 				}
 			}

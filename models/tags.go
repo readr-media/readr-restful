@@ -243,6 +243,13 @@ func (t *tagApi) UpdatePostTags(post_id int, tag_ids []int) error {
 
 	tx.Commit()
 
+	// Write to new post data to search feed
+	post, err := PostAPI.GetPost(uint32(post_id))
+	if err != nil {
+		return err
+	}
+	go Algolia.InsertPost([]TaggedPostMember{post})
+
 	return nil
 }
 
