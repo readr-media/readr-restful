@@ -155,7 +155,7 @@ func (r *tagHandler) SetRoutes(router *gin.Engine) {
 }
 
 func validateSorting(s string) bool {
-	if matched, err := regexp.MatchString("-?(updated_at|created_at|tag_id|related_reviews|related_news)", s); err != nil || !matched {
+	if matched, err := regexp.MatchString("-?(text|updated_at|created_at|related_reviews|related_news)", s); err != nil || !matched {
 		return false
 	}
 	return true
