@@ -2,8 +2,10 @@ package models
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"database/sql"
 
@@ -11,19 +13,14 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-/* Types of Followings */
+/* ================================================ Types of Followings ================================================ */
 
 type follow interface {
 	Delete() (sql.Result, error)
-	GetFollowed([]string) (*sqlx.Rows, error)
-	GetFollowings(map[string]string) (interface{}, error)
+	GetFollowed(args GetFollowedArgs) (*sqlx.Rows, error)
+	GetFollowings(map[string]string) (*sqlx.Rows, error)
+	GetMap(args GetFollowMapArgs) (*sqlx.Rows, error)
 	Insert() (sql.Result, error)
-}
-
-type followedCount struct {
-	Resourceid string
-	Count      int
-	Follower   []string
 }
 
 type followPost struct {
@@ -39,38 +36,43 @@ func (f followPost) Delete() (sql.Result, error) {
 	query := "DELETE FROM following_posts WHERE member_id = ? AND post_id = ?;"
 	return DB.Exec(query, f.ID, f.Object)
 }
-func (f followPost) GetFollowings(params map[string]string) (interface{}, error) {
-	rows, err := DB.Queryx("SELECT m.* from posts as m INNER JOIN following_posts as f ON m.post_id = f.post_id WHERE m.active = 1 AND f.member_id = ? ORDER BY f.created_at DESC;", f.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	var followings []Post
-	for rows.Next() {
-		var post Post
-		err = rows.StructScan(&post)
-		if err != nil {
-			log.Fatalln(err.Error())
-		}
-		followings = append(followings, post)
-	}
-
-	if len(followings) == 0 {
-		err = errors.New("Not Found")
-	}
-
-	return followings, err
+func (f followPost) GetFollowings(params map[string]string) (*sqlx.Rows, error) {
+	post_type := f.postTypeHelper(params["resource_type"])
+	return DB.Queryx(fmt.Sprintf("SELECT p.* from posts as p INNER JOIN following_posts as f ON p.post_id = f.post_id WHERE p.active = 1 AND f.member_id = ? %s ORDER BY f.created_at DESC;", post_type), f.ID)
 }
-
-func (f followPost) GetFollowed(ids []string) (*sqlx.Rows, error) {
-	query, args, err := sqlx.In("SELECT f.post_id, COUNT(m.member_id) as count, GROUP_CONCAT(m.member_id SEPARATOR ',') as follower FROM following_posts as f LEFT JOIN members as m ON f.member_id = m.member_id WHERE f.post_id IN (?) GROUP BY f.post_id;", ids)
+func (f followPost) GetFollowed(params GetFollowedArgs) (*sqlx.Rows, error) {
+	post_type := f.postTypeHelper(params.Type)
+	query, args, err := sqlx.In(fmt.Sprintf("SELECT f.post_id, COUNT(m.member_id) as count, GROUP_CONCAT(m.member_id SEPARATOR ',') as follower FROM posts AS p LEFT JOIN following_posts as f ON f.post_id = p.post_id LEFT JOIN members as m ON f.member_id = m.member_id WHERE f.post_id IN (?) %s GROUP BY f.post_id;", post_type), params.Ids)
 	if err != nil {
 		return nil, err
 	}
-
-	rows, err := DB.Queryx(query, args...)
-
-	return rows, err
+	return DB.Queryx(query, args...)
+}
+func (f followPost) GetMap(params GetFollowMapArgs) (*sqlx.Rows, error) {
+	post_type := f.postTypeHelper(params.Type)
+	query := fmt.Sprintf(`
+		SELECT GROUP_CONCAT(member_resource.member_id) AS member_ids, member_resource.resource_ids
+		FROM (
+			SELECT GROUP_CONCAT(fp.post_id) AS resource_ids, m.member_id AS member_id, m.mail AS mail
+			FROM following_posts AS fp
+			LEFT JOIN members AS m ON fp.member_id = m.member_id
+			LEFT JOIN posts AS p ON p.post_id = fp.post_id
+			WHERE m.active = ?
+				AND m.post_push = ?
+				AND p.active = ?
+				AND p.updated_at > ?
+				%s
+			GROUP BY m.member_id
+			) AS member_resource
+		GROUP BY member_resource.resource_ids;`, post_type)
+	return DB.Queryx(query, int(MemberStatus["active"].(float64)), 1, int(PostStatus["active"].(float64)), params.UpdateAfter)
+}
+func (f followPost) postTypeHelper(post_type string) string {
+	if t := PostType[post_type]; t == nil {
+		return ""
+	} else {
+		return fmt.Sprintf(" AND p.type = %d", int(t.(float64)))
+	}
 }
 
 type followMember struct {
@@ -87,37 +89,33 @@ func (f followMember) Delete() (sql.Result, error) {
 	query := "DELETE FROM following_members WHERE member_id = ? AND custom_editor = ?;"
 	return DB.Exec(query, f.ID, f.Object)
 }
-func (f followMember) GetFollowings(params map[string]string) (interface{}, error) {
-	rows, err := DB.Queryx("SELECT m.* from members as m INNER JOIN following_members as f ON m.member_id = f.custom_editor WHERE m.active > 0 AND f.member_id = ? ORDER BY f.created_at DESC;", f.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	var followings []Member
-	for rows.Next() {
-		var member Member
-		err = rows.StructScan(&member)
-		if err != nil {
-			log.Fatalln(err.Error())
-		}
-		followings = append(followings, member)
-	}
-
-	if len(followings) == 0 {
-		err = errors.New("Not Found")
-	}
-
-	return followings, err
+func (f followMember) GetFollowings(params map[string]string) (*sqlx.Rows, error) {
+	return DB.Queryx("SELECT m.* from members as m INNER JOIN following_members as f ON m.member_id = f.custom_editor WHERE m.active > 0 AND f.member_id = ? ORDER BY f.created_at DESC;", f.ID)
 }
-func (f followMember) GetFollowed(ids []string) (*sqlx.Rows, error) {
-	query, args, err := sqlx.In("SELECT f.custom_editor, COUNT(m.member_id) as count, GROUP_CONCAT(m.member_id SEPARATOR ',') as follower FROM following_members as f LEFT JOIN members as m ON f.member_id = m.member_id WHERE f.custom_editor IN (?) GROUP BY f.custom_editor;", ids)
+func (f followMember) GetFollowed(params GetFollowedArgs) (*sqlx.Rows, error) {
+	query, args, err := sqlx.In("SELECT f.custom_editor, COUNT(m.member_id) as count, GROUP_CONCAT(m.member_id SEPARATOR ',') as follower FROM following_members as f LEFT JOIN members as m ON f.member_id = m.member_id WHERE f.custom_editor IN (?) GROUP BY f.custom_editor;", params.Ids)
 	if err != nil {
 		return nil, err
 	}
-
-	rows, err := DB.Queryx(query, args...)
-
-	return rows, err
+	return DB.Queryx(query, args...)
+}
+func (f followMember) GetMap(params GetFollowMapArgs) (*sqlx.Rows, error) {
+	query := `
+		SELECT GROUP_CONCAT(member_resource.member_id) AS member_ids, member_resource.resource_ids
+		FROM (
+			SELECT GROUP_CONCAT(f.custom_editor) AS resource_ids, m.member_id AS member_id, m.mail AS mail
+			FROM following_members AS f
+			LEFT JOIN members AS m ON f.member_id = m.member_id
+			LEFT JOIN members AS e ON f.custom_editor = e.member_id
+			WHERE m.active = ?
+				AND m.post_push = ?
+				AND e.active = ?
+				AND e.updated_at > ?
+			GROUP BY m.member_id
+			) AS member_resource
+		GROUP BY member_resource.resource_ids;`
+	log.Println(query)
+	return DB.Queryx(query, int(MemberStatus["active"].(float64)), 1, int(MemberStatus["active"].(float64)), params.UpdateAfter)
 }
 
 type followProject struct {
@@ -133,42 +131,35 @@ func (f followProject) Delete() (sql.Result, error) {
 	query := "DELETE FROM following_projects WHERE member_id = ? AND project_id = ?;"
 	return DB.Exec(query, f.ID, f.Object)
 }
-func (f followProject) GetFollowings(params map[string]string) (interface{}, error) {
-	rows, err := DB.Queryx("SELECT m.* from projects as m INNER JOIN following_projects as f ON m.project_id = f.project_id WHERE m.active = 1  AND f.member_id = ? ORDER BY f.created_at DESC;", f.ID)
+func (f followProject) GetFollowings(params map[string]string) (*sqlx.Rows, error) {
+	return DB.Queryx("SELECT m.* from projects as m INNER JOIN following_projects as f ON m.project_id = f.project_id WHERE m.active = 1  AND f.member_id = ? ORDER BY f.created_at DESC;", f.ID)
+}
+func (f followProject) GetFollowed(params GetFollowedArgs) (*sqlx.Rows, error) {
+	query, args, err := sqlx.In("SELECT f.project_id, COUNT(m.member_id) as count, GROUP_CONCAT(m.member_id SEPARATOR ',') as follower FROM following_projects as f LEFT JOIN members as m ON f.member_id = m.member_id WHERE f.project_id IN (?) GROUP BY f.project_id;", params.Ids)
 	if err != nil {
 		return nil, err
 	}
-
-	var followings []Project
-	for rows.Next() {
-		var project Project
-		err = rows.StructScan(&project)
-		if err != nil {
-			log.Fatalln(err.Error())
-		}
-		followings = append(followings, project)
-	}
-
-	if len(followings) == 0 {
-		err = errors.New("Not Found")
-	}
-
-	return followings, err
+	return DB.Queryx(query, args...)
 }
-func (f followProject) GetFollowed(ids []string) (*sqlx.Rows, error) {
-	query, args, err := sqlx.In("SELECT f.project_id, COUNT(m.member_id) as count, GROUP_CONCAT(m.member_id SEPARATOR ',') as follower FROM following_projects as f LEFT JOIN members as m ON f.member_id = m.member_id WHERE f.project_id IN (?) GROUP BY f.project_id;", ids)
-	if err != nil {
-		return nil, err
-	}
-
-	rows, err := DB.Queryx(query, args...)
-
-	return rows, err
+func (f followProject) GetMap(params GetFollowMapArgs) (*sqlx.Rows, error) {
+	query := `
+		SELECT GROUP_CONCAT(member_resource.member_id) AS member_ids, member_resource.resource_ids
+		FROM (
+			SELECT GROUP_CONCAT(f.project_id) AS resource_ids, m.member_id AS member_id, m.mail AS mail
+			FROM following_projects AS f
+			LEFT JOIN members AS m ON f.member_id = m.member_id
+			LEFT JOIN projects AS p ON f.project_id = p.project_id
+			WHERE m.active = ?
+				AND m.post_push = ?
+				AND p.active = ?
+				AND p.updated_at > ?
+			GROUP BY m.member_id
+			) AS member_resource
+		GROUP BY member_resource.resource_ids;`
+	return DB.Queryx(query, int(MemberStatus["active"].(float64)), 1, int(ProjectStatus["active"].(float64)), params.UpdateAfter)
 }
 
-/*
-Follower Factory
-*/
+/* ================================================ Follower Factory ================================================ */
 
 func followPostFactory(config map[string]string) follow {
 	return followPost{
@@ -182,7 +173,6 @@ func followMemberFactory(config map[string]string) follow {
 		Object: config["object"],
 	}
 }
-
 func followProjectFactory(config map[string]string) follow {
 	return followProject{
 		ID:     config["subject"],
@@ -199,43 +189,105 @@ var followFactories = map[string]func(conf map[string]string) follow{
 func CreateFollow(config map[string]string) (follow, error) {
 	followFactory, ok := followFactories[config["resource"]]
 	if !ok {
-		return nil, errors.New("Resource Not Found")
+		return nil, errors.New("Resource Not Supported")
 	}
 	return followFactory(config), nil
 }
 
-/*
-Follower API
-*/
+/* ================================================ Follower API ================================================ */
 
 type FollowingAPIInterface interface {
 	AddFollowing(params map[string]string) error
 	DeleteFollowing(params map[string]string) error
-	GetFollowing(params map[string]string) (interface{}, error)
-	GetFollowed(resource string, ids []string) (interface{}, error)
+	GetFollowing(params map[string]string) ([]interface{}, error)
+	GetFollowed(args GetFollowedArgs) (interface{}, error)
+	GetFollowMap(args GetFollowMapArgs) (FollowingMap, error)
+}
+
+type GetFollowedArgs struct {
+	Ids      []string `json:"ids"`
+	Resource string   `json:"resource"`
+	Type     string   `json:"resource_type,omitempty"`
+}
+
+type GetFollowMapArgs struct {
+	Resource    string    `json:"resource"`
+	Type        string    `json:"resource_type,omitempty"`
+	UpdateAfter time.Time `json:"updated_after"`
+}
+
+type followedCount struct {
+	Resourceid string
+	Count      int
+	Follower   []string
+}
+
+type FollowerInfo struct {
+	MemberId string `json:"member_ids" db:"member_id"`
+	Name     string `json:"resource_ids db:resource_ids"`
+	Mail     string
+}
+
+type FollowingMapItem struct {
+	FollowerIDs []string `json:"member_ids" db:"member_ids"`
+	ResourceIDs []string `json:"resource_ids db:resource_ids"`
+}
+
+type FollowingMap struct {
+	Map      []FollowingMapItem `json:"list"`
+	Resource string             `json:"resource"`
 }
 
 type followingAPI struct{}
 
-func (*followingAPI) GetFollowing(params map[string]string) (interface{}, error) {
+func (*followingAPI) GetFollowing(params map[string]string) (followings []interface{}, err error) {
 	follow, err := CreateFollow(params)
 	if err != nil {
 		log.Println(err.Error())
 		return nil, err
 	}
 
-	result, err := follow.GetFollowings(params)
-
-	return result, err
-}
-func (*followingAPI) GetFollowed(resource string, ids []string) (interface{}, error) {
-	follow, err := CreateFollow(map[string]string{"resource": resource})
+	rows, err := follow.GetFollowings(params)
 	if err != nil {
 		log.Println(err.Error())
 		return nil, err
 	}
 
-	rows, err := follow.GetFollowed(ids)
+	for rows.Next() {
+		if params["resource"] == "post" {
+			var post Post
+			err = rows.StructScan(&post)
+			followings = append(followings, post)
+		} else if params["resource"] == "project" {
+			var project Project
+			err = rows.StructScan(&project)
+			followings = append(followings, project)
+		} else if params["resource"] == "member" {
+			var member Member
+			err = rows.StructScan(&member)
+			followings = append(followings, member)
+		}
+
+		if err != nil {
+			log.Println(err.Error())
+			return followings, err
+		}
+	}
+
+	if len(followings) == 0 {
+		err = errors.New("Not Found")
+	}
+
+	return followings, err
+}
+func (*followingAPI) GetFollowed(args GetFollowedArgs) (interface{}, error) {
+	follow, err := CreateFollow(map[string]string{"resource": args.Resource})
+	if err != nil {
+		log.Println(err.Error())
+		return nil, err
+	}
+
+	rows, err := follow.GetFollowed(args)
 	if err != nil {
 		log.Println(err.Error())
 		return nil, err
@@ -255,8 +307,34 @@ func (*followingAPI) GetFollowed(resource string, ids []string) (interface{}, er
 		}
 		followed = append(followed, followedCount{resourceId, count, strings.Split(follower, ",")})
 	}
-
 	return followed, nil
+}
+func (*followingAPI) GetFollowMap(args GetFollowMapArgs) (list FollowingMap, err error) {
+	follow, err := CreateFollow(map[string]string{"resource": args.Resource})
+	if err != nil {
+		log.Println(err.Error())
+		return FollowingMap{}, err
+	}
+
+	rows, err := follow.GetMap(args)
+	if err != nil {
+		log.Println(err.Error())
+		return FollowingMap{}, err
+	}
+
+	list.Resource = args.Resource
+	for rows.Next() {
+		var member_ids, resource_ids string
+		if err = rows.Scan(&member_ids, &resource_ids); err != nil {
+			log.Println(err)
+			return FollowingMap{}, err
+		}
+		list.Map = append(list.Map, FollowingMapItem{
+			strings.Split(member_ids, ","),
+			strings.Split(resource_ids, ","),
+		})
+	}
+	return list, nil
 }
 func (*followingAPI) AddFollowing(params map[string]string) error {
 	follow, err := CreateFollow(params)
