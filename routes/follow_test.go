@@ -51,6 +51,7 @@ func initFollowTest() {
 	for _, params := range []map[string]string{
 		map[string]string{"resource": "member", "subject": "followtest1@mirrormedia.mg", "object": "followtest2@mirrormedia.mg"},
 		map[string]string{"resource": "post", "subject": "followtest1@mirrormedia.mg", "object": "42"},
+		map[string]string{"resource": "post", "subject": "followtest1@mirrormedia.mg", "object": "84"},
 		map[string]string{"resource": "project", "subject": "followtest1@mirrormedia.mg", "object": "420"},
 		map[string]string{"resource": "member", "subject": "followtest2@mirrormedia.mg", "object": "followtest1@mirrormedia.mg"},
 		map[string]string{"resource": "post", "subject": "followtest2@mirrormedia.mg", "object": "42"},
@@ -106,47 +107,73 @@ func (a *mockFollowingAPI) DeleteFollowing(params map[string]string) error {
 	return nil
 }
 
-func (a *mockFollowingAPI) GetFollowing(params map[string]string) (interface{}, error) {
+func (a *mockFollowingAPI) GetFollowing(params map[string]string) (followings []interface{}, err error) {
 
 	switch {
 	case params["subject"] == "unknown@user.who":
 		return nil, errors.New("Not Found")
 	case params["resource"] == "member":
-		return []models.Member{
+		return []interface{}{
 			models.Member{ID: "followtest2@mirrormedia.mg", Active: models.NullInt{1, true}},
 		}, nil
 	case params["resource"] == "post":
-		return []models.Post{
-			models.Post{ID: 42, Active: models.NullInt{1, true}, Type: models.NullInt{0, true}},
-		}, nil
+		switch params["resource_type"] {
+		case "":
+			return []interface{}{
+				models.Post{ID: 42, Active: models.NullInt{1, true}, Type: models.NullInt{0, true}},
+				models.Post{ID: 84, Active: models.NullInt{1, true}, Type: models.NullInt{1, true}},
+			}, nil
+		case "review":
+			return []interface{}{
+				models.Post{ID: 42, Active: models.NullInt{1, true}, Type: models.NullInt{0, true}},
+			}, nil
+		case "news":
+			return []interface{}{
+				models.Post{ID: 84, Active: models.NullInt{1, true}, Type: models.NullInt{1, true}},
+			}, nil
+		}
 	case params["resource"] == "project":
-		return []models.Project{
+		return []interface{}{
 			models.Project{ID: 420, PostID: 42, Active: models.NullInt{1, true}},
 		}, nil
 	default:
 		return nil, nil
 	}
+	return nil, nil
 }
 
-func (a *mockFollowingAPI) GetFollowed(resource string, ids []string) (interface{}, error) {
+func (a *mockFollowingAPI) GetFollowed(args models.GetFollowedArgs) (interface{}, error) {
 	type followedCount struct {
 		Resourceid string
 		Count      int
 		Follower   []string
 	}
 	switch {
-	case ids[0] == "1001":
+	case args.Ids[0] == "1001":
 		return []followedCount{}, nil
-	case resource == "member":
+	case args.Resource == "member":
 		return []followedCount{
 			followedCount{"followtest1@mirrormedia.mg", 1, []string{"followtest2@mirrormedia.mg"}},
 			followedCount{"followtest2@mirrormedia.mg", 1, []string{"followtest1@mirrormedia.mg"}},
 		}, nil
-	case resource == "post":
-		return []followedCount{
-			followedCount{"42", 2, []string{"followtest1@mirrormedia.mg", "followtest2@mirrormedia.mg"}},
-		}, nil
-	case resource == "project":
+	case args.Resource == "post":
+		switch args.Type {
+		case "":
+			return []followedCount{
+				followedCount{"42", 2, []string{"followtest1@mirrormedia.mg", "followtest2@mirrormedia.mg"}},
+				followedCount{"84", 1, []string{"followtest1@mirrormedia.mg"}},
+			}, nil
+		case "review":
+			return []followedCount{
+				followedCount{"42", 2, []string{"followtest1@mirrormedia.mg", "followtest2@mirrormedia.mg"}},
+			}, nil
+		case "news":
+			return []followedCount{
+				followedCount{"84", 1, []string{"followtest1@mirrormedia.mg"}},
+			}, nil
+		}
+		return nil, nil
+	case args.Resource == "project":
 		return []followedCount{
 			followedCount{"420", 2, []string{"followtest1@mirrormedia.mg", "followtest2@mirrormedia.mg"}},
 		}, nil
@@ -160,8 +187,9 @@ func TestFollowingGet(t *testing.T) {
 	initFollowTest()
 
 	type CaseIn struct {
-		Resource string `json:resource,omitempty`
-		Subject  string `json:subject,omitempty`
+		Resource     string `json:"resource,omitempty"`
+		ResourceType string `json:"resource_type, omitempty"`
+		Subject      string `json:"subject,omitempty"`
 	}
 
 	type CaseOut struct {
@@ -177,10 +205,12 @@ func TestFollowingGet(t *testing.T) {
 		in   CaseIn
 		out  CaseOut
 	}{
-		{"GetFollowingPostOK", CaseIn{"post", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, `[{"id":42,"author":null,"created_at":null,"like_amount":null,"comment_amount":null,"title":null,"content":null,"type":0,"link":null,"og_title":null,"og_description":null,"og_image":null,"active":1,"updated_at":null,"updated_by":null,"published_at":null,"link_title":null,"link_description":null,"link_image":null,"link_name":null}]`}},
-		{"GetFollowingMemberOK", CaseIn{"member", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, `[{"id":"followtest2@mirrormedia.mg","name":null,"nickname":null,"birthday":null,"gender":null,"work":null,"mail":null,"register_mode":null,"social_id":null,"talk_id":null,"created_at":null,"updated_at":null,"updated_by":null,"description":null,"profile_image":null,"identity":null,"role":null,"active":1,"custom_editor":null,"hide_profile":null,"profile_push":null,"post_push":null,"comment_push":null}]`}},
-		{"GetFollowingProjectOK", CaseIn{"project", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, `[{"id":420,"created_at":null,"updated_at":null,"updated_by":null,"published_at":null,"post_id":42,"like_amount":null,"comment_amount":null,"active":1,"hero_image":null,"title":null,"description":null,"author":null,"og_title":null,"og_description":null,"og_image":null,"order":null}]`}},
-		{"GetFollowingFollowerNotExist", CaseIn{"project", "unknown@user.who"}, CaseOut{http.StatusOK, `[]`}},
+		{"GetFollowingPostOK", CaseIn{"post", "", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, `[{"id":42,"author":null,"created_at":null,"like_amount":null,"comment_amount":null,"title":null,"content":null,"type":0,"link":null,"og_title":null,"og_description":null,"og_image":null,"active":1,"updated_at":null,"updated_by":null,"published_at":null,"link_title":null,"link_description":null,"link_image":null,"link_name":null},{"id":84,"author":null,"created_at":null,"like_amount":null,"comment_amount":null,"title":null,"content":null,"type":1,"link":null,"og_title":null,"og_description":null,"og_image":null,"active":1,"updated_at":null,"updated_by":null,"published_at":null,"link_title":null,"link_description":null,"link_image":null,"link_name":null}]`}},
+		{"GetFollowingPostReviewOK", CaseIn{"post", "review", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, `[{"id":42,"author":null,"created_at":null,"like_amount":null,"comment_amount":null,"title":null,"content":null,"type":0,"link":null,"og_title":null,"og_description":null,"og_image":null,"active":1,"updated_at":null,"updated_by":null,"published_at":null,"link_title":null,"link_description":null,"link_image":null,"link_name":null}]`}},
+		{"GetFollowingPostNewsOK", CaseIn{"post", "news", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, `[{"id":84,"author":null,"created_at":null,"like_amount":null,"comment_amount":null,"title":null,"content":null,"type":1,"link":null,"og_title":null,"og_description":null,"og_image":null,"active":1,"updated_at":null,"updated_by":null,"published_at":null,"link_title":null,"link_description":null,"link_image":null,"link_name":null}]`}},
+		{"GetFollowingMemberOK", CaseIn{"member", "", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, `[{"id":"followtest2@mirrormedia.mg","name":null,"nickname":null,"birthday":null,"gender":null,"work":null,"mail":null,"register_mode":null,"social_id":null,"talk_id":null,"created_at":null,"updated_at":null,"updated_by":null,"description":null,"profile_image":null,"identity":null,"role":null,"active":1,"custom_editor":null,"hide_profile":null,"profile_push":null,"post_push":null,"comment_push":null}]`}},
+		{"GetFollowingProjectOK", CaseIn{"project", "", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, `[{"id":420,"created_at":null,"updated_at":null,"updated_by":null,"published_at":null,"post_id":42,"like_amount":null,"comment_amount":null,"active":1,"hero_image":null,"title":null,"description":null,"author":null,"og_title":null,"og_description":null,"og_image":null,"order":null}]`}},
+		{"GetFollowingFollowerNotExist", CaseIn{"project", "", "unknown@user.who"}, CaseOut{http.StatusOK, `[]`}},
 	}
 
 	for _, testcase := range TestFollowingGetCases {
@@ -217,6 +247,7 @@ func TestFollowedGet(t *testing.T) {
 
 	type CaseIn struct {
 		ResourceName string   `json:"resource",omitempty`
+		ResourceType string   `json:"resource_type",omitempty`
 		ResourceId   []string `json:"ids",omitempty`
 	}
 
@@ -233,14 +264,16 @@ func TestFollowedGet(t *testing.T) {
 		in   CaseIn
 		out  CaseOut
 	}{
-		{"GetFollowedPostOK", CaseIn{"post", []string{"42", "84"}}, CaseOut{http.StatusOK, `[{"Resourceid":"42","Count":2,"Follower":["followtest1@mirrormedia.mg","followtest2@mirrormedia.mg"]}]`}},
-		{"GetFollowedMemberOK", CaseIn{"member", []string{"followtest1@mirrormedia.mg", "followtest2@mirrormedia.mg"}}, CaseOut{http.StatusOK, `[{"Resourceid":"followtest1@mirrormedia.mg","Count":1,"Follower":["followtest2@mirrormedia.mg"]},{"Resourceid":"followtest2@mirrormedia.mg","Count":1,"Follower":["followtest1@mirrormedia.mg"]}]`}},
-		{"GetFollowedProjectOK", CaseIn{"project", []string{"420", "840"}}, CaseOut{http.StatusOK, `[{"Resourceid":"420","Count":2,"Follower":["followtest1@mirrormedia.mg","followtest2@mirrormedia.mg"]}]`}},
-		{"GetFollowedMissingResource", CaseIn{"", []string{"420", "840"}}, CaseOut{http.StatusBadRequest, `{"Error":"Unsupported Resource"}`}},
-		{"GetFollowedMissingID", CaseIn{"post", []string{}}, CaseOut{http.StatusBadRequest, `{"Error":"Bad Resource ID"}`}},
-		{"GetFollowedPostNotExist", CaseIn{"post", []string{"1001", "1000"}}, CaseOut{http.StatusOK, `[]`}},
-		{"GetFollowedPostStringID", CaseIn{"post", []string{"unintegerable"}}, CaseOut{http.StatusBadRequest, `{"Error":"Bad Resource ID"}`}},
-		{"GetFollowedProjectStringID", CaseIn{"project", []string{"unintegerable"}}, CaseOut{http.StatusBadRequest, `{"Error":"Bad Resource ID"}`}},
+		{"GetFollowedPostOK", CaseIn{"post", "", []string{"42", "84"}}, CaseOut{http.StatusOK, `[{"Resourceid":"42","Count":2,"Follower":["followtest1@mirrormedia.mg","followtest2@mirrormedia.mg"]},{"Resourceid":"84","Count":1,"Follower":["followtest1@mirrormedia.mg"]}]`}},
+		{"GetFollowedPostReviewOK", CaseIn{"post", "review", []string{"42", "84"}}, CaseOut{http.StatusOK, `[{"Resourceid":"42","Count":2,"Follower":["followtest1@mirrormedia.mg","followtest2@mirrormedia.mg"]}]`}},
+		{"GetFollowedPostNewsOK", CaseIn{"post", "news", []string{"42", "84"}}, CaseOut{http.StatusOK, `[{"Resourceid":"84","Count":1,"Follower":["followtest1@mirrormedia.mg"]}]`}},
+		{"GetFollowedMemberOK", CaseIn{"member", "", []string{"followtest1@mirrormedia.mg", "followtest2@mirrormedia.mg"}}, CaseOut{http.StatusOK, `[{"Resourceid":"followtest1@mirrormedia.mg","Count":1,"Follower":["followtest2@mirrormedia.mg"]},{"Resourceid":"followtest2@mirrormedia.mg","Count":1,"Follower":["followtest1@mirrormedia.mg"]}]`}},
+		{"GetFollowedProjectOK", CaseIn{"project", "", []string{"420", "840"}}, CaseOut{http.StatusOK, `[{"Resourceid":"420","Count":2,"Follower":["followtest1@mirrormedia.mg","followtest2@mirrormedia.mg"]}]`}},
+		{"GetFollowedMissingResource", CaseIn{"", "", []string{"420", "840"}}, CaseOut{http.StatusBadRequest, `{"Error":"Unsupported Resource"}`}},
+		{"GetFollowedMissingID", CaseIn{"post", "", []string{}}, CaseOut{http.StatusBadRequest, `{"Error":"Bad Resource ID"}`}},
+		{"GetFollowedPostNotExist", CaseIn{"post", "", []string{"1001", "1000"}}, CaseOut{http.StatusOK, `[]`}},
+		{"GetFollowedPostStringID", CaseIn{"post", "", []string{"unintegerable"}}, CaseOut{http.StatusBadRequest, `{"Error":"Bad Resource ID"}`}},
+		{"GetFollowedProjectStringID", CaseIn{"project", "", []string{"unintegerable"}}, CaseOut{http.StatusBadRequest, `{"Error":"Bad Resource ID"}`}},
 	}
 
 	for _, testcase := range TestFollowingGetCases {
@@ -258,12 +291,12 @@ func TestFollowedGet(t *testing.T) {
 		r.ServeHTTP(w, req)
 
 		if w.Code != testcase.out.httpcode {
-			t.Errorf("Want %d but get %d, testcase %s", w.Code, testcase.out.httpcode, testcase.name)
+			t.Errorf("Want %d but get %d, testcase %s", testcase.out.httpcode, w.Code, testcase.name)
 			t.Fail()
 		}
 
 		if w.Body.String() != testcase.out.resp {
-			t.Errorf("Expect get error message %v but get %v, testcase %s", w.Body.String(), testcase.out.resp, testcase.name)
+			t.Errorf("Expect get error message %v but get %v, testcase %s", testcase.out.resp, w.Body.String(), testcase.name)
 			t.Fail()
 		}
 

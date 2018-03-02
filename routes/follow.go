@@ -87,12 +87,14 @@ func (r *followingHandler) GetByUser(c *gin.Context) {
 	input := struct {
 		MemberId string `json:"subject"`
 		Resource string `json:"resource"`
+		Type     string `json:"resource_type,omitempty"`
 	}{}
 	c.ShouldBindJSON(&input)
 
 	result, err := models.FollowingAPI.GetFollowing(map[string]string{
-		"subject":  input.MemberId,
-		"resource": input.Resource,
+		"subject":       input.MemberId,
+		"resource":      input.Resource,
+		"resource_type": input.Type,
 	})
 
 	if err != nil {
@@ -110,10 +112,7 @@ func (r *followingHandler) GetByUser(c *gin.Context) {
 }
 
 func (r *followingHandler) GetByResource(c *gin.Context) {
-	input := struct {
-		Resource string   `json:"resource"`
-		Ids      []string `json:"ids"`
-	}{}
+	var input models.GetFollowedArgs
 	c.ShouldBindJSON(&input)
 
 	if len(input.Ids) == 0 {
@@ -137,7 +136,7 @@ func (r *followingHandler) GetByResource(c *gin.Context) {
 		return
 	}
 
-	result, err := models.FollowingAPI.GetFollowed(input.Resource, input.Ids)
+	result, err := models.FollowingAPI.GetFollowed(input)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
@@ -152,6 +151,7 @@ func (r *followingHandler) SetRoutes(router *gin.Engine) {
 	{
 		followRouter.GET("/byuser", r.GetByUser)
 		followRouter.GET("/byresource", r.GetByResource)
+		//followRouter.GET("/updated", r.GetListByResource)
 	}
 
 	router.POST("/restful/pubsub", r.Push)
