@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	//"time"
+	"time"
 
 	"database/sql"
 
@@ -19,6 +19,7 @@ type follow interface {
 	Delete() (sql.Result, error)
 	GetFollowed(args GetFollowedArgs) (*sqlx.Rows, error)
 	GetFollowings(map[string]string) (*sqlx.Rows, error)
+	GetMap(args GetFollowMapArgs) (*sqlx.Rows, error)
 	Insert() (sql.Result, error)
 }
 
@@ -46,6 +47,25 @@ func (f followPost) GetFollowed(params GetFollowedArgs) (*sqlx.Rows, error) {
 		return nil, err
 	}
 	return DB.Queryx(query, args...)
+}
+func (f followPost) GetMap(params GetFollowMapArgs) (*sqlx.Rows, error) {
+	post_type := f.postTypeHelper(params.Type)
+	query := fmt.Sprintf(`
+		SELECT GROUP_CONCAT(member_resource.member_id) AS member_ids, member_resource.resource_ids
+		FROM (
+			SELECT GROUP_CONCAT(fp.post_id) AS resource_ids, m.member_id AS member_id, m.mail AS mail
+			FROM following_posts AS fp
+			LEFT JOIN members AS m ON fp.member_id = m.member_id
+			LEFT JOIN posts AS p ON p.post_id = fp.post_id
+			WHERE m.active = ?
+				AND m.post_push = ?
+				AND p.active = ?
+				AND p.updated_at > ?
+				%s
+			GROUP BY m.member_id
+			) AS member_resource
+		GROUP BY member_resource.resource_ids;`, post_type)
+	return DB.Queryx(query, int(MemberStatus["active"].(float64)), 1, int(PostStatus["active"].(float64)), params.UpdateAfter)
 }
 func (f followPost) postTypeHelper(post_type string) string {
 	if t := PostType[post_type]; t == nil {
@@ -79,6 +99,24 @@ func (f followMember) GetFollowed(params GetFollowedArgs) (*sqlx.Rows, error) {
 	}
 	return DB.Queryx(query, args...)
 }
+func (f followMember) GetMap(params GetFollowMapArgs) (*sqlx.Rows, error) {
+	query := `
+		SELECT GROUP_CONCAT(member_resource.member_id) AS member_ids, member_resource.resource_ids
+		FROM (
+			SELECT GROUP_CONCAT(f.custom_editor) AS resource_ids, m.member_id AS member_id, m.mail AS mail
+			FROM following_members AS f
+			LEFT JOIN members AS m ON f.member_id = m.member_id
+			LEFT JOIN members AS e ON f.custom_editor = e.member_id
+			WHERE m.active = ?
+				AND m.post_push = ?
+				AND e.active = ?
+				AND e.updated_at > ?
+			GROUP BY m.member_id
+			) AS member_resource
+		GROUP BY member_resource.resource_ids;`
+	log.Println(query)
+	return DB.Queryx(query, int(MemberStatus["active"].(float64)), 1, int(MemberStatus["active"].(float64)), params.UpdateAfter)
+}
 
 type followProject struct {
 	ID     string
@@ -102,6 +140,23 @@ func (f followProject) GetFollowed(params GetFollowedArgs) (*sqlx.Rows, error) {
 		return nil, err
 	}
 	return DB.Queryx(query, args...)
+}
+func (f followProject) GetMap(params GetFollowMapArgs) (*sqlx.Rows, error) {
+	query := `
+		SELECT GROUP_CONCAT(member_resource.member_id) AS member_ids, member_resource.resource_ids
+		FROM (
+			SELECT GROUP_CONCAT(f.project_id) AS resource_ids, m.member_id AS member_id, m.mail AS mail
+			FROM following_projects AS f
+			LEFT JOIN members AS m ON f.member_id = m.member_id
+			LEFT JOIN projects AS p ON f.project_id = p.project_id
+			WHERE m.active = ?
+				AND m.post_push = ?
+				AND p.active = ?
+				AND p.updated_at > ?
+			GROUP BY m.member_id
+			) AS member_resource
+		GROUP BY member_resource.resource_ids;`
+	return DB.Queryx(query, int(MemberStatus["active"].(float64)), 1, int(ProjectStatus["active"].(float64)), params.UpdateAfter)
 }
 
 /* ================================================ Follower Factory ================================================ */
@@ -134,7 +189,7 @@ var followFactories = map[string]func(conf map[string]string) follow{
 func CreateFollow(config map[string]string) (follow, error) {
 	followFactory, ok := followFactories[config["resource"]]
 	if !ok {
-		return nil, errors.New("Resource Not Found")
+		return nil, errors.New("Resource Not Supported")
 	}
 	return followFactory(config), nil
 }
@@ -146,6 +201,7 @@ type FollowingAPIInterface interface {
 	DeleteFollowing(params map[string]string) error
 	GetFollowing(params map[string]string) ([]interface{}, error)
 	GetFollowed(args GetFollowedArgs) (interface{}, error)
+	GetFollowMap(args GetFollowMapArgs) (FollowingMap, error)
 }
 
 type GetFollowedArgs struct {
@@ -154,10 +210,32 @@ type GetFollowedArgs struct {
 	Type     string   `json:"resource_type,omitempty"`
 }
 
+type GetFollowMapArgs struct {
+	Resource    string    `json:"resource"`
+	Type        string    `json:"resource_type,omitempty"`
+	UpdateAfter time.Time `json:"updated_after"`
+}
+
 type followedCount struct {
 	Resourceid string
 	Count      int
 	Follower   []string
+}
+
+type FollowerInfo struct {
+	MemberId string `json:"member_ids" db:"member_id"`
+	Name     string `json:"resource_ids db:resource_ids"`
+	Mail     string
+}
+
+type FollowingMapItem struct {
+	FollowerIDs []string `json:"member_ids" db:"member_ids"`
+	ResourceIDs []string `json:"resource_ids db:resource_ids"`
+}
+
+type FollowingMap struct {
+	Map      []FollowingMapItem `json:"list"`
+	Resource string             `json:"resource"`
 }
 
 type followingAPI struct{}
@@ -229,10 +307,35 @@ func (*followingAPI) GetFollowed(args GetFollowedArgs) (interface{}, error) {
 		}
 		followed = append(followed, followedCount{resourceId, count, strings.Split(follower, ",")})
 	}
-
 	return followed, nil
 }
+func (*followingAPI) GetFollowMap(args GetFollowMapArgs) (list FollowingMap, err error) {
+	follow, err := CreateFollow(map[string]string{"resource": args.Resource})
+	if err != nil {
+		log.Println(err.Error())
+		return FollowingMap{}, err
+	}
 
+	rows, err := follow.GetMap(args)
+	if err != nil {
+		log.Println(err.Error())
+		return FollowingMap{}, err
+	}
+
+	list.Resource = args.Resource
+	for rows.Next() {
+		var member_ids, resource_ids string
+		if err = rows.Scan(&member_ids, &resource_ids); err != nil {
+			log.Println(err)
+			return FollowingMap{}, err
+		}
+		list.Map = append(list.Map, FollowingMapItem{
+			strings.Split(member_ids, ","),
+			strings.Split(resource_ids, ","),
+		})
+	}
+	return list, nil
+}
 func (*followingAPI) AddFollowing(params map[string]string) error {
 	follow, err := CreateFollow(params)
 	if err != nil {
@@ -284,10 +387,3 @@ func (*followingAPI) DeleteFollowing(params map[string]string) error {
 }
 
 var FollowingAPI FollowingAPIInterface = new(followingAPI)
-
-/*
-Get Subscribed Post
-*/
-/*
-
- */
