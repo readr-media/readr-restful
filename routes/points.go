@@ -47,7 +47,7 @@ func (r *pointsHandler) Post(c *gin.Context) {
 	if !pts.CreatedAt.Valid {
 		pts.CreatedAt = models.NullTime{Time: time.Now(), Valid: true}
 	}
-	err := models.PointsAPI.Insert(pts)
+	p, err := models.PointsAPI.Insert(pts)
 	if err != nil {
 		switch err.Error() {
 		case "Duplicate entry":
@@ -58,7 +58,7 @@ func (r *pointsHandler) Post(c *gin.Context) {
 			return
 		}
 	}
-	c.Status(http.StatusOK)
+	c.JSON(http.StatusOK, gin.H{"points": p})
 }
 
 func (r *pointsHandler) Put(c *gin.Context) {
@@ -70,7 +70,7 @@ func (r *pointsHandler) Put(c *gin.Context) {
 	if !pts.CreatedAt.Valid {
 		pts.CreatedAt = models.NullTime{Time: time.Now(), Valid: true}
 	}
-	err := models.PointsAPI.Update(pts)
+	p, err := models.PointsAPI.Update(pts)
 	if err != nil {
 		switch err.Error() {
 		case "Points Not Found":
@@ -81,7 +81,7 @@ func (r *pointsHandler) Put(c *gin.Context) {
 			return
 		}
 	}
-	c.Status(http.StatusOK)
+	c.JSON(http.StatusOK, gin.H{"points": p})
 }
 
 func (r *pointsHandler) SetRoutes(router *gin.Engine) {

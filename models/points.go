@@ -24,8 +24,8 @@ var PointsAPI PointsInterface = new(pointsAPI)
 
 type PointsInterface interface {
 	Get(id string, objType *int64) (result []Points, err error)
-	Insert(pts Points) error
-	Update(pts Points) error
+	Insert(pts Points) (result int, err error)
+	Update(pts Points) (result int, err error)
 }
 
 // Need to be change for the probability to accommodate id or id, objType type
@@ -57,13 +57,13 @@ func (p *pointsAPI) Get(id string, objType *int64) (result []Points, err error) 
 	return result, err
 }
 
-func (p *pointsAPI) Insert(pts Points) (err error) {
+func (p *pointsAPI) Insert(pts Points) (result int, err error) {
 	tags := getStructDBTags("full", pts)
 
 	tx, err := DB.Beginx()
 	if err != nil {
 		log.Printf("Fail to get sql connection: %v", err)
-		return err
+		return 0, err
 	}
 	// Either rollback or commit transaction
 	defer func() {
@@ -78,27 +78,40 @@ func (p *pointsAPI) Insert(pts Points) (err error) {
 
 	if _, err := tx.NamedExec(pointsU, pts); err != nil {
 		log.Fatal(err)
-		return err
+		return 0, err
 	}
 	memberU := fmt.Sprint(`
 		UPDATE members m INNER JOIN 
-		(SELECT p.member_id, SUM(p.points) AS psum FROM points p  WHERE p.member_id = ? GROUP BY p.member_id)AS i
-		ON m.member_id = i.member_id SET m.points = i.psum`)
+		(SELECT p.member_id, SUM(p.points) AS psum FROM points p  WHERE p.member_id = ? GROUP BY p.member_id) AS i
+		ON m.member_id = i.member_id SET m.points = @updated_points := i.psum`)
 	if _, err = tx.Exec(memberU, pts.MemberID); err != nil {
 		log.Fatal(err)
-		return err
+		return 0, err
 	}
-	return err
+	row, err := tx.Queryx(`SELECT @updated_points`)
+	if err != nil {
+		log.Fatal(err)
+		return 0, err
+	}
+	for row.Next() {
+		err = row.Scan(&result)
+		if err != nil {
+			log.Fatal(err)
+			return 0, err
+		}
+		fmt.Println(result)
+	}
+	return result, err
 }
 
-func (p *pointsAPI) Update(pts Points) (err error) {
+func (p *pointsAPI) Update(pts Points) (result int, err error) {
 	tags := getStructDBTags("full", pts)
 	fields := makeFieldString("update", `%s = :%s`, tags)
 
 	tx, err := DB.Beginx()
 	if err != nil {
 		log.Printf("Fail to get sql connection: %v", err)
-		return err
+		return 0, err
 	}
 	defer func() {
 		if err != nil {
@@ -111,15 +124,28 @@ func (p *pointsAPI) Update(pts Points) (err error) {
 	pointsU := fmt.Sprintf(`UPDATE points SET %s WHERE member_id = :member_id AND object_type = :object_type`, strings.Join(fields, ", "))
 	if _, err = tx.NamedExec(pointsU, pts); err != nil {
 		log.Fatal(err)
-		return err
+		return 0, err
 	}
 	memberU := fmt.Sprint(`
 		UPDATE members m INNER JOIN 
 		(SELECT p.member_id, SUM(p.points) AS psum FROM points p  WHERE p.member_id = ? GROUP BY p.member_id)AS i
-		ON m.member_id = i.member_id SET m.points = i.psum`)
+		ON m.member_id = i.member_id SET m.points = @updated_points := i.psum`)
 	if _, err = tx.Exec(memberU, pts.MemberID); err != nil {
 		log.Fatal(err)
-		return err
+		return 0, err
 	}
-	return err
+	row, err := tx.Queryx(`SELECT @updated_points`)
+	if err != nil {
+		log.Fatal(err)
+		return 0, err
+	}
+	for row.Next() {
+		err = row.Scan(&result)
+		if err != nil {
+			log.Fatal(err)
+			return 0, err
+		}
+		fmt.Println(result)
+	}
+	return result, err
 }
