@@ -126,8 +126,8 @@ func (*mockFollowingAPI) GetFollowMap(args models.GetFollowMapArgs) (list []mode
 	switch {
 	case args.Resource == "member":
 		return []models.FollowingMapItem{
-			models.FollowingMapItem{[]string{"followtest2@mirrormedia.mg"}, []string{"followtest1@mirrormedia.mg"}},
-			models.FollowingMapItem{[]string{"followtest1@mirrormedia.mg"}, []string{"followtest2@mirrormedia.mg"}},
+			models.FollowingMapItem{[]string{"followtest2@mirrormedia.mg"}, []string{"42"}},
+			models.FollowingMapItem{[]string{"followtest1@mirrormedia.mg"}, []string{"84"}},
 		}, nil
 	case args.Resource == "post":
 		switch args.Type {
@@ -354,7 +354,7 @@ func TestFollowMap(t *testing.T) {
 		{"GetFollowMapPostReviewOK", CaseIn{"post", "review", time.Time{}}, CaseOut{http.StatusOK, `{"list":[{"member_ids":["followtest1@mirrormedia.mg","followtest2@mirrormedia.mg"],"resource_ids":["42"]}],"resource":"post"}`}},
 		{"GetFollowMapPostNewsOK", CaseIn{"post", "news", time.Time{}}, CaseOut{http.StatusOK, `{"list":[{"member_ids":["followtest1@mirrormedia.mg"],"resource_ids":["84"]}],"resource":"post"}`}},
 		{"GetFollowMapResourceUnknown", CaseIn{"unknown source", "news", time.Time{}}, CaseOut{http.StatusBadRequest, `{"Error":"Resource Not Supported"}`}},
-		{"GetFollowMapMemberOK", CaseIn{"member", "", time.Time{}}, CaseOut{http.StatusOK, `{"list":[{"member_ids":["followtest2@mirrormedia.mg"],"resource_ids":["followtest1@mirrormedia.mg"]},{"member_ids":["followtest1@mirrormedia.mg"],"resource_ids":["followtest2@mirrormedia.mg"]}],"resource":"member"}`}},
+		{"GetFollowMapMemberOK", CaseIn{"member", "", time.Time{}}, CaseOut{http.StatusOK, `{"list":[{"member_ids":["followtest2@mirrormedia.mg"],"resource_ids":["42"]},{"member_ids":["followtest1@mirrormedia.mg"],"resource_ids":["84"]}],"resource":"member"}`}},
 		{"GetFollowMapProjectOK", CaseIn{"project", "", time.Time{}}, CaseOut{http.StatusOK, `{"list":[{"member_ids":["followtest1@mirrormedia.mg","followtest2@mirrormedia.mg"],"resource_ids":["420"]}],"resource":"project"}`}},
 	}
 
