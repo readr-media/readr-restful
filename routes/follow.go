@@ -167,7 +167,10 @@ func (r *followingHandler) GetFollowMap(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, result)
+	c.JSON(http.StatusOK, struct {
+		Map      []models.FollowingMapItem `json:"list"`
+		Resource string                    `json:"resource"`
+	}{result, input.Resource})
 }
 
 func (r *followingHandler) SetRoutes(router *gin.Engine) {

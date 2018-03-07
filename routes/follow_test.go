@@ -14,63 +14,6 @@ import (
 	"github.com/readr-media/readr-restful/models"
 )
 
-func initFollowTest() {
-	mockMemberDSBack = mockMemberDS
-	mockPostDSBack = mockPostDS
-
-	for _, params := range []models.Member{
-		models.Member{ID: "followtest0@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Now(), true}},
-		models.Member{ID: "followtest1@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Now(), true}},
-		models.Member{ID: "followtest2@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Now(), true}},
-	} {
-		err := models.MemberAPI.InsertMember(params)
-		if err != nil {
-			log.Printf("Insert member fail when init test case. Error: %v", err)
-		}
-	}
-
-	for _, params := range []models.Post{
-		models.Post{ID: 42, Active: models.NullInt{1, true}, Type: models.NullInt{0, true}, UpdatedAt: models.NullTime{time.Now(), true}},
-		models.Post{ID: 84, Active: models.NullInt{1, true}, Type: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Now(), true}},
-	} {
-		_, err := models.PostAPI.InsertPost(params)
-		if err != nil {
-			log.Printf("Insert post fail when init test case. Error: %v", err)
-		}
-	}
-
-	for _, params := range []models.Project{
-		models.Project{ID: 420, PostID: 42, Active: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Now(), true}},
-		models.Project{ID: 840, PostID: 84, Active: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Now(), true}},
-	} {
-		err := models.ProjectAPI.InsertProject(params)
-		if err != nil {
-			log.Printf("Insert Project fail when init test case. Error: %v", err)
-		}
-	}
-
-	for _, params := range []map[string]string{
-		map[string]string{"resource": "member", "subject": "followtest1@mirrormedia.mg", "object": "followtest2@mirrormedia.mg"},
-		map[string]string{"resource": "post", "subject": "followtest1@mirrormedia.mg", "object": "42"},
-		map[string]string{"resource": "post", "subject": "followtest1@mirrormedia.mg", "object": "84"},
-		map[string]string{"resource": "project", "subject": "followtest1@mirrormedia.mg", "object": "420"},
-		map[string]string{"resource": "member", "subject": "followtest2@mirrormedia.mg", "object": "followtest1@mirrormedia.mg"},
-		map[string]string{"resource": "post", "subject": "followtest2@mirrormedia.mg", "object": "42"},
-		map[string]string{"resource": "project", "subject": "followtest2@mirrormedia.mg", "object": "420"},
-	} {
-		err := models.FollowingAPI.AddFollowing(params)
-		if err != nil {
-			log.Printf("Init test case fail. Error: %v", err)
-		}
-	}
-}
-
-func clearFollowTest() {
-	//restore the backuped data
-	mockMemberDS = mockMemberDSBack
-	mockPostDS = mockPostDSBack
-}
-
 type mockFollowingAPI struct{}
 
 type followDS struct {
@@ -179,37 +122,94 @@ func (a *mockFollowingAPI) GetFollowed(args models.GetFollowedArgs) (interface{}
 		return nil, nil
 	}
 }
-func (*mockFollowingAPI) GetFollowMap(args models.GetFollowMapArgs) (list models.FollowingMap, err error) {
+func (*mockFollowingAPI) GetFollowMap(args models.GetFollowMapArgs) (list []models.FollowingMapItem, err error) {
 	switch {
 	case args.Resource == "member":
-		return models.FollowingMap{[]models.FollowingMapItem{
+		return []models.FollowingMapItem{
 			models.FollowingMapItem{[]string{"followtest2@mirrormedia.mg"}, []string{"followtest1@mirrormedia.mg"}},
 			models.FollowingMapItem{[]string{"followtest1@mirrormedia.mg"}, []string{"followtest2@mirrormedia.mg"}},
-		}, args.Resource}, nil
+		}, nil
 	case args.Resource == "post":
 		switch args.Type {
 		case "":
-			return models.FollowingMap{[]models.FollowingMapItem{
+			return []models.FollowingMapItem{
 				models.FollowingMapItem{[]string{"followtest2@mirrormedia.mg"}, []string{"42"}},
 				models.FollowingMapItem{[]string{"followtest1@mirrormedia.mg"}, []string{"42", "84"}},
-			}, args.Resource}, nil
+			}, nil
 		case "review":
-			return models.FollowingMap{[]models.FollowingMapItem{
+			return []models.FollowingMapItem{
 				models.FollowingMapItem{[]string{"followtest1@mirrormedia.mg", "followtest2@mirrormedia.mg"}, []string{"42"}},
-			}, args.Resource}, nil
+			}, nil
 		case "news":
-			return models.FollowingMap{[]models.FollowingMapItem{
+			return []models.FollowingMapItem{
 				models.FollowingMapItem{[]string{"followtest1@mirrormedia.mg"}, []string{"84"}},
-			}, args.Resource}, nil
+			}, nil
 		}
-		return models.FollowingMap{}, nil
+		return []models.FollowingMapItem{}, nil
 	case args.Resource == "project":
-		return models.FollowingMap{[]models.FollowingMapItem{
+		return []models.FollowingMapItem{
 			models.FollowingMapItem{[]string{"followtest1@mirrormedia.mg", "followtest2@mirrormedia.mg"}, []string{"420"}},
-		}, args.Resource}, nil
+		}, nil
 	default:
-		return models.FollowingMap{}, errors.New("Resource Not Supported")
+		return []models.FollowingMapItem{}, errors.New("Resource Not Supported")
 	}
+}
+
+func initFollowTest() {
+	mockMemberDSBack = mockMemberDS
+	mockPostDSBack = mockPostDS
+
+	for _, params := range []models.Member{
+		models.Member{ID: "followtest0@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Now(), true}, Mail: models.NullString{"followtest0@mirrormedia.mg", true}},
+		models.Member{ID: "followtest1@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Now(), true}, Mail: models.NullString{"followtest1@mirrormedia.mg", true}},
+		models.Member{ID: "followtest2@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Now(), true}, Mail: models.NullString{"followtest2@mirrormedia.mg", true}},
+	} {
+		err := models.MemberAPI.InsertMember(params)
+		if err != nil {
+			log.Printf("Insert member fail when init test case. Error: %v", err)
+		}
+	}
+
+	for _, params := range []models.Post{
+		models.Post{ID: 42, Active: models.NullInt{1, true}, Type: models.NullInt{0, true}, UpdatedAt: models.NullTime{time.Now(), true}, Author: models.NullString{"followtest1@mirrormedia.mg", true}},
+		models.Post{ID: 84, Active: models.NullInt{1, true}, Type: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Now(), true}, Author: models.NullString{"followtest2@mirrormedia.mg", true}},
+	} {
+		_, err := models.PostAPI.InsertPost(params)
+		if err != nil {
+			log.Printf("Insert post fail when init test case. Error: %v", err)
+		}
+	}
+
+	for _, params := range []models.Project{
+		models.Project{ID: 420, PostID: 42, Active: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Now(), true}},
+		models.Project{ID: 840, PostID: 84, Active: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Now(), true}},
+	} {
+		err := models.ProjectAPI.InsertProject(params)
+		if err != nil {
+			log.Printf("Insert Project fail when init test case. Error: %v", err)
+		}
+	}
+
+	for _, params := range []map[string]string{
+		map[string]string{"resource": "member", "subject": "followtest1@mirrormedia.mg", "object": "followtest2@mirrormedia.mg"},
+		map[string]string{"resource": "post", "subject": "followtest1@mirrormedia.mg", "object": "42"},
+		map[string]string{"resource": "post", "subject": "followtest1@mirrormedia.mg", "object": "84"},
+		map[string]string{"resource": "project", "subject": "followtest1@mirrormedia.mg", "object": "420"},
+		map[string]string{"resource": "member", "subject": "followtest2@mirrormedia.mg", "object": "followtest1@mirrormedia.mg"},
+		map[string]string{"resource": "post", "subject": "followtest2@mirrormedia.mg", "object": "42"},
+		map[string]string{"resource": "project", "subject": "followtest2@mirrormedia.mg", "object": "420"},
+	} {
+		err := models.FollowingAPI.AddFollowing(params)
+		if err != nil {
+			log.Printf("Init test case fail. Error: %v", err)
+		}
+	}
+}
+
+func clearFollowTest() {
+	//restore the backuped data
+	mockMemberDS = mockMemberDSBack
+	mockPostDS = mockPostDSBack
 }
 
 func TestFollowingGet(t *testing.T) {
@@ -350,12 +350,12 @@ func TestFollowMap(t *testing.T) {
 		in   CaseIn
 		out  CaseOut
 	}{
-		{"GetFollowMapPostOK", CaseIn{"post", "", time.Time{}}, CaseOut{http.StatusOK, `{"list":[{"member_ids":["followtest2@mirrormedia.mg"],"resource_ids db:resource_ids":["42"]},{"member_ids":["followtest1@mirrormedia.mg"],"resource_ids db:resource_ids":["42","84"]}],"resource":"post"}`}},
-		{"GetFollowMapPostReviewOK", CaseIn{"post", "review", time.Time{}}, CaseOut{http.StatusOK, `{"list":[{"member_ids":["followtest1@mirrormedia.mg","followtest2@mirrormedia.mg"],"resource_ids db:resource_ids":["42"]}],"resource":"post"}`}},
-		{"GetFollowMapPostNewsOK", CaseIn{"post", "news", time.Time{}}, CaseOut{http.StatusOK, `{"list":[{"member_ids":["followtest1@mirrormedia.mg"],"resource_ids db:resource_ids":["84"]}],"resource":"post"}`}},
+		{"GetFollowMapPostOK", CaseIn{"post", "", time.Time{}}, CaseOut{http.StatusOK, `{"list":[{"member_ids":["followtest2@mirrormedia.mg"],"resource_ids":["42"]},{"member_ids":["followtest1@mirrormedia.mg"],"resource_ids":["42","84"]}],"resource":"post"}`}},
+		{"GetFollowMapPostReviewOK", CaseIn{"post", "review", time.Time{}}, CaseOut{http.StatusOK, `{"list":[{"member_ids":["followtest1@mirrormedia.mg","followtest2@mirrormedia.mg"],"resource_ids":["42"]}],"resource":"post"}`}},
+		{"GetFollowMapPostNewsOK", CaseIn{"post", "news", time.Time{}}, CaseOut{http.StatusOK, `{"list":[{"member_ids":["followtest1@mirrormedia.mg"],"resource_ids":["84"]}],"resource":"post"}`}},
 		{"GetFollowMapResourceUnknown", CaseIn{"unknown source", "news", time.Time{}}, CaseOut{http.StatusBadRequest, `{"Error":"Resource Not Supported"}`}},
-		{"GetFollowMapMemberOK", CaseIn{"member", "", time.Time{}}, CaseOut{http.StatusOK, `{"list":[{"member_ids":["followtest2@mirrormedia.mg"],"resource_ids db:resource_ids":["followtest1@mirrormedia.mg"]},{"member_ids":["followtest1@mirrormedia.mg"],"resource_ids db:resource_ids":["followtest2@mirrormedia.mg"]}],"resource":"member"}`}},
-		{"GetFollowMapProjectOK", CaseIn{"project", "", time.Time{}}, CaseOut{http.StatusOK, `{"list":[{"member_ids":["followtest1@mirrormedia.mg","followtest2@mirrormedia.mg"],"resource_ids db:resource_ids":["420"]}],"resource":"project"}`}},
+		{"GetFollowMapMemberOK", CaseIn{"member", "", time.Time{}}, CaseOut{http.StatusOK, `{"list":[{"member_ids":["followtest2@mirrormedia.mg"],"resource_ids":["followtest1@mirrormedia.mg"]},{"member_ids":["followtest1@mirrormedia.mg"],"resource_ids":["followtest2@mirrormedia.mg"]}],"resource":"member"}`}},
+		{"GetFollowMapProjectOK", CaseIn{"project", "", time.Time{}}, CaseOut{http.StatusOK, `{"list":[{"member_ids":["followtest1@mirrormedia.mg","followtest2@mirrormedia.mg"],"resource_ids":["420"]}],"resource":"project"}`}},
 	}
 
 	for _, testcase := range TestFollowingGetCases {

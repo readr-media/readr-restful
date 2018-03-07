@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 
@@ -33,20 +34,22 @@ type mockDatastore struct{}
 
 func TestMain(m *testing.M) {
 	/*
-		// TODO: Should implement test set for MODELS
-		// Init Sql connetions
-		dbURI := "root:qwerty@tcp(127.0.0.1)/memberdb?parseTime=true"
-		models.Connect(dbURI)
-		_, _ = models.DB.Exec("truncate table projects;")
-		_, _ = models.DB.Exec("truncate table members;")
-		_, _ = models.DB.Exec("truncate table permissions;")
-		_, _ = models.DB.Exec("truncate table posts;")
-		_, _ = models.DB.Exec("truncate table following_members;")
-		_, _ = models.DB.Exec("truncate table following_posts;")
-		_, _ = models.DB.Exec("truncate table following_projects;")
-		_, _ = models.DB.Exec("truncate table tags;")
-		_, _ = models.DB.Exec("truncate table post_tags;")
-		_, _ = models.DB.Exec("truncate table memos;")
+			// TODO: Should implement test set for MODELS
+			// Init Sql connetions
+			dbURI := "root:qwerty@tcp(127.0.0.1)/memberdb?parseTime=true"
+			models.Connect(dbURI)
+			_, _ = models.DB.Exec("truncate table projects;")
+			_, _ = models.DB.Exec("truncate table members;")
+			_, _ = models.DB.Exec("truncate table permissions;")
+			_, _ = models.DB.Exec("truncate table posts;")
+			_, _ = models.DB.Exec("truncate table following_members;")
+			_, _ = models.DB.Exec("truncate table following_posts;")
+			_, _ = models.DB.Exec("truncate table following_projects;")
+			_, _ = models.DB.Exec("truncate table tags;")
+			_, _ = models.DB.Exec("truncate table post_tags;")
+			_, _ = models.DB.Exec("truncate table memos;")
+
+
 		// Init Redis connetions
 		models.RedisConn(map[string]string{
 			"url":      fmt.Sprint(viper.Get("redis.host"), ":", viper.Get("redis.port")),
@@ -65,7 +68,8 @@ func TestMain(m *testing.M) {
 	PostHandler.SetRoutes(r)
 	ProjectHandler.SetRoutes(r)
 	TagHandler.SetRoutes(r)
-	MiscHandler.SetRoutes(r, initMailDialer())
+	MiscHandler.SetRoutes(r)
+	MailHandler.SetRoutes(r, initMailDialer())
 
 	models.MemberStatus = viper.GetStringMap("models.members")
 	models.MemoStatus = viper.GetStringMap("models.memos")
@@ -81,6 +85,7 @@ func TestMain(m *testing.M) {
 	models.FollowingAPI = new(mockFollowingAPI)
 	models.TagAPI = new(mockTagAPI)
 	models.MemoAPI = new(mockMemoAPI)
+	models.MailAPI = new(mockMailAPI)
 
 	os.Exit(m.Run())
 }
@@ -89,7 +94,7 @@ type genericTestcase struct {
 	name     string
 	method   string
 	url      string
-	body     string
+	body     interface{}
 	httpcode int
 	resp     interface{}
 }
@@ -97,7 +102,16 @@ type genericTestcase struct {
 func genericDoTest(tc genericTestcase, t *testing.T, function interface{}) {
 	t.Run(tc.name, func(t *testing.T) {
 		w := httptest.NewRecorder()
-		var jsonStr = []byte(tc.body)
+		jsonStr := []byte{}
+		if s, ok := tc.body.(string); ok {
+			jsonStr = []byte(s)
+		} else {
+			p, err := json.Marshal(tc.body)
+			if err != nil {
+				t.Errorf("%s, Error when marshaling input parameters", tc.name)
+			}
+			jsonStr = p
+		}
 		req, _ := http.NewRequest(tc.method, tc.url, bytes.NewBuffer(jsonStr))
 		req.Header.Set("Content-Type", "application/json")
 		r.ServeHTTP(w, req)

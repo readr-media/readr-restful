@@ -70,6 +70,7 @@ type MemberArgs struct {
 	CustomEditor bool             `form:"custom_editor"`
 	Active       map[string][]int `form:"active"`
 	Role         *int64           `form:"role"`
+	IDs          []string         `form:"ids"`
 }
 
 func (m *MemberArgs) Default() (result *MemberArgs) {
@@ -100,6 +101,16 @@ func (m *MemberArgs) parse() (restricts string, values []interface{}) {
 	if m.Role != nil {
 		where = append(where, "role = ?")
 		values = append(values, *m.Role)
+	}
+	if len(m.IDs) > 0 {
+		a := make([]string, len(m.IDs))
+		for i := range a {
+			a[i] = "?"
+		}
+		where = append(where, fmt.Sprintf("members.member_id IN (%s)", strings.Join(a, ", ")))
+		for i := range m.IDs {
+			values = append(values, m.IDs[i])
+		}
 	}
 	if len(where) > 1 {
 		restricts = strings.Join(where, " AND ")
