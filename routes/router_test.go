@@ -70,6 +70,7 @@ func TestMain(m *testing.M) {
 	TagHandler.SetRoutes(r)
 	MiscHandler.SetRoutes(r)
 	MailHandler.SetRoutes(r, initMailDialer())
+	PointsHandler.SetRoutes(r)
 
 	models.MemberStatus = viper.GetStringMap("models.members")
 	models.MemoStatus = viper.GetStringMap("models.memos")

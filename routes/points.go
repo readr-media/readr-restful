@@ -32,8 +32,14 @@ func (r *pointsHandler) Get(c *gin.Context) {
 	}
 	points, err := models.PointsAPI.Get(id, objtype)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
-		return
+		switch err.Error() {
+		case "Points Not Found":
+			c.JSON(http.StatusNotFound, gin.H{"Error": err.Error()})
+			return
+		default:
+			c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+			return
+		}
 	}
 	c.JSON(http.StatusOK, gin.H{"_items": points})
 }

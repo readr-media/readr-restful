@@ -38,7 +38,7 @@ func (p *pointsAPI) Get(id string, objType *int64) (result []Points, err error) 
 		err = DB.QueryRowx(baseQ+" AND object_type = ?", id, int(*objType)).StructScan(&pts)
 		switch {
 		case err == sql.ErrNoRows:
-			err = errors.New("Point Not Found")
+			err = errors.New("Points Not Found")
 			return []Points{}, err
 		case err != nil:
 			log.Fatal(err)
