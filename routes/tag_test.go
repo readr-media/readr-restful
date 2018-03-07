@@ -184,7 +184,6 @@ func TestRouteTags(t *testing.T) {
 			t.Errorf("%s, Unexpected result body: %v", resp)
 		}
 
-		log.Println(Response)
 		if len(Response.Items) != len(expected) {
 			t.Errorf("%s expect tag length to be %v but get %v", tc.name, len(expected), len(Response.Items))
 		}

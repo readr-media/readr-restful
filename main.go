@@ -75,14 +75,14 @@ func main() {
 
 	routes.AuthHandler.SetRoutes(router)
 	routes.FollowingHandler.SetRoutes(router)
+	routes.MailHandler.SetRoutes(router, *dialer)
 	routes.MemberHandler.SetRoutes(router)
 	routes.MemoHandler.SetRoutes(router)
+	routes.MiscHandler.SetRoutes(router)
 	routes.PermissionHandler.SetRoutes(router)
 	routes.PostHandler.SetRoutes(router)
 	routes.ProjectHandler.SetRoutes(router)
 	routes.TagHandler.SetRoutes(router)
-
-	routes.MiscHandler.SetRoutes(router, *dialer)
 
 	router.Run()
 }
