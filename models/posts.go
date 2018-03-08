@@ -384,7 +384,11 @@ func (a *postAPI) UpdatePost(p Post) error {
 		if err != nil {
 			return err
 		}
-		go Algolia.InsertPost([]TaggedPostMember{tpm})
+
+		active := tpm.PostMember.Post.Active
+		if active.Valid && active.Int == 1 {
+			go Algolia.InsertPost([]TaggedPostMember{tpm})
+		}
 	}
 
 	return err
