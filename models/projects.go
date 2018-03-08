@@ -77,7 +77,6 @@ func (a *projectAPI) GetProjects(args GetProjectArgs) ([]Project, error) {
 	var query bytes.Buffer
 	var bindvars []interface{}
 	query.WriteString(fmt.Sprintf(`SELECT p.* FROM projects as p WHERE active = %d`, int(ProjectStatus["active"].(float64))))
-	log.Println(args.IDs)
 	if len(args.IDs) > 0 {
 		inquery, inargs, err := sqlx.In(` AND project_id IN (?)`, args.IDs)
 		if err != nil {
@@ -92,8 +91,6 @@ func (a *projectAPI) GetProjects(args GetProjectArgs) ([]Project, error) {
 	}
 	query.WriteString(` ORDER BY project_order DESC, updated_at DESC LIMIT ? OFFSET ?;`)
 	bindvars = append(bindvars, args.MaxResult, (args.Page-1)*args.MaxResult)
-
-	log.Println(query.String(), bindvars)
 
 	rows, err := DB.Queryx(query.String(), bindvars...)
 	if err != nil {
@@ -133,6 +130,26 @@ func (a *projectAPI) InsertProject(p Project) error {
 	} else if rowCnt == 0 {
 		return errors.New("No Row Inserted")
 	}
+	lastID, err := result.LastInsertId()
+	if err != nil {
+		log.Printf("Fail to get last insert ID when insert a project: %v", err)
+		return err
+	}
+
+	// Only insert a post when it's published
+	if p.Active.Valid == true && p.Active.Int == 1 {
+		if p.ID == 0 {
+			p.ID = int(lastID)
+		}
+		arg := GetProjectArgs{IDs: []int{p.ID}, MaxResult: 1, Page: 1}
+		projects, err := ProjectAPI.GetProjects(arg)
+		if err != nil {
+			log.Println("Error When Getting Project to Insert to Algolia: %v", err.Error())
+			return nil
+		}
+		go Algolia.InsertProject(projects)
+	}
+
 	return nil
 }
 
@@ -150,6 +167,21 @@ func (a *projectAPI) UpdateProjects(p Project) error {
 	} else if rowCnt == 0 {
 		return errors.New("Project Not Found")
 	}
+
+	if p.Active.Valid == true && p.Active.Int != 1 {
+		// Case: Set a project to unpublished state, Delete the project from cache/searcher
+		go Algolia.DeleteProject([]int{p.ID})
+	} else {
+		// Case: Publish a project or update a project.
+		// Read whole project from database, then store to cache/searcher.
+		arg := GetProjectArgs{IDs: []int{p.ID}, MaxResult: 1, Page: 1}
+		projects, err := ProjectAPI.GetProjects(arg)
+		if err != nil {
+			log.Println("Error When Getting Project to Insert to Algolia: %v", err.Error())
+			return nil
+		}
+		go Algolia.InsertProject(projects)
+	}
 	return nil
 }
 
@@ -166,6 +198,9 @@ func (a *projectAPI) DeleteProjects(p Project) error {
 	if afrows == 0 {
 		return errors.New("Project Not Found")
 	}
+
+	go Algolia.DeleteProject([]int{p.ID})
+
 	return err
 }
 

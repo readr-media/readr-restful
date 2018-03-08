@@ -331,7 +331,7 @@ func (a *postAPI) InsertPost(p Post) (int, error) {
 	}
 	lastID, err := result.LastInsertId()
 	if err != nil {
-		log.Printf("Fail to get last insert ID when insert a tag: %v", err)
+		log.Printf("Fail to get last insert ID when insert a post: %v", err)
 		return 0, err
 	}
 
@@ -373,7 +373,7 @@ func (a *postAPI) UpdatePost(p Post) error {
 
 	go PostCache.Update(p)
 
-	if p.Active.Valid == true && p.Active.Int == 1 {
+	if p.Active.Valid == true && p.Active.Int != 1 {
 		// Case: Set a post to unpublished state, Delete the post from cache/searcher
 		go Algolia.DeletePost([]int{int(p.ID)})
 	} else {
