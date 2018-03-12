@@ -77,7 +77,6 @@ func (p *pointsAPI) Insert(pts Points) (result int, err error) {
 		strings.Join(tags, ","), strings.Join(tags, ",:"))
 
 	if _, err := tx.NamedExec(pointsU, pts); err != nil {
-		log.Fatal(err)
 		return 0, err
 	}
 	memberU := fmt.Sprint(`
@@ -85,21 +84,18 @@ func (p *pointsAPI) Insert(pts Points) (result int, err error) {
 		(SELECT p.member_id, SUM(p.points) AS psum FROM points p  WHERE p.member_id = ? GROUP BY p.member_id) AS i
 		ON m.member_id = i.member_id SET m.points = @updated_points := i.psum`)
 	if _, err = tx.Exec(memberU, pts.MemberID); err != nil {
-		log.Fatal(err)
 		return 0, err
 	}
 	row, err := tx.Queryx(`SELECT @updated_points`)
 	if err != nil {
-		log.Fatal(err)
 		return 0, err
 	}
 	for row.Next() {
 		err = row.Scan(&result)
 		if err != nil {
-			log.Fatal(err)
 			return 0, err
 		}
-		fmt.Println(result)
+		// fmt.Println(result)
 	}
 	return result, err
 }
@@ -123,7 +119,6 @@ func (p *pointsAPI) Update(pts Points) (result int, err error) {
 
 	pointsU := fmt.Sprintf(`UPDATE points SET %s WHERE member_id = :member_id AND object_type = :object_type`, strings.Join(fields, ", "))
 	if _, err = tx.NamedExec(pointsU, pts); err != nil {
-		log.Fatal(err)
 		return 0, err
 	}
 	memberU := fmt.Sprint(`
@@ -131,21 +126,18 @@ func (p *pointsAPI) Update(pts Points) (result int, err error) {
 		(SELECT p.member_id, SUM(p.points) AS psum FROM points p  WHERE p.member_id = ? GROUP BY p.member_id)AS i
 		ON m.member_id = i.member_id SET m.points = @updated_points := i.psum`)
 	if _, err = tx.Exec(memberU, pts.MemberID); err != nil {
-		log.Fatal(err)
 		return 0, err
 	}
 	row, err := tx.Queryx(`SELECT @updated_points`)
 	if err != nil {
-		log.Fatal(err)
 		return 0, err
 	}
 	for row.Next() {
 		err = row.Scan(&result)
 		if err != nil {
-			log.Fatal(err)
 			return 0, err
 		}
-		fmt.Println(result)
+		// fmt.Println(result)
 	}
 	return result, err
 }
