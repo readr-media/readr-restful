@@ -52,6 +52,7 @@ type PostInterface interface {
 	UpdateAll(req PostUpdateArgs) error
 	UpdatePost(p Post) error
 	Count(req *PostArgs) (result int, err error)
+	Hot() (result []Post, err error)
 }
 
 type TaggedPost struct {
@@ -484,6 +485,19 @@ func (a *postAPI) Count(req *PostArgs) (result int, err error) {
 				return 0, err
 			}
 		}
+	}
+	return result, err
+}
+
+func (a *postAPI) Hot() (result []Post, err error) {
+	keys, err := RedisHelper.GetRedisKeys("postcache_hot_[^follower]*")
+	if err != nil {
+		return []Post{}, err
+	}
+	result, err = RedisHelper.HGetAll(keys)
+	if err != nil {
+		log.Printf("Error getting popular list: %v", err)
+		return result, err
 	}
 	return result, err
 }

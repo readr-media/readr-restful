@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"database/sql"
@@ -65,6 +66,15 @@ func (nt *NullTime) UnmarshalJSON(text []byte) error {
 	return err
 }
 
+func (nt *NullTime) RedisScan(src interface{}) error {
+
+	if src == nil {
+		nt.Time, nt.Valid = time.Time{}, false
+		return nil
+	}
+	return convertRedisAssign(nt, src)
+}
+
 // Before is wrap of time.Time.Before, used in test
 func (nt *NullTime) Before(value NullTime) bool {
 	return nt.Time.Before(value.Time)
@@ -109,10 +119,21 @@ func (ns *NullString) UnmarshalJSON(text []byte) error {
 	if string(text) == "null" {
 		return nil
 	}
-	if err := json.Unmarshal(text, &ns.String); err == nil {
-		ns.Valid = true
+	if err := json.Unmarshal(text, &ns.String); err != nil {
+		return err
 	}
+	ns.Valid = true
+	fmt.Println(ns)
 	return nil
+}
+
+func (ns *NullString) RedisScan(src interface{}) error {
+
+	if src == nil {
+		ns.String, ns.Valid = "", false
+		return nil
+	}
+	return convertRedisAssign(ns, src)
 }
 
 // Create our own null string type for prettier marshal JSON format
@@ -157,6 +178,14 @@ func (ns *NullInt) UnmarshalJSON(text []byte) error {
 	return nil
 }
 
+func (ns *NullInt) RedisScan(src interface{}) error {
+	if src == nil {
+		ns.Int, ns.Valid = 0, false
+		return nil
+	}
+	return convertRedisAssign(ns, src)
+}
+
 // Create our own null string type for prettier marshal JSON format
 type NullBool struct {
 	Bool  bool
@@ -198,5 +227,14 @@ func (ns *NullBool) UnmarshalJSON(text []byte) error {
 	}
 	return nil
 }
+
+// NullBool is not included in Post type right now
+// func (ns *NullBool) RedisScan(src interface{}) error {
+// 	if src == nil {
+// 		ns.Bool, ns.Valid = false, false
+// 		return nil
+// 	}
+// 	return nil
+// }
 
 // ----------------------------- END OF NULLABLE TYPE DEFINITION -----------------------------
