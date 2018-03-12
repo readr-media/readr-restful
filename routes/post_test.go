@@ -259,6 +259,10 @@ func (a *mockPostAPI) Count(req *models.PostArgs) (result int, err error) {
 	return result, err
 }
 
+func (a *mockPostAPI) Hot() (result []models.Post, err error) {
+	return result, err
+}
+
 // // ---------------------------------- Post Test -------------------------------
 func TestRouteGetPosts(t *testing.T) {
 
