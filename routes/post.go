@@ -304,6 +304,15 @@ func (r *postHandler) Count(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"_meta": resp})
 }
 
+func (r *postHandler) Hot(c *gin.Context) {
+	result, err := models.PostAPI.Hot()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"_items": result})
+}
+
 func (r *postHandler) SetRoutes(router *gin.Engine) {
 
 	postRouter := router.Group("/post")
@@ -320,6 +329,7 @@ func (r *postHandler) SetRoutes(router *gin.Engine) {
 		postsRouter.PUT("", r.PublishAll)
 
 		postsRouter.GET("/count", r.Count)
+		postsRouter.GET("/hot", r.Hot)
 	}
 }
 
