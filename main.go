@@ -64,9 +64,14 @@ func main() {
 		viper.Get("mail.password").(string),
 	)
 
+	// Init Straats API
+	models.StraatsHelper.Init()
+
 	//Init cron jobs
 	c := cron.New()
 	c.AddFunc("@hourly", func() { models.PostCache.SyncFromDataStorage() })
+	c.AddFunc("@every 30m", func() { models.StraatsSync.Cron() })
+
 	c.Start()
 
 	models.InitPostCache()

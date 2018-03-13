@@ -68,6 +68,10 @@ func (m *mailApi) SendUpdateNote(args GetFollowMapArgs) (err error) {
 		}
 	}
 
+	if len(followers_list) == 0 {
+		return nil
+	}
+
 	members, err := MemberAPI.GetMembers(&MemberArgs{IDs: followers_list, Sorting: "member_id", MaxResult: uint8(len(followers_list)), Page: 1})
 	if err != nil {
 		log.Println(err.Error())
@@ -116,6 +120,10 @@ func (m *mailApi) SendUpdateNoteAll(args GetFollowMapArgs) (err error) {
 				follower_index[v][t] = m.ResourceIDs
 			}
 		}
+	}
+
+	if len(followers_list) == 0 {
+		return nil
 	}
 
 	members, err := MemberAPI.GetMembers(&MemberArgs{IDs: followers_list, Sorting: "member_id", MaxResult: uint8(len(followers_list)), Page: 1})

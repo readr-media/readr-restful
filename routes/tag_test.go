@@ -151,11 +151,11 @@ func TestRouteTags(t *testing.T) {
 	}
 
 	for _, params := range []models.Member{
-		models.Member{ID: "AMI@mirrormedia.mg", Active: models.NullInt{1, true}},
+		models.Member{ID: "AMI@mirrormedia.mg", Active: models.NullInt{1, true}, Points: models.NullInt{0, true}},
 	} {
 		err := models.MemberAPI.InsertMember(params)
 		if err != nil {
-			log.Printf("Insert post fail when init test case. Error: %v", err)
+			log.Printf("Insert member fail when init test case. Error: %v", err)
 		}
 	}
 

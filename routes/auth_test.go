@@ -16,13 +16,6 @@ import (
 )
 
 func initAuthTest() {
-	// Test with local mysql instance
-	/*
-		dbURI := "root:qwerty@tcp(127.0.0.1)/memberdb?parseTime=true"
-		models.Connect(dbURI)
-		_, _ = models.DB.Exec("truncate table members;")
-		_, _ = models.DB.Exec("truncate table permissions;")
-	*/
 
 	// Backup current member test data
 	mockMemberDSBack = mockMemberDS

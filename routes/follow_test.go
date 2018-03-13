@@ -56,27 +56,27 @@ func (a *mockFollowingAPI) GetFollowing(params map[string]string) (followings []
 		return nil, errors.New("Not Found")
 	case params["resource"] == "member":
 		return []interface{}{
-			models.Member{ID: "followtest2@mirrormedia.mg", Active: models.NullInt{1, true}},
+			models.Member{ID: "followtest2@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2012, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"followtest2@mirrormedia.mg", true}, Points: models.NullInt{0, true}},
 		}, nil
 	case params["resource"] == "post":
 		switch params["resource_type"] {
 		case "":
 			return []interface{}{
-				models.Post{ID: 42, Active: models.NullInt{1, true}, Type: models.NullInt{0, true}},
-				models.Post{ID: 84, Active: models.NullInt{1, true}, Type: models.NullInt{1, true}},
+				models.Post{ID: 42, Active: models.NullInt{1, true}, Type: models.NullInt{0, true}, UpdatedAt: models.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: models.NullString{"followtest1@mirrormedia.mg", true}},
+				models.Post{ID: 84, Active: models.NullInt{1, true}, Type: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: models.NullString{"followtest2@mirrormedia.mg", true}},
 			}, nil
 		case "review":
 			return []interface{}{
-				models.Post{ID: 42, Active: models.NullInt{1, true}, Type: models.NullInt{0, true}},
+				models.Post{ID: 42, Active: models.NullInt{1, true}, Type: models.NullInt{0, true}, UpdatedAt: models.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: models.NullString{"followtest1@mirrormedia.mg", true}},
 			}, nil
 		case "news":
 			return []interface{}{
-				models.Post{ID: 84, Active: models.NullInt{1, true}, Type: models.NullInt{1, true}},
+				models.Post{ID: 84, Active: models.NullInt{1, true}, Type: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: models.NullString{"followtest2@mirrormedia.mg", true}},
 			}, nil
 		}
 	case params["resource"] == "project":
 		return []interface{}{
-			models.Project{ID: 420, PostID: 42, Active: models.NullInt{1, true}},
+			models.Project{ID: 420, PostID: 42, Active: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Date(2015, time.November, 10, 23, 0, 0, 0, time.UTC), true}},
 		}, nil
 	default:
 		return nil, nil
@@ -115,9 +115,18 @@ func (a *mockFollowingAPI) GetFollowed(args models.GetFollowedArgs) (interface{}
 		}
 		return nil, nil
 	case args.Resource == "project":
-		return []followedCount{
-			followedCount{"420", 2, []string{"followtest1@mirrormedia.mg", "followtest2@mirrormedia.mg"}},
-		}, nil
+		switch len(args.Ids) {
+		case 1:
+			return []followedCount{
+				followedCount{"840", 1, []string{"followtest2@mirrormedia.mg"}},
+			}, nil
+		case 2:
+			return []followedCount{
+				followedCount{"420", 2, []string{"followtest1@mirrormedia.mg", "followtest2@mirrormedia.mg"}},
+				followedCount{"840", 1, []string{"followtest2@mirrormedia.mg"}},
+			}, nil
+		}
+		return nil, nil
 	default:
 		return nil, nil
 	}
@@ -148,7 +157,8 @@ func (*mockFollowingAPI) GetFollowMap(args models.GetFollowMapArgs) (list []mode
 		return []models.FollowingMapItem{}, nil
 	case args.Resource == "project":
 		return []models.FollowingMapItem{
-			models.FollowingMapItem{[]string{"followtest1@mirrormedia.mg", "followtest2@mirrormedia.mg"}, []string{"420"}},
+			models.FollowingMapItem{[]string{"followtest1@mirrormedia.mg"}, []string{"420"}},
+			models.FollowingMapItem{[]string{"followtest2@mirrormedia.mg"}, []string{"840", "420"}},
 		}, nil
 	default:
 		return []models.FollowingMapItem{}, errors.New("Resource Not Supported")
@@ -160,9 +170,9 @@ func initFollowTest() {
 	mockPostDSBack = mockPostDS
 
 	for _, params := range []models.Member{
-		models.Member{ID: "followtest0@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Now(), true}, Mail: models.NullString{"followtest0@mirrormedia.mg", true}},
-		models.Member{ID: "followtest1@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Now(), true}, Mail: models.NullString{"followtest1@mirrormedia.mg", true}},
-		models.Member{ID: "followtest2@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Now(), true}, Mail: models.NullString{"followtest2@mirrormedia.mg", true}},
+		models.Member{ID: "followtest0@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2010, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"followtest0@mirrormedia.mg", true}, Points: models.NullInt{0, true}},
+		models.Member{ID: "followtest1@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2011, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"followtest1@mirrormedia.mg", true}, Points: models.NullInt{0, true}},
+		models.Member{ID: "followtest2@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2012, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"followtest2@mirrormedia.mg", true}, Points: models.NullInt{0, true}},
 	} {
 		err := models.MemberAPI.InsertMember(params)
 		if err != nil {
@@ -171,8 +181,8 @@ func initFollowTest() {
 	}
 
 	for _, params := range []models.Post{
-		models.Post{ID: 42, Active: models.NullInt{1, true}, Type: models.NullInt{0, true}, UpdatedAt: models.NullTime{time.Now(), true}, Author: models.NullString{"followtest1@mirrormedia.mg", true}},
-		models.Post{ID: 84, Active: models.NullInt{1, true}, Type: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Now(), true}, Author: models.NullString{"followtest2@mirrormedia.mg", true}},
+		models.Post{ID: 42, Active: models.NullInt{1, true}, Type: models.NullInt{0, true}, UpdatedAt: models.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: models.NullString{"followtest1@mirrormedia.mg", true}},
+		models.Post{ID: 84, Active: models.NullInt{1, true}, Type: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: models.NullString{"followtest2@mirrormedia.mg", true}},
 	} {
 		_, err := models.PostAPI.InsertPost(params)
 		if err != nil {
@@ -181,8 +191,8 @@ func initFollowTest() {
 	}
 
 	for _, params := range []models.Project{
-		models.Project{ID: 420, PostID: 42, Active: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Now(), true}},
-		models.Project{ID: 840, PostID: 84, Active: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Now(), true}},
+		models.Project{ID: 420, PostID: 42, Active: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Date(2015, time.November, 10, 23, 0, 0, 0, time.UTC), true}},
+		models.Project{ID: 840, PostID: 84, Active: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Date(2016, time.November, 10, 23, 0, 0, 0, time.UTC), true}},
 	} {
 		err := models.ProjectAPI.InsertProject(params)
 		if err != nil {
@@ -198,6 +208,7 @@ func initFollowTest() {
 		map[string]string{"resource": "member", "subject": "followtest2@mirrormedia.mg", "object": "followtest1@mirrormedia.mg"},
 		map[string]string{"resource": "post", "subject": "followtest2@mirrormedia.mg", "object": "42"},
 		map[string]string{"resource": "project", "subject": "followtest2@mirrormedia.mg", "object": "420"},
+		map[string]string{"resource": "project", "subject": "followtest2@mirrormedia.mg", "object": "840"},
 	} {
 		err := models.FollowingAPI.AddFollowing(params)
 		if err != nil {
@@ -235,11 +246,11 @@ func TestFollowingGet(t *testing.T) {
 		in   CaseIn
 		out  CaseOut
 	}{
-		{"GetFollowingPostOK", CaseIn{"post", "", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, `[{"id":42,"author":null,"created_at":null,"like_amount":null,"comment_amount":null,"title":null,"content":null,"type":0,"link":null,"og_title":null,"og_description":null,"og_image":null,"active":1,"updated_at":null,"updated_by":null,"published_at":null,"link_title":null,"link_description":null,"link_image":null,"link_name":null},{"id":84,"author":null,"created_at":null,"like_amount":null,"comment_amount":null,"title":null,"content":null,"type":1,"link":null,"og_title":null,"og_description":null,"og_image":null,"active":1,"updated_at":null,"updated_by":null,"published_at":null,"link_title":null,"link_description":null,"link_image":null,"link_name":null}]`}},
-		{"GetFollowingPostReviewOK", CaseIn{"post", "review", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, `[{"id":42,"author":null,"created_at":null,"like_amount":null,"comment_amount":null,"title":null,"content":null,"type":0,"link":null,"og_title":null,"og_description":null,"og_image":null,"active":1,"updated_at":null,"updated_by":null,"published_at":null,"link_title":null,"link_description":null,"link_image":null,"link_name":null}]`}},
-		{"GetFollowingPostNewsOK", CaseIn{"post", "news", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, `[{"id":84,"author":null,"created_at":null,"like_amount":null,"comment_amount":null,"title":null,"content":null,"type":1,"link":null,"og_title":null,"og_description":null,"og_image":null,"active":1,"updated_at":null,"updated_by":null,"published_at":null,"link_title":null,"link_description":null,"link_image":null,"link_name":null}]`}},
-		{"GetFollowingMemberOK", CaseIn{"member", "", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, `[{"id":"followtest2@mirrormedia.mg","points":null,"name":null,"nickname":null,"birthday":null,"gender":null,"work":null,"mail":null,"register_mode":null,"social_id":null,"talk_id":null,"created_at":null,"updated_at":null,"updated_by":null,"description":null,"profile_image":null,"identity":null,"role":null,"active":1,"custom_editor":null,"hide_profile":null,"profile_push":null,"post_push":null,"comment_push":null}]`}},
-		{"GetFollowingProjectOK", CaseIn{"project", "", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, `[{"id":420,"created_at":null,"updated_at":null,"updated_by":null,"published_at":null,"post_id":42,"like_amount":null,"comment_amount":null,"active":1,"hero_image":null,"title":null,"description":null,"author":null,"og_title":null,"og_description":null,"og_image":null,"order":null}]`}},
+		{"GetFollowingPostOK", CaseIn{"post", "", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, `[{"id":42,"author":"followtest1@mirrormedia.mg","created_at":null,"like_amount":null,"comment_amount":null,"title":null,"content":null,"type":0,"link":null,"og_title":null,"og_description":null,"og_image":null,"active":1,"updated_at":"2009-11-10T23:00:00Z","updated_by":null,"published_at":null,"link_title":null,"link_description":null,"link_image":null,"link_name":null,"video_id":null,"video_views":null},{"id":84,"author":"followtest2@mirrormedia.mg","created_at":null,"like_amount":null,"comment_amount":null,"title":null,"content":null,"type":1,"link":null,"og_title":null,"og_description":null,"og_image":null,"active":1,"updated_at":"2009-11-10T23:00:00Z","updated_by":null,"published_at":null,"link_title":null,"link_description":null,"link_image":null,"link_name":null,"video_id":null,"video_views":null}]`}},
+		{"GetFollowingPostReviewOK", CaseIn{"post", "review", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, `[{"id":42,"author":"followtest1@mirrormedia.mg","created_at":null,"like_amount":null,"comment_amount":null,"title":null,"content":null,"type":0,"link":null,"og_title":null,"og_description":null,"og_image":null,"active":1,"updated_at":"2009-11-10T23:00:00Z","updated_by":null,"published_at":null,"link_title":null,"link_description":null,"link_image":null,"link_name":null,"video_id":null,"video_views":null}]`}},
+		{"GetFollowingPostNewsOK", CaseIn{"post", "news", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, `[{"id":84,"author":"followtest2@mirrormedia.mg","created_at":null,"like_amount":null,"comment_amount":null,"title":null,"content":null,"type":1,"link":null,"og_title":null,"og_description":null,"og_image":null,"active":1,"updated_at":"2009-11-10T23:00:00Z","updated_by":null,"published_at":null,"link_title":null,"link_description":null,"link_image":null,"link_name":null,"video_id":null,"video_views":null}]`}},
+		{"GetFollowingMemberOK", CaseIn{"member", "", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, `[{"id":"followtest2@mirrormedia.mg","points":0,"name":null,"nickname":null,"birthday":null,"gender":null,"work":null,"mail":"followtest2@mirrormedia.mg","register_mode":null,"social_id":null,"talk_id":null,"created_at":null,"updated_at":"2012-11-10T23:00:00Z","updated_by":null,"description":null,"profile_image":null,"identity":null,"role":null,"active":1,"custom_editor":null,"hide_profile":null,"profile_push":null,"post_push":true,"comment_push":null}]`}},
+		{"GetFollowingProjectOK", CaseIn{"project", "", "followtest1@mirrormedia.mg"}, CaseOut{http.StatusOK, `[{"id":420,"created_at":null,"updated_at":"2015-11-10T23:00:00Z","updated_by":null,"published_at":null,"post_id":42,"like_amount":null,"comment_amount":null,"active":1,"hero_image":null,"title":null,"description":null,"author":null,"og_title":null,"og_description":null,"og_image":null,"order":null}]`}},
 		{"GetFollowingFollowerNotExist", CaseIn{"project", "", "unknown@user.who"}, CaseOut{http.StatusOK, `[]`}},
 	}
 
@@ -268,9 +279,13 @@ func TestFollowingGet(t *testing.T) {
 		}
 
 	}
+
+	clearFollowTest()
 }
 
 func TestFollowedGet(t *testing.T) {
+
+	initFollowTest()
 
 	type CaseIn struct {
 		ResourceName string   `json:"resource",omitempty`
@@ -295,7 +310,8 @@ func TestFollowedGet(t *testing.T) {
 		{"GetFollowedPostReviewOK", CaseIn{"post", "review", []string{"42", "84"}}, CaseOut{http.StatusOK, `[{"Resourceid":"42","Count":2,"Follower":["followtest1@mirrormedia.mg","followtest2@mirrormedia.mg"]}]`}},
 		{"GetFollowedPostNewsOK", CaseIn{"post", "news", []string{"42", "84"}}, CaseOut{http.StatusOK, `[{"Resourceid":"84","Count":1,"Follower":["followtest1@mirrormedia.mg"]}]`}},
 		{"GetFollowedMemberOK", CaseIn{"member", "", []string{"followtest1@mirrormedia.mg", "followtest2@mirrormedia.mg"}}, CaseOut{http.StatusOK, `[{"Resourceid":"followtest1@mirrormedia.mg","Count":1,"Follower":["followtest2@mirrormedia.mg"]},{"Resourceid":"followtest2@mirrormedia.mg","Count":1,"Follower":["followtest1@mirrormedia.mg"]}]`}},
-		{"GetFollowedProjectOK", CaseIn{"project", "", []string{"420", "840"}}, CaseOut{http.StatusOK, `[{"Resourceid":"420","Count":2,"Follower":["followtest1@mirrormedia.mg","followtest2@mirrormedia.mg"]}]`}},
+		{"GetFollowedProjectSingleOK", CaseIn{"project", "", []string{"840"}}, CaseOut{http.StatusOK, `[{"Resourceid":"840","Count":1,"Follower":["followtest2@mirrormedia.mg"]}]`}},
+		{"GetFollowedProjectOK", CaseIn{"project", "", []string{"420", "840"}}, CaseOut{http.StatusOK, `[{"Resourceid":"420","Count":2,"Follower":["followtest1@mirrormedia.mg","followtest2@mirrormedia.mg"]},{"Resourceid":"840","Count":1,"Follower":["followtest2@mirrormedia.mg"]}]`}},
 		{"GetFollowedMissingResource", CaseIn{"", "", []string{"420", "840"}}, CaseOut{http.StatusBadRequest, `{"Error":"Unsupported Resource"}`}},
 		{"GetFollowedMissingID", CaseIn{"post", "", []string{}}, CaseOut{http.StatusBadRequest, `{"Error":"Bad Resource ID"}`}},
 		{"GetFollowedPostNotExist", CaseIn{"post", "", []string{"1001", "1000"}}, CaseOut{http.StatusOK, `[]`}},
@@ -327,9 +343,13 @@ func TestFollowedGet(t *testing.T) {
 			t.Fail()
 		}
 	}
+
+	clearFollowTest()
 }
 
 func TestFollowMap(t *testing.T) {
+
+	initFollowTest()
 
 	type CaseIn struct {
 		ResourceName string    `json:"resource",omitempty`
@@ -355,7 +375,7 @@ func TestFollowMap(t *testing.T) {
 		{"GetFollowMapPostNewsOK", CaseIn{"post", "news", time.Time{}}, CaseOut{http.StatusOK, `{"list":[{"member_ids":["followtest1@mirrormedia.mg"],"resource_ids":["84"]}],"resource":"post"}`}},
 		{"GetFollowMapResourceUnknown", CaseIn{"unknown source", "news", time.Time{}}, CaseOut{http.StatusBadRequest, `{"Error":"Resource Not Supported"}`}},
 		{"GetFollowMapMemberOK", CaseIn{"member", "", time.Time{}}, CaseOut{http.StatusOK, `{"list":[{"member_ids":["followtest2@mirrormedia.mg"],"resource_ids":["42"]},{"member_ids":["followtest1@mirrormedia.mg"],"resource_ids":["84"]}],"resource":"member"}`}},
-		{"GetFollowMapProjectOK", CaseIn{"project", "", time.Time{}}, CaseOut{http.StatusOK, `{"list":[{"member_ids":["followtest1@mirrormedia.mg","followtest2@mirrormedia.mg"],"resource_ids":["420"]}],"resource":"project"}`}},
+		{"GetFollowMapProjectOK", CaseIn{"project", "", time.Time{}}, CaseOut{http.StatusOK, `{"list":[{"member_ids":["followtest1@mirrormedia.mg"],"resource_ids":["420"]},{"member_ids":["followtest2@mirrormedia.mg"],"resource_ids":["840","420"]}],"resource":"project"}`}},
 	}
 
 	for _, testcase := range TestFollowingGetCases {
@@ -382,9 +402,13 @@ func TestFollowMap(t *testing.T) {
 			t.Fail()
 		}
 	}
+
+	clearFollowTest()
 }
 
 func TestFollowingAddDelete(t *testing.T) {
+
+	initFollowTest()
 
 	type PubsubWrapperMessage struct {
 		ID   string   `json:"messageId"`
