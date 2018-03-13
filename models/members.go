@@ -161,6 +161,10 @@ func (a *memberAPI) GetMember(id string) (Member, error) {
 
 func (a *memberAPI) InsertMember(m Member) error {
 
+	if !m.Points.Valid {
+		m.Points = NullInt{0, true}
+	}
+
 	tags := getStructDBTags("full", Member{})
 	query := fmt.Sprintf(`INSERT INTO members (%s) VALUES (:%s)`,
 		strings.Join(tags, ","), strings.Join(tags, ",:"))

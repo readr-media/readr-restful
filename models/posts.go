@@ -38,6 +38,8 @@ type Post struct {
 	LinkDescription NullString `json:"link_description" db:"link_description" redis:"link_description"`
 	LinkImage       NullString `json:"link_image" db:"link_image" redis:"link_image"`
 	LinkName        NullString `json:"link_name" db:"link_name" redis:"link_name"`
+	VideoID         NullString `json:"video_id" db:"video_id" redis:"video_id"`
+	VideoViews      NullInt    `json:"video_views" db:"video_views" redis:"video_views"`
 }
 
 type postAPI struct{}

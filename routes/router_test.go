@@ -34,21 +34,22 @@ type mockDatastore struct{}
 
 func TestMain(m *testing.M) {
 	/*
-			// TODO: Should implement test set for MODELS
-			// Init Sql connetions
-			dbURI := "root:qwerty@tcp(127.0.0.1)/memberdb?parseTime=true"
-			models.Connect(dbURI)
-			_, _ = models.DB.Exec("truncate table projects;")
-			_, _ = models.DB.Exec("truncate table members;")
-			_, _ = models.DB.Exec("truncate table permissions;")
-			_, _ = models.DB.Exec("truncate table posts;")
-			_, _ = models.DB.Exec("truncate table following_members;")
-			_, _ = models.DB.Exec("truncate table following_posts;")
-			_, _ = models.DB.Exec("truncate table following_projects;")
-			_, _ = models.DB.Exec("truncate table tags;")
-			_, _ = models.DB.Exec("truncate table post_tags;")
-			_, _ = models.DB.Exec("truncate table memos;")
+		os.Setenv("mode", "local")
 
+		// TODO: Should implement test set for MODELS
+		// Init Sql connetions
+		dbURI := "root:qwerty@tcp(127.0.0.1)/memberdb?parseTime=true"
+		models.Connect(dbURI)
+		_, _ = models.DB.Exec("truncate table projects;")
+		_, _ = models.DB.Exec("truncate table members;")
+		_, _ = models.DB.Exec("truncate table permissions;")
+		_, _ = models.DB.Exec("truncate table posts;")
+		_, _ = models.DB.Exec("truncate table following_members;")
+		_, _ = models.DB.Exec("truncate table following_posts;")
+		_, _ = models.DB.Exec("truncate table following_projects;")
+		_, _ = models.DB.Exec("truncate table tags;")
+		_, _ = models.DB.Exec("truncate table post_tags;")
+		_, _ = models.DB.Exec("truncate table memos;")
 
 		// Init Redis connetions
 		models.RedisConn(map[string]string{

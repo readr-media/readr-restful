@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -34,6 +35,9 @@ func (a *algolia) Init() {
 }
 
 func (a *algolia) insert(objects []algoliasearch.Object) error {
+	if os.Getenv("mode") == "local" {
+		return nil
+	}
 	var (
 		retry     int   = 0
 		max_retry int   = int(viper.Get("search_feed.max_retry").(float64))
@@ -53,6 +57,9 @@ func (a *algolia) insert(objects []algoliasearch.Object) error {
 }
 
 func (a *algolia) delete(ids []string) error {
+	if os.Getenv("mode") == "local" {
+		return nil
+	}
 	var (
 		retry     int   = 0
 		max_retry int   = int(viper.Get("search_feed.max_retry").(float64))
@@ -119,7 +126,6 @@ func (a *algolia) insertResource(tpmsi interface{}, resource_name string) (err e
 		err = errors.New("Resource Not Supported")
 	}
 
-	log.Println(objects)
 	err = a.insert(objects)
 	if err != nil {
 		log.Println(err.Error())
@@ -134,7 +140,7 @@ func (a *algolia) deleteResource(post_ids []int, resource_name string) (err erro
 	for _, i := range post_ids {
 		ids = append(ids, fmt.Sprintf("%s_%s", a.objectTypes[resource_name], fmt.Sprint(i)))
 	}
-	log.Println(ids)
+
 	err = a.delete(ids)
 	if err != nil {
 		log.Println(err.Error())
