@@ -163,7 +163,7 @@ func (v *straatsSync) UpdateLivesVod(live straatsLive, vods []straatsVod) (err e
 		published_at = v.UpdatedAt
 		urls = append(urls, v.Link)
 	}
-	_, err = DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=?, published_at=? WHERE video_id=?;", PostType["video"], strings.Join(urls, ";"), PostType["active"], time.Now(), published_at, live.ID)
+	_, err = DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=?, published_at=? WHERE video_id=?;", PostType["video"], strings.Join(urls, ";"), PostStatus["active"], time.Now(), published_at, live.ID)
 
 	return err
 }
