@@ -2,7 +2,9 @@ package routes
 
 import (
 	"log"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"encoding/json"
@@ -15,29 +17,79 @@ import (
 type projectHandler struct {
 }
 
-func (r *projectHandler) Get(c *gin.Context) {
-	var args models.GetProjectArgs
-	args.Init()
+func (r *projectHandler) bindQuery(c *gin.Context, args *models.GetProjectArgs) (err error) {
 
-	err := c.Bind(&args)
-	if err != nil {
-		log.Println(err)
+	// Start parsing rest of request arguments
+	if c.Query("active") != "" {
+		if err = json.Unmarshal([]byte(c.Query("active")), &args.Active); err != nil {
+			log.Println(err.Error())
+			return err
+		} else if err == nil {
+			if err = models.ValidateActive(args.Active, models.ProjectActive); err != nil {
+				return err
+			}
+		}
+	}
+	if c.Query("status") != "" {
+		if err = json.Unmarshal([]byte(c.Query("status")), &args.Status); err != nil {
+			log.Println(err.Error())
+			return err
+		} else if err == nil {
+			if err = models.ValidateActive(args.Status, models.ProjectStatus); err != nil {
+				return err
+			}
+		}
+	}
+	if c.Query("ids") != "" {
+		if err = json.Unmarshal([]byte(c.Query("ids")), &args.IDs); err != nil {
+			log.Println(err.Error())
+			return err
+		}
+	}
+	if c.Query("slugs") != "" {
+		if err = json.Unmarshal([]byte(c.Query("slugs")), &args.Slugs); err != nil {
+			log.Println(err.Error())
+			return err
+		}
+	}
+	if c.Query("max_result") != "" {
+		if err = json.Unmarshal([]byte(c.Query("max_result")), &args.MaxResult); err != nil {
+			log.Println(err.Error())
+			return err
+		}
+	}
+	if c.Query("page") != "" {
+		if err = json.Unmarshal([]byte(c.Query("page")), &args.Page); err != nil {
+			log.Println(err.Error())
+			return err
+		}
+	}
+	if c.Query("sort") != "" && r.validateProjectSorting(c.Query("sort")) {
+		args.Sorting = c.Query("sort")
+	}
+	if c.Query("keyword") != "" {
+		args.Keyword = "%" + c.Query("keyword") + "%"
+	}
+
+	return nil
+}
+
+func (r *projectHandler) Get(c *gin.Context) {
+	var args = models.GetProjectArgs{}
+	args.Default()
+
+	if err := r.bindQuery(c, &args); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
-
-	_ = json.Unmarshal([]byte(c.Query("ids")), &args.IDs)
-
-	projects, err := models.ProjectAPI.GetProjects(args)
-
-	if err != nil {
-		switch err.Error() {
-		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
-			return
-		}
+	if args.Active == nil {
+		args.DefaultActive()
 	}
-
+	projects, err := models.ProjectAPI.GetProjects(args)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{"_items": projects})
 }
 
@@ -47,18 +99,19 @@ func (r *projectHandler) Post(c *gin.Context) {
 	c.Bind(&project)
 
 	// Pre-request test
-	if project.ID == 0 {
+	if project.Title.Valid == false {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Project"})
 		return
 	}
+	if project.Active.Valid == true && !r.validateProjectStatus(project.Active.Int) {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Parameter"})
+		return
+	}
+
 	if !project.CreatedAt.Valid {
-		project.CreatedAt.Time = time.Now()
-		project.CreatedAt.Valid = true
+		project.CreatedAt = models.NullTime{time.Now(), true}
 	}
-	if !project.UpdatedAt.Valid {
-		project.UpdatedAt.Time = time.Now()
-		project.UpdatedAt.Valid = true
-	}
+	project.UpdatedAt = models.NullTime{time.Now(), true}
 
 	err := models.ProjectAPI.InsertProject(project)
 	if err != nil {
@@ -82,14 +135,28 @@ func (r *projectHandler) Put(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Project Data"})
 		return
 	}
+
+	if project.Active.Valid == true && !r.validateProjectStatus(project.Active.Int) {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Parameter"})
+		return
+	}
+
+	if project.Status.Valid == true && project.Status.Int == int64(models.ProjectStatus["done"].(float64)) {
+		p, err := models.ProjectAPI.GetProject(project)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"Error": "Project Not Found"})
+			return
+		} else if p.Slug.Valid == false {
+			c.JSON(http.StatusBadRequest, gin.H{"Error": "Must Have Slug Before Publish"})
+			return
+		}
+	}
+
 	if project.CreatedAt.Valid {
-		project.CreatedAt.Time = time.Time{}
 		project.CreatedAt.Valid = false
 	}
-	if !project.UpdatedAt.Valid {
-		project.UpdatedAt.Time = time.Now()
-		project.UpdatedAt.Valid = true
-	}
+	project.UpdatedAt = models.NullTime{time.Now(), true}
+
 	err := models.ProjectAPI.UpdateProjects(project)
 	if err != nil {
 		switch err.Error() {
@@ -135,6 +202,23 @@ func (r *projectHandler) SetRoutes(router *gin.Engine) {
 		projectRouter.PUT("", r.Put)
 		projectRouter.DELETE("/:id", r.Delete)
 	}
+}
+
+func (r *projectHandler) validateProjectStatus(i int64) bool {
+	for _, v := range models.ProjectStatus {
+		if i == int64(v.(float64)) {
+			return true
+		}
+	}
+	return false
+}
+func (r *projectHandler) validateProjectSorting(sort string) bool {
+	for _, v := range strings.Split(sort, ",") {
+		if matched, err := regexp.MatchString("-?(updated_at|published_at|project_id|project_order|status|slug)", v); err != nil || !matched {
+			return false
+		}
+	}
+	return true
 }
 
 var ProjectHandler projectHandler

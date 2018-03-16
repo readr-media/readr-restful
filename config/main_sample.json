@@ -57,10 +57,14 @@
             "deactive": 9,
             "active": 9
         },
-        "projects":{
-            "active": 1,
-            "deactive": 0,
-            "pending": 2
+        "projects_active":{
+            "active": 9,
+            "deactive": 9
+        },
+        "projects_status":{
+            "candidate": 9,
+            "wip": 9,
+            "done": 9
         },
         "memos":{
             "active": 1,
