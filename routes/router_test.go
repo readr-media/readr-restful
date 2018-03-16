@@ -77,7 +77,8 @@ func TestMain(m *testing.M) {
 	models.MemoStatus = viper.GetStringMap("models.memos")
 	models.PostStatus = viper.GetStringMap("models.posts")
 	models.PostType = viper.GetStringMap("models.post_type")
-	models.ProjectStatus = viper.GetStringMap("models.projects")
+	models.ProjectActive = viper.GetStringMap("models.projects_active")
+	models.ProjectStatus = viper.GetStringMap("models.projects_status")
 	models.TagStatus = viper.GetStringMap("models.tags")
 
 	models.ProjectAPI = new(mockProjectAPI)
@@ -115,7 +116,12 @@ func genericDoTest(tc genericTestcase, t *testing.T, function interface{}) {
 			jsonStr = p
 		}
 		req, _ := http.NewRequest(tc.method, tc.url, bytes.NewBuffer(jsonStr))
-		req.Header.Set("Content-Type", "application/json")
+		if tc.method == "GET" {
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		} else {
+			req.Header.Set("Content-Type", "application/json")
+		}
+
 		r.ServeHTTP(w, req)
 
 		if w.Code != tc.httpcode {

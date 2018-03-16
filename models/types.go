@@ -2,7 +2,6 @@ package models
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"database/sql"
@@ -123,7 +122,6 @@ func (ns *NullString) UnmarshalJSON(text []byte) error {
 		return err
 	}
 	ns.Valid = true
-	fmt.Println(ns)
 	return nil
 }
 

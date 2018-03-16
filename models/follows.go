@@ -157,7 +157,7 @@ func (f followProject) GetMap(params GetFollowMapArgs) (*sqlx.Rows, error) {
 			GROUP BY m.member_id
 			) AS member_resource
 		GROUP BY member_resource.resource_ids;`
-	return DB.Queryx(query, int(MemberStatus["active"].(float64)), 1, int(ProjectStatus["active"].(float64)), params.UpdateAfter)
+	return DB.Queryx(query, int(MemberStatus["active"].(float64)), 1, int(ProjectActive["active"].(float64)), params.UpdateAfter)
 }
 
 /* ================================================ Follower Factory ================================================ */

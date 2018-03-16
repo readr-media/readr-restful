@@ -156,7 +156,6 @@ func generateSQLStmt(mode string, tableName string, input ...interface{}) (query
 	case "insert":
 		// Parse first input
 		u := reflect.ValueOf(input[0])
-		fmt.Println("insert")
 		for i := 0; i < u.NumField(); i++ {
 			tag := u.Type().Field(i).Tag.Get("db")
 			columns = append(columns, tag)
@@ -174,7 +173,6 @@ func generateSQLStmt(mode string, tableName string, input ...interface{}) (query
 	case "full_update":
 
 		u := reflect.ValueOf(input[0])
-		fmt.Println("full_update")
 		var idName string
 		for i := 0; i < u.NumField(); i++ {
 			tag := u.Type().Field(i).Tag
@@ -201,7 +199,6 @@ func generateSQLStmt(mode string, tableName string, input ...interface{}) (query
 
 		var idName string
 		u := reflect.ValueOf(input[0])
-		fmt.Println("partial")
 		for i := 0; i < u.NumField(); i++ {
 			tag := u.Type().Field(i).Tag
 			field := u.Field(i).Interface()
@@ -222,22 +219,22 @@ func generateSQLStmt(mode string, tableName string, input ...interface{}) (query
 				}
 			case NullString:
 				if field.Valid {
-					fmt.Println("valid NullString : ", field.String)
+					//fmt.Println("valid NullString : ", field.String)
 					columns = append(columns, tag.Get("db"))
 				}
 			case NullTime:
 				if field.Valid {
-					fmt.Println("valid NullTime : ", field.Time)
+					//fmt.Println("valid NullTime : ", field.Time)
 					columns = append(columns, tag.Get("db"))
 				}
 			case NullInt:
 				if field.Valid {
-					fmt.Println("valid NullInt : ", field.Int)
+					//fmt.Println("valid NullInt : ", field.Int)
 					columns = append(columns, tag.Get("db"))
 				}
 			case NullBool:
 				if field.Valid {
-					fmt.Println("valid NullBool : ", field.Bool)
+					//fmt.Println("valid NullBool : ", field.Bool)
 					columns = append(columns, tag.Get("db"))
 				}
 			case bool, int, uint32:
