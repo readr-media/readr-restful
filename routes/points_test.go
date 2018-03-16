@@ -68,22 +68,22 @@ func (a *mockPointsAPI) Insert(pts models.Points) (result int, err error) {
 	return result, err
 }
 
-func (a *mockPointsAPI) Update(pts models.Points) (result int, err error) {
+// func (a *mockPointsAPI) Update(pts models.Points) (result int, err error) {
 
-	if total, err := a.Get(pts.MemberID, nil); err == nil {
-		for k, v := range total {
-			if v.ObjectType != pts.ObjectType {
-				result += int(v.Points)
-			} else {
-				a.mockPointsDS[k] = pts
-				result += pts.Points
-			}
-		}
-	} else if err.Error() == "Points Not Found" {
-		return result, errors.New("Points Not Found")
-	}
-	return result, err
-}
+// 	if total, err := a.Get(pts.MemberID, nil); err == nil {
+// 		for k, v := range total {
+// 			if v.ObjectType != pts.ObjectType {
+// 				result += int(v.Points)
+// 			} else {
+// 				a.mockPointsDS[k] = pts
+// 				result += pts.Points
+// 			}
+// 		}
+// 	} else if err.Error() == "Points Not Found" {
+// 		return result, errors.New("Points Not Found")
+// 	}
+// 	return result, err
+// }
 
 func TestRoutePoints(t *testing.T) {
 
@@ -138,16 +138,16 @@ func TestRoutePoints(t *testing.T) {
 				genericTestcase{"DuplicatePoints", "POST", `/points`, `{"member_id":"superman@superman.com","object_type": 2,"object_id": 1,"points": 100}`, http.StatusBadRequest, `{"Error":"Already exists"}`},
 			},
 		},
-		TestStep{
-			name:     "PUT",
-			init:     func() { pointTest.setup(points) },
-			teardown: func() { pointTest.teardown() },
-			register: &pointTest,
-			cases: []genericTestcase{
-				genericTestcase{"SinglePoints", "PUT", `/points`, `{"member_id":"superman@superman.com","object_type":1,"object_id":1,"points":100}`, http.StatusOK, `{"points":400}`},
-				genericTestcase{"NotExistedPoints", "PUT", `/points`, `{"member_id":"flash@flash.com","object_type":1,"object_id":1,"points":100}`, http.StatusBadRequest, `{"Error":"Points Not Found"}`},
-			},
-		},
+		// TestStep{
+		// 	name:     "PUT",
+		// 	init:     func() { pointTest.setup(points) },
+		// 	teardown: func() { pointTest.teardown() },
+		// 	register: &pointTest,
+		// 	cases: []genericTestcase{
+		// 		genericTestcase{"SinglePoints", "PUT", `/points`, `{"member_id":"superman@superman.com","object_type":1,"object_id":1,"points":100}`, http.StatusOK, `{"points":400}`},
+		// 		genericTestcase{"NotExistedPoints", "PUT", `/points`, `{"member_id":"flash@flash.com","object_type":1,"object_id":1,"points":100}`, http.StatusBadRequest, `{"Error":"Points Not Found"}`},
+		// 	},
+		// },
 	}
 	asserter := func(resp string, tc genericTestcase, t *testing.T) {
 		type response struct {
