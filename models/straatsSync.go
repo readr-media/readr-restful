@@ -149,6 +149,7 @@ func (v *straatsSync) UpdateLives(live straatsLive) (err error) {
 }
 func (v *straatsSync) UpdateLivesVod(live straatsLive, vods []straatsVod) (err error) {
 
+	var vod_active = PostStatus["active"]
 	var post_id string
 	_ = DB.Get(&post_id, "SELECT post_id FROM posts WHERE video_id=?;", live.ID)
 	if post_id == "" {
@@ -162,8 +163,11 @@ func (v *straatsSync) UpdateLivesVod(live straatsLive, vods []straatsVod) (err e
 	for _, v := range vods {
 		published_at = v.UpdatedAt
 		urls = append(urls, v.Link)
+		if !v.Available {
+			vod_active = PostStatus["draft"]
+		}
 	}
-	_, err = DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=?, published_at=? WHERE video_id=?;", PostType["video"], strings.Join(urls, ";"), PostStatus["active"], time.Now(), published_at, live.ID)
+	_, err = DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=?, published_at=? WHERE video_id=?;", PostType["video"], strings.Join(urls, ";"), vod_active, time.Now(), published_at, live.ID)
 
 	return err
 }

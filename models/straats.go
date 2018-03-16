@@ -42,6 +42,7 @@ type straatsLive struct {
 type straatsVod struct {
 	ID        string    `json:"id"`
 	Ready     bool      `json:"accomplished"`
+	Available bool      `json:"available"`
 	Link      string    `json:"embed_url"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
