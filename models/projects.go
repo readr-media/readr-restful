@@ -30,6 +30,7 @@ type Project struct {
 	Order         NullInt    `json:"project_order" db:"project_order" redis:"project_order"`
 	Status        NullInt    `json:"status" db:"status" redis:"status"`
 	Slug          NullString `json:"slug" db:"slug" redis:"slug"`
+	Views         NullInt    `json:"views" db:"views" redis:"views"`
 }
 
 type projectAPI struct{}

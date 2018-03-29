@@ -55,7 +55,7 @@ func main() {
 	})
 
 	// Init Mongodb connection
-	models.MongoConn(fmt.Sprint("mongodb://", viper.Get("mongo.talk.host"), ":", viper.Get("mongo.talk.port"), "/talk"))
+	models.MongoConn(fmt.Sprint("mongodb://", viper.Get("mongo.talk.host"), "/talk"))
 
 	// init mail sender
 	dialer := gomail.NewDialer(

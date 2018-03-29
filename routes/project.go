@@ -108,6 +108,11 @@ func (r *projectHandler) Post(c *gin.Context) {
 		return
 	}
 
+	if project.Status.Valid == true && project.Status.Int == int64(models.ProjectStatus["done"].(float64)) && project.Slug.Valid == false {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Must Have Slug Before Publish"})
+		return
+	}
+
 	if !project.CreatedAt.Valid {
 		project.CreatedAt = models.NullTime{time.Now(), true}
 	}

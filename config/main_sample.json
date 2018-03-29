@@ -13,8 +13,6 @@
     "mongo":{
         "talk": {
             "host": "",
-            "port": 0,
-            "password": ""
         }
     },
     "mail":{
