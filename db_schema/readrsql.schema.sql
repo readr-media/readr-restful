@@ -132,8 +132,36 @@ CREATE TABLE `members` (
   `work` varchar(48) DEFAULT NULL,
   `name` varchar(128) DEFAULT NULL,
   `identity` varchar(24) DEFAULT NULL,
+  `talk_id` varchar(48) DEFAULT NULL,
+  `points` int(11) NOT NULL DEFAULT '0',
   PRIMARY KEY (`member_id`),
   KEY `mail_nick_ceditor` (`mail`,`nickname`,`custom_editor`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `memos`
+--
+
+DROP TABLE IF EXISTS `memos`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `memos` (
+  `memo_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `comment_amount` int(11) DEFAULT NULL,
+  `title` varchar(256) DEFAULT NULL,
+  `content` text,
+  `link` varchar(128) DEFAULT NULL,
+  `author` varchar(48) DEFAULT NULL,
+  `project_id` bigint(20) unsigned DEFAULT NULL,
+  `active` int(11) NOT NULL DEFAULT '2',
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` varchar(48) DEFAULT NULL,
+  `published_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`memo_id`),
+  KEY `project_id` (`project_id`),
+  KEY `author` (`author`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -153,6 +181,40 @@ CREATE TABLE `permissions` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `points`
+--
+
+DROP TABLE IF EXISTS `points`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `points` (
+  `points_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `member_id` varchar(48) NOT NULL,
+  `object_type` int(11) NOT NULL,
+  `object_id` int(11) NOT NULL,
+  `points` int(11) NOT NULL DEFAULT '0',
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` varchar(48) DEFAULT NULL,
+  `updated_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`points_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `post_tags`
+--
+
+DROP TABLE IF EXISTS `post_tags`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `post_tags` (
+  `post_id` bigint(20) unsigned NOT NULL,
+  `tag_id` bigint(20) unsigned NOT NULL,
+  PRIMARY KEY (`post_id`,`tag_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `posts`
 --
 
@@ -166,7 +228,7 @@ CREATE TABLE `posts` (
   `comment_amount` int(11) DEFAULT NULL,
   `title` varchar(256) DEFAULT NULL,
   `content` text,
-  `link` varchar(128) DEFAULT NULL,
+  `link` varchar(512) DEFAULT NULL,
   `author` varchar(48) DEFAULT NULL,
   `og_title` varchar(256) DEFAULT NULL,
   `og_description` varchar(256) DEFAULT NULL,
@@ -178,10 +240,15 @@ CREATE TABLE `posts` (
   `link_title` varchar(256) DEFAULT NULL,
   `link_description` varchar(256) DEFAULT NULL,
   `link_image` varchar(128) DEFAULT NULL,
+  `link_name` varchar(48) DEFAULT NULL,
+  `type` int(11) DEFAULT NULL,
+  `video_id` varchar(16) DEFAULT NULL,
+  `video_views` int(11) DEFAULT NULL,
   PRIMARY KEY (`post_id`),
   UNIQUE KEY `post_id` (`post_id`),
+  UNIQUE KEY `video_id` (`video_id`),
   KEY `title_link` (`title`,`link`)
-) ENGINE=InnoDB AUTO_INCREMENT=72 DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=220 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -219,14 +286,19 @@ CREATE TABLE `projects` (
   `og_title` varchar(256) DEFAULT NULL,
   `og_description` varchar(256) DEFAULT NULL,
   `og_image` varchar(128) DEFAULT NULL,
-  `active` int(11) DEFAULT NULL,
+  `active` int(11) DEFAULT '0',
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `updated_by` varchar(48) DEFAULT NULL,
   `published_at` datetime DEFAULT NULL,
+  `project_order` int(11) DEFAULT NULL,
+  `status` int(11) DEFAULT NULL,
+  `slug` varchar(64) DEFAULT NULL,
+  `views` int(11) DEFAULT NULL,
   PRIMARY KEY (`project_id`),
   UNIQUE KEY `project_id` (`project_id`),
+  UNIQUE KEY `slug` (`slug`),
   KEY `title_postid` (`title`,`post_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB AUTO_INCREMENT=1000005 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -240,6 +312,24 @@ CREATE TABLE `roles` (
   `role` int(11) NOT NULL,
   `name` varchar(12) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `tags`
+--
+
+DROP TABLE IF EXISTS `tags`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `tags` (
+  `tag_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `tag_content` varchar(50) NOT NULL,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_by` varchar(48) DEFAULT NULL,
+  `active` tinyint(4) DEFAULT '1',
+  PRIMARY KEY (`tag_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=38 DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -265,4 +355,4 @@ CREATE TABLE `testdrop` (
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2018-01-17 10:07:29
+-- Dump completed on 2018-03-29 12:02:07
