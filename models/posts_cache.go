@@ -384,7 +384,7 @@ func (c hottestPostCache) SyncFromDataStorage() {
 	if len(hotPosts) <= 0 {
 		return
 	}
-	query, args, err := sqlx.In(fmt.Sprint("SELECT p.*, f.follower FROM posts as p LEFT JOIN (SELECT post_id, GROUP_CONCAT(member_id SEPARATOR ',') as follower FROM following_posts GROUP BY post_id) as f ON p.post_id = f.post_id WHERE active=", fmt.Sprint(PostStatus["active"]), " AND p.post_id IN (?);"), hotPosts)
+	query, args, err := sqlx.In(fmt.Sprint("SELECT p.*, f.follower, m.name AS m_name, m.profile_image AS m_image FROM posts as p LEFT JOIN (SELECT post_id, GROUP_CONCAT(member_id SEPARATOR ',') as follower FROM following_posts GROUP BY post_id) as f ON p.post_id = f.post_id LEFT JOIN members AS m ON m.member_id = p.author WHERE p.active=", fmt.Sprint(PostStatus["active"]), " AND p.post_id IN (?);"), hotPosts)
 	if err != nil {
 		log.Printf("error to build `in` query when fetching post cache data", err)
 		return
@@ -404,14 +404,16 @@ func (c hottestPostCache) SyncFromDataStorage() {
 	for rows.Next() {
 		var postF struct {
 			Post
-			PostFollower NullString `db:"follower"`
+			PostFollower       NullString `db:"follower"`
+			AuthorNickname     NullString `db:"m_name"`
+			AuthorProfileImage NullString `db:"m_image"`
 		}
 		err = rows.StructScan(&postF)
 		if err != nil {
 			log.Printf("Error scan posts from db: %v", err)
 			return
 		}
-		conn.Send("HMSET", redis.Args{}.Add(fmt.Sprint(c.key, postF.ID)).AddFlat(&postF.Post)...)
+		conn.Send("HMSET", redis.Args{}.Add(fmt.Sprint(c.key, postF.ID)).Add("author_nickname").Add(postF.AuthorNickname).Add("author_profileImage").Add(postF.AuthorProfileImage).AddFlat(&postF.Post)...)
 		conn.Send("SADD", redis.Args{}.Add(fmt.Sprint(c.key, "follower_", postF.ID)).AddFlat(postF.PostFollower.String)...)
 	}
 
