@@ -19,7 +19,8 @@
         "host": "",
         "port": 0,
         "user": "",
-        "password": ""
+        "password": "",
+        "user_name": ""
     },
     "search_feed":{
         "app_id": "",
