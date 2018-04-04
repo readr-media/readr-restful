@@ -6,6 +6,7 @@ import (
 	"log"
 	"strings"
 
+	"github.com/spf13/viper"
 	"gopkg.in/gomail.v2"
 )
 
@@ -35,7 +36,7 @@ func (m *mailApi) SetDialer(dialer gomail.Dialer) {
 func (m *mailApi) Send(args MailArgs) (err error) {
 
 	msg := gomail.NewMessage()
-	msg.SetHeader("From", m.Dialer.Username)
+	msg.SetHeader("From", msg.FormatAddress(viper.Get("mail.user").(string), viper.Get("mail.user_name").(string)))
 	msg.SetHeader("To", args.Receiver...)
 	msg.SetHeader("Cc", args.CC...)
 	msg.SetHeader("Bcc", args.BCC...)
