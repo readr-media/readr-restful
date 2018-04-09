@@ -259,7 +259,7 @@ func (a *mockPostAPI) Count(req *models.PostArgs) (result int, err error) {
 	return result, err
 }
 
-func (a *mockPostAPI) Hot() (result []models.Post, err error) {
+func (a *mockPostAPI) Hot() (result []models.HotPost, err error) {
 	return result, err
 }
 
