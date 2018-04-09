@@ -54,7 +54,7 @@ type PostInterface interface {
 	UpdateAll(req PostUpdateArgs) error
 	UpdatePost(p Post) error
 	Count(req *PostArgs) (result int, err error)
-	Hot() (result []Post, err error)
+	Hot() (result []HotPost, err error)
 }
 
 type TaggedPost struct {
@@ -65,6 +65,12 @@ type TaggedPost struct {
 type TaggedPostMember struct {
 	PostMember
 	Tags NullString `json:"-" db:"tags"`
+}
+
+type HotPost struct {
+	Post
+	AuthorNickname     NullString `json:"author_nickname" redis:"author_nickname"`
+	AuthorProfileImage NullString `json:"author_profileImage" redis:"author_profileImage"`
 }
 
 func (t *TaggedPostMember) MarshalJSON() ([]byte, error) {
@@ -187,37 +193,6 @@ func (p *PostArgs) parse() (restricts string, values []interface{}) {
 	return restricts, values
 }
 
-// func (p *PostArgs) parse() (restricts string, values []interface{}) {
-// 	where := make([]string, 0)
-// 	for arg, value := range *p {
-// 		switch arg {
-// 		//	  Count  , GetAll
-// 		case "active", "posts.active":
-// 			for k, v := range value.(map[string][]int) {
-// 				where = append(where, fmt.Sprintf("%s %s (?)", arg, operatorHelper(k)))
-// 				values = append(values, v)
-// 			}
-// 		//      Count, GetAll
-// 		case "author", "posts.author":
-// 			for k, v := range value.(map[string][]string) {
-// 				where = append(where, fmt.Sprintf("%s %s (?)", arg, operatorHelper(k)))
-// 				values = append(values, v)
-// 			}
-// 		case "type", "posts.type":
-// 			for k, v := range value.(map[string][]int) {
-// 				where = append(where, fmt.Sprintf("%s %s (?)", arg, operatorHelper(k)))
-// 				values = append(values, v)
-// 			}
-// 		}
-// 	}
-// 	if len(where) > 1 {
-// 		restricts = strings.Join(where, " AND ")
-// 	} else if len(where) == 1 {
-// 		restricts = where[0]
-// 	}
-// 	return restricts, values
-// }
-
 func (a *postAPI) GetPosts(req *PostArgs) (result []TaggedPostMember, err error) {
 
 	restricts, values := req.parse()
@@ -265,7 +240,6 @@ func (a *postAPI) GetPosts(req *PostArgs) (result []TaggedPostMember, err error)
 		}
 		result = append(result, singlePost)
 	}
-	// err = DB.Select(&result, query, args.MaxResult, (args.Page-1)*uint16(args.MaxResult))
 	return result, err
 }
 
@@ -310,7 +284,6 @@ func (a *postAPI) GetPost(id uint32) (TaggedPostMember, error) {
 }
 
 func (a *postAPI) InsertPost(p Post) (int, error) {
-	// query, _ := generateSQLStmt("insert", "posts", p)
 
 	tags := getStructDBTags("full", Post{})
 	query := fmt.Sprintf(`INSERT INTO posts (%s) VALUES (:%s)`,
@@ -495,12 +468,12 @@ func (a *postAPI) Count(req *PostArgs) (result int, err error) {
 	return result, err
 }
 
-func (a *postAPI) Hot() (result []Post, err error) {
+func (a *postAPI) Hot() (result []HotPost, err error) {
 	keys, err := RedisHelper.GetRedisKeys("postcache_hot_[^follower]*")
 	if err != nil {
-		return []Post{}, err
+		return []HotPost{}, err
 	}
-	result, err = RedisHelper.HGetAll(keys)
+	result, err = RedisHelper.HGetHotPosts(keys)
 	if err != nil {
 		log.Printf("Error getting popular list: %v", err)
 		return result, err
