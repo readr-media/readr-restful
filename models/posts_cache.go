@@ -176,6 +176,7 @@ func (p *postCache) UpdateFollowing(action string, user_id string, post_id strin
 func (p *postCache) SyncFromDataStorage() {
 
 	for _, cache := range p.caches {
+		/* Do not delete old caches
 		conn := RedisHelper.Conn()
 		defer conn.Close()
 
@@ -191,7 +192,7 @@ func (p *postCache) SyncFromDataStorage() {
 				return
 			}
 		}
-
+		*/
 		cache.SyncFromDataStorage()
 	}
 }
@@ -256,26 +257,29 @@ func (c latestPostCache) SyncFromDataStorage() {
 	defer conn.Close()
 
 	//rows, err := DB.Queryx("SELECT p.*, f.follower FROM posts as p LEFT JOIN (SELECT post_id, GROUP_CONCAT(member_id) as follower FROM following_posts GROUP BY post_id) as f ON p.post_id = f.post_id WHERE active=" + fmt.Sprint(PostStatus["active"]) + " ORDER BY updated_at DESC LIMIT 20;")
-	rows, err := DB.Queryx(fmt.Sprint("SELECT p.*, f.follower FROM posts as p LEFT JOIN (SELECT post_id, GROUP_CONCAT(member_id SEPARATOR ',') as follower FROM following_posts GROUP BY post_id) as f ON p.post_id = f.post_id WHERE active=", fmt.Sprint(PostStatus["active"]), " ORDER BY updated_at DESC LIMIT 20;"))
+	rows, err := DB.Queryx(fmt.Sprint("SELECT p.*, f.follower, m.nickname AS m_name, m.profile_image AS m_image FROM posts as p LEFT JOIN (SELECT post_id, GROUP_CONCAT(member_id SEPARATOR ',') as follower FROM following_posts GROUP BY post_id) as f ON p.post_id = f.post_id LEFT JOIN members AS m ON m.member_id = p.author WHERE p.active=", fmt.Sprint(PostStatus["active"]), " ORDER BY updated_at DESC LIMIT 20;"))
 	if err != nil {
 		log.Println(err.Error())
 		return
 	}
 
 	conn.Send("MULTI")
+	rows_index := 0
 	for rows.Next() {
 		var postF struct {
 			Post
-			PostFollower NullString `db:"follower"`
+			PostFollower       NullString `db:"follower"`
+			AuthorNickname     NullString `db:"m_name"`
+			AuthorProfileImage NullString `db:"m_image"`
 		}
 		err = rows.StructScan(&postF)
 		if err != nil {
 			log.Printf("Error scan posts from db: %v", err)
 			return
 		}
-
-		conn.Send("HMSET", redis.Args{}.Add(fmt.Sprint(c.key, postF.ID)).AddFlat(&postF.Post)...)
-		conn.Send("SADD", redis.Args{}.Add(fmt.Sprint(c.key, "follower_", postF.ID)).AddFlat(postF.PostFollower.String)...)
+		rows_index += 1
+		conn.Send("HMSET", redis.Args{}.Add(fmt.Sprint(c.key, rows_index)).Add("author_nickname").Add(postF.AuthorNickname).Add("author_profileImage").Add(postF.AuthorProfileImage).AddFlat(&postF.Post)...)
+		conn.Send("SADD", redis.Args{}.Add(fmt.Sprint(c.key, "follower_", rows_index)).AddFlat(postF.PostFollower.String)...)
 
 	}
 	if _, err := redis.Values(conn.Do("EXEC")); err != nil {
@@ -298,10 +302,12 @@ type followCount struct {
 }
 type postScore struct {
 	ID    int
+	Index int
 	Score float64
 }
 
 type postScores []postScore
+type postScoreIndex map[int]postScore
 
 func (p postScores) Len() int           { return len(p) }
 func (p postScores) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
@@ -316,6 +322,7 @@ func (c hottestPostCache) Insert(post Post) {
 func (c hottestPostCache) SyncFromDataStorage() {
 
 	PostScores := postScores{}
+	PostScoreIndex := postScoreIndex{}
 	session := MongoSession.Get()
 
 	// Read follow count from Mysql
@@ -376,8 +383,10 @@ func (c hottestPostCache) SyncFromDataStorage() {
 	}(len(PostScores), 20)
 
 	var hotPosts []int
-	for _, post := range PostScores[:limit] {
+	for i, post := range PostScores[:limit] {
 		hotPosts = append(hotPosts, post.ID)
+		post.Index = i + 1
+		PostScoreIndex[post.ID] = post
 	}
 
 	// Fetching post and follower data for hottest posts
@@ -413,12 +422,9 @@ func (c hottestPostCache) SyncFromDataStorage() {
 			log.Printf("Error scan posts from db: %v", err)
 			return
 		}
-		conn.Send("HMSET", redis.Args{}.Add(fmt.Sprint(c.key, postF.ID)).Add("author_nickname").Add(postF.AuthorNickname).Add("author_profileImage").Add(postF.AuthorProfileImage).AddFlat(&postF.Post)...)
-		conn.Send("SADD", redis.Args{}.Add(fmt.Sprint(c.key, "follower_", postF.ID)).AddFlat(postF.PostFollower.String)...)
-	}
-
-	for _, s := range PostScores[:limit] {
-		conn.Send("HMSET", fmt.Sprint(c.key, s.ID), "hot_score", s.Score)
+		postI := PostScoreIndex[int(postF.ID)].Index
+		conn.Send("HMSET", redis.Args{}.Add(fmt.Sprint(c.key, postI)).Add("author_nickname").Add(postF.AuthorNickname).Add("author_profileImage").Add(postF.AuthorProfileImage).AddFlat(&postF.Post)...)
+		conn.Send("SADD", redis.Args{}.Add(fmt.Sprint(c.key, "follower_", postI)).AddFlat(postF.PostFollower.String)...)
 	}
 
 	if _, err := redis.Values(conn.Do("EXEC")); err != nil {
