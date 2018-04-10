@@ -67,6 +67,23 @@ func (r *postHandler) GetAll(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"_items": result})
 }
 
+func (r *postHandler) GetActivePosts(c *gin.Context) {
+	var args = &models.PostArgs{}
+	args = args.Default()
+	if err := r.bindQuery(c, args); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
+	}
+
+	args.Active = map[string][]int{"$in": []int{int(models.PostStatus["active"].(float64))}}
+	result, err := models.PostAPI.GetPosts(args)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"_items": result})
+}
+
 func (r *postHandler) Get(c *gin.Context) {
 
 	iduint64, _ := strconv.ParseUint(c.Param("id"), 10, 32)
@@ -325,6 +342,7 @@ func (r *postHandler) SetRoutes(router *gin.Engine) {
 	postsRouter := router.Group("/posts")
 	{
 		postsRouter.GET("", r.GetAll)
+		postsRouter.GET("/active", r.GetActivePosts)
 		postsRouter.DELETE("", r.DeleteAll)
 		postsRouter.PUT("", r.PublishAll)
 

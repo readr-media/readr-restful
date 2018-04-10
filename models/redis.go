@@ -110,12 +110,13 @@ func convertRedisAssign(dest, src interface{}) error {
 	return nil
 }
 
-func (r *redisHelper) HGetHotPosts(keys []string) (result []HotPost, err error) {
+func (r *redisHelper) GetHotPosts(keysTemplate string, quantity int) (result []HotPost, err error) {
 	conn := r.Conn()
 	defer conn.Close()
 
-	for _, key := range keys {
+	for i := 1; i <= quantity; i++ {
 		var p HotPost
+		key := fmt.Sprintf(keysTemplate, i)
 		res, err := redis.Values(conn.Do("HGETALL", key))
 		if err != nil {
 			log.Printf("Error getting redis key: %v", err)
