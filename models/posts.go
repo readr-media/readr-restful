@@ -98,11 +98,18 @@ func (t *TaggedPostMember) MarshalJSON() ([]byte, error) {
 
 // UpdatedBy wraps Member for embedded field updated_by
 // in the usage of anonymous struct in PostMember
-type UpdatedBy Member
+type MemberBasic struct {
+	ID           string     `json:"id" db:"member_id"`
+	Nickname     NullString `json:"nickname" db:"nickname"`
+	ProfileImage NullString `json:"profile_image" db:"profile_image"`
+	Description  NullString `json:"description" db:"description"`
+}
+
+// type UpdatedBy Member
 type PostMember struct {
 	Post
-	Member    `json:"author" db:"author"`
-	UpdatedBy `json:"updated_by" db:"updated_by"`
+	Member    MemberBasic `json:"author" db:"author"`
+	UpdatedBy MemberBasic `json:"updated_by" db:"updated_by"`
 }
 
 type PostUpdateArgs struct {
@@ -167,7 +174,6 @@ func (p *PostArgs) parse() (restricts string, values []interface{}) {
 	where := make([]string, 0)
 
 	if p.Active != nil {
-		fmt.Println("Active!")
 		for k, v := range p.Active {
 			where = append(where, fmt.Sprintf("%s %s (?)", "posts.active", operatorHelper(k)))
 			values = append(values, v)
@@ -196,7 +202,7 @@ func (p *PostArgs) parse() (restricts string, values []interface{}) {
 func (a *postAPI) GetPosts(req *PostArgs) (result []TaggedPostMember, err error) {
 
 	restricts, values := req.parse()
-	tags := getStructDBTags("full", Member{})
+	tags := getStructDBTags("full", MemberBasic{})
 	authorField := makeFieldString("get", `author.%s "author.%s"`, tags)
 	updatedByField := makeFieldString("get", `updated_by.%s "updated_by.%s"`, tags)
 
@@ -246,7 +252,7 @@ func (a *postAPI) GetPosts(req *PostArgs) (result []TaggedPostMember, err error)
 func (a *postAPI) GetPost(id uint32) (TaggedPostMember, error) {
 
 	post := TaggedPostMember{}
-	tags := getStructDBTags("full", Member{})
+	tags := getStructDBTags("full", MemberBasic{})
 	author := makeFieldString("get", `author.%s "author.%s"`, tags)
 	updatedBy := makeFieldString("get", `updated_by.%s "updated_by.%s"`, tags)
 
