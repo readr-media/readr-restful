@@ -469,11 +469,7 @@ func (a *postAPI) Count(req *PostArgs) (result int, err error) {
 }
 
 func (a *postAPI) Hot() (result []HotPost, err error) {
-	keys, err := RedisHelper.GetRedisKeys("postcache_hot_[^follower]*")
-	if err != nil {
-		return []HotPost{}, err
-	}
-	result, err = RedisHelper.HGetHotPosts(keys)
+	result, err = RedisHelper.GetHotPosts("postcache_hot_%d", 20)
 	if err != nil {
 		log.Printf("Error getting popular list: %v", err)
 		return result, err
