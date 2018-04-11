@@ -141,7 +141,7 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []Tag, err error) {
 
 func (t *tagApi) InsertTag(tag Tag) (int, error) {
 	var existTag Tag
-	query := fmt.Sprint("SELECT * FROM tags WHERE active=", TagStatus["active"].(float64), " AND tag_content=?;")
+	query := fmt.Sprint("SELECT * FROM tags WHERE active=", TagStatus["active"].(float64), " AND BINARY tag_content=?;")
 	err := DB.Get(&existTag, query, tag.Text)
 	if err != nil && err != sql.ErrNoRows {
 		return 0, err
@@ -173,7 +173,7 @@ func (t *tagApi) InsertTag(tag Tag) (int, error) {
 func (t *tagApi) UpdateTag(tag Tag) error {
 
 	var existTag Tag
-	query := fmt.Sprint("SELECT * FROM tags WHERE active=", TagStatus["active"].(float64), " AND tag_content=?;")
+	query := fmt.Sprint("SELECT * FROM tags WHERE active=", TagStatus["active"].(float64), " AND BINARY tag_content=?;")
 	err := DB.Get(&existTag, query, tag.Text)
 	if err != nil && err != sql.ErrNoRows {
 		return err
