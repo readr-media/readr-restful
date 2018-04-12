@@ -103,6 +103,7 @@ type MemberBasic struct {
 	Nickname     NullString `json:"nickname" db:"nickname"`
 	ProfileImage NullString `json:"profile_image" db:"profile_image"`
 	Description  NullString `json:"description" db:"description"`
+	Role         NullInt    `json:"role" db:"role"`
 }
 
 // type UpdatedBy Member

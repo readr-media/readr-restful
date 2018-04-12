@@ -33,6 +33,7 @@ func memberToBasic(m models.Member) (result models.MemberBasic) {
 		Nickname:     m.Nickname,
 		ProfileImage: m.ProfileImage,
 		Description:  m.Description,
+		Role:         m.Role,
 	}
 	return result
 }
