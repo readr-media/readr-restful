@@ -14,6 +14,7 @@ var MemberStatus map[string]interface{}
 
 type Member struct {
 	ID       string     `json:"id" db:"member_id"`
+	UUID     string     `json:"uuid" db:"uuid"`
 	Points   NullInt    `json:"points" db:"points"`
 	Name     NullString `json:"name" db:"name"`
 	Nickname NullString `json:"nickname" db:"nickname"`
@@ -69,15 +70,21 @@ type MemberArgs struct {
 	Page         uint16           `form:"page"`
 	Sorting      string           `form:"sort"`
 	CustomEditor bool             `form:"custom_editor"`
-	Active       map[string][]int `form:"active"`
 	Role         *int64           `form:"role"`
+	Active       map[string][]int `form:"active"`
 	IDs          []string         `form:"ids"`
+	UUIDs        []string         `form:"uuids"`
 }
 
-func (m *MemberArgs) Default() (result *MemberArgs) {
-	return &MemberArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at"}
+func (m *MemberArgs) SetDefault() {
+	m.MaxResult = 20
+	m.Page = 1
+	m.Sorting = "-updated_at"
 }
 
+// func (m *MemberArgs) Default() (result *MemberArgs) {
+// 	return &MemberArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at"}
+// }
 func (m *MemberArgs) DefaultActive() {
 	m.Active = map[string][]int{"$nin": []int{int(MemberStatus["delete"].(float64))}}
 }
@@ -113,6 +120,18 @@ func (m *MemberArgs) parse() (restricts string, values []interface{}) {
 			values = append(values, m.IDs[i])
 		}
 	}
+	if len(m.UUIDs) > 0 {
+		// fmt.Println(len(m.UUIDs))
+		a := make([]string, len(m.UUIDs))
+		for i := range a {
+			a[i] = "?"
+		}
+		where = append(where, fmt.Sprintf("members.uuid IN (%s)", strings.Join(a, ", ")))
+		for i := range m.UUIDs {
+			fmt.Println(m.UUIDs[i])
+			values = append(values, m.UUIDs[i])
+		}
+	}
 	if len(where) > 1 {
 		restricts = strings.Join(where, " AND ")
 	} else if len(where) == 1 {
@@ -134,7 +153,7 @@ func (a *memberAPI) GetMembers(req *MemberArgs) (result []Member, err error) {
 	query = DB.Rebind(query)
 	query = query + fmt.Sprintf(`ORDER BY %s LIMIT ? OFFSET ?`, orderByHelper(req.Sorting))
 	args = append(args, req.MaxResult, (req.Page-1)*uint16(req.MaxResult))
-	// fmt.Println(query, args)
+	fmt.Println(query, args)
 	err = DB.Select(&result, query, args...)
 	if err != nil {
 		return []Member{}, err
@@ -142,9 +161,9 @@ func (a *memberAPI) GetMembers(req *MemberArgs) (result []Member, err error) {
 	return result, err
 }
 
-func (a *memberAPI) GetMember(id string) (Member, error) {
+func (a *memberAPI) GetMember(uuid string) (Member, error) {
 	member := Member{}
-	err := DB.QueryRowx("SELECT * FROM members where member_id = ?", id).StructScan(&member)
+	err := DB.QueryRowx("SELECT * FROM members where uuid = ?", uuid).StructScan(&member)
 	switch {
 	case err == sql.ErrNoRows:
 		err = errors.New("User Not Found")
@@ -153,7 +172,7 @@ func (a *memberAPI) GetMember(id string) (Member, error) {
 		log.Fatal(err)
 		member = Member{}
 	default:
-		fmt.Printf("Successful get user: %s\n", id)
+		// fmt.Printf("Successful get user: %s\n", uuid)
 		err = nil
 	}
 	return member, err
@@ -209,9 +228,9 @@ func (a *memberAPI) UpdateMember(m Member) error {
 	return nil
 }
 
-func (a *memberAPI) DeleteMember(id string) error {
+func (a *memberAPI) DeleteMember(uuid string) error {
 
-	result, err := DB.Exec(fmt.Sprintf("UPDATE members SET active = %d WHERE member_id = ?", int(MemberStatus["delete"].(float64))), id)
+	result, err := DB.Exec(fmt.Sprintf("UPDATE members SET active = %d WHERE uuid = ?", int(MemberStatus["delete"].(float64))), uuid)
 	if err != nil {
 		return err
 	}

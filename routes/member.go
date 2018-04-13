@@ -2,6 +2,7 @@ package routes
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -16,9 +17,12 @@ type memberHandler struct{}
 
 func (r *memberHandler) bindQuery(c *gin.Context, args *models.MemberArgs) (err error) {
 
-	if err = c.ShouldBindQuery(args); err == nil {
-		// No active pass in parameter. Set default
-		return nil
+	args.SetDefault()
+	if err = c.ShouldBindQuery(args); err != nil {
+		// Return if error is other than Unknown type
+		if err.Error() != "Unknown type" {
+			return err
+		}
 	}
 	if c.Query("active") != "" && args.Active == nil {
 		if err := json.Unmarshal([]byte(c.Query("active")), &args.Active); err != nil {
@@ -36,13 +40,17 @@ func (r *memberHandler) bindQuery(c *gin.Context, args *models.MemberArgs) (err 
 		}
 		args.Role = &role
 	}
+	if c.Query("uuids") != "" {
+		if err = json.Unmarshal([]byte(c.Query("uuids")), &args.UUIDs); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 func (r *memberHandler) GetAll(c *gin.Context) {
 
 	var args = &models.MemberArgs{}
-	args = args.Default()
 	if err := r.bindQuery(c, args); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
@@ -60,8 +68,8 @@ func (r *memberHandler) GetAll(c *gin.Context) {
 
 func (r *memberHandler) Get(c *gin.Context) {
 
-	id := c.Param("id")
-	member, err := models.MemberAPI.GetMember(id)
+	uuid := c.Param("uuid")
+	member, err := models.MemberAPI.GetMember(uuid)
 	if err != nil {
 		switch err.Error() {
 		case "User Not Found":
@@ -81,6 +89,7 @@ func (r *memberHandler) Post(c *gin.Context) {
 	member := models.Member{}
 	c.Bind(&member)
 
+	fmt.Println(member)
 	// Pre-request test
 	if member.ID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid User"})
@@ -97,15 +106,20 @@ func (r *memberHandler) Post(c *gin.Context) {
 	if !member.Active.Valid {
 		member.Active = models.NullInt{1, true}
 	}
-
-	err := models.MemberAPI.InsertMember(member)
+	uuid, err := utils.NewUUIDv4()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": "Unable to generate uuid for user"})
+		return
+	}
+	member.UUID = uuid.String()
+	err = models.MemberAPI.InsertMember(member)
 	if err != nil {
 		switch err.Error() {
 		case "Duplicate entry":
 			c.JSON(http.StatusBadRequest, gin.H{"Error": "User Already Existed"})
 			return
 		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 			return
 		}
 	}
@@ -173,15 +187,15 @@ func (r *memberHandler) DeleteAll(c *gin.Context) {
 
 func (r *memberHandler) Delete(c *gin.Context) {
 
-	id := c.Param("id")
-	err := models.MemberAPI.DeleteMember(id)
+	uuid := c.Param("uuid")
+	err := models.MemberAPI.DeleteMember(uuid)
 	if err != nil {
 		switch err.Error() {
 		case "User Not Found":
 			c.JSON(http.StatusNotFound, gin.H{"Error": "User Not Found"})
 			return
 		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 			return
 		}
 	}
@@ -289,7 +303,6 @@ func (r *memberHandler) PutPassword(c *gin.Context) {
 func (r *memberHandler) Count(c *gin.Context) {
 
 	var args = &models.MemberArgs{}
-	args = args.Default()
 	if err := r.bindQuery(c, args); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
@@ -310,10 +323,10 @@ func (r *memberHandler) SetRoutes(router *gin.Engine) {
 
 	memberRouter := router.Group("/member")
 	{
-		memberRouter.GET("/:id", r.Get)
+		memberRouter.GET("/:uuid", r.Get)
 		memberRouter.POST("", r.Post)
 		memberRouter.PUT("", r.Put)
-		memberRouter.DELETE("/:id", r.Delete)
+		memberRouter.DELETE("/:uuid", r.Delete)
 
 		memberRouter.PUT("/password", r.PutPassword)
 	}
