@@ -256,7 +256,7 @@ func TestRouteRegister(t *testing.T) {
 		json.Unmarshal([]byte(w.Body.String()), &resp)
 
 		if w.Code == http.StatusOK {
-			member, _ := models.MemberAPI.GetMember(testcase.in.ID)
+			member, _ := models.MemberAPI.GetMember("member_id", testcase.in.ID)
 			if testcase.in.ID != member.ID {
 				t.Errorf("Expect get user id %s but get %d, testcase %s", testcase.in.ID, member.ID, testcase.name)
 				t.Fail()

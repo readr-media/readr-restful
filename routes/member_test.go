@@ -106,7 +106,7 @@ func (a *mockMemberAPI) GetMembers(req *models.MemberArgs) (result []models.Memb
 // 	return result, err
 // }
 
-func (a *mockMemberAPI) GetMember(id string) (models.Member, error) {
+func (a *mockMemberAPI) GetMember(idType string, id string) (models.Member, error) {
 	result := models.Member{}
 	err := errors.New("User Not Found")
 	for _, value := range mockMemberDS {
@@ -141,7 +141,7 @@ func (a *mockMemberAPI) UpdateMember(m models.Member) error {
 	return err
 }
 
-func (a *mockMemberAPI) DeleteMember(id string) error {
+func (a *mockMemberAPI) DeleteMember(idType string, id string) error {
 
 	// result := models.Member{}
 	err := errors.New("User Not Found")
@@ -442,7 +442,7 @@ func TestUpdateMemberPassword(t *testing.T) {
 		}
 
 		if w.Code == http.StatusOK {
-			member, err := models.MemberAPI.GetMember(testcase.in.ID)
+			member, err := models.MemberAPI.GetMember("member_id", testcase.in.ID)
 			if err != nil {
 				t.Errorf("Cannot get user after update PW, testcase %s", testcase.name)
 				t.Fail()

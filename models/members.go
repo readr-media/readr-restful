@@ -55,8 +55,8 @@ type memberAPI struct{}
 var MemberAPI MemberInterface = new(memberAPI)
 
 type MemberInterface interface {
-	DeleteMember(id string) error
-	GetMember(id string) (Member, error)
+	DeleteMember(idType string, id string) error
+	GetMember(idType string, id string) (Member, error)
 	GetMembers(req *MemberArgs) ([]Member, error)
 	InsertMember(m Member) error
 	UpdateAll(ids []string, active int) error
@@ -161,9 +161,9 @@ func (a *memberAPI) GetMembers(req *MemberArgs) (result []Member, err error) {
 	return result, err
 }
 
-func (a *memberAPI) GetMember(uuid string) (Member, error) {
+func (a *memberAPI) GetMember(idType string, id string) (Member, error) {
 	member := Member{}
-	err := DB.QueryRowx("SELECT * FROM members where uuid = ?", uuid).StructScan(&member)
+	err := DB.QueryRowx(fmt.Sprintf("SELECT * FROM members where %s = ?", idType), id).StructScan(&member)
 	switch {
 	case err == sql.ErrNoRows:
 		err = errors.New("User Not Found")
@@ -228,9 +228,9 @@ func (a *memberAPI) UpdateMember(m Member) error {
 	return nil
 }
 
-func (a *memberAPI) DeleteMember(uuid string) error {
+func (a *memberAPI) DeleteMember(idType string, id string) error {
 
-	result, err := DB.Exec(fmt.Sprintf("UPDATE members SET active = %d WHERE uuid = ?", int(MemberStatus["delete"].(float64))), uuid)
+	result, err := DB.Exec(fmt.Sprintf("UPDATE members SET active = %d WHERE %s = ?", int(MemberStatus["delete"].(float64)), idType), id)
 	if err != nil {
 		return err
 	}

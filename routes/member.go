@@ -68,8 +68,14 @@ func (r *memberHandler) GetAll(c *gin.Context) {
 
 func (r *memberHandler) Get(c *gin.Context) {
 
-	uuid := c.Param("uuid")
-	member, err := models.MemberAPI.GetMember(uuid)
+	var idType string
+	id := c.Param("id")
+	if err := utils.ValidateUUID(id); err != nil {
+		idType = "member_id"
+	} else {
+		idType = "uuid"
+	}
+	member, err := models.MemberAPI.GetMember(idType, id)
 	if err != nil {
 		switch err.Error() {
 		case "User Not Found":
@@ -187,8 +193,14 @@ func (r *memberHandler) DeleteAll(c *gin.Context) {
 
 func (r *memberHandler) Delete(c *gin.Context) {
 
-	uuid := c.Param("uuid")
-	err := models.MemberAPI.DeleteMember(uuid)
+	var idType string
+	id := c.Param("id")
+	if err := utils.ValidateUUID(id); err != nil {
+		idType = "member_id"
+	} else {
+		idType = "uuid"
+	}
+	err := models.MemberAPI.DeleteMember(idType, id)
 	if err != nil {
 		switch err.Error() {
 		case "User Not Found":
@@ -245,7 +257,7 @@ func (r *memberHandler) PutPassword(c *gin.Context) {
 		return
 	}
 
-	member, err := models.MemberAPI.GetMember(input.ID)
+	member, err := models.MemberAPI.GetMember("member_id", input.ID)
 	if err != nil {
 		switch err.Error() {
 		case "User Not Found":
@@ -323,10 +335,10 @@ func (r *memberHandler) SetRoutes(router *gin.Engine) {
 
 	memberRouter := router.Group("/member")
 	{
-		memberRouter.GET("/:uuid", r.Get)
+		memberRouter.GET("/:id", r.Get)
 		memberRouter.POST("", r.Post)
 		memberRouter.PUT("", r.Put)
-		memberRouter.DELETE("/:uuid", r.Delete)
+		memberRouter.DELETE("/:id", r.Delete)
 
 		memberRouter.PUT("/password", r.PutPassword)
 	}

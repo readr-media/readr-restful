@@ -45,7 +45,7 @@ func (r *authHandler) userLogin(c *gin.Context) {
 		return
 	}
 
-	member, err := models.MemberAPI.GetMember(id)
+	member, err := models.MemberAPI.GetMember("member_id", id)
 	if err != nil {
 		switch err.Error() {
 		case "User Not Found":
