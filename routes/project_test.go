@@ -63,6 +63,11 @@ func (a *mockProjectAPI) GetProjects(args models.GetProjectArgs) (result []model
 	} else if len(args.IDs) == 1 {
 		return []models.Project{}, nil
 	}
+	if len(args.PublishStatus) == 1 {
+		return []models.Project{
+			models.Project{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}},
+		}, nil
+	}
 	if args.MaxResult == 1 && args.Page == 2 {
 		return []models.Project{
 			models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}},
@@ -134,7 +139,7 @@ func TestRouteProjects(t *testing.T) {
 
 	// Insert test data
 	for _, params := range []models.Project{
-		models.Project{Active: models.NullInt{1, true}, Title: models.NullString{"Alpha", true}},
+		models.Project{Active: models.NullInt{1, true}, Title: models.NullString{"Alpha", true}, PublishStatus: models.NullInt{1, true}},
 		models.Project{ID: 32767, Active: models.NullInt{1, true}, Title: models.NullString{"Omega", true}, Order: models.NullInt{99999, true}},
 	} {
 		err := models.ProjectAPI.InsertProject(params)
@@ -228,6 +233,9 @@ func TestRouteProjects(t *testing.T) {
 			genericTestcase{"GetProjectWithStatus", "GET", `/project/list?status={"$in":[2]}`, ``, http.StatusOK, []models.Project{
 				models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}},
 				models.Project{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{61, true}, Slug: models.NullString{"sampleslug0002", true}, Status: models.NullInt{2, true}},
+			}},
+			genericTestcase{"GetProjectWithPublishStatus", "GET", `/project/list?publish_status={"$in":[1]}`, ``, http.StatusOK, []models.Project{
+				models.Project{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}},
 			}},
 			genericTestcase{"GetProjectWithSorting", "GET", `/project/list?sort=project_id`, ``, http.StatusOK, []models.Project{
 				models.Project{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}},

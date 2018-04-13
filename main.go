@@ -38,6 +38,7 @@ func main() {
 	models.PostType = viper.GetStringMap("models.post_type")
 	models.ProjectActive = viper.GetStringMap("models.projects_active")
 	models.ProjectStatus = viper.GetStringMap("models.projects_status")
+	models.ProjectPublishStatus = viper.GetStringMap("models.projects_publish_status")
 	models.TagStatus = viper.GetStringMap("models.tags")
 
 	dbURI := fmt.Sprintf("%s:%s@tcp(%s)/memberdb?parseTime=true", sqlUser, sqlPass, fmt.Sprintf("%s:%v", sqlHost, sqlPort))
