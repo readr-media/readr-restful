@@ -79,6 +79,7 @@ func TestMain(m *testing.M) {
 	models.PostType = viper.GetStringMap("models.post_type")
 	models.ProjectActive = viper.GetStringMap("models.projects_active")
 	models.ProjectStatus = viper.GetStringMap("models.projects_status")
+	models.ProjectPublishStatus = viper.GetStringMap("models.projects_publish_status")
 	models.TagStatus = viper.GetStringMap("models.tags")
 
 	models.ProjectAPI = new(mockProjectAPI)

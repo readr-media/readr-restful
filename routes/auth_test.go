@@ -27,6 +27,7 @@ func initAuthTest() {
 			Role:         models.NullInt{1, true},
 			Active:       models.NullInt{1, true},
 			RegisterMode: models.NullString{"ordinary", true},
+			UUID:         "abc1d5b1-da54-4200-b57e-f06e59fd8467",
 		},
 		models.Member{
 			ID:           "logintest2018",
@@ -34,6 +35,7 @@ func initAuthTest() {
 			Role:         models.NullInt{1, true},
 			Active:       models.NullInt{1, true},
 			RegisterMode: models.NullString{"oauth-fb", true},
+			UUID:         "abc1d5b1-da54-4200-b67e-f06e59fd8467",
 		},
 		models.Member{
 			ID:           "logindeactived",
@@ -41,6 +43,7 @@ func initAuthTest() {
 			Role:         models.NullInt{1, true},
 			Active:       models.NullInt{0, true},
 			RegisterMode: models.NullString{"ordinary", true},
+			UUID:         "abc1d5b1-da54-4200-b77e-f06e59fd8467",
 		}}
 
 	for _, member := range mockLoginMembers {

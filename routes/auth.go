@@ -178,7 +178,13 @@ func (r *authHandler) userRegister(c *gin.Context) {
 		member.Active = models.NullInt{1, true}
 	}
 
-	// 4. create Member object, fill in data and defaults
+	// 4. fill in data and defaults
+	uuid, err := utils.NewUUIDv4()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": "Unable to generate uuid for user"})
+		return
+	}
+	member.UUID = uuid.String()
 
 	err = models.MemberAPI.InsertMember(member)
 

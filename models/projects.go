@@ -31,6 +31,9 @@ type Project struct {
 	Status        NullInt    `json:"status" db:"status" redis:"status"`
 	Slug          NullString `json:"slug" db:"slug" redis:"slug"`
 	Views         NullInt    `json:"views" db:"views" redis:"views"`
+	PublishStatus NullInt    `json:"publish_status" db:"publish_status" redis:"publish_status"`
+	Progress      NullFloat  `json:"progress" db:"progress" redis:"progress"`
+	MemoPoints    NullInt    `json:"memo_points" db:"memo_points" redis:"memo_points"`
 }
 
 type projectAPI struct{}
@@ -48,8 +51,9 @@ type GetProjectArgs struct {
 	IDs   []int    `form:"ids" json:"ids"`
 	Slugs []string `form:"slugs" json:"slugs"`
 	// IN/NOT IN
-	Active map[string][]int `form:"active" json:"active"`
-	Status map[string][]int `form:"status" json:"status"`
+	Active        map[string][]int `form:"active" json:"active"`
+	Status        map[string][]int `form:"status" json:"status"`
+	PublishStatus map[string][]int `form:"publish_status" json:"publish_status"`
 	// Where
 	Keyword string `form:"keyword" json:"keyword"`
 	// Result Shaper
@@ -80,6 +84,12 @@ func (p *GetProjectArgs) parse() (restricts string, values []interface{}) {
 	if p.Status != nil {
 		for k, v := range p.Status {
 			where = append(where, fmt.Sprintf("%s %s (?)", "projects.status", operatorHelper(k)))
+			values = append(values, v)
+		}
+	}
+	if p.PublishStatus != nil {
+		for k, v := range p.PublishStatus {
+			where = append(where, fmt.Sprintf("%s %s (?)", "projects.publish_status", operatorHelper(k)))
 			values = append(values, v)
 		}
 	}
@@ -177,7 +187,7 @@ func (a *projectAPI) InsertProject(p Project) error {
 		return err
 	}
 
-	// Only insert a post when it's published
+	// Only insert a project when it's active
 	if p.Active.Valid == true && p.Active.Int == 1 {
 		if p.ID == 0 {
 			p.ID = int(lastID)
@@ -256,3 +266,4 @@ func (a *projectAPI) DeleteProjects(p Project) error {
 var ProjectAPI ProjectAPIInterface = new(projectAPI)
 var ProjectActive map[string]interface{}
 var ProjectStatus map[string]interface{}
+var ProjectPublishStatus map[string]interface{}

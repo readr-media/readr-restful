@@ -184,7 +184,7 @@ func (ns *NullInt) RedisScan(src interface{}) error {
 	return convertRedisAssign(ns, src)
 }
 
-// Create our own null string type for prettier marshal JSON format
+// Create our own null boolean type for prettier marshal JSON format
 type NullBool struct {
 	Bool  bool
 	Valid bool // Valid is true if Int is not NULL
@@ -234,5 +234,47 @@ func (ns *NullBool) UnmarshalJSON(text []byte) error {
 // 	}
 // 	return nil
 // }
+
+// Create our own null float type for prettier marshal JSON format
+type NullFloat struct {
+	Float float64
+	Valid bool // Valid is true if Int is not NULL
+}
+
+func (ns *NullFloat) Scan(value interface{}) error {
+	if value == nil {
+		ns.Float, ns.Valid = 0, false
+		return nil
+	}
+	x := sql.NullFloat64{}
+	err := x.Scan(value)
+	ns.Float, ns.Valid = x.Float64, x.Valid
+	return err
+}
+
+func (ns NullFloat) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return ns.Float, nil
+}
+
+func (ns NullFloat) MarshalJSON() ([]byte, error) {
+	if ns.Valid {
+		return json.Marshal(ns.Float)
+	}
+	return json.Marshal(nil)
+}
+
+func (ns *NullFloat) UnmarshalJSON(text []byte) error {
+	ns.Valid = false
+	if string(text) == "null" {
+		return nil
+	}
+	if err := json.Unmarshal(text, &ns.Float); err == nil {
+		ns.Valid = true
+	}
+	return nil
+}
 
 // ----------------------------- END OF NULLABLE TYPE DEFINITION -----------------------------

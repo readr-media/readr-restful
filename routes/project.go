@@ -40,6 +40,16 @@ func (r *projectHandler) bindQuery(c *gin.Context, args *models.GetProjectArgs) 
 			}
 		}
 	}
+	if c.Query("publish_status") != "" {
+		if err = json.Unmarshal([]byte(c.Query("publish_status")), &args.PublishStatus); err != nil {
+			log.Println(err.Error())
+			return err
+		} else if err == nil {
+			if err = models.ValidateActive(args.PublishStatus, models.ProjectPublishStatus); err != nil {
+				return err
+			}
+		}
+	}
 	if c.Query("ids") != "" {
 		if err = json.Unmarshal([]byte(c.Query("ids")), &args.IDs); err != nil {
 			log.Println(err.Error())

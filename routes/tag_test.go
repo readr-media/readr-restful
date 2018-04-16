@@ -151,7 +151,7 @@ func TestRouteTags(t *testing.T) {
 	}
 
 	for _, params := range []models.Member{
-		models.Member{ID: "AMI@mirrormedia.mg", Active: models.NullInt{1, true}, Points: models.NullInt{0, true}},
+		models.Member{ID: "AMI@mirrormedia.mg", Active: models.NullInt{1, true}, Points: models.NullInt{0, true}, UUID: "abc1d5b1-da54-4200-b61e-f06e59fd8467"},
 	} {
 		err := models.MemberAPI.InsertMember(params)
 		if err != nil {
