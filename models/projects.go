@@ -32,6 +32,8 @@ type Project struct {
 	Slug          NullString `json:"slug" db:"slug" redis:"slug"`
 	Views         NullInt    `json:"views" db:"views" redis:"views"`
 	PublishStatus NullInt    `json:"publish_status" db:"publish_status" redis:"publish_status"`
+	Progress      NullFloat  `json:"progress" db:"progress" redis:"progress"`
+	MemoPoints    NullInt    `json:"memo_points" db:"memo_points" redis:"memo_points"`
 }
 
 type projectAPI struct{}

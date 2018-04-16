@@ -139,7 +139,7 @@ func TestRouteProjects(t *testing.T) {
 
 	// Insert test data
 	for _, params := range []models.Project{
-		models.Project{Active: models.NullInt{1, true}, Title: models.NullString{"Alpha", true}, PublishStatus: models.NullInt{1, true}},
+		models.Project{Active: models.NullInt{1, true}, Title: models.NullString{"Alpha", true}, PublishStatus: models.NullInt{1, true}, Progress: models.NullFloat{99.87, true}},
 		models.Project{ID: 32767, Active: models.NullInt{1, true}, Title: models.NullString{"Omega", true}, Order: models.NullInt{99999, true}},
 	} {
 		err := models.ProjectAPI.InsertProject(params)
@@ -198,6 +198,7 @@ func TestRouteProjects(t *testing.T) {
 			genericTestcase{"UpdateProjectInvalidActive", "PUT", "/project", `{"id":32767,"active":3}`, http.StatusBadRequest, `{"Error":"Invalid Parameter"}`},
 			genericTestcase{"UpdatePublishProjectWithNoSlug", "PUT", "/project", `{"id":32769,"status":2}`, http.StatusBadRequest, `{"Error":"Must Have Slug Before Publish"}`},
 			genericTestcase{"UpdateProjectStatusOK", "PUT", "/project", `{"id":32768,"status":2}`, http.StatusOK, ``},
+			genericTestcase{"UpdateProjectProgressOK", "PUT", "/project", `{"id":32768,"progress":99}`, http.StatusOK, ``},
 		}
 		for _, tc := range testcases {
 			genericDoTest(tc, t, asserter)
