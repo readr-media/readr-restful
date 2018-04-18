@@ -2,7 +2,6 @@ package routes
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -95,7 +94,6 @@ func (r *memberHandler) Post(c *gin.Context) {
 	member := models.Member{}
 	c.Bind(&member)
 
-	fmt.Println(member)
 	// Pre-request test
 	if member.ID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid User"})
@@ -150,7 +148,6 @@ func (r *memberHandler) Put(c *gin.Context) {
 		member.UpdatedAt.Time = time.Now()
 		member.UpdatedAt.Valid = true
 	}
-
 	err := models.MemberAPI.UpdateMember(member)
 	if err != nil {
 		switch err.Error() {
@@ -331,6 +328,20 @@ func (r *memberHandler) Count(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"_meta": resp})
 }
 
+func (r *memberHandler) SearchKeyNickname(c *gin.Context) {
+	keyword := c.Query("keyword")
+	if keyword == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid keyword"})
+		return
+	}
+	members, err := models.MemberAPI.GetUUIDsByNickname(keyword)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"_items": members})
+}
+
 func (r *memberHandler) SetRoutes(router *gin.Engine) {
 
 	memberRouter := router.Group("/member")
@@ -341,6 +352,7 @@ func (r *memberHandler) SetRoutes(router *gin.Engine) {
 		memberRouter.DELETE("/:id", r.Delete)
 
 		memberRouter.PUT("/password", r.PutPassword)
+
 	}
 	membersRouter := router.Group("/members")
 	{
@@ -349,6 +361,7 @@ func (r *memberHandler) SetRoutes(router *gin.Engine) {
 		membersRouter.DELETE("", r.DeleteAll)
 
 		membersRouter.GET("/count", r.Count)
+		membersRouter.GET("/nickname", r.SearchKeyNickname)
 	}
 }
 

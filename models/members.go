@@ -62,6 +62,12 @@ type MemberInterface interface {
 	UpdateAll(ids []string, active int) error
 	UpdateMember(m Member) error
 	Count(req *MemberArgs) (result int, err error)
+	GetUUIDsByNickname(key string) (result []NicknameUUID, err error)
+}
+
+type NicknameUUID struct {
+	UUID     string     `json:"uuid"`
+	Nickname NullString `json:"nickname"`
 }
 
 // type MemberArgs map[string]interface{}
@@ -82,9 +88,6 @@ func (m *MemberArgs) SetDefault() {
 	m.Sorting = "-updated_at"
 }
 
-// func (m *MemberArgs) Default() (result *MemberArgs) {
-// 	return &MemberArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at"}
-// }
 func (m *MemberArgs) DefaultActive() {
 	m.Active = map[string][]int{"$nin": []int{int(MemberStatus["delete"].(float64))}}
 }
@@ -121,14 +124,12 @@ func (m *MemberArgs) parse() (restricts string, values []interface{}) {
 		}
 	}
 	if len(m.UUIDs) > 0 {
-		// fmt.Println(len(m.UUIDs))
 		a := make([]string, len(m.UUIDs))
 		for i := range a {
 			a[i] = "?"
 		}
 		where = append(where, fmt.Sprintf("members.uuid IN (%s)", strings.Join(a, ", ")))
 		for i := range m.UUIDs {
-			fmt.Println(m.UUIDs[i])
 			values = append(values, m.UUIDs[i])
 		}
 	}
@@ -144,7 +145,6 @@ func (a *memberAPI) GetMembers(req *MemberArgs) (result []Member, err error) {
 
 	restricts, values := req.parse()
 	query := fmt.Sprintf(`SELECT * FROM members where %s `, restricts)
-	// query := fmt.Sprintf(`SELECT * FROM members where active != %d ORDER BY %s LIMIT ? OFFSET ?`, int(MemberStatus["delete"].(float64)), orderByHelper(req.Sorting))
 
 	query, args, err := sqlx.In(query, values...)
 	if err != nil {
@@ -153,7 +153,6 @@ func (a *memberAPI) GetMembers(req *MemberArgs) (result []Member, err error) {
 	query = DB.Rebind(query)
 	query = query + fmt.Sprintf(`ORDER BY %s LIMIT ? OFFSET ?`, orderByHelper(req.Sorting))
 	args = append(args, req.MaxResult, (req.Page-1)*uint16(req.MaxResult))
-	fmt.Println(query, args)
 	err = DB.Select(&result, query, args...)
 	if err != nil {
 		return []Member{}, err
@@ -172,7 +171,6 @@ func (a *memberAPI) GetMember(idType string, id string) (Member, error) {
 		log.Fatal(err)
 		member = Member{}
 	default:
-		// fmt.Printf("Successful get user: %s\n", uuid)
 		err = nil
 	}
 	return member, err
@@ -252,11 +250,9 @@ func (a *memberAPI) UpdateAll(ids []string, active int) (err error) {
 	query = DB.Rebind(query)
 	result, err := DB.Exec(query, args...)
 	if err != nil {
-		fmt.Println(err)
 		return err
 	}
 	rowCnt, err := result.RowsAffected()
-	fmt.Println(rowCnt)
 	if rowCnt > int64(len(ids)) {
 		return errors.New("More Rows Affected")
 	} else if rowCnt == 0 {
@@ -296,6 +292,16 @@ func (a *memberAPI) Count(req *MemberArgs) (result int, err error) {
 				return 0, err
 			}
 		}
+	}
+	return result, err
+}
+
+// GetMembersByNickname select nickname and uuid from active members only
+// when their nickname fits certain keyword
+func (a *memberAPI) GetUUIDsByNickname(key string) (result []NicknameUUID, err error) {
+	err = DB.Select(&result, `SELECT uuid, nickname FROM members WHERE active = ? AND nickname LIKE ?`, int(MemberStatus["active"].(float64)), key+"%")
+	if err != nil {
+		return []NicknameUUID{}, err
 	}
 	return result, err
 }

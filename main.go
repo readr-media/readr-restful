@@ -41,6 +41,7 @@ func main() {
 	models.ProjectPublishStatus = viper.GetStringMap("models.projects_publish_status")
 	models.TagStatus = viper.GetStringMap("models.tags")
 
+	// waiting: allow full utf8 support by incorporating `?charset=utf8mb4` in connection
 	dbURI := fmt.Sprintf("%s:%s@tcp(%s)/memberdb?parseTime=true", sqlUser, sqlPass, fmt.Sprintf("%s:%v", sqlHost, sqlPort))
 
 	// Start with default middleware
