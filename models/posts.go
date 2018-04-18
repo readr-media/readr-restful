@@ -100,6 +100,7 @@ func (t *TaggedPostMember) MarshalJSON() ([]byte, error) {
 // in the usage of anonymous struct in PostMember
 type MemberBasic struct {
 	ID           string     `json:"id" db:"member_id"`
+	UUID         NullString `json:"uuid" db:"uuid"`
 	Nickname     NullString `json:"nickname" db:"nickname"`
 	ProfileImage NullString `json:"profile_image" db:"profile_image"`
 	Description  NullString `json:"description" db:"description"`

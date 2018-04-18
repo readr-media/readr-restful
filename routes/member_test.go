@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"regexp"
 	"sort"
 	"testing"
 
@@ -17,12 +18,13 @@ import (
 type mockMemberAPI struct{}
 
 func initMemberTest() {
-	mockMemberDSBack = mockMemberDS
+	copy(mockMemberDSBack, mockMemberDS)
 }
 
 func clearMemberTest() {
-	mockMemberDS = mockMemberDSBack
+	copy(mockMemberDS, mockMemberDSBack)
 }
+
 func (a *mockMemberAPI) GetMembers(req *models.MemberArgs) (result []models.Member, err error) {
 
 	if req.CustomEditor == true {
@@ -71,41 +73,6 @@ func (a *mockMemberAPI) GetMembers(req *models.MemberArgs) (result []models.Memb
 	return result, err
 }
 
-// func (a *mockMemberAPI) GetMembers(maxResult uint8, page uint16, sortMethod string) ([]models.Member, error) {
-
-// 	var (
-// 		result []models.Member
-// 		err    error
-// 	)
-// 	if len(mockMemberDS) == 0 {
-// 		err = errors.New("Members Not Found")
-// 		return result, err
-// 	}
-
-// 	sortedMockMemberDS := make([]models.Member, len(mockMemberDS))
-// 	copy(sortedMockMemberDS, mockMemberDS)
-
-// 	switch sortMethod {
-// 	case "updated_at":
-// 		sort.SliceStable(sortedMockMemberDS, func(i, j int) bool {
-// 			return sortedMockMemberDS[i].UpdatedAt.Before(sortedMockMemberDS[j].UpdatedAt)
-// 		})
-// 	case "-updated_at":
-// 		sort.SliceStable(sortedMockMemberDS, func(i, j int) bool {
-// 			return sortedMockMemberDS[i].UpdatedAt.After(sortedMockMemberDS[j].UpdatedAt)
-// 		})
-// 	}
-
-// 	if maxResult >= uint8(len(sortedMockMemberDS)) {
-// 		result = sortedMockMemberDS
-// 		err = nil
-// 	} else if maxResult < uint8(len(sortedMockMemberDS)) {
-// 		result = sortedMockMemberDS[(page-1)*uint16(maxResult) : page*uint16(maxResult)]
-// 		err = nil
-// 	}
-// 	return result, err
-// }
-
 func (a *mockMemberAPI) GetMember(idType string, id string) (models.Member, error) {
 	result := models.Member{}
 	err := errors.New("User Not Found")
@@ -143,7 +110,6 @@ func (a *mockMemberAPI) UpdateMember(m models.Member) error {
 
 func (a *mockMemberAPI) DeleteMember(idType string, id string) error {
 
-	// result := models.Member{}
 	err := errors.New("User Not Found")
 	for index, value := range mockMemberDS {
 		if id == value.ID {
@@ -191,6 +157,18 @@ func (a *mockMemberAPI) Count(req *models.MemberArgs) (result int, err error) {
 	}
 	return result, err
 }
+
+func (a *mockMemberAPI) GetUUIDsByNickname(key string) (result []models.NicknameUUID, err error) {
+	for _, v := range mockMemberDS {
+		if v.Nickname.Valid {
+			if matched, err := regexp.MatchString(key, v.Nickname.String); err == nil && matched {
+				result = append(result, models.NicknameUUID{UUID: v.UUID, Nickname: v.Nickname})
+			}
+		}
+	}
+	return result, err
+}
+
 func TestRouteGetMembers(t *testing.T) {
 
 	initMemberTest()
@@ -329,7 +307,7 @@ func TestRoutePutMember(t *testing.T) {
 		expect  ExpectResp
 	}{
 		{"Current", `{"id":"superman@mirrormedia.mg", "name":"Clark Kent"}`, ExpectResp{http.StatusOK, ""}},
-		{"NotExisted", `{"id":"spaceoddity", "name":"Major Tom"}`, ExpectResp{http.StatusBadRequest, `{"Error":"User Not Found"}`}},
+		{"NotExisted", `{"id":"MajorTom@mirrormedia.mg", "name":"spaceoddity"}`, ExpectResp{http.StatusBadRequest, `{"Error":"User Not Found"}`}},
 	}
 	for _, tc := range testCase {
 		t.Run(tc.name, func(t *testing.T) {
@@ -529,6 +507,41 @@ func TestRouteCountMembers(t *testing.T) {
 			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
 				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
 			}
+			if w.Code == http.StatusOK && w.Body.String() != tc.expect.resp {
+				t.Errorf("%s incorrect response.\nWant\n%s\nBut get\n%s\n", tc.name, tc.expect.resp, w.Body.String())
+			}
+		})
+	}
+	clearMemberTest()
+}
+
+func TestRouteKeyNickname(t *testing.T) {
+	initMemberTest()
+	type ExpectKeyResp struct {
+		ExpectResp
+		resp string
+	}
+	testCase := []struct {
+		name   string
+		route  string
+		expect ExpectKeyResp
+	}{
+		{"Keyword", `/members/nickname?keyword=read`, ExpectKeyResp{ExpectResp{http.StatusOK, ``}, `{"_items":[{"uuid":"3d6512e8-3e30-11e8-b94b-cfe922eb374f","nickname":"reader"}]}`}},
+		{"InvalidKeyword", `/members/nickname`, ExpectKeyResp{ExpectResp{http.StatusBadRequest, `{"Error":"Invalid keyword"}`}, ``}},
+	}
+	for _, tc := range testCase {
+		t.Run(tc.name, func(t *testing.T) {
+			w := httptest.NewRecorder()
+			req, _ := http.NewRequest("GET", tc.route, nil)
+			r.ServeHTTP(w, req)
+
+			if w.Code != tc.expect.httpcode {
+				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
+			}
+			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
+				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
+			}
+
 			if w.Code == http.StatusOK && w.Body.String() != tc.expect.resp {
 				t.Errorf("%s incorrect response.\nWant\n%s\nBut get\n%s\n", tc.name, tc.expect.resp, w.Body.String())
 			}
