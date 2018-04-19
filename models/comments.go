@@ -134,19 +134,32 @@ func (c *commentHandler) CreateNotifications(comment CommentEvent) {
 
 	session := MongoSession.Get()
 	mongoConn := session.DB("talk").C("comments")
-	pipe := mongoConn.Pipe([]bson.M{
-		bson.M{"$match": bson.M{"id": comment.ID}},
-		bson.M{"$lookup": bson.M{"from": "assets", "localField": "asset_id", "foreignField": "id", "as": "asset"}},
-		bson.M{"$lookup": bson.M{"from": "comments", "localField": "parent_id", "foreignField": "id", "as": "parent"}},
-		bson.M{"$lookup": bson.M{"from": "comments", "localField": "asset_id", "foreignField": "asset_id", "as": "comments"}},
-		bson.M{"$unwind": "$asset"},
-		bson.M{"$unwind": "$parent"},
-		bson.M{"$project": bson.M{"_id": false, "id": "$id", "resource": "$asset.url", "parent_author": "$parent.author_id", "commentors": "$comments.author_id"}},
-	})
+
 	var commentInfo CommentInfo
-	pipe.One(&commentInfo)
+	if comment.ParentID.Valid {
+		pipe := mongoConn.Pipe([]bson.M{
+			bson.M{"$match": bson.M{"id": comment.ID.String}},
+			bson.M{"$lookup": bson.M{"from": "assets", "localField": "asset_id", "foreignField": "id", "as": "asset"}},
+			bson.M{"$lookup": bson.M{"from": "comments", "localField": "parent_id", "foreignField": "id", "as": "parents"}},
+			bson.M{"$lookup": bson.M{"from": "comments", "localField": "asset_id", "foreignField": "asset_id", "as": "comments"}},
+			bson.M{"$unwind": "$asset"},
+			bson.M{"$unwind": "$parents"},
+			bson.M{"$project": bson.M{"_id": false, "id": "$id", "resource": "$asset.url", "parent_author": "$parents.author_id", "commentors": "$comments.author_id"}},
+		})
+		pipe.One(&commentInfo)
+	} else {
+		pipe := mongoConn.Pipe([]bson.M{
+			bson.M{"$match": bson.M{"id": comment.ID.String}},
+			bson.M{"$lookup": bson.M{"from": "assets", "localField": "asset_id", "foreignField": "id", "as": "asset"}},
+			bson.M{"$lookup": bson.M{"from": "comments", "localField": "asset_id", "foreignField": "asset_id", "as": "comments"}},
+			bson.M{"$unwind": "$asset"},
+			bson.M{"$project": bson.M{"_id": false, "id": "$id", "resource": "$asset.url", "commentors": "$comments.author_id"}},
+		})
+		pipe.One(&commentInfo)
+	}
 
 	commentInfo.parse()
+	//log.Println(commentInfo)
 	switch commentInfo.ResourceType {
 	case "post":
 		var postFollowers []string
@@ -338,6 +351,7 @@ func (c *commentHandler) CreateNotifications(comment CommentEvent) {
 	}
 
 	if len(CommentNotifications) > 0 {
+		selfID := ""
 		keys := make([]string, len(CommentNotifications))
 		i := 0
 		for k := range CommentNotifications {
@@ -345,7 +359,7 @@ func (c *commentHandler) CreateNotifications(comment CommentEvent) {
 			i++
 		}
 
-		query, args, err := sqlx.In(`SELECT member_id, nickname, profile_image FROM members WHERE member_id IN (?);`, keys)
+		query, args, err := sqlx.In(`SELECT member_id, talk_id, nickname, profile_image FROM members WHERE member_id IN (?);`, keys)
 		if err != nil {
 			log.Println("Error get member profiles building `in` query", keys, err.Error())
 			return
@@ -359,12 +373,16 @@ func (c *commentHandler) CreateNotifications(comment CommentEvent) {
 
 		for rows.Next() {
 			var memberID string
+			var talkID NullString
 			var nickName NullString
 			var profileImage NullString
-			err = rows.Scan(&memberID, &nickName, &profileImage)
+			err = rows.Scan(&memberID, &talkID, &nickName, &profileImage)
 			if err != nil {
 				log.Println("Error get member profiles", keys, err.Error())
 				return
+			}
+			if talkID.Valid && comment.AuthorID.Valid && (talkID.String == comment.AuthorID.String) {
+				selfID = memberID
 			}
 			n := CommentNotifications[memberID]
 			n.Nickname = nickName.String
@@ -377,12 +395,14 @@ func (c *commentHandler) CreateNotifications(comment CommentEvent) {
 
 		conn.Send("MULTI")
 		for k, v := range CommentNotifications {
-			msg, err := json.Marshal(v)
-			if err != nil {
-				log.Printf("Error marshaling notification comment event: %v", err)
+			if k != selfID {
+				msg, err := json.Marshal(v)
+				if err != nil {
+					log.Printf("Error marshaling notification comment event: %v", err)
+				}
+				conn.Send("LPUSH", redis.Args{}.Add(fmt.Sprint("notify_", k)).Add(msg)...)
+				conn.Send("LTRIM", redis.Args{}.Add(fmt.Sprint("notify_", k)).Add(0).Add(49)...)
 			}
-			conn.Send("LPUSH", redis.Args{}.Add(fmt.Sprint("notify_", k)).Add(msg)...)
-			conn.Send("LTRIM", redis.Args{}.Add(fmt.Sprint("notify_", k)).Add(0).Add(49)...)
 		}
 		if _, err := redis.Values(conn.Do("EXEC")); err != nil {
 			log.Printf("Error insert cache to redis: %v", err)
