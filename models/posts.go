@@ -419,7 +419,7 @@ func (a *postAPI) UpdateAll(req PostUpdateArgs) error {
 		return errors.New("Posts Not Found")
 	}
 
-	go PostCache.UpdateMulti(req)
+	go PostCache.UpdateAll(req)
 
 	if req.Active.Valid == true && req.Active.Int == 1 {
 		// Case: Publish posts. Read those post from database, then store to cache/searcher

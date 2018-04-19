@@ -81,6 +81,8 @@ func main() {
 
 	models.Algolia.Init()
 
+	models.CommentHandler.SubscribeToChannel(viper.Get("redis.channels.talk_comments").(string))
+
 	routes.AuthHandler.SetRoutes(router)
 	routes.FollowingHandler.SetRoutes(router)
 	routes.MailHandler.SetRoutes(router, *dialer)

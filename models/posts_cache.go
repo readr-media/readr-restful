@@ -112,7 +112,7 @@ func (p *postCache) Delete(post_id uint32) {
 		}
 	}
 }
-func (p *postCache) UpdateMulti(params PostUpdateArgs) {
+func (p *postCache) UpdateAll(params PostUpdateArgs) {
 	if params.Active.Valid {
 		p.SyncFromDataStorage()
 		return

@@ -1,6 +1,7 @@
 package models
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -130,6 +131,56 @@ func (r *redisHelper) GetHotPosts(keysTemplate string, quantity int) (result []H
 	}
 
 	return result, err
+}
+
+func (r *redisHelper) Subscribe(ctx context.Context, cancel func(), onMessage func(channel string, data []byte) error, channel string) error {
+
+	conn := r.Conn()
+	psc := redis.PubSubConn{Conn: conn}
+	if err := psc.PSubscribe(redis.Args{}.AddFlat(channel)...); err != nil {
+		return err
+	}
+
+	go func() {
+		for {
+			msg := psc.Receive()
+			switch n := msg.(type) {
+			case error:
+				log.Println("subscribe error", n.Error())
+				cancel()
+				return
+			case redis.Message:
+				if err := onMessage(n.Channel, n.Data); err != nil {
+					log.Println("on subscribe message handler error", err.Error())
+					cancel()
+					return
+				}
+			case redis.PMessage:
+				if err := onMessage(n.Channel, n.Data); err != nil {
+					log.Println("on subscribe pmessage handler error", err.Error())
+					cancel()
+					return
+				}
+			case redis.Subscription:
+				log.Println("subscribed: ", channel, n.Count)
+				switch n.Count {
+				case 0:
+					log.Println("no subscribed channel")
+					cancel()
+					return
+				}
+			default:
+				log.Println(n)
+			}
+			if ctx.Err() == context.Canceled {
+				log.Println("terminated")
+				psc.PUnsubscribe(channel)
+				conn.Close()
+				return
+			}
+		}
+	}()
+	return nil
 }
 
 func RedisConn(config map[string]string) {
