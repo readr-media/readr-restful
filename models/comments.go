@@ -39,23 +39,33 @@ func (c *CommentInfo) parse() {
 	assetUrl := c.ResourceType
 
 	r := regexp.MustCompile(`\/\/[a-zA-Z0-9_.]*\/(.*)\/[0-9]*$`)
-	c.ResourceType = r.FindStringSubmatch(assetUrl)[1]
+	rresult := r.FindStringSubmatch(assetUrl)
+	if len(rresult) < 2 {
+		c.ResourceType = ""
+	} else {
+		c.ResourceType = rresult[1]
+	}
 
 	s := regexp.MustCompile(`\/\/[a-zA-Z0-9_.]*\/.*\/([0-9]*)$`)
-	c.ResourceID = s.FindStringSubmatch(assetUrl)[1]
+	sresult := s.FindStringSubmatch(assetUrl)
+	if len(sresult) < 2 {
+		c.ResourceID = ""
+	} else {
+		c.ResourceID = sresult[1]
+	}
 }
 
 type CommentNotification struct {
-	ID           string `redis:"id"`
-	Nickname     string `redis:"nickname"`
-	ProfileImage string `redis:"profile_image"`
-	ObjectName   string `redis:"object_name"`
-	ObjectType   string `redis:"object_type"`
-	ObjectID     string `redis:"object_id"`
-	PostType     string `redis:"post_type"`
-	EventType    string `redis:"event_type"`
-	Timestamp    string `redis:"timestamp"`
-	Read         bool   `redis:"read"`
+	ID           string `redis:"id" json:"id"`
+	Nickname     string `redis:"nickname" json:"nickname"`
+	ProfileImage string `redis:"profile_image" json:"profile_image"`
+	ObjectName   string `redis:"object_name" json:"object_name"`
+	ObjectType   string `redis:"object_type" json:"object_type"`
+	ObjectID     string `redis:"object_id" json:"object_id"`
+	PostType     string `redis:"post_type" json:"post_type"`
+	EventType    string `redis:"event_type" json:"event_type"`
+	Timestamp    string `redis:"timestamp" json:"timestamp"`
+	Read         bool   `redis:"read" json:"read"`
 }
 
 func NewCommentNotification() CommentNotification {
@@ -88,11 +98,13 @@ func (c *commentHandler) SubscribeToChannel(channel string) {
 
 	err := RedisHelper.Subscribe(ctx, cancel,
 		func(channel string, message []byte) error {
-			var c CommentEvent
-			if err := json.Unmarshal(message, &c); err != nil {
+			var commentEvent CommentEvent
+			if err := json.Unmarshal(message, &commentEvent); err != nil {
 				log.Printf("Error scan redis comment event: %v", err)
 			}
-			log.Printf("channel: %s, message: %s\n", channel, c)
+			if channel == "commentAdded" {
+				c.CreateNotifications(commentEvent)
+			}
 			return nil
 		}, channel)
 
@@ -103,8 +115,8 @@ func (c *commentHandler) SubscribeToChannel(channel string) {
 }
 
 func (c *commentHandler) CreateNotifications(comment CommentEvent) {
-	var CommentNotifications map[string]CommentNotification
-	//var Users []string
+	CommentNotifications := make(map[string]CommentNotification)
+
 	//func (c *commentHandler) CreateNotifications(comment CommentEvent) {
 	// Information to collect:
 	// 1. parent_id -> author -> is author? -> [comment_reply_author, comment_reply]
@@ -138,17 +150,24 @@ func (c *commentHandler) CreateNotifications(comment CommentEvent) {
 	switch commentInfo.ResourceType {
 	case "post":
 		var postFollowers []string
-		err := DB.Get(&postFollowers, fmt.Sprintf("SELECT member_id FROM following_posts WHERE post_id = %s;", commentInfo.ResourceID))
+		rows, err := DB.Query(fmt.Sprintf(`SELECT member_id FROM following_posts WHERE post_id=%s;`, commentInfo.ResourceID))
 		if err != nil {
-			log.Println("Error get postFollowers", commentInfo.ResourceID)
-			return
+			log.Println("Error get postFollowers", commentInfo.ResourceID, err.Error())
+		}
+		for rows.Next() {
+			var follower string
+			err = rows.Scan(&follower)
+			if err != nil {
+				log.Println("Error scan postFollowers", commentInfo.ResourceID, err.Error())
+			}
+			postFollowers = append(postFollowers, follower)
 		}
 
 		var author NullString
 		var postType NullString
-		rows, err := DB.Query(fmt.Sprintf("SELECT author, post_type FROM posts WHERE post_id = %s LIMIT 1;", commentInfo.ResourceID))
+		rows, err = DB.Query(fmt.Sprintf(`SELECT author, type FROM posts WHERE post_id=%s LIMIT 1;`, commentInfo.ResourceID))
 		if err != nil {
-			log.Println("Error get post info", commentInfo.ResourceID)
+			log.Println("Error get post info", commentInfo.ResourceID, err.Error())
 			return
 		}
 		for rows.Next() {
@@ -156,17 +175,24 @@ func (c *commentHandler) CreateNotifications(comment CommentEvent) {
 		}
 
 		var authorNickname NullString
-		err = DB.Get(&authorNickname, fmt.Sprintf("SELECT nickname FROM members WHERE member_id = %s LIMIT 1;", author.String))
+		err = DB.Get(&authorNickname, fmt.Sprintf(`SELECT nickname FROM members WHERE member_id="%s" LIMIT 1;`, author.String))
 		if err != nil {
-			log.Println("Error get authorNickname", author.String)
+			log.Println("Error get authorNickname", author.String, err.Error())
 			return
 		}
 
 		var authorFollowers []string
-		err = DB.Get(&authorFollowers, fmt.Sprintf("SELECT member_id FROM following_members WHERE custom_editor = %s;", author.String))
+		rows, err = DB.Query(fmt.Sprintf(`SELECT member_id FROM following_members WHERE custom_editor="%s";`, author.String))
 		if err != nil {
-			log.Println("Error get authorFollowers", author.String)
-			return
+			log.Println("Error get authorFollowers", author.String, err.Error())
+		}
+		for rows.Next() {
+			var follower string
+			err = rows.Scan(&follower)
+			if err != nil {
+				log.Println("Error scan authorFollowers", author.String, err.Error())
+			}
+			authorFollowers = append(authorFollowers, follower)
 		}
 
 		for _, v := range postFollowers {
@@ -181,35 +207,37 @@ func (c *commentHandler) CreateNotifications(comment CommentEvent) {
 			CommentNotifications[v] = c
 		}
 
-		query, args, err := sqlx.In("SELECT member_id FROM members WHERE talk_id IN (?);", commentInfo.Commentors)
-		if err != nil {
-			log.Println("Error in mixing sql `in` query", commentInfo.Commentors)
-			return
-		}
-
-		query = DB.Rebind(query)
-		rows, err = DB.Query(query, args...)
-		if err != nil {
-			return
-		}
-
-		for rows.Next() {
-			var memberID string
-			err = rows.Scan(&memberID)
+		if len(commentInfo.Commentors) > 0 {
+			query, args, err := sqlx.In(`SELECT member_id FROM members WHERE talk_id IN (?);`, commentInfo.Commentors)
 			if err != nil {
-				log.Println("Error scan member", rows)
+				log.Println("Error in mixing sql `in` query", commentInfo.Commentors, err.Error())
 				return
 			}
-			c := NewCommentNotification()
-			c.EventType = "comment_comment"
-			CommentNotifications[memberID] = c
+
+			query = DB.Rebind(query)
+			rows, err = DB.Query(query, args...)
+			if err != nil {
+				return
+			}
+
+			for rows.Next() {
+				var memberID string
+				err = rows.Scan(&memberID)
+				if err != nil {
+					log.Println("Error scan member", rows, err.Error())
+					return
+				}
+				c := NewCommentNotification()
+				c.EventType = "comment_comment"
+				CommentNotifications[memberID] = c
+			}
 		}
 
 		if comment.ParentID.Valid {
 			var parentCommentor string
-			err = DB.Get(&parentCommentor, fmt.Sprintf("SELECT member_id FROM members WHERE talk_id = %s;", comment.ParentID.String))
+			err = DB.Get(&parentCommentor, fmt.Sprintf(`SELECT member_id FROM members WHERE talk_id="%s";`, comment.ParentID.String))
 			if err != nil {
-				log.Println("Error get memberid by talkid", comment.ParentID.String)
+				log.Println("Error get memberid by talkid", comment.ParentID.String, err.Error())
 				return
 			}
 			c := NewCommentNotification()
@@ -221,27 +249,34 @@ func (c *commentHandler) CreateNotifications(comment CommentEvent) {
 			CommentNotifications[parentCommentor] = c
 		}
 
-		for _, c := range CommentNotifications {
-			c.ObjectName = authorNickname.String
-			c.ObjectType = commentInfo.ResourceType
-			c.ObjectID = commentInfo.ResourceID
-			c.PostType = postType.String
+		for k, v := range CommentNotifications {
+			v.ObjectName = authorNickname.String
+			v.ObjectType = commentInfo.ResourceType
+			v.ObjectID = commentInfo.ResourceID
+			v.PostType = postType.String
+			CommentNotifications[k] = v
 		}
 
 		break
 	case "project":
-
 		var projectFollowers []string
-		err := DB.Get(&projectFollowers, fmt.Sprintf("SELECT member_id FROM following_projects WHERE project_id = %s;", commentInfo.ResourceID))
+		rows, err := DB.Query(fmt.Sprintf(`SELECT member_id FROM following_projects WHERE project_id=%s;`, commentInfo.ResourceID))
 		if err != nil {
-			log.Println("Error get projectFollowers", commentInfo.ResourceID)
-			return
+			log.Println("Error get projectFollowers", commentInfo.ResourceID, err.Error())
+		}
+		for rows.Next() {
+			var follower string
+			err = rows.Scan(&follower)
+			if err != nil {
+				log.Println("Error scan authorFollowers", commentInfo.ResourceID, err.Error())
+			}
+			projectFollowers = append(projectFollowers, follower)
 		}
 
 		var projectTitle NullString
-		err = DB.Get(&projectTitle, fmt.Sprintf("SELECT title FROM projects WHERE project_id = %s LIMIT 1;", commentInfo.ResourceID))
+		err = DB.Get(&projectTitle, fmt.Sprintf(`SELECT title FROM projects WHERE project_id=%s LIMIT 1;`, commentInfo.ResourceID))
 		if err != nil {
-			log.Println("Error get project title", commentInfo.ResourceID)
+			log.Println("Error get project title", commentInfo.ResourceID, err.Error())
 			return
 		}
 
@@ -251,16 +286,68 @@ func (c *commentHandler) CreateNotifications(comment CommentEvent) {
 			CommentNotifications[v] = c
 		}
 
-		for _, c := range CommentNotifications {
-			c.ObjectName = projectTitle.String
-			c.ObjectType = commentInfo.ResourceType
-			c.ObjectID = commentInfo.ResourceID
-			c.PostType = ""
+		if len(commentInfo.Commentors) > 0 {
+			query, args, err := sqlx.In(`SELECT member_id FROM members WHERE talk_id IN (?);`, commentInfo.Commentors)
+			if err != nil {
+				log.Println("Error in mixing sql `in` query", commentInfo.Commentors, err.Error())
+				return
+			}
+
+			query = DB.Rebind(query)
+			rows, err = DB.Query(query, args...)
+			if err != nil {
+				return
+			}
+
+			for rows.Next() {
+				var memberID string
+				err = rows.Scan(&memberID)
+				if err != nil {
+					log.Println("Error get memberid by talkid", rows, err.Error())
+					return
+				}
+				c := NewCommentNotification()
+				c.EventType = "comment_comment"
+				CommentNotifications[memberID] = c
+			}
 		}
 
-		query, args, err := sqlx.In("SELECT member_id FROM members WHERE talk_id IN (?);", commentInfo.Commentors)
+		if comment.ParentID.Valid {
+			var parentCommentor string
+			err = DB.Get(&parentCommentor, fmt.Sprintf(`SELECT member_id FROM members WHERE talk_id="%s";`, comment.ParentID.String))
+			if err != nil {
+				log.Println("Error get memberid by talkid", comment.ParentID.String, err.Error())
+				return
+			}
+			c := NewCommentNotification()
+			c.EventType = "comment_reply"
+			CommentNotifications[parentCommentor] = c
+		}
+
+		for k, v := range CommentNotifications {
+			v.ObjectName = projectTitle.String
+			v.ObjectType = commentInfo.ResourceType
+			v.ObjectID = commentInfo.ResourceID
+			v.PostType = ""
+			CommentNotifications[k] = v
+		}
+
+		break
+	default:
+		break
+	}
+
+	if len(CommentNotifications) > 0 {
+		keys := make([]string, len(CommentNotifications))
+		i := 0
+		for k := range CommentNotifications {
+			keys[i] = k
+			i++
+		}
+
+		query, args, err := sqlx.In(`SELECT member_id, nickname, profile_image FROM members WHERE member_id IN (?);`, keys)
 		if err != nil {
-			log.Println("Error in mixing sql `in` query", commentInfo.Commentors)
+			log.Println("Error get member profiles building `in` query", keys, err.Error())
 			return
 		}
 
@@ -272,79 +359,36 @@ func (c *commentHandler) CreateNotifications(comment CommentEvent) {
 
 		for rows.Next() {
 			var memberID string
-			err = rows.Scan(&memberID)
+			var nickName NullString
+			var profileImage NullString
+			err = rows.Scan(&memberID, &nickName, &profileImage)
 			if err != nil {
-				log.Println("Error get memberid by talkid", rows)
+				log.Println("Error get member profiles", keys, err.Error())
 				return
 			}
-			c := NewCommentNotification()
-			c.EventType = "comment_comment"
-			CommentNotifications[memberID] = c
+			n := CommentNotifications[memberID]
+			n.Nickname = nickName.String
+			n.ProfileImage = profileImage.String
+			CommentNotifications[memberID] = n
 		}
 
-		if comment.ParentID.Valid {
-			var parentCommentor string
-			err = DB.Get(&parentCommentor, fmt.Sprintf("SELECT member_id FROM members WHERE talk_id = %s;", comment.ParentID.String))
+		conn := RedisHelper.Conn()
+		defer conn.Close()
+
+		conn.Send("MULTI")
+		for k, v := range CommentNotifications {
+			msg, err := json.Marshal(v)
 			if err != nil {
-				log.Println("Error get memberid by talkid", comment.ParentID.String)
-				return
+				log.Printf("Error marshaling notification comment event: %v", err)
 			}
-			c := NewCommentNotification()
-			c.EventType = "comment_reply"
-			CommentNotifications[parentCommentor] = c
+			conn.Send("LPUSH", redis.Args{}.Add(fmt.Sprint("notify_", k)).Add(msg)...)
+			conn.Send("LTRIM", redis.Args{}.Add(fmt.Sprint("notify_", k)).Add(0).Add(49)...)
 		}
-
-		break
-	default:
-		break
-	}
-
-	keys := make([]string, len(CommentNotifications))
-	i := 0
-	for k := range CommentNotifications {
-		keys[i] = k
-		i++
-	}
-
-	query, args, err := sqlx.In("SELECT member_id, nickname, profile_image FROM members WHERE member_id IN (?);", keys)
-	if err != nil {
-		log.Println("Error get member profiles building `in` query", keys)
-		return
-	}
-
-	query = DB.Rebind(query)
-	rows, err := DB.Query(query, args...)
-	if err != nil {
-		return
-	}
-
-	for rows.Next() {
-		var memberID string
-		var nickName string
-		var profileImage string
-		err = rows.Scan(&memberID, &nickName, &profileImage)
-		if err != nil {
-			log.Println("Error get member profiles", keys)
+		if _, err := redis.Values(conn.Do("EXEC")); err != nil {
+			log.Printf("Error insert cache to redis: %v", err)
 			return
 		}
-		n := CommentNotifications[memberID]
-		n.Nickname = nickName
-		n.ProfileImage = profileImage
-		CommentNotifications[memberID] = n
 	}
-
-	conn := RedisHelper.Conn()
-	defer conn.Close()
-
-	conn.Send("MULTI")
-	for k, v := range CommentNotifications {
-		conn.Send("HMSET", redis.Args{}.Add(fmt.Sprint("notify_", k)).AddFlat(&v)...)
-	}
-	if _, err := redis.Values(conn.Do("EXEC")); err != nil {
-		log.Printf("Error insert cache to redis: %v", err)
-		return
-	}
-
 }
 
 //func (c *commentHandler) UpdateCommentCount(event_type string, comment CommentEvent) {}
