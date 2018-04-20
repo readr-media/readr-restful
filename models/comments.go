@@ -487,7 +487,7 @@ func (c *commentHandler) ReadNotifications(arg UpdateNotificationArgs) error {
 	conn.Do("DEL", fmt.Sprint("notify_", arg.MemberID))
 	conn.Send("MULTI")
 	for _, v := range CommentNotifications {
-		conn.Send("LPUSH", redis.Args{}.Add(fmt.Sprint("notify_", arg.MemberID)).Add(v)...)
+		conn.Send("RPUSH", redis.Args{}.Add(fmt.Sprint("notify_", arg.MemberID)).Add(v)...)
 	}
 	conn.Send("LTRIM", redis.Args{}.Add(fmt.Sprint("notify_", arg.MemberID)).Add(0).Add(49)...)
 	if _, err := redis.Values(conn.Do("EXEC")); err != nil {
