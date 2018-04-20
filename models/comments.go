@@ -58,6 +58,7 @@ func (c *CommentInfo) parse() {
 
 type CommentNotification struct {
 	ID           string `redis:"id" json:"id"`
+	SubjectID    string `redis:"subject_id" json:"subject_id"`
 	Nickname     string `redis:"nickname" json:"nickname"`
 	ProfileImage string `redis:"profile_image" json:"profile_image"`
 	ObjectName   string `redis:"object_name" json:"object_name"`
@@ -70,9 +71,13 @@ type CommentNotification struct {
 }
 
 func NewCommentNotification() CommentNotification {
+	tz, err := time.LoadLocation("Asia/Taipei")
+	if err != nil {
+		log.Println("Load timezone location error")
+	}
 	return CommentNotification{
-		ID:        time.Now().Format("20060102150405"),
-		Timestamp: time.Now().Format("20060102150405"),
+		ID:        time.Now().In(tz).Format("20060102150405"),
+		Timestamp: time.Now().In(tz).Format("20060102150405"),
 		Read:      false,
 	}
 }
@@ -166,7 +171,19 @@ func (c *commentHandler) CreateNotifications(comment CommentEvent) {
 	}
 
 	commentInfo.parse()
-	//log.Println(commentInfo)
+
+	var commentorID NullString
+	var commentorImage NullString
+	var commentorNickname NullString
+	rows, err := DB.Query(fmt.Sprintf(`SELECT member_id, profile_image, nickname FROM members WHERE talk_id="%s" LIMIT 1;`, comment.AuthorID.String))
+	if err != nil {
+		log.Println("Error commentor info", commentInfo.ResourceID, err.Error())
+		return
+	}
+	for rows.Next() {
+		err = rows.Scan(&commentorID, &commentorImage, &commentorNickname)
+	}
+
 	switch commentInfo.ResourceType {
 	case "post":
 		var postFollowers []string
@@ -270,6 +287,9 @@ func (c *commentHandler) CreateNotifications(comment CommentEvent) {
 		}
 
 		for k, v := range CommentNotifications {
+			v.SubjectID = commentorID.String
+			v.Nickname = commentorNickname.String
+			v.ProfileImage = commentorImage.String
 			v.ObjectName = authorNickname.String
 			v.ObjectType = commentInfo.ResourceType
 			v.ObjectID = commentInfo.ResourceID
@@ -345,6 +365,9 @@ func (c *commentHandler) CreateNotifications(comment CommentEvent) {
 		}
 
 		for k, v := range CommentNotifications {
+			v.SubjectID = commentorID.String
+			v.Nickname = commentorNickname.String
+			v.ProfileImage = commentorImage.String
 			v.ObjectName = projectTitle.String
 			v.ObjectType = commentInfo.ResourceType
 			v.ObjectID = commentInfo.ResourceID
@@ -358,57 +381,44 @@ func (c *commentHandler) CreateNotifications(comment CommentEvent) {
 	}
 
 	if len(CommentNotifications) > 0 {
-		selfID := ""
-		keys := make([]string, len(CommentNotifications))
-		i := 0
-		for k := range CommentNotifications {
-			keys[i] = k
-			i++
-		}
-
-		query, args, err := sqlx.In(`SELECT member_id, talk_id, nickname, profile_image FROM members WHERE member_id IN (?);`, keys)
-		if err != nil {
-			log.Println("Error get member profiles building `in` query", keys, err.Error())
-			return
-		}
-
-		query = DB.Rebind(query)
-		rows, err := DB.Query(query, args...)
-		if err != nil {
-			return
-		}
-
-		for rows.Next() {
-			var memberID string
-			var talkID NullString
-			var nickName NullString
-			var profileImage NullString
-			err = rows.Scan(&memberID, &talkID, &nickName, &profileImage)
-			if err != nil {
-				log.Println("Error get member profiles", keys, err.Error())
-				return
-			}
-			if talkID.Valid && comment.AuthorID.Valid && (talkID.String == comment.AuthorID.String) {
-				selfID = memberID
-			}
-			n := CommentNotifications[memberID]
-			n.Nickname = nickName.String
-			n.ProfileImage = profileImage.String
-			CommentNotifications[memberID] = n
-		}
 
 		conn := RedisHelper.Conn()
 		defer conn.Close()
 
 		conn.Send("MULTI")
 		for k, v := range CommentNotifications {
-			if k != selfID {
-				msg, err := json.Marshal(v)
+			if k != commentorID.String {
+
+				Notifications := [][]byte{}
+				key := fmt.Sprint("notify_", k)
+
+				res, err := redis.Values(conn.Do("LRANGE", key, "0", "49"))
 				if err != nil {
-					log.Printf("Error marshaling notification comment event: %v", err)
+					log.Printf("Error getting redis key: %v", err)
+					return
 				}
-				conn.Send("LPUSH", redis.Args{}.Add(fmt.Sprint("notify_", k)).Add(msg)...)
-				conn.Send("LTRIM", redis.Args{}.Add(fmt.Sprint("notify_", k)).Add(0).Add(49)...)
+				if err = redis.ScanSlice(res, &Notifications); err != nil {
+					log.Printf("Error scan redis key: %v", err)
+					return
+				}
+
+				for _, kv := range Notifications {
+					var n CommentNotification
+					if err := json.Unmarshal(kv, &n); err != nil {
+						log.Printf("Error scan redis comment notification: %v", err)
+						break
+					}
+					if n.SubjectID == v.SubjectID && n.ObjectID == v.ObjectID && n.EventType == v.EventType {
+						break
+					}
+
+					msg, err := json.Marshal(v)
+					if err != nil {
+						log.Printf("Error marshaling notification comment event: %v", err)
+					}
+					conn.Send("LPUSH", redis.Args{}.Add(fmt.Sprint(key)).Add(msg)...)
+					conn.Send("LTRIM", redis.Args{}.Add(fmt.Sprint(key)).Add(0).Add(49)...)
+				}
 			}
 		}
 		if _, err := redis.Values(conn.Do("EXEC")); err != nil {
