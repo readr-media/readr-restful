@@ -8,7 +8,10 @@
     "redis":{
         "host": "",
         "port": 0,
-        "password": ""
+        "password": "",
+        "channels":{
+            "talk_comments": ""
+        }
     },
     "mongo":{
         "talk": {
