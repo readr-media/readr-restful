@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"regexp"
+	"strconv"
 	"time"
 
 	"encoding/json"
@@ -74,6 +75,12 @@ func NewCommentNotification() CommentNotification {
 		Timestamp: time.Now().Format("20060102150405"),
 		Read:      false,
 	}
+}
+
+type UpdateNotificationArgs struct {
+	IDs      []string `json:"ids"`
+	MemberID string   `redis:"member_id" json:"member_id"`
+	Read     NullBool `redis:"read" json:"read"`
 }
 
 type commentHandler struct{}
@@ -412,5 +419,74 @@ func (c *commentHandler) CreateNotifications(comment CommentEvent) {
 }
 
 //func (c *commentHandler) UpdateCommentCount(event_type string, comment CommentEvent) {}
+func (c *commentHandler) ReadNotifications(arg UpdateNotificationArgs) error {
+	conn := RedisHelper.Conn()
+	defer conn.Close()
+
+	CommentNotifications := [][]byte{}
+
+	key := fmt.Sprint("notify_", arg.MemberID)
+
+	res, err := redis.Values(conn.Do("LRANGE", key, "0", "49"))
+	if err != nil {
+		log.Printf("Error getting redis key: %v", err)
+		return err
+	}
+	if err = redis.ScanSlice(res, &CommentNotifications); err != nil {
+		log.Printf("Error scan redis key: %v", err)
+		return err
+	}
+
+	if len(arg.IDs) > 0 {
+		for _, v := range arg.IDs {
+			index, err := strconv.Atoi(v)
+			if err != nil {
+				log.Printf("Error convert ids into integer index: %v", err)
+				continue
+			}
+			var cn CommentNotification
+			if err := json.Unmarshal(CommentNotifications[index], &cn); err != nil {
+				log.Printf("Error scan redis comment notification: %v", err)
+				continue
+			}
+			cn.Read = true
+			msg, err := json.Marshal(cn)
+			if err != nil {
+				log.Printf("Error dump redis comment notification: %v", err)
+				continue
+			}
+			CommentNotifications[index] = msg
+		}
+	} else {
+		for k, v := range CommentNotifications {
+			var cn CommentNotification
+			if err := json.Unmarshal(v, &cn); err != nil {
+				log.Printf("Error scan redis comment notification: %v", err)
+				continue
+			}
+			cn.Read = true
+			msg, err := json.Marshal(cn)
+			if err != nil {
+				log.Printf("Error dump redis comment notification: %v", err)
+				continue
+			}
+			CommentNotifications[k] = msg
+		}
+	}
+
+	conn.Do("DEL", fmt.Sprint("notify_", arg.MemberID))
+	conn.Send("MULTI")
+	for _, v := range CommentNotifications {
+		conn.Send("LPUSH", redis.Args{}.Add(fmt.Sprint("notify_", arg.MemberID)).Add(v)...)
+	}
+	conn.Send("LTRIM", redis.Args{}.Add(fmt.Sprint("notify_", arg.MemberID)).Add(0).Add(49)...)
+	if _, err := redis.Values(conn.Do("EXEC")); err != nil {
+		log.Printf("Error insert cache to redis: %v", err)
+		return err
+	}
+
+	return nil
+
+}
 
 var CommentHandler = commentHandler{}
