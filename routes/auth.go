@@ -105,7 +105,7 @@ func (r *authHandler) userLogin(c *gin.Context) {
 }
 
 type userRegisterParams struct {
-	ID           string `json:"id" db:"member_id"`
+	MemberID     string `json:"member_id" db:"member_id"`
 	Name         string `json:"name" db:"name"`
 	Nickname     string `json:"nickname" db:"nick"`
 	Gender       string `json:"gender" db:"gender"`
@@ -137,7 +137,7 @@ func (r *authHandler) userRegister(c *gin.Context) {
 	member.Password = models.NullString{params.Password, true}
 
 	switch {
-	case !utils.ValidateUserID(member.ID), !validateMode(member.RegisterMode.String), !validateMail(member.Mail.String):
+	case !utils.ValidateUserID(member.MemberID), !validateMode(member.RegisterMode.String), !validateMail(member.Mail.String):
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Request"})
 		return
 	}
@@ -167,26 +167,29 @@ func (r *authHandler) userRegister(c *gin.Context) {
 		member.Salt = models.NullString{string(salt), true}
 		member.Password = models.NullString{string(hpw), true}
 		member.Active = models.NullInt{0, true}
+		member.Points = models.NullInt{0, true}
 
 	} else {
 
-		if member.SocialID.String != member.ID {
+		if member.SocialID.String != member.MemberID {
 			c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Request"})
 			return
 		}
 
 		member.Active = models.NullInt{1, true}
+		member.Points = models.NullInt{0, true}
 	}
 
 	// 4. fill in data and defaults
 	uuid, err := utils.NewUUIDv4()
 	if err != nil {
+		log.Println(err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": "Unable to generate uuid for user"})
 		return
 	}
 	member.UUID = uuid.String()
 
-	err = models.MemberAPI.InsertMember(member)
+	lastID, err := models.MemberAPI.InsertMember(member)
 
 	if err != nil {
 		switch err.Error() {
@@ -194,17 +197,18 @@ func (r *authHandler) userRegister(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"Error": "User Duplicated"})
 			return
 		case "More Than One Rows Affected", "No Row Inserted":
+			log.Println(err.Error())
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
 			return
 		default:
+			log.Println(err.Error())
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
 			return
 		}
 	}
-
-	c.Status(http.StatusOK)
+	resp := map[string]int{"last_id": lastID}
+	c.JSON(http.StatusOK, gin.H{"_items": resp})
 	return
-
 }
 
 func validateMode(mode string) bool {

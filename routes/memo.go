@@ -115,7 +115,7 @@ func (r *memoHandler) Post(c *gin.Context) {
 	}
 	if !memo.UpdatedBy.Valid {
 		if memo.Author.Valid {
-			memo.UpdatedBy = models.NullString{String: memo.Author.String, Valid: true}
+			memo.UpdatedBy = models.NullInt{Int: memo.Author.Int, Valid: true}
 		} else {
 			c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Updator"})
 		}
@@ -189,7 +189,7 @@ func (r *memoHandler) Put(c *gin.Context) {
 	case memo.UpdatedBy.Valid:
 		break
 	case memo.Author.Valid:
-		memo.UpdatedBy.String = memo.Author.String
+		memo.UpdatedBy.Int = memo.Author.Int
 		memo.UpdatedBy.Valid = true
 		break
 	default:
@@ -242,7 +242,7 @@ func (r *memoHandler) DeleteMany(c *gin.Context) {
 		return
 	}
 
-	if params.UpdatedBy == "" {
+	if params.UpdatedBy == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Updater Not Specified"})
 		return
 	}

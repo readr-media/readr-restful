@@ -130,7 +130,7 @@ func getStructDBTags(mode string, input interface{}) []string {
 				if field.Valid {
 					columns = append(columns, tag.Get("db"))
 				}
-			case bool, int, uint32:
+			case bool, int, uint32, int64:
 				columns = append(columns, tag.Get("db"))
 			default:
 				fmt.Println("unrecognised format: ", u.Field(i).Type())
