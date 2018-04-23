@@ -13,7 +13,8 @@ import (
 var MemberStatus map[string]interface{}
 
 type Member struct {
-	ID       string     `json:"id" db:"member_id"`
+	ID       uint32     `json:"id" db:"id"`
+	MemberID string     `json:"member_id" db:"member_id"`
 	UUID     string     `json:"uuid" db:"uuid"`
 	Points   NullInt    `json:"points" db:"points"`
 	Name     NullString `json:"name" db:"name"`

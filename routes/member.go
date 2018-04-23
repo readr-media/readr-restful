@@ -2,6 +2,7 @@ package routes
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -95,7 +96,7 @@ func (r *memberHandler) Post(c *gin.Context) {
 	c.Bind(&member)
 
 	// Pre-request test
-	if member.ID == "" {
+	if member.MemberID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid User"})
 		return
 	}
@@ -136,7 +137,7 @@ func (r *memberHandler) Put(c *gin.Context) {
 	c.Bind(&member)
 	// Use id field to check if Member Struct was binded successfully
 	// If the binding failed, id would be emtpy string
-	if member.ID == "" {
+	if member.MemberID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Member Data"})
 		return
 	}
@@ -253,7 +254,6 @@ func (r *memberHandler) PutPassword(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Input"})
 		return
 	}
-
 	member, err := models.MemberAPI.GetMember("member_id", input.ID)
 	if err != nil {
 		switch err.Error() {
@@ -262,7 +262,7 @@ func (r *memberHandler) PutPassword(c *gin.Context) {
 			return
 		default:
 			log.Println(err.Error())
-			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": fmt.Sprintf("Internal Server Error. %s", err.Error())})
 			return
 		}
 	}
@@ -284,25 +284,25 @@ func (r *memberHandler) PutPassword(c *gin.Context) {
 	salt, err := utils.CryptGenSalt()
 	if err != nil {
 		log.Println(err.Error())
-		c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": fmt.Sprintf("Internal Server Error. %s", err.Error())})
 		return
 	}
 
 	hpw, err := utils.CryptGenHash(input.NewPassword, string(salt))
 	if err != nil {
 		log.Println(err.Error())
-		c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": fmt.Sprintf("Internal Server Error. %s", err.Error())})
 		return
 	}
 
 	err = models.MemberAPI.UpdateMember(models.Member{
-		ID:       member.ID,
+		MemberID: member.MemberID,
 		Password: models.NullString{hpw, true},
 		Salt:     models.NullString{salt, true},
 	})
 	if err != nil {
 		log.Println(err.Error())
-		c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": fmt.Sprintf("Internal Server Error. %s", err.Error())})
 		return
 	}
 
