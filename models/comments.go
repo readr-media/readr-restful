@@ -270,15 +270,15 @@ func (c *commentHandler) CreateNotifications(comment CommentEvent) {
 			}
 		}
 
-		if comment.ParentID.Valid {
+		if commentInfo.ParentAuthor != "" {
 			var parentCommentor string
-			err = DB.Get(&parentCommentor, fmt.Sprintf(`SELECT member_id FROM members WHERE talk_id="%s";`, comment.ParentID.String))
+			err = DB.Get(&parentCommentor, fmt.Sprintf(`SELECT member_id FROM members WHERE talk_id="%s";`, commentInfo.ParentAuthor))
 			if err != nil {
-				log.Println("Error get memberid by talkid", comment.ParentID.String, err.Error())
+				log.Println("Error get memberid by talkid", commentInfo.ParentAuthor, err.Error())
 				return
 			}
 			c := NewCommentNotification()
-			if author.String == parentCommentor {
+			if author.String == commentorID.String {
 				c.EventType = "comment_reply_author"
 			} else {
 				c.EventType = "comment_reply"
@@ -394,30 +394,35 @@ func (c *commentHandler) CreateNotifications(comment CommentEvent) {
 
 				res, err := redis.Values(conn.Do("LRANGE", key, "0", "49"))
 				if err != nil {
-					log.Printf("Error getting redis key: %v", err)
-					return
-				}
-				if err = redis.ScanSlice(res, &Notifications); err != nil {
-					log.Printf("Error scan redis key: %v", err)
-					return
-				}
-
-				for _, kv := range Notifications {
-					var n CommentNotification
-					if err := json.Unmarshal(kv, &n); err != nil {
-						log.Printf("Error scan redis comment notification: %v", err)
-						break
-					}
-					if n.SubjectID == v.SubjectID && n.ObjectID == v.ObjectID && n.EventType == v.EventType {
-						break
-					}
-
 					msg, err := json.Marshal(v)
 					if err != nil {
 						log.Printf("Error marshaling notification comment event: %v", err)
 					}
 					conn.Send("LPUSH", redis.Args{}.Add(fmt.Sprint(key)).Add(msg)...)
 					conn.Send("LTRIM", redis.Args{}.Add(fmt.Sprint(key)).Add(0).Add(49)...)
+				} else {
+					if err = redis.ScanSlice(res, &Notifications); err != nil {
+						log.Printf("Error scan redis key: %s , %v", key, err)
+						return
+					}
+
+					for _, kv := range Notifications {
+						var n CommentNotification
+						if err := json.Unmarshal(kv, &n); err != nil {
+							log.Printf("Error scan redis comment notification: %s , %v", kv, err)
+							break
+						}
+						if n.SubjectID == v.SubjectID && n.ObjectID == v.ObjectID && n.EventType == v.EventType {
+							break
+						}
+
+						msg, err := json.Marshal(v)
+						if err != nil {
+							log.Printf("Error marshaling notification comment event: %v", err)
+						}
+						conn.Send("LPUSH", redis.Args{}.Add(fmt.Sprint(key)).Add(msg)...)
+						conn.Send("LTRIM", redis.Args{}.Add(fmt.Sprint(key)).Add(0).Add(49)...)
+					}
 				}
 			}
 		}
@@ -439,11 +444,11 @@ func (c *commentHandler) ReadNotifications(arg UpdateNotificationArgs) error {
 
 	res, err := redis.Values(conn.Do("LRANGE", key, "0", "49"))
 	if err != nil {
-		log.Printf("Error getting redis key: %v", err)
+		log.Printf("Error getting redis key: %s , %v", key, err)
 		return err
 	}
 	if err = redis.ScanSlice(res, &CommentNotifications); err != nil {
-		log.Printf("Error scan redis key: %v", err)
+		log.Printf("Error scan redis key: %s , %v", key, err)
 		return err
 	}
 
@@ -456,7 +461,7 @@ func (c *commentHandler) ReadNotifications(arg UpdateNotificationArgs) error {
 			}
 			var cn CommentNotification
 			if err := json.Unmarshal(CommentNotifications[index], &cn); err != nil {
-				log.Printf("Error scan redis comment notification: %v", err)
+				log.Printf("Error scan redis comment notification: %s , %v", CommentNotifications[index], err)
 				continue
 			}
 			cn.Read = true
@@ -471,7 +476,8 @@ func (c *commentHandler) ReadNotifications(arg UpdateNotificationArgs) error {
 		for k, v := range CommentNotifications {
 			var cn CommentNotification
 			if err := json.Unmarshal(v, &cn); err != nil {
-				log.Printf("Error scan redis comment notification: %v", err)
+
+				log.Printf("Error scan redis comment notification: %s , %v", v, err)
 				continue
 			}
 			cn.Read = true
