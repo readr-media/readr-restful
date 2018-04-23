@@ -247,7 +247,7 @@ func (c *commentHandler) CreateNotifications(comment CommentEvent) {
 		if author.Valid {
 			c := NewCommentNotification()
 			c.EventType = "post_reply"
-			CommentNotifications[author] = c
+			CommentNotifications[author.String] = c
 		}
 
 		if len(commentInfo.Commentors) > 0 {
