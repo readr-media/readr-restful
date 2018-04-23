@@ -62,7 +62,7 @@ type MemberInterface interface {
 	UpdateAll(ids []string, active int) error
 	UpdateMember(m Member) error
 	Count(req *MemberArgs) (result int, err error)
-	GetUUIDsByNickname(key string) (result []NicknameUUID, err error)
+	GetUUIDsByNickname(key string, roles map[string][]int) (result []NicknameUUID, err error)
 }
 
 type NicknameUUID struct {
@@ -298,10 +298,34 @@ func (a *memberAPI) Count(req *MemberArgs) (result int, err error) {
 
 // GetMembersByNickname select nickname and uuid from active members only
 // when their nickname fits certain keyword
-func (a *memberAPI) GetUUIDsByNickname(key string) (result []NicknameUUID, err error) {
-	err = DB.Select(&result, `SELECT uuid, nickname FROM members WHERE active = ? AND nickname LIKE ?`, int(MemberStatus["active"].(float64)), key+"%")
-	if err != nil {
-		return []NicknameUUID{}, err
+func (a *memberAPI) GetUUIDsByNickname(key string, roles map[string][]int) (result []NicknameUUID, err error) {
+	query := `SELECT uuid, nickname FROM members WHERE active = ? AND nickname LIKE ?`
+	if len(roles) != 0 {
+		values := []interface{}{int(MemberStatus["active"].(float64)), key + "%"}
+		log.Println(roles)
+		for k, v := range roles {
+			query = fmt.Sprintf("%s %s", query, fmt.Sprintf(" AND %s %s (?)", "members.role", operatorHelper(k)))
+			values = append(values, v)
+		}
+
+		query, values, err := sqlx.In(query, values...)
+		if err != nil {
+			log.Println(err)
+			return []NicknameUUID{}, err
+		}
+
+		query = DB.Rebind(query)
+
+		log.Println(query, values)
+		err = DB.Select(&result, query, values...)
+		if err != nil {
+			return []NicknameUUID{}, err
+		}
+	} else {
+		err = DB.Select(&result, query, int(MemberStatus["active"].(float64)), key+"%")
+		if err != nil {
+			return []NicknameUUID{}, err
+		}
 	}
 	return result, err
 }
