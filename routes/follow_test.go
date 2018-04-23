@@ -56,7 +56,7 @@ func (a *mockFollowingAPI) GetFollowing(params map[string]string) (followings []
 		return nil, errors.New("Not Found")
 	case params["resource"] == "member":
 		return []interface{}{
-			models.Member{ID: "followtest2@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2012, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"followtest2@mirrormedia.mg", true}, Points: models.NullInt{0, true}},
+			models.Member{MemberID: "followtest2@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2012, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"followtest2@mirrormedia.mg", true}, Points: models.NullInt{0, true}},
 		}, nil
 	case params["resource"] == "post":
 		switch params["resource_type"] {
@@ -170,9 +170,9 @@ func initFollowTest() {
 	mockPostDSBack = mockPostDS
 
 	for _, params := range []models.Member{
-		models.Member{ID: "followtest0@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2010, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"followtest0@mirrormedia.mg", true}, Points: models.NullInt{0, true}, UUID: "abc1d5b1-da54-4200-b58e-f06e59fd8467"},
-		models.Member{ID: "followtest1@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2011, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"followtest1@mirrormedia.mg", true}, Points: models.NullInt{0, true}, UUID: "abc1d5b1-da54-4200-b59e-f06e59fd8467"},
-		models.Member{ID: "followtest2@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2012, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"followtest2@mirrormedia.mg", true}, Points: models.NullInt{0, true}, UUID: "abc1d5b1-da54-4200-b60e-f06e59fd8467"},
+		models.Member{MemberID: "followtest0@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2010, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"followtest0@mirrormedia.mg", true}, Points: models.NullInt{0, true}, UUID: "abc1d5b1-da54-4200-b58e-f06e59fd8467"},
+		models.Member{MemberID: "followtest1@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2011, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"followtest1@mirrormedia.mg", true}, Points: models.NullInt{0, true}, UUID: "abc1d5b1-da54-4200-b59e-f06e59fd8467"},
+		models.Member{MemberID: "followtest2@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2012, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"followtest2@mirrormedia.mg", true}, Points: models.NullInt{0, true}, UUID: "abc1d5b1-da54-4200-b60e-f06e59fd8467"},
 	} {
 		err := models.MemberAPI.InsertMember(params)
 		if err != nil {
