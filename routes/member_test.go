@@ -158,7 +158,7 @@ func (a *mockMemberAPI) Count(req *models.MemberArgs) (result int, err error) {
 	return result, err
 }
 
-func (a *mockMemberAPI) GetUUIDsByNickname(key string) (result []models.NicknameUUID, err error) {
+func (a *mockMemberAPI) GetUUIDsByNickname(key string, roles map[string][]int) (result []models.NicknameUUID, err error) {
 	for _, v := range mockMemberDS {
 		if v.Nickname.Valid {
 			if matched, err := regexp.MatchString(key, v.Nickname.String); err == nil && matched {
@@ -527,6 +527,7 @@ func TestRouteKeyNickname(t *testing.T) {
 		expect ExpectKeyResp
 	}{
 		{"Keyword", `/members/nickname?keyword=read`, ExpectKeyResp{ExpectResp{http.StatusOK, ``}, `{"_items":[{"uuid":"3d6512e8-3e30-11e8-b94b-cfe922eb374f","nickname":"reader"}]}`}},
+		{"KeywordAndRoles", `/members/nickname?keyword=read&roles={"$in":[3,9]}`, ExpectKeyResp{ExpectResp{http.StatusOK, ``}, `{"_items":[{"uuid":"3d6512e8-3e30-11e8-b94b-cfe922eb374f","nickname":"reader"}]}`}},
 		{"InvalidKeyword", `/members/nickname`, ExpectKeyResp{ExpectResp{http.StatusBadRequest, `{"Error":"Invalid keyword"}`}, ``}},
 	}
 	for _, tc := range testCase {

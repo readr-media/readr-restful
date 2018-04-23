@@ -244,6 +244,12 @@ func (c *commentHandler) CreateNotifications(comment CommentEvent) {
 			CommentNotifications[v] = c
 		}
 
+		if author.Valid {
+			c := NewCommentNotification()
+			c.EventType = "post_reply"
+			CommentNotifications[author.String] = c
+		}
+
 		if len(commentInfo.Commentors) > 0 {
 			query, args, err := sqlx.In(`SELECT member_id FROM members WHERE talk_id IN (?);`, commentInfo.Commentors)
 			if err != nil {

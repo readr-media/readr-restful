@@ -334,7 +334,17 @@ func (r *memberHandler) SearchKeyNickname(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid keyword"})
 		return
 	}
-	members, err := models.MemberAPI.GetUUIDsByNickname(keyword)
+	var roles map[string][]int
+
+	if c.Query("roles") != "" {
+		err := json.Unmarshal([]byte(c.Query("roles")), &roles)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid roles"})
+			return
+		}
+	}
+
+	members, err := models.MemberAPI.GetUUIDsByNickname(keyword, roles)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 		return
@@ -352,7 +362,6 @@ func (r *memberHandler) SetRoutes(router *gin.Engine) {
 		memberRouter.DELETE("/:id", r.Delete)
 
 		memberRouter.PUT("/password", r.PutPassword)
-
 	}
 	membersRouter := router.Group("/members")
 	{
