@@ -22,7 +22,7 @@ func initAuthTest() {
 
 	var mockLoginMembers = []models.Member{
 		models.Member{
-			ID:           "logintest1@mirrormedia.mg",
+			MemberID:     "logintest1@mirrormedia.mg",
 			Password:     models.NullString{"hellopassword", true},
 			Role:         models.NullInt{1, true},
 			Active:       models.NullInt{1, true},
@@ -30,7 +30,7 @@ func initAuthTest() {
 			UUID:         "abc1d5b1-da54-4200-b57e-f06e59fd8467",
 		},
 		models.Member{
-			ID:           "logintest2018",
+			MemberID:     "logintest2018",
 			Password:     models.NullString{"1233211234567", true},
 			Role:         models.NullInt{1, true},
 			Active:       models.NullInt{1, true},
@@ -38,7 +38,7 @@ func initAuthTest() {
 			UUID:         "abc1d5b1-da54-4200-b67e-f06e59fd8467",
 		},
 		models.Member{
-			ID:           "logindeactived",
+			MemberID:     "logindeactived",
 			Password:     models.NullString{"88888888", true},
 			Role:         models.NullInt{1, true},
 			Active:       models.NullInt{0, true},
@@ -60,7 +60,7 @@ func initAuthTest() {
 		member.Password = models.NullString{string(hpw), true}
 		err = models.MemberAPI.InsertMember(member)
 		if err != nil {
-			fmt.Errorf("Init test case fail, aborted. Error: %v", err)
+			fmt.Errorf("Init auth test case fail, aborted. Error: %v", err)
 			return
 		}
 	}
@@ -97,8 +97,8 @@ func TestRouteLogin(t *testing.T) {
 		in   LoginCaseIn
 		out  LoginCaseOut
 	}{
-		{"LoginPW", LoginCaseIn{"logintest1@mirrormedia.mg", "hellopassword", "ordinary"}, LoginCaseOut{http.StatusOK, userInfoResponse{models.Member{ID: "logintest1@mirrormedia.mg"}, []string{"ReadPost"}}, ""}},
-		{"LoginFB", LoginCaseIn{"logintest2018", "", "oauth-fb"}, LoginCaseOut{http.StatusOK, userInfoResponse{models.Member{ID: "logintest2018"}, []string{"ReadPost"}}, ""}},
+		{"LoginPW", LoginCaseIn{"logintest1@mirrormedia.mg", "hellopassword", "ordinary"}, LoginCaseOut{http.StatusOK, userInfoResponse{models.Member{MemberID: "logintest1@mirrormedia.mg"}, []string{"ReadPost"}}, ""}},
+		{"LoginFB", LoginCaseIn{"logintest2018", "", "oauth-fb"}, LoginCaseOut{http.StatusOK, userInfoResponse{models.Member{MemberID: "logintest2018"}, []string{"ReadPost"}}, ""}},
 		{"LoginNoID", LoginCaseIn{"", "password", "ordinary"}, LoginCaseOut{http.StatusBadRequest, userInfoResponse{}, `{"Error":"Bad Request"}`}},
 		{"LoginWorngMode1", LoginCaseIn{"", "password", "wrongmode"}, LoginCaseOut{http.StatusBadRequest, userInfoResponse{}, `{"Error":"Bad Request"}`}},
 		{"LoginWrongMode2", LoginCaseIn{"logintest1@mirrormedia.mg", "hellopassword", "oauth-fb"}, LoginCaseOut{http.StatusBadRequest, userInfoResponse{}, `{"Error":"Bad Request"}`}},
@@ -157,7 +157,7 @@ func TestRouteRegister(t *testing.T) {
 	initAuthTest()
 
 	type RegisterCaseIn struct {
-		ID       string `json:"id,omitempty"`
+		MemberID string `json:"member_id,omitempty"`
 		Password string `json:"password,omitempty"`
 		Mail     string `json:"mail,omitempty"`
 		SocialID string `json:"social_id,omitempty"`
@@ -177,55 +177,55 @@ func TestRouteRegister(t *testing.T) {
 		out  RegisterCaseOut
 	}{
 		{"RegisterOK", RegisterCaseIn{
-			ID:       "registertest1@mirrormedia.mg",
+			MemberID: "registertest1@mirrormedia.mg",
 			Password: "mir",
 			Mail:     "registertest1@mirrormedia.mg",
 			Mode:     "ordinary"}, RegisterCaseOut{http.StatusOK, `ok`}},
 		{"RegisterNoPassword", RegisterCaseIn{
-			ID:       "registertest1@mirrormedia.mg",
+			MemberID: "registertest1@mirrormedia.mg",
 			Password: "",
 			Mail:     "logintest1@mirrormedia.mg",
 			Mode:     "ordinary"}, RegisterCaseOut{http.StatusBadRequest, `{"Error":"Bad Request"}`}},
 		{"RegisterNoMail", RegisterCaseIn{
-			ID:       "registertest1@mirrormedia.mg",
+			MemberID: "registertest1@mirrormedia.mg",
 			Password: "mir",
 			Mail:     "",
 			Mode:     "ordinary"}, RegisterCaseOut{http.StatusBadRequest, `{"Error":"Bad Request"}`}},
 		{"RegisterNoMode", RegisterCaseIn{
-			ID:       "registertest1@mirrormedia.mg",
+			MemberID: "registertest1@mirrormedia.mg",
 			Password: "mirr",
 			Mail:     "logintest1@mirrormedia.mg",
 			Mode:     ""}, RegisterCaseOut{http.StatusBadRequest, `{"Error":"Bad Request"}`}},
 		{"RegisterNoID", RegisterCaseIn{
-			ID:       "",
+			MemberID: "",
 			Password: "mir",
 			Mail:     "logintest1@mirrormedia.mg",
 			Mode:     "ordinary"}, RegisterCaseOut{http.StatusBadRequest, `{"Error":"Bad Request"}`}},
 		{"RegisterSocialOK", RegisterCaseIn{
-			ID:       "112233445566",
+			MemberID: "112233445566",
 			Password: "mir",
 			Mail:     "logintest1@mirrormedia.mg",
 			Mode:     "oauth-fb",
 			SocialID: "112233445566"}, RegisterCaseOut{http.StatusOK, `ok`}},
 		{"RegisterNoSocialID", RegisterCaseIn{
-			ID:       "112233445566",
+			MemberID: "112233445566",
 			Password: "mir",
 			Mail:     "logintest1@mirrormedia.mg",
 			Mode:     "oauth-fb",
 			SocialID: ""}, RegisterCaseOut{http.StatusBadRequest, `{"Error":"Bad Request"}`}},
 		{"RegisterWrongSocialID", RegisterCaseIn{
-			ID:       "112233445566",
+			MemberID: "112233445566",
 			Password: "mir",
 			Mail:     "logintest1@mirrormedia.mg",
 			Mode:     "oauth-fb",
 			SocialID: "112233445567"}, RegisterCaseOut{http.StatusBadRequest, `{"Error":"Bad Request"}`}},
 		{"RegisterUserDupe", RegisterCaseIn{
-			ID:       "logintest2018",
+			MemberID: "logintest2018",
 			Password: "1233211234567",
 			Mail:     "logintest1@mirrormedia.mg",
 			Mode:     "ordinary"}, RegisterCaseOut{http.StatusBadRequest, `{"Error":"User Duplicated"}`}},
 		{"RegisterSocialUserDupe", RegisterCaseIn{
-			ID:       "logintest2018",
+			MemberID: "logintest2018",
 			Password: "1233211234567",
 			Mail:     "logintest1@mirrormedia.mg",
 			Mode:     "ordinary"}, RegisterCaseOut{http.StatusBadRequest, `{"Error":"User Duplicated"}`}},
@@ -259,9 +259,9 @@ func TestRouteRegister(t *testing.T) {
 		json.Unmarshal([]byte(w.Body.String()), &resp)
 
 		if w.Code == http.StatusOK {
-			member, _ := models.MemberAPI.GetMember("member_id", testcase.in.ID)
-			if testcase.in.ID != member.ID {
-				t.Errorf("Expect get user id %s but get %d, testcase %s", testcase.in.ID, member.ID, testcase.name)
+			member, _ := models.MemberAPI.GetMember("member_id", testcase.in.MemberID)
+			if testcase.in.MemberID != member.MemberID {
+				t.Errorf("Expect get user id %s but get %d, testcase %s", testcase.in.MemberID, member.MemberID, testcase.name)
 				t.Fail()
 			}
 		}

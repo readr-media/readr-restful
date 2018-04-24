@@ -7,10 +7,12 @@ import (
 	"strings"
 
 	"database/sql"
+
 	"github.com/go-sql-driver/mysql"
 )
 
 type Permission struct {
+	ID         uint32     `json:"id" db:"id"`
 	Role       int        `json:"role" db:"role"`
 	Object     NullString `json:"object" db:"object"`
 	Permission NullInt    `json:"permission" db:"permission"`
