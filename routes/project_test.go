@@ -15,6 +15,10 @@ var mockProjectDS = []models.Project{}
 
 type mockProjectAPI struct{}
 
+func (a *mockProjectAPI) CountProjects(arg models.GetProjectArgs) (result int, err error) {
+	return 5, err
+}
+
 func (a *mockProjectAPI) GetProject(p models.Project) (result models.Project, err error) {
 	if p.ID == 32768 {
 		return models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}}, err
@@ -24,10 +28,16 @@ func (a *mockProjectAPI) GetProject(p models.Project) (result models.Project, er
 }
 
 func (a *mockProjectAPI) GetProjects(args models.GetProjectArgs) (result []models.Project, err error) {
-	if args.Keyword == "%no%" {
+	if args.Keyword == "no" {
 		return []models.Project{
-			models.Project{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{50470, true}, Description: models.NullString{"id not provided", true}},
 			models.Project{ID: 32234, Title: models.NullString{"nonActive", true}, Active: models.NullInt{0, true}, Order: models.NullInt{60, true}},
+		}, nil
+	}
+	if args.Keyword == "327" {
+		return []models.Project{
+			models.Project{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}, Order: models.NullInt{99999, true}},
+			models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}},
+			models.Project{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{50470, true}, Description: models.NullString{"id not provided", true}},
 		}, nil
 	}
 	if args.Sorting == "project_id" {
@@ -245,10 +255,15 @@ func TestRouteProjects(t *testing.T) {
 				models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}},
 				models.Project{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{50470, true}, Description: models.NullString{"id not provided", true}},
 			}},
-			genericTestcase{"GetProjectWithSearchKey", "GET", `/project/list?keyword=no&active={"$in":[0,1]}`, ``, http.StatusOK, []models.Project{
-				models.Project{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{50470, true}, Description: models.NullString{"id not provided", true}},
+			genericTestcase{"GetProjectKeywordMatchTitle", "GET", `/project/list?keyword=no&active={"$in":[0,1]}`, ``, http.StatusOK, []models.Project{
 				models.Project{ID: 32234, Title: models.NullString{"nonActive", true}, Active: models.NullInt{0, true}, Order: models.NullInt{60, true}},
 			}},
+			genericTestcase{"GetProjectKeywordMatchID", "GET", `/project/list?keyword=327`, ``, http.StatusOK, []models.Project{
+				models.Project{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}, Order: models.NullInt{99999, true}},
+				models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}},
+				models.Project{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{50470, true}, Description: models.NullString{"id not provided", true}},
+			}},
+			genericTestcase{"GetProjectCount", "GET", `/project/count`, ``, http.StatusOK, `{"_meta":{"total":5}}`},
 		}
 		for _, tc := range testcases {
 			genericDoTest(tc, t, asserter)
