@@ -147,7 +147,7 @@ var mockMemberDSBack []models.Member
 
 var mockMemberDS = []models.Member{
 	models.Member{
-		MemberID:     "superman@mirrormedia.mg",
+		ID:           "superman@mirrormedia.mg",
 		UUID:         "3d64e480-3e30-11e8-b94b-cfe922eb374f",
 		Nickname:     models.NullString{String: "readr", Valid: true},
 		Active:       models.NullInt{Int: 1, Valid: true},
@@ -157,7 +157,7 @@ var mockMemberDS = []models.Member{
 		Role:         models.NullInt{Int: 9, Valid: true},
 	},
 	models.Member{
-		MemberID:  "test6743",
+		ID:        "test6743",
 		UUID:      "3d651126-3e30-11e8-b94b-cfe922eb374f",
 		Nickname:  models.NullString{String: "yeahyeahyeah", Valid: true},
 		Active:    models.NullInt{Int: 0, Valid: true},
@@ -167,7 +167,7 @@ var mockMemberDS = []models.Member{
 		Role:      models.NullInt{Int: 3, Valid: true},
 	},
 	models.Member{
-		MemberID:  "Barney.Corwin@hotmail.com",
+		ID:        "Barney.Corwin@hotmail.com",
 		UUID:      "3d6512e8-3e30-11e8-b94b-cfe922eb374f",
 		Nickname:  models.NullString{String: "reader", Valid: true},
 		Active:    models.NullInt{Int: -1, Valid: true},
