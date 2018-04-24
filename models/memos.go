@@ -2,7 +2,6 @@ package models
 
 import (
 	"database/sql"
-	//"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -13,6 +12,7 @@ import (
 )
 
 var MemoStatus map[string]interface{}
+var MemoPublishStatus map[string]interface{}
 
 type Memo struct {
 	ID            int        `json:"id" db:"memo_id"`
@@ -27,6 +27,8 @@ type Memo struct {
 	UpdatedAt     NullTime   `json:"updated_at" db:"updated_at"`
 	UpdatedBy     NullString `json:"updated_by" db:"updated_by"`
 	PublishedAt   NullTime   `json:"published_at" db:"published_at"`
+	PublishStatus NullInt    `json:"publish_status" db:"publish_status"`
+	Order         NullInt    `json:"memo_order" db:"memo_order"`
 }
 
 type MemoInterface interface {
@@ -39,12 +41,13 @@ type MemoInterface interface {
 }
 
 type MemoGetArgs struct {
-	MaxResult int              `form:"max_result"`
-	Page      int              `form:"page"`
-	Sorting   string           `form:"sort"`
-	Author    []string         `form:"author"`
-	Project   []int            `form:"project_id"`
-	Active    map[string][]int `form:"active"`
+	MaxResult     int              `form:"max_result"`
+	Page          int              `form:"page"`
+	Sorting       string           `form:"sort"`
+	Author        []string         `form:"author"`
+	Project       []int            `form:"project_id"`
+	Active        map[string][]int `form:"active"`
+	PublishStatus map[string][]int `form:"publish_status"`
 }
 
 func (p *MemoGetArgs) Default() (result *MemoGetArgs) {
@@ -54,7 +57,7 @@ func (p *MemoGetArgs) DefaultActive() {
 	p.Active = map[string][]int{"$nin": []int{int(MemoStatus["deactive"].(float64))}}
 }
 func (p *MemoGetArgs) Validate() bool {
-	if matched, err := regexp.MatchString("-?(updated_at|created_at|published_at|memo_id|author|project_id)", p.Sorting); err != nil || !matched {
+	if matched, err := regexp.MatchString("-?(updated_at|created_at|published_at|memo_id|author|project_id|memo_order)", p.Sorting); err != nil || !matched {
 		return false
 	}
 	return true
@@ -62,7 +65,7 @@ func (p *MemoGetArgs) Validate() bool {
 func (p *MemoGetArgs) parse() (restricts string, values []interface{}) {
 	where := make([]string, 0)
 
-	if p.Active == nil && len(p.Author) == 0 && len(p.Project) == 0 {
+	if p.PublishStatus == nil && p.Active == nil && len(p.Author) == 0 && len(p.Project) == 0 {
 		return "", nil
 	}
 
@@ -72,10 +75,17 @@ func (p *MemoGetArgs) parse() (restricts string, values []interface{}) {
 			values = append(values, v)
 		}
 	}
+
+	if p.PublishStatus != nil {
+		for k, v := range p.PublishStatus {
+			where = append(where, fmt.Sprintf("%s %s (?)", "publish_status", operatorHelper(k)))
+			values = append(values, v)
+		}
+	}
+
 	if len(p.Author) > 0 {
 		where = append(where, fmt.Sprintf("%s IN (?)", "author"))
 		values = append(values, p.Author)
-		log.Println(p.Author)
 	}
 	if len(p.Project) > 0 {
 		where = append(where, fmt.Sprintf("%s IN (?)", "project_id"))
@@ -138,7 +148,6 @@ func (m *memoAPI) CountMemos(args *MemoGetArgs) (result int, err error) {
 	}
 	query = DB.Rebind(query)
 	count, err := DB.Queryx(query, sqlArgs...)
-	fmt.Println(query, sqlArgs)
 	if err != nil {
 		return 0, err
 	}
@@ -157,7 +166,7 @@ func (m *memoAPI) GetMemo(id int) (memo Memo, err error) {
 		log.Println(err.Error())
 		switch {
 		case err == sql.ErrNoRows:
-			err = errors.New("Post Not Found")
+			err = errors.New("Not Found")
 			return Memo{}, err
 		case err != nil:
 			log.Fatal(err)
@@ -204,7 +213,6 @@ func (m *memoAPI) InsertMemo(memo Memo) (err error) {
 	query := fmt.Sprintf(`INSERT INTO memos (%s) VALUES (:%s)`,
 		strings.Join(tags, ","), strings.Join(tags, ",:"))
 
-	//log.Println(query)
 	result, err := DB.NamedExec(query, memo)
 	if err != nil {
 		if strings.Contains(err.Error(), "Duplicate entry") {
@@ -240,7 +248,7 @@ func (m *memoAPI) UpdateMemo(memo Memo) (err error) {
 	if rowCnt > 1 {
 		return errors.New("More Than One Rows Affected")
 	} else if rowCnt == 0 {
-		return errors.New("Post Not Found")
+		return errors.New("Not Found")
 	}
 
 	return err

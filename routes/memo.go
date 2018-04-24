@@ -2,7 +2,6 @@ package routes
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -18,10 +17,18 @@ func (r *memoHandler) bindQuery(c *gin.Context, args *models.MemoGetArgs) (err e
 
 	if c.Query("active") != "" && args.Active == nil {
 		if err = json.Unmarshal([]byte(c.Query("active")), &args.Active); err != nil {
-			log.Println("active")
 			return err
 		} else if err == nil {
 			if err = models.ValidateActive(args.Active, models.MemoStatus); err != nil {
+				return err
+			}
+		}
+	}
+	if c.Query("publish_status") != "" {
+		if err = json.Unmarshal([]byte(c.Query("publish_status")), &args.PublishStatus); err != nil {
+			return err
+		} else if err == nil {
+			if err = models.ValidateActive(args.PublishStatus, models.MemoPublishStatus); err != nil {
 				return err
 			}
 		}
@@ -90,10 +97,6 @@ func (r *memoHandler) Post(c *gin.Context) {
 		return
 	}
 
-	if !memo.Author.Valid {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Author"})
-		return
-	}
 	if !memo.Project.Valid {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Project"})
 		return
@@ -106,18 +109,22 @@ func (r *memoHandler) Post(c *gin.Context) {
 		memo.Active.Int = int64(models.MemoStatus["pending"].(float64))
 		memo.Active.Valid = true
 	}
+	if !memo.PublishStatus.Valid {
+		memo.PublishStatus.Int = int64(models.MemoPublishStatus["draft"].(float64))
+		memo.PublishStatus.Valid = true
+	}
 	if !memo.UpdatedBy.Valid {
 		if memo.Author.Valid {
 			memo.UpdatedBy = models.NullString{String: memo.Author.String, Valid: true}
 		} else {
-			c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Updater"})
+			c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Updator"})
 		}
 	}
 	err = models.MemoAPI.InsertMemo(memo)
 	if err != nil {
 		switch err.Error() {
 		case "Duplicate entry":
-			c.JSON(http.StatusBadRequest, gin.H{"Error": "Post ID Already Taken"})
+			c.JSON(http.StatusBadRequest, gin.H{"Error": "Memo ID Already Taken"})
 			return
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
@@ -137,6 +144,41 @@ func (r *memoHandler) Put(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
+	if memo.PublishStatus.Valid {
+		result, err := models.MemoAPI.GetMemo(memo.ID)
+		if err != nil {
+			switch err.Error() {
+			case "Not Found":
+				c.JSON(http.StatusNotFound, gin.H{"Error": "Not Found"})
+				return
+			default:
+				c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+				return
+			}
+		}
+
+		switch memo.PublishStatus.Int {
+		case 2:
+			if !memo.PublishedAt.Valid && !result.PublishedAt.Valid {
+				c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Publish Time"})
+				return
+			}
+			fallthrough
+		case 3:
+			if !memo.Title.Valid && !result.Title.Valid {
+				c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Memo Title"})
+				return
+			}
+			if !memo.Content.Valid && !result.Content.Valid {
+				c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Memo Content"})
+				return
+			}
+			if !memo.PublishedAt.Valid {
+				memo.PublishedAt = models.NullTime{Time: time.Now(), Valid: true}
+			}
+			break
+		}
+	}
 
 	if memo.CreatedAt.Valid {
 		memo.CreatedAt.Valid = false
@@ -145,9 +187,11 @@ func (r *memoHandler) Put(c *gin.Context) {
 
 	switch {
 	case memo.UpdatedBy.Valid:
+		break
 	case memo.Author.Valid:
 		memo.UpdatedBy.String = memo.Author.String
 		memo.UpdatedBy.Valid = true
+		break
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Neither updated_by or author is valid"})
 		return
@@ -166,10 +210,28 @@ func (r *memoHandler) Put(c *gin.Context) {
 	}
 	c.Status(http.StatusOK)
 }
+
+func (r *memoHandler) Delete(c *gin.Context) {
+
+	id, _ := strconv.Atoi(c.Param("id"))
+	err := models.MemoAPI.UpdateMemo(models.Memo{ID: id, Active: models.NullInt{0, true}})
+
+	if err != nil {
+		switch err.Error() {
+		case "Not Found":
+			c.JSON(http.StatusNotFound, gin.H{"Error": "Not Found"})
+			return
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+			return
+		}
+	}
+	c.Status(http.StatusOK)
+}
+
 func (r *memoHandler) DeleteMany(c *gin.Context) {
 
 	params := models.MemoUpdateArgs{}
-	// Bind params. If err return 400
 	err := c.ShouldBindJSON(&params)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
@@ -180,42 +242,14 @@ func (r *memoHandler) DeleteMany(c *gin.Context) {
 		return
 	}
 
-	params.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
-	params.Active = models.NullInt{Int: int64(models.PostStatus["deactive"].(float64)), Valid: true}
-
-	err = models.MemoAPI.UpdateMemos(params)
-	if err != nil {
-		switch err.Error() {
-		case "Posts Not Found":
-			c.JSON(http.StatusNotFound, gin.H{"Error": "Posts Not Found"})
-			return
-		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
-			return
-		}
-	}
-	c.Status(http.StatusOK)
-}
-
-func (r *memoHandler) PublishMany(c *gin.Context) {
-	params := models.MemoUpdateArgs{}
-
-	err := c.ShouldBindJSON(&params)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
-		return
-	}
-	if params.IDs == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": "Empty Memo ID"})
-		return
-	}
 	if params.UpdatedBy == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Updater Not Specified"})
 		return
 	}
+
 	params.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
-	params.PublishedAt = models.NullTime{Time: time.Now(), Valid: true}
-	params.Active = models.NullInt{Int: int64(models.MemoStatus["active"].(float64)), Valid: true}
+	params.Active = models.NullInt{Int: int64(models.PostStatus["deactive"].(float64)), Valid: true}
+
 	err = models.MemoAPI.UpdateMemos(params)
 	if err != nil {
 		switch err.Error() {
@@ -253,14 +287,13 @@ func (r *memoHandler) SetRoutes(router *gin.Engine) {
 		memoRouter.GET("/:id", r.Get)
 		memoRouter.POST("", r.Post)
 		memoRouter.PUT("", r.Put)
+		memoRouter.DELETE("/:id", r.Delete)
 	}
 	memosRouter := router.Group("/memos")
 	{
 		memosRouter.GET("", r.GetMany)
 		memosRouter.GET("/count", r.Count)
-
 		memosRouter.DELETE("", r.DeleteMany)
-		memosRouter.PUT("", r.PublishMany)
 	}
 }
 

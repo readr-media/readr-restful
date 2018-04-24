@@ -44,7 +44,7 @@ func (m *mockMemoAPI) GetMemos(args *models.MemoGetArgs) (memos []models.Memo, e
 		}, nil
 	case len(args.Author) > 0 && len(args.Project) == 0:
 		return []models.Memo{
-			models.Memo{ID: 5, Title: models.NullString{"MemoTest2", true}, Author: models.NullString{"EMII", true}, Project: models.NullInt{421, true}, Active: models.NullInt{2, true}},
+			models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullString{"EMII", true}, Project: models.NullInt{421, true}, Active: models.NullInt{2, true}},
 			models.Memo{ID: 2, Title: models.NullString{"MemoTestDefault2", true}, Author: models.NullString{"EMV", true}, Project: models.NullInt{420, true}, Active: models.NullInt{2, true}},
 			models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullString{"EMV", true}, Project: models.NullInt{422, true}, Active: models.NullInt{2, true}},
 		}, nil
@@ -59,7 +59,7 @@ func (m *mockMemoAPI) GetMemos(args *models.MemoGetArgs) (memos []models.Memo, e
 			models.Memo{ID: 2, Title: models.NullString{"MemoTestDefault2", true}, Author: models.NullString{"EMV", true}, Project: models.NullInt{420, true}, Active: models.NullInt{2, true}},
 			models.Memo{ID: 3, Title: models.NullString{"MemoTestDefault3", true}, Author: models.NullString{"EMI", true}, Project: models.NullInt{422, true}, Active: models.NullInt{2, true}},
 			models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullString{"EMV", true}, Project: models.NullInt{422, true}, Active: models.NullInt{2, true}},
-			models.Memo{ID: 5, Title: models.NullString{"MemoTest2", true}, Author: models.NullString{"EMII", true}, Project: models.NullInt{421, true}, Active: models.NullInt{2, true}},
+			models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullString{"EMII", true}, Project: models.NullInt{421, true}, Active: models.NullInt{2, true}},
 			models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullString{"EMI", true}, Project: models.NullInt{420, true}, Active: models.NullInt{2, true}},
 		}, nil
 	case args.Page == 2:
@@ -68,11 +68,11 @@ func (m *mockMemoAPI) GetMemos(args *models.MemoGetArgs) (memos []models.Memo, e
 		}, nil
 	case args.MaxResult == 1:
 		return []models.Memo{
-			models.Memo{ID: 5, Title: models.NullString{"MemoTest2", true}, Author: models.NullString{"EMII", true}, Project: models.NullInt{421, true}, Active: models.NullInt{2, true}},
+			models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullString{"EMII", true}, Project: models.NullInt{421, true}, Active: models.NullInt{2, true}},
 		}, nil
 	default:
 		return []models.Memo{
-			models.Memo{ID: 5, Title: models.NullString{"MemoTest2", true}, Author: models.NullString{"EMII", true}, Project: models.NullInt{421, true}, Active: models.NullInt{2, true}},
+			models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullString{"EMII", true}, Project: models.NullInt{421, true}, Active: models.NullInt{2, true}},
 			models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullString{"EMI", true}, Project: models.NullInt{420, true}, Active: models.NullInt{2, true}},
 			models.Memo{ID: 1, Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullString{"EMI", true}, Project: models.NullInt{420, true}, Active: models.NullInt{2, true}},
 			models.Memo{ID: 2, Title: models.NullString{"MemoTestDefault2", true}, Author: models.NullString{"EMV", true}, Project: models.NullInt{420, true}, Active: models.NullInt{2, true}},
@@ -115,7 +115,7 @@ func TestRouteMemos(t *testing.T) {
 	} {
 		err := models.MemoAPI.InsertMemo(memo)
 		if err != nil {
-			log.Printf("Init tag test fail %s", err.Error())
+			log.Printf("Init memo test fail %s", err.Error())
 		}
 	}
 
@@ -133,30 +133,29 @@ func TestRouteMemos(t *testing.T) {
 		}
 
 		if len(Response.Items) != len(expected) {
-			t.Errorf("%s expect tag length to be %v but get %v", tc.name, len(expected), len(Response.Items))
+			t.Errorf("%s expect memo length to be %v but get %v", tc.name, len(expected), len(Response.Items))
 		}
 
-		for i, resptag := range Response.Items {
-			exptag := expected[i]
-			if resptag.ID == exptag.ID &&
-				resptag.Title == exptag.Title &&
-				resptag.Active == exptag.Active &&
-				resptag.Author == exptag.Author &&
-				resptag.Project == exptag.Project {
+		for i, respmemo := range Response.Items {
+			expmemo := expected[i]
+			if respmemo.ID == expmemo.ID &&
+				respmemo.Title == expmemo.Title &&
+				respmemo.Active == expmemo.Active &&
+				respmemo.Author == expmemo.Author &&
+				respmemo.Project == expmemo.Project {
 				continue
 			}
 
-			t.Errorf("%s, expect to get %v, but %v ", tc.name, exptag, resptag)
+			t.Errorf("%s, expect to get %v, but %v ", tc.name, expmemo, respmemo)
 		}
 	}
 
 	t.Run("InsertMemo", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"InsertMemoOK", "POST", "/memo", `{"title":"MemoTest2","author":"EMII", "project_id":421}`, http.StatusOK, ``},
+			genericTestcase{"InsertMemoOK", "POST", "/memo", `{"id":100,"title":"MemoTest2","content":"MemoTest2","author":"EMII", "project_id":421}`, http.StatusOK, ``},
 			genericTestcase{"InsertMemoOK", "POST", "/memo", `{"id":101,"title":"MemoTest1","author":"EMI", "project_id":420}`, http.StatusOK, ``},
-			genericTestcase{"InsertMemoDupe", "POST", "/memo", `{"id":101,"title":"MemoTest1","author":"EMI", "project_id":420}`, http.StatusBadRequest, `{"Error":"Post ID Already Taken"}`},
-			genericTestcase{"InsertMemoNoAuthor", "POST", "/memo", `{"id":102,"title":"MemoTest2"}`, http.StatusBadRequest, `{"Error":"Invalid Author"}`},
-			genericTestcase{"InsertMemoNoProject", "POST", "/memo", `{"id":101,"title":"MemoTest1","author":"EMI"}`, http.StatusBadRequest, `{"Error":"Invalid Project"}`},
+			genericTestcase{"InsertMemoDupe", "POST", "/memo", `{"id":101,"title":"MemoTest1","author":"EMI", "project_id":420}`, http.StatusBadRequest, `{"Error":"Memo ID Already Taken"}`},
+			genericTestcase{"InsertMemoNoProject", "POST", "/memo", `{"title":"MemoTest1","author":"EMI"}`, http.StatusBadRequest, `{"Error":"Invalid Project"}`},
 		} {
 			genericDoTest(testcase, t, asserter)
 		}
@@ -165,6 +164,9 @@ func TestRouteMemos(t *testing.T) {
 		for _, testcase := range []genericTestcase{
 			genericTestcase{"PutMemoOK", "PUT", "/memo", `{"id":101,"title":"MemoTestMod","updated_by":"EMI"}`, http.StatusOK, ``},
 			genericTestcase{"PutMemoUTF8", "PUT", "/memo", `{"id":101,"title":"順便測中文","updated_by":"EMIII"}`, http.StatusOK, ``},
+			genericTestcase{"PutMemoScheduleNoTime", "PUT", "/memo", `{"id":100,"updated_by":"EMI","publish_status":2}`, http.StatusBadRequest, `{"Error":"Invalid Publish Time"}`},
+			genericTestcase{"PutMemoSchedule", "PUT", "/memo", `{"id":100,"updated_by":"EMI","publish_status":2,"published_at":"2046-01-05T00:42:42+00:00"}`, http.StatusOK, ``}, //published_at is time string in RFC3339 format
+			genericTestcase{"PutMemoPublishNoContent", "PUT", "/memo", `{"id":101,"updated_by":"EMI","publish_status":3}`, http.StatusBadRequest, `{"Error":"Invalid Memo Content"}`},
 			genericTestcase{"PutMemoNoUpdater", "PUT", "/memo", `{"id":101,"title":"NoUpdater"}`, http.StatusBadRequest, `{"Error":"Neither updated_by or author is valid"}`},
 		} {
 			genericDoTest(testcase, t, asserter)
@@ -172,7 +174,7 @@ func TestRouteMemos(t *testing.T) {
 	})
 	t.Run("GetMemo", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"GetMemoOK", "GET", "/memo/1", ``, http.StatusOK, `{"_items":{"id":1,"created_at":null,"comment_amount":null,"title":"MemoTestDefault1","content":null,"link":null,"author":"EMI","project_id":420,"active":2,"updated_at":null,"updated_by":null,"published_at":null}}`},
+			genericTestcase{"GetMemoOK", "GET", "/memo/1", ``, http.StatusOK, `{"_items":{"id":1,"created_at":null,"comment_amount":null,"title":"MemoTestDefault1","content":null,"link":null,"author":"EMI","project_id":420,"active":2,"updated_at":null,"updated_by":null,"published_at":null,"publish_status":null,"memo_order":null}}`},
 		} {
 			genericDoTest(testcase, t, asserter)
 		}
@@ -180,7 +182,7 @@ func TestRouteMemos(t *testing.T) {
 	t.Run("GetMemos", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
 			genericTestcase{"GetMemoDefaultOK", "GET", "/memos", ``, http.StatusOK, []models.Memo{
-				models.Memo{ID: 5, Title: models.NullString{"MemoTest2", true}, Author: models.NullString{"EMII", true}, Project: models.NullInt{421, true}, Active: models.NullInt{2, true}},
+				models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullString{"EMII", true}, Project: models.NullInt{421, true}, Active: models.NullInt{2, true}},
 				models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullString{"EMI", true}, Project: models.NullInt{420, true}, Active: models.NullInt{2, true}},
 				models.Memo{ID: 1, Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullString{"EMI", true}, Project: models.NullInt{420, true}, Active: models.NullInt{2, true}},
 				models.Memo{ID: 2, Title: models.NullString{"MemoTestDefault2", true}, Author: models.NullString{"EMV", true}, Project: models.NullInt{420, true}, Active: models.NullInt{2, true}},
@@ -188,7 +190,7 @@ func TestRouteMemos(t *testing.T) {
 				models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullString{"EMV", true}, Project: models.NullInt{422, true}, Active: models.NullInt{2, true}},
 			}},
 			genericTestcase{"GetMemoMaxresultOK", "GET", "/memos?max_result=1", ``, http.StatusOK, []models.Memo{
-				models.Memo{ID: 5, Title: models.NullString{"MemoTest2", true}, Author: models.NullString{"EMII", true}, Project: models.NullInt{421, true}, Active: models.NullInt{2, true}},
+				models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullString{"EMII", true}, Project: models.NullInt{421, true}, Active: models.NullInt{2, true}},
 			}},
 			genericTestcase{"GetMemoMaxresultOK", "GET", "/memos?max_result=1&page=2", ``, http.StatusOK, []models.Memo{
 				models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullString{"EMI", true}, Project: models.NullInt{420, true}, Active: models.NullInt{2, true}},
@@ -198,12 +200,12 @@ func TestRouteMemos(t *testing.T) {
 				models.Memo{ID: 2, Title: models.NullString{"MemoTestDefault2", true}, Author: models.NullString{"EMV", true}, Project: models.NullInt{420, true}, Active: models.NullInt{2, true}},
 				models.Memo{ID: 3, Title: models.NullString{"MemoTestDefault3", true}, Author: models.NullString{"EMI", true}, Project: models.NullInt{422, true}, Active: models.NullInt{2, true}},
 				models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullString{"EMV", true}, Project: models.NullInt{422, true}, Active: models.NullInt{2, true}},
-				models.Memo{ID: 5, Title: models.NullString{"MemoTest2", true}, Author: models.NullString{"EMII", true}, Project: models.NullInt{421, true}, Active: models.NullInt{2, true}},
+				models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullString{"EMII", true}, Project: models.NullInt{421, true}, Active: models.NullInt{2, true}},
 				models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullString{"EMI", true}, Project: models.NullInt{420, true}, Active: models.NullInt{2, true}},
 			}},
 			genericTestcase{"GetMemoSortInvalidOption", "GET", "/memos?sort=meow", ``, http.StatusBadRequest, `{"Error":"Invalid Parameters"}`},
 			genericTestcase{"GetMemoFilterAuthor", "GET", `/memos?author=["EMV","EMII"]`, ``, http.StatusOK, []models.Memo{
-				models.Memo{ID: 5, Title: models.NullString{"MemoTest2", true}, Author: models.NullString{"EMII", true}, Project: models.NullInt{421, true}, Active: models.NullInt{2, true}},
+				models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullString{"EMII", true}, Project: models.NullInt{421, true}, Active: models.NullInt{2, true}},
 				models.Memo{ID: 2, Title: models.NullString{"MemoTestDefault2", true}, Author: models.NullString{"EMV", true}, Project: models.NullInt{420, true}, Active: models.NullInt{2, true}},
 				models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullString{"EMV", true}, Project: models.NullInt{422, true}, Active: models.NullInt{2, true}},
 			}},
@@ -228,20 +230,12 @@ func TestRouteMemos(t *testing.T) {
 			genericDoTest(testcase, t, asserter)
 		}
 	})
-	t.Run("PublishMemo", func(t *testing.T) {
-		for _, testcase := range []genericTestcase{
-			genericTestcase{"PublishMemoOK", "PUT", "/memos", `{"ids":[1,2,3],"updated_by":"EMI"}`, http.StatusOK, ``},
-			genericTestcase{"PublishMemoNoUpdater", "PUT", "/memos", `{"ids":[1,2,3]}`, http.StatusBadRequest, `{"Error":"Updater Not Specified"}`},
-			genericTestcase{"PublishMemoNoID", "PUT", "/memos", `{"updated_by":"EMI"}`, http.StatusBadRequest, `{"Error":"Empty Memo ID"}`},
-		} {
-			genericDoTest(testcase, t, asserter)
-		}
-	})
 	t.Run("DeleteMemo", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"DeleteMemoOK", "DELETE", "/memos", `{"ids":[1,2,3],"updated_by":"EMI"}`, http.StatusOK, ``},
-			genericTestcase{"DeleteMemoNoUpdater", "PUT", "/memos", `{"ids":[1,2,3]}`, http.StatusBadRequest, `{"Error":"Updater Not Specified"}`},
-			genericTestcase{"DeleteMemoNoID", "PUT", "/memos", `{"updated_by":"EMI"}`, http.StatusBadRequest, `{"Error":"Empty Memo ID"}`},
+			genericTestcase{"DeleteMemoOK", "DELETE", "/memo/1", ``, http.StatusOK, ``},
+			genericTestcase{"DeleteMemoOK", "DELETE", "/memos", `{"ids":[2,3],"updated_by":"EMI"}`, http.StatusOK, ``},
+			genericTestcase{"DeleteMemoNoUpdater", "DELETE", "/memos", `{"ids":[1,2,3]}`, http.StatusBadRequest, `{"Error":"Updater Not Specified"}`},
+			genericTestcase{"DeleteMemoNoID", "DELETE", "/memos", `{"updated_by":"EMI"}`, http.StatusBadRequest, `{"Error":"ID List Empty"}`},
 		} {
 			genericDoTest(testcase, t, asserter)
 		}
