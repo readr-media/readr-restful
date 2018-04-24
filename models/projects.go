@@ -39,6 +39,7 @@ type Project struct {
 type projectAPI struct{}
 
 type ProjectAPIInterface interface {
+	CountProjects(args GetProjectArgs) (int, error)
 	DeleteProjects(p Project) error
 	GetProject(p Project) (Project, error)
 	GetProjects(args GetProjectArgs) ([]Project, error)
@@ -102,7 +103,8 @@ func (p *GetProjectArgs) parse() (restricts string, values []interface{}) {
 		values = append(values, p.Slugs)
 	}
 	if p.Keyword != "" {
-		where = append(where, "(projects.title LIKE ? OR projects.description LIKE ?)")
+		p.Keyword = fmt.Sprintf("%s%s%s", "%", p.Keyword, "%")
+		where = append(where, "(projects.title LIKE ? OR projects.project_id LIKE ?)")
 		values = append(values, p.Keyword, p.Keyword)
 	}
 
@@ -112,6 +114,27 @@ func (p *GetProjectArgs) parse() (restricts string, values []interface{}) {
 		restricts = where[0]
 	}
 	return restricts, values
+}
+
+func (a *projectAPI) CountProjects(arg GetProjectArgs) (result int, err error) {
+	restricts, values := arg.parse()
+	query := fmt.Sprintf(`SELECT COUNT(project_id) FROM projects WHERE %s`, restricts)
+
+	query, args, err := sqlx.In(query, values...)
+	if err != nil {
+		return 0, err
+	}
+	query = DB.Rebind(query)
+	count, err := DB.Queryx(query, args...)
+	if err != nil {
+		return 0, err
+	}
+	for count.Next() {
+		if err = count.Scan(&result); err != nil {
+			return 0, err
+		}
+	}
+	return result, err
 }
 
 func (a *projectAPI) GetProject(p Project) (Project, error) {

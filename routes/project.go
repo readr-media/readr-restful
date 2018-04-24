@@ -74,14 +74,35 @@ func (r *projectHandler) bindQuery(c *gin.Context, args *models.GetProjectArgs) 
 			return err
 		}
 	}
+
 	if c.Query("sort") != "" && r.validateProjectSorting(c.Query("sort")) {
 		args.Sorting = c.Query("sort")
 	}
+
 	if c.Query("keyword") != "" {
-		args.Keyword = "%" + c.Query("keyword") + "%"
+		args.Keyword = c.Query("keyword")
 	}
 
 	return nil
+}
+
+func (r *projectHandler) Count(c *gin.Context) {
+	var args = models.GetProjectArgs{}
+	args.Default()
+	if err := r.bindQuery(c, &args); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
+	}
+	if args.Active == nil {
+		args.DefaultActive()
+	}
+	count, err := models.ProjectAPI.CountProjects(args)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		return
+	}
+	resp := map[string]int{"total": count}
+	c.JSON(http.StatusOK, gin.H{"_meta": resp})
 }
 
 func (r *projectHandler) Get(c *gin.Context) {
@@ -212,6 +233,7 @@ func (r *projectHandler) Delete(c *gin.Context) {
 func (r *projectHandler) SetRoutes(router *gin.Engine) {
 	projectRouter := router.Group("/project")
 	{
+		projectRouter.GET("/count", r.Count)
 		projectRouter.GET("/list", r.Get)
 		projectRouter.POST("", r.Post)
 		projectRouter.PUT("", r.Put)

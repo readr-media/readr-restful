@@ -77,7 +77,7 @@ func (a *mockMemberAPI) GetMember(idType string, id string) (models.Member, erro
 	result := models.Member{}
 	err := errors.New("User Not Found")
 	for _, value := range mockMemberDS {
-		if value.MemberID == id {
+		if value.ID == id {
 			result = value
 			err = nil
 		}
@@ -88,7 +88,7 @@ func (a *mockMemberAPI) GetMember(idType string, id string) (models.Member, erro
 func (a *mockMemberAPI) InsertMember(m models.Member) error {
 	var err error
 	for _, member := range mockMemberDS {
-		if member.MemberID == m.MemberID {
+		if member.ID == m.ID {
 			return errors.New("Duplicate entry")
 		}
 	}
@@ -100,7 +100,7 @@ func (a *mockMemberAPI) UpdateMember(m models.Member) error {
 
 	err := errors.New("User Not Found")
 	for index, member := range mockMemberDS {
-		if member.MemberID == m.MemberID {
+		if member.ID == m.ID {
 			mockMemberDS[index] = m
 			err = nil
 		}
@@ -112,7 +112,7 @@ func (a *mockMemberAPI) DeleteMember(idType string, id string) error {
 
 	err := errors.New("User Not Found")
 	for index, value := range mockMemberDS {
-		if id == value.MemberID {
+		if id == value.ID {
 			mockMemberDS[index].Active = models.NullInt{Int: int64(models.MemberStatus["delete"].(float64)), Valid: true}
 			return nil
 		}
@@ -125,7 +125,7 @@ func (a *mockMemberAPI) UpdateAll(ids []string, active int) (err error) {
 	result := make([]int, 0)
 	for _, value := range ids {
 		for i, v := range mockMemberDS {
-			if v.MemberID == value {
+			if v.ID == value {
 				mockMemberDS[i].Active = models.NullInt{Int: int64(active), Valid: true}
 				result = append(result, i)
 			}
@@ -277,9 +277,9 @@ func TestRoutePostMember(t *testing.T) {
 		payload string
 		expect  ExpectResp
 	}{
-		{"New", `{"member_id":"spaceoddity", "name":"Major Tom"}`, ExpectResp{http.StatusOK, ""}},
+		{"New", `{"id":"spaceoddity", "name":"Major Tom"}`, ExpectResp{http.StatusOK, ""}},
 		{"EmptyPayload", `{}`, ExpectResp{http.StatusBadRequest, `{"Error":"Invalid User"}`}},
-		{"Existed", `{"member_id":"superman@mirrormedia.mg"}`, ExpectResp{http.StatusBadRequest, `{"Error":"User Already Existed"}`}},
+		{"Existed", `{"id":"superman@mirrormedia.mg"}`, ExpectResp{http.StatusBadRequest, `{"Error":"User Already Existed"}`}},
 	}
 	for _, tc := range testCase {
 		t.Run(tc.name, func(t *testing.T) {
@@ -288,6 +288,7 @@ func TestRoutePostMember(t *testing.T) {
 			req, _ := http.NewRequest("POST", "/member", bytes.NewBuffer(jsonStr))
 			req.Header.Set("Content-Type", "application/json")
 			r.ServeHTTP(w, req)
+
 			if w.Code != tc.expect.httpcode {
 				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
 			}
@@ -305,8 +306,8 @@ func TestRoutePutMember(t *testing.T) {
 		payload string
 		expect  ExpectResp
 	}{
-		{"Current", `{"member_id":"superman@mirrormedia.mg", "name":"Clark Kent"}`, ExpectResp{http.StatusOK, ""}},
-		{"NotExisted", `{"member_id":"MajorTom@mirrormedia.mg", "name":"spaceoddity"}`, ExpectResp{http.StatusBadRequest, `{"Error":"User Not Found"}`}},
+		{"Current", `{"id":"superman@mirrormedia.mg", "name":"Clark Kent"}`, ExpectResp{http.StatusOK, ""}},
+		{"NotExisted", `{"id":"MajorTom@mirrormedia.mg", "name":"spaceoddity"}`, ExpectResp{http.StatusBadRequest, `{"Error":"User Not Found"}`}},
 	}
 	for _, tc := range testCase {
 		t.Run(tc.name, func(t *testing.T) {
@@ -541,7 +542,6 @@ func TestRouteKeyNickname(t *testing.T) {
 			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
 				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
 			}
-			// expected, _ := json.Marshal(map[string][]models.NicknameUUID{"_items": tc.expect.resp})
 
 			if w.Code == http.StatusOK && w.Body.String() != tc.expect.resp {
 				t.Errorf("%s incorrect response.\nWant\n%s\nBut get\n%s\n", tc.name, tc.expect.resp, w.Body.String())

@@ -80,7 +80,7 @@ func (m *mailApi) SendUpdateNote(args GetFollowMapArgs) (err error) {
 	}
 
 	for _, v := range members {
-		follower_info[v.MemberID] = v
+		follower_info[v.ID] = v
 	}
 
 	for _, m := range followingMap {
@@ -134,7 +134,7 @@ func (m *mailApi) SendUpdateNoteAll(args GetFollowMapArgs) (err error) {
 	}
 
 	for _, v := range members {
-		follower_info[v.MemberID] = v
+		follower_info[v.ID] = v
 	}
 
 	for follower, followings := range follower_index {

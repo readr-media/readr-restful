@@ -21,11 +21,8 @@ type permissionHandler struct{}
 func (r *permissionHandler) Get(c *gin.Context) {
 
 	var input PermissionQuery
-	err := c.ShouldBindJSON(&input)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Request. Empty Payload"})
-		return
-	}
+	c.ShouldBindJSON(&input)
+
 	if !validatePermission(input) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Request"})
 		return

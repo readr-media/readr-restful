@@ -79,14 +79,14 @@ var MockPermissionAPI mockPermissionAPI
 func initPermissionTest() {
 
 	var mockDefaultPermissions = []models.Permission{
-		models.Permission{ID: 0, Role: 1, Object: models.NullString{"ChangePW", true}, Permission: models.NullInt{1, true}},
-		models.Permission{ID: 1, Role: 1, Object: models.NullString{"ChangeName", true}, Permission: models.NullInt{1, true}},
-		models.Permission{ID: 2, Role: 1, Object: models.NullString{"CreateAccount", true}, Permission: models.NullInt{1, true}},
-		models.Permission{ID: 3, Role: 1, Object: models.NullString{"AddRole", true}, Permission: models.NullInt{1, true}},
-		models.Permission{ID: 4, Role: 1, Object: models.NullString{"EditRole", true}, Permission: models.NullInt{1, true}},
-		models.Permission{ID: 5, Role: 1, Object: models.NullString{"DeleteRole", true}, Permission: models.NullInt{1, true}},
-		models.Permission{ID: 6, Role: 1, Object: models.NullString{"CreatePost", true}, Permission: models.NullInt{1, true}},
-		models.Permission{ID: 7, Role: 1, Object: models.NullString{"ReadPost", true}, Permission: models.NullInt{1, true}},
+		models.Permission{Role: 1, Object: models.NullString{"ChangePW", true}, Permission: models.NullInt{1, true}},
+		models.Permission{Role: 1, Object: models.NullString{"ChangeName", true}, Permission: models.NullInt{1, true}},
+		models.Permission{Role: 1, Object: models.NullString{"CreateAccount", true}, Permission: models.NullInt{1, true}},
+		models.Permission{Role: 1, Object: models.NullString{"AddRole", true}, Permission: models.NullInt{1, true}},
+		models.Permission{Role: 1, Object: models.NullString{"EditRole", true}, Permission: models.NullInt{1, true}},
+		models.Permission{Role: 1, Object: models.NullString{"DeleteRole", true}, Permission: models.NullInt{1, true}},
+		models.Permission{Role: 1, Object: models.NullString{"CreatePost", true}, Permission: models.NullInt{1, true}},
+		models.Permission{Role: 1, Object: models.NullString{"ReadPost", true}, Permission: models.NullInt{1, true}},
 	}
 
 	err := models.PermissionAPI.InsertPermissions(mockDefaultPermissions)
@@ -127,17 +127,17 @@ func TestPermissionGet(t *testing.T) {
 		{
 			"GetSinglePermissionOK",
 			CaseIn{[]item{item{1, "ChangePW"}}},
-			CaseOut{http.StatusOK, `[{"id":0,"role":1,"object":"ChangePW","permission":1}]`, ""},
+			CaseOut{http.StatusOK, `[{"role":1,"object":"ChangePW","permission":1}]`, ""},
 		},
 		{
 			"GetMultiPermissionOK",
 			CaseIn{[]item{item{1, "ChangePW"}, item{1, "CreateAccount"}}},
-			CaseOut{http.StatusOK, `[{"id":0,"role":1,"object":"ChangePW","permission":1},{"id":2,"role":1,"object":"CreateAccount","permission":1}]`, ""},
+			CaseOut{http.StatusOK, `[{"role":1,"object":"ChangePW","permission":1},{"role":1,"object":"CreateAccount","permission":1}]`, ""},
 		},
 		{
 			"GetPermissionNotGranted",
 			CaseIn{[]item{item{1, "ChangePW"}, item{1, "Hackit"}}},
-			CaseOut{http.StatusOK, `[{"id":0,"role":1,"object":"ChangePW","permission":1},{"id":0,"role":1,"object":"Hackit","permission":0}]`, ""},
+			CaseOut{http.StatusOK, `[{"role":1,"object":"ChangePW","permission":1},{"role":1,"object":"Hackit","permission":0}]`, ""},
 		},
 		{
 			"GetPermissionMissingRole",
