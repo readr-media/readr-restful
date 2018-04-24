@@ -73,9 +73,15 @@
             "deactive": 9
         },
         "memos":{
-            "active": 1,
-            "deactive": 0,
-            "pending": 2
+            "active": 9,
+            "deactive": 9,
+            "pending": 9
+        },
+        "memos_publish_status":{
+            "draft": 9,
+            "scheduling": 9,
+            "published": 9,
+            "unpublished": 9
         }
     }
 }
