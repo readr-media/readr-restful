@@ -1,0 +1,93 @@
+{
+    "sql":{
+        "host": "",
+        "port": 3306,
+        "user": "",
+        "password": ""
+    },
+    "redis":{
+        "host": "",
+        "port": 0,
+        "password": "",
+        "channels":{
+            "talk_comments": ""
+        }
+    },
+    "mongo":{
+        "talk": {
+            "host": "",
+        }
+    },
+    "mail":{
+        "host": "",
+        "port": 0,
+        "user": "",
+        "password": "",
+        "user_name": ""
+    },
+    "search_feed":{
+        "app_id": "",
+        "app_key": "",
+        "index": "",
+        "max_retry": 0
+    },
+    "straats":{
+        "app_id": "",
+        "app_key": "",
+        "api_server": ""
+    },
+    "models":{
+        "members":{
+            "active": 9,
+            "deactive": 9,
+            "delete": 9
+        },
+        "posts":{
+            "deactive": 9,
+            "active": 9
+        },
+        "post_type":{
+            "review": 9,
+            "news": 9,
+            "video": 9,
+            "live": 9
+        },
+        "post_publish_status":{
+            "unpublish": 9,
+            "draft": 9,
+            "publish": 9,
+            "schedule": 9,
+            "pending": 9
+        },
+        "tags":{
+            "deactive": 9,
+            "active": 9
+        },
+        "projects_active":{
+            "active": 9,
+            "deactive": 9
+        },
+        "projects_status":{
+            "candidate": 9,
+            "wip": 9,
+            "done": 9
+        },
+        "projects_publish_status":{
+            "unpublish": 9,
+            "draft": 9,
+            "publish": 9,
+            "schedule": 9
+        },
+        "memos":{
+            "active": 9,
+            "deactive": 9,
+            "pending": 9
+        },
+        "memos_publish_status":{
+            "unpublish": 9,
+            "draft": 9,
+            "publish": 9,
+            "schedule": 9
+        }
+    }
+}

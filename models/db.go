@@ -2,242 +2,160 @@ package models
 
 import (
 	"bytes"
-	"database/sql"
-	"database/sql/driver"
-	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"reflect"
 	"strings"
-	"time"
 
 	// For NewDB() usage
-	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 )
 
-// var db *sqlx.DB
+var DB database = database{nil}
 
-// ------------------------------  NULLABLE TYPE DEFINITION -----------------------------
-
-type NullTime struct {
-	Time  time.Time
-	Valid bool
-}
-
-func (nt *NullTime) Scan(value interface{}) error {
-	nt.Time, nt.Valid = value.(time.Time)
-	return nil
-}
-
-// Value implements the driver Valuer interface.
-func (nt NullTime) Value() (driver.Value, error) {
-	if !nt.Valid {
-		return nil, nil
-	}
-	return nt.Time, nil
-}
-
-func (nt NullTime) MarshalJSON() ([]byte, error) {
-	if nt.Valid {
-		return json.Marshal(nt.Time)
-	}
-	return json.Marshal(nil)
-}
-
-func (nt *NullTime) UnmarshalJSON(text []byte) error {
-	nt.Valid = false
-	txt := string(text)
-	if txt == "null" || txt == "" {
-		return nil
-	}
-
-	t := time.Time{}
-	err := t.UnmarshalJSON(text)
-	if err == nil {
-		nt.Time = t
-		nt.Valid = true
-	}
-
-	return err
-}
-
-// Create our own null string type for prettier marshal JSON format
-type NullString sql.NullString
-
-// Scan is currently a wrap of sql.NullString.Scan()
-func (ns *NullString) Scan(value interface{}) error {
-	// ns.String, ns.Valid = value.(string)
-	// fmt.Printf("string:%s\n, valid:%s\n", ns.String, ns.Valid)
-	// return nil
-	x := sql.NullString{}
-	err := x.Scan(value)
-	ns.String, ns.Valid = x.String, x.Valid
-	return err
-}
-
-// Value validate the value
-func (ns NullString) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return ns.String, nil
-}
-
-func (ns NullString) MarshalJSON() ([]byte, error) {
-	if ns.Valid {
-		return json.Marshal(ns.String)
-	}
-	return json.Marshal(nil)
-}
-
-func (ns *NullString) UnmarshalJSON(text []byte) error {
-	ns.Valid = false
-	if string(text) == "null" {
-		return nil
-	}
-	if err := json.Unmarshal(text, &ns.String); err == nil {
-		ns.Valid = true
-	}
-	return nil
-}
-
-// ----------------------------- END OF NULLABLE TYPE DEFINITION -----------------------------
-
-type Datastore interface {
-	Get(item TableStruct) (TableStruct, error)
-	Create(item TableStruct) (interface{}, error)
-	Update(item TableStruct) (interface{}, error)
-	Delete(item TableStruct) (interface{}, error)
-}
-
-type DB struct {
+type database struct {
 	*sqlx.DB
 }
 
-type TableStruct interface {
-	GetFromDatabase(*DB) (TableStruct, error)
-	InsertIntoDatabase(*DB) error
-	UpdateDatabase(*DB) error
-	DeleteFromDatabase(*DB) error
-}
-
-// func InitDB(dataURI string) {
-// 	var err error
-// 	db, err = sqlx.Open("mysql", dataURI)
-// 	if err != nil {
-// 		log.Panic(err)
-// 	}
-// 	if err = db.Ping(); err != nil {
-// 		log.Panic(err)
-// 	}
-// }
-
-func NewDB(dbURI string) (*DB, error) {
-	db, err := sqlx.Open("mysql", dbURI)
+func Connect(dbURI string) {
+	d, err := sqlx.Open("mysql", dbURI)
 	if err != nil {
-		return nil, err
+		log.Panic(err)
 	}
-	if err = db.Ping(); err != nil {
-		return nil, err
+	if err = d.Ping(); err != nil {
+		log.Panic(err)
 	}
-	return &DB{db}, nil
+	DB = database{d}
 }
 
-// Get implemented for Datastore interface below
-func (db *DB) Get(item TableStruct) (TableStruct, error) {
-
-	// Declaration of return set
-	var (
-		result TableStruct
-		err    error
-	)
-
-	switch item := item.(type) {
-	case Member:
-		result, err = item.GetFromDatabase(db)
-		if err != nil {
-			result = Member{}
-		}
-	case Article:
-		result, err = item.GetFromDatabase(db)
-		if err != nil {
-			result = Article{}
+func ValidateActive(args map[string][]int, status map[string]interface{}) (err error) {
+	if len(args) > 1 {
+		return errors.New("Too many active lists")
+	}
+	valid := make([]int, 0)
+	result := make([]int, 0)
+	for _, v := range status {
+		valid = append(valid, int(v.(float64)))
+	}
+	activeCount := 0
+	for _, activeSlice := range args {
+		activeCount = len(activeSlice)
+		for _, target := range activeSlice {
+			for _, value := range valid {
+				if target == value {
+					result = append(result, target)
+				}
+			}
 		}
 	}
-	return result, err
+	if len(result) != activeCount {
+		err = errors.New("Not all active elements are valid")
+	}
+	if len(result) == 0 {
+		err = errors.New("No valid active request")
+	}
+	return err
 }
 
-func (db *DB) Create(item TableStruct) (interface{}, error) {
+func makeFieldString(mode string, pattern string, tags []string) (result []string) {
+	switch mode {
+	case "get":
+		for _, field := range tags {
+			result = append(result, fmt.Sprintf(pattern, field, field))
+		}
+	case "update":
+		for _, value := range tags {
+			result = append(result, fmt.Sprintf(pattern, value, value))
+		}
+	}
+	return result
+}
 
-	var (
-		result TableStruct
-		err    error
-	)
-	switch item := item.(type) {
-	case Member:
-		err = item.InsertIntoDatabase(db)
-	case Article:
-		err = item.InsertIntoDatabase(db)
+func operatorHelper(ops string) (result string) {
+	switch ops {
+	case "$in":
+		result = `IN`
+	case "$nin":
+		result = `NOT IN`
 	default:
-		err = errors.New("Insert fail")
+		result = `IN`
 	}
-	return result, err
+	return result
 }
 
-func (db *DB) Update(item TableStruct) (interface{}, error) {
-
-	var (
-		result TableStruct
-		err    error
-	)
-	switch item := item.(type) {
-	case Member:
-		err = item.UpdateDatabase(db)
-	case Article:
-		err = item.UpdateDatabase(db)
-	default:
-		err = errors.New("Update Fail")
-	}
-	return result, err
-}
-
-func (db *DB) Delete(item TableStruct) (interface{}, error) {
-
-	var (
-		result TableStruct
-		err    error
-	)
-	switch item := item.(type) {
-	case Member:
-		err = item.DeleteFromDatabase(db)
-		if err != nil {
-			result = Member{}
+func orderByHelper(sortMethod string) (result string) {
+	// if strings.Contains(sortMethod, )
+	tmp := strings.Split(sortMethod, ",")
+	for i, v := range tmp {
+		if v := strings.TrimSpace(v); strings.HasPrefix(v, "-") {
+			tmp[i] = v[1:] + " DESC"
 		} else {
-			result = item
-		}
-	case Article:
-		err = item.DeleteFromDatabase(db)
-		if err != nil {
-			result = Article{}
-		} else {
-			result = item
+			tmp[i] = v
 		}
 	}
-	return result, err
+	result = strings.Join(tmp, ",")
+	return result
 }
 
-func generateSQLStmt(input interface{}, mode string, tableName string) (query string, err error) {
+func getStructDBTags(mode string, input interface{}) []string {
+	columns := make([]string, 0)
+	u := reflect.ValueOf(input)
+	for i := 0; i < u.NumField(); i++ {
+		tag := u.Type().Field(i).Tag
+		if mode == "full" {
+			columns = append(columns, tag.Get("db"))
+		} else if mode == "partial" {
+			field := u.Field(i).Interface()
+
+			switch field := field.(type) {
+			case string:
+				if field != "" {
+					columns = append(columns, tag.Get("db"))
+				}
+			// Could not put NullString, NullTime in one case
+			case NullString:
+				if field.Valid {
+					columns = append(columns, tag.Get("db"))
+				}
+			case NullTime:
+				if field.Valid {
+					columns = append(columns, tag.Get("db"))
+				}
+			case NullInt:
+				if field.Valid {
+					columns = append(columns, tag.Get("db"))
+				}
+			case NullBool:
+				if field.Valid {
+					columns = append(columns, tag.Get("db"))
+				}
+			case bool, int, uint32:
+				columns = append(columns, tag.Get("db"))
+			default:
+				fmt.Println("unrecognised format: ", u.Field(i).Type())
+			}
+		}
+	}
+	return columns
+}
+
+// Use ... operator to encompass the potential for variadic input in the future
+func generateSQLStmt(mode string, tableName string, input ...interface{}) (query string, err error) {
 
 	columns := make([]string, 0)
 	// u := reflect.ValueOf(input).Elem()
-	u := reflect.ValueOf(input)
 
 	bytequery := &bytes.Buffer{}
 
 	switch mode {
+	case "get_all":
+		bytequery.WriteString(fmt.Sprintf("SELECT * FROM %s ORDER BY %s LIMIT ?, ?", tableName, input[0].(string)))
+		query = bytequery.String()
+		err = nil
 	case "insert":
-		fmt.Println("insert")
+		// Parse first input
+		u := reflect.ValueOf(input[0])
 		for i := 0; i < u.NumField(); i++ {
 			tag := u.Type().Field(i).Tag.Get("db")
 			columns = append(columns, tag)
@@ -254,7 +172,7 @@ func generateSQLStmt(input interface{}, mode string, tableName string) (query st
 
 	case "full_update":
 
-		fmt.Println("full_update")
+		u := reflect.ValueOf(input[0])
 		var idName string
 		for i := 0; i < u.NumField(); i++ {
 			tag := u.Type().Field(i).Tag
@@ -280,32 +198,51 @@ func generateSQLStmt(input interface{}, mode string, tableName string) (query st
 	case "partial_update":
 
 		var idName string
-		fmt.Println("partial")
+		u := reflect.ValueOf(input[0])
 		for i := 0; i < u.NumField(); i++ {
 			tag := u.Type().Field(i).Tag
 			field := u.Field(i).Interface()
+			// Get table id and set it to idName
+			if tag.Get("json") == "id" {
+				fmt.Printf("%s field = %s\n", u.Field(i).Type(), field)
+				idName = tag.Get("db")
+			}
 
 			switch field := field.(type) {
 			case string:
 				if field != "" {
-					if tag.Get("json") == "id" {
-						fmt.Printf("%s field = %s\n", u.Field(i).Type(), field)
-						idName = tag.Get("db")
-					}
+					// if tag.Get("json") == "id" {
+					// 	fmt.Printf("%s field = %s\n", u.Field(i).Type(), field)
+					// 	idName = tag.Get("db")
+					// }
 					columns = append(columns, tag.Get("db"))
 				}
 			case NullString:
 				if field.Valid {
-					fmt.Println("valid NullString : ", field.String)
+					//fmt.Println("valid NullString : ", field.String)
 					columns = append(columns, tag.Get("db"))
 				}
 			case NullTime:
 				if field.Valid {
-					fmt.Println("valid NullTime : ", field.Time)
+					//fmt.Println("valid NullTime : ", field.Time)
 					columns = append(columns, tag.Get("db"))
 				}
-
-			case bool, int:
+			case NullInt:
+				if field.Valid {
+					//fmt.Println("valid NullInt : ", field.Int)
+					columns = append(columns, tag.Get("db"))
+				}
+			case NullBool:
+				if field.Valid {
+					//fmt.Println("valid NullBool : ", field.Bool)
+					columns = append(columns, tag.Get("db"))
+				}
+			case NullFloat:
+				if field.Valid {
+					//fmt.Println("valid NullBool : ", field.Bool)
+					columns = append(columns, tag.Get("db"))
+				}
+			case bool, int, uint32:
 				columns = append(columns, tag.Get("db"))
 			default:
 				fmt.Println("unrecognised format: ", u.Field(i).Type())

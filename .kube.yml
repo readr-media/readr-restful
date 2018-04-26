@@ -1,0 +1,49 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: readr-rest-svc
+spec:
+  selector:
+    app: readr-rest
+    tier: backend
+  ports:
+  - port: 8080
+    protocol: TCP
+    targetPort: readrest-port
+  type: LoadBalancer
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: readr-rest
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: readr-rest
+        tier: backend
+    spec:
+      containers:
+        - image: {{.image}}
+          name: readr-rest
+          ports:
+            - containerPort: 8080
+              name: readrest-port
+        - image: gcr.io/cloudsql-docker/gce-proxy:1.10
+          name: cloudsql-proxy
+          command: ["/cloud_sql_proxy", "--dir=/cloudsql",
+                    "-instances=mirrormedia-1470651750304:asia-east1:readrsql=tcp:3306",
+                    "-credential_file=/secrets/cloudsql/credentials.json"]
+          volumeMounts:
+            - name: readr-cloudsql-credentials
+              mountPath: /secrets/cloudsql
+              readOnly: true
+            - name: cloudsql
+              mountPath: /cloudsql
+      volumes:
+        - name: readr-cloudsql-credentials
+          secret:
+            secretName: readr-cloudsql-credentials
+        - name: cloudsql
+          emptyDir:
