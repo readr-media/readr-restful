@@ -13,6 +13,7 @@ pipeline:
       *{{build.author}}* give *{{build.branch}}* a little push.
     when:
       event: [push]
+      branch: [master, dev]
 
   get_config:
     image: gcr.io/mirrormedia-1470651750304/drone-cloud-sdk:latest
@@ -22,6 +23,7 @@ pipeline:
     - cp default/readr-restful/main.json config/main.json
     when:
       event: [push]
+      branch: [master, dev]
 
   builds:
     image: golang
@@ -51,6 +53,7 @@ pipeline:
     secrets: [google_credentials]
     when:
       event: [push]
+      branch: [master, dev]
 
   deploy_dev:
     image: nytimes/drone-gke:develop
@@ -80,6 +83,7 @@ pipeline:
     when:
       status: [success, failure]
       event: [push]
+      branch: [master, dev]
     template: >
       {{#success build.status}}
         Build<${DRONE_BUILD_LINK}|#{{build.number}}> *success* ${DRONE_REPO_NAME}:${DRONE_COMMIT_AUTHOR}_${DRONE_BUILD_NUMBER} was well served.
