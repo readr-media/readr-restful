@@ -68,14 +68,8 @@ func (r *memberHandler) GetAll(c *gin.Context) {
 
 func (r *memberHandler) Get(c *gin.Context) {
 
-	var idType string
 	id := c.Param("id")
-	if err := utils.ValidateUUID(id); err != nil {
-		idType = "member_id"
-	} else {
-		idType = "uuid"
-	}
-	member, err := models.MemberAPI.GetMember(idType, id)
+	member, err := models.MemberAPI.GetMember("id", id)
 	if err != nil {
 		switch err.Error() {
 		case "User Not Found":
@@ -117,7 +111,7 @@ func (r *memberHandler) Post(c *gin.Context) {
 		return
 	}
 	member.UUID = uuid.String()
-	err = models.MemberAPI.InsertMember(member)
+	lastID, err := models.MemberAPI.InsertMember(member)
 	if err != nil {
 		switch err.Error() {
 		case "Duplicate entry":
@@ -128,7 +122,8 @@ func (r *memberHandler) Post(c *gin.Context) {
 			return
 		}
 	}
-	c.Status(http.StatusOK)
+	resp := map[string]int{"last_id": lastID}
+	c.JSON(http.StatusOK, gin.H{"_items": resp})
 }
 
 func (r *memberHandler) Put(c *gin.Context) {
@@ -191,14 +186,8 @@ func (r *memberHandler) DeleteAll(c *gin.Context) {
 
 func (r *memberHandler) Delete(c *gin.Context) {
 
-	var idType string
 	id := c.Param("id")
-	if err := utils.ValidateUUID(id); err != nil {
-		idType = "member_id"
-	} else {
-		idType = "uuid"
-	}
-	err := models.MemberAPI.DeleteMember(idType, id)
+	err := models.MemberAPI.DeleteMember("id", id)
 	if err != nil {
 		switch err.Error() {
 		case "User Not Found":

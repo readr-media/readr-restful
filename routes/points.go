@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -15,6 +16,12 @@ type pointsHandler struct{}
 func (r *pointsHandler) Get(c *gin.Context) {
 
 	id := c.Param("id")
+	// Convert id to uint32
+	uid, err := strconv.ParseUint(id, 10, 32)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Parsing id error. %v", err)})
+		return
+	}
 	typestr := c.Param("type")
 	var objtype *int64
 	if typestr != "" && strings.HasPrefix(typestr, "/") {
@@ -30,7 +37,7 @@ func (r *pointsHandler) Get(c *gin.Context) {
 			objtype = nil
 		}
 	}
-	points, err := models.PointsAPI.Get(id, objtype)
+	points, err := models.PointsAPI.Get(uint32(uid), objtype)
 	if err != nil {
 		switch err.Error() {
 		case "Points Not Found":
@@ -67,29 +74,6 @@ func (r *pointsHandler) Post(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"points": p})
 }
 
-// func (r *pointsHandler) Put(c *gin.Context) {
-// 	pts := models.Points{}
-// 	if err := c.ShouldBindJSON(&pts); err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
-// 		return
-// 	}
-// 	if !pts.CreatedAt.Valid {
-// 		pts.CreatedAt = models.NullTime{Time: time.Now(), Valid: true}
-// 	}
-// 	p, err := models.PointsAPI.Update(pts)
-// 	if err != nil {
-// 		switch err.Error() {
-// 		case "Points Not Found":
-// 			c.JSON(http.StatusBadRequest, gin.H{"Error": "Points Not Found"})
-// 			return
-// 		default:
-// 			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
-// 			return
-// 		}
-// 	}
-// 	c.JSON(http.StatusOK, gin.H{"points": p})
-// }
-
 func (r *pointsHandler) SetRoutes(router *gin.Engine) {
 	pointsRouter := router.Group("/points")
 	{
@@ -97,7 +81,6 @@ func (r *pointsHandler) SetRoutes(router *gin.Engine) {
 		pointsRouter.GET("/:id", r.Get)
 		pointsRouter.GET("/:id/*type", r.Get)
 		pointsRouter.POST("", r.Post)
-		// pointsRouter.PUT("", r.Put)
 	}
 }
 

@@ -20,7 +20,7 @@ var PostPublishStatus map[string]interface{}
 // like *NullTime, *NullString to be used with omitempty
 type Post struct {
 	ID              uint32     `json:"id" db:"post_id" redis:"post_id"`
-	Author          NullString `json:"author" db:"author" redis:"author"`
+	Author          NullInt    `json:"author" db:"author" redis:"author"`
 	CreatedAt       NullTime   `json:"created_at" db:"created_at" redis:"created_at"`
 	LikeAmount      NullInt    `json:"like_amount" db:"like_amount" redis:"like_amount"`
 	CommentAmount   NullInt    `json:"comment_amount" db:"comment_amount" redis:"comment_amount"`
@@ -33,7 +33,7 @@ type Post struct {
 	OgImage         NullString `json:"og_image" db:"og_image" redis:"og_image"`
 	Active          NullInt    `json:"active" db:"active" redis:"active"`
 	UpdatedAt       NullTime   `json:"updated_at" db:"updated_at" redis:"updated_at"`
-	UpdatedBy       NullString `json:"updated_by" db:"updated_by" redis:"updated_by"`
+	UpdatedBy       NullInt    `json:"updated_by" db:"updated_by" redis:"updated_by"`
 	PublishedAt     NullTime   `json:"published_at" db:"published_at" redis:"published_at"`
 	LinkTitle       NullString `json:"link_title" db:"link_title" redis:"link_title"`
 	LinkDescription NullString `json:"link_description" db:"link_description" redis:"link_description"`
@@ -279,8 +279,8 @@ func (a *postAPI) GetPost(id uint32) (TaggedPostMember, error) {
 	updatedBy[0] = fmt.Sprintf(`IFNULL(%s, "") %s`, updatedByIDQuery[0], updatedByIDQuery[1])
 
 	query := fmt.Sprintf(`SELECT posts.*, %s, %s, t.tags as tags FROM posts
-		LEFT JOIN members AS author ON posts.author = author.member_id 
-		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.member_id 
+		LEFT JOIN members AS author ON posts.author = author.id 
+		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.id 
 		LEFT JOIN (
 			SELECT pt.post_id as post_id, GROUP_CONCAT(CONCAT(t.tag_id, ":", t.tag_content) SEPARATOR ',') as tags 
 			FROM post_tags as pt LEFT JOIN tags as t ON t.tag_id = pt.tag_id 

@@ -13,7 +13,7 @@ import (
 var MemberStatus map[string]interface{}
 
 type Member struct {
-	ID       uint32     `json:"id" db:"id"`
+	ID       int64      `json:"id" db:"id"`
 	MemberID string     `json:"member_id" db:"member_id"`
 	UUID     string     `json:"uuid" db:"uuid"`
 	Points   NullInt    `json:"points" db:"points"`
@@ -59,7 +59,7 @@ type MemberInterface interface {
 	DeleteMember(idType string, id string) error
 	GetMember(idType string, id string) (Member, error)
 	GetMembers(req *MemberArgs) ([]Member, error)
-	InsertMember(m Member) error
+	InsertMember(m Member) (id int, err error)
 	UpdateAll(ids []string, active int) error
 	UpdateMember(m Member) error
 	Count(req *MemberArgs) (result int, err error)
@@ -177,41 +177,44 @@ func (a *memberAPI) GetMember(idType string, id string) (Member, error) {
 	return member, err
 }
 
-func (a *memberAPI) InsertMember(m Member) error {
+func (a *memberAPI) InsertMember(m Member) (id int, err error) {
 
 	if !m.Points.Valid {
 		m.Points = NullInt{0, true}
 	}
-
 	tags := getStructDBTags("full", Member{})
 	query := fmt.Sprintf(`INSERT INTO members (%s) VALUES (:%s)`,
 		strings.Join(tags, ","), strings.Join(tags, ",:"))
-	// query, _ := generateSQLStmt("insert", "members", m)
 	result, err := DB.NamedExec(query, m)
 
 	if err != nil {
 		if strings.Contains(err.Error(), "Duplicate entry") {
-			return errors.New("Duplicate entry")
+			return 0, errors.New("Duplicate entry")
 		}
-		return err
+		return 0, err
 	}
 	rowCnt, err := result.RowsAffected()
 	if err != nil {
 		log.Fatal(err)
 	}
 	if rowCnt > 1 {
-		return errors.New("More Than One Rows Affected")
+		return 0, errors.New("More Than One Rows Affected")
 	} else if rowCnt == 0 {
-		return errors.New("No Row Inserted")
+		return 0, errors.New("No Row Inserted")
 	}
-	return nil
+	lastID, err := result.LastInsertId()
+	if err != nil {
+		log.Printf("Fail to get last inserted ID when insert a member: %v", err)
+		return 0, err
+	}
+	return int(lastID), nil
 }
 
 func (a *memberAPI) UpdateMember(m Member) error {
 	// query, _ := generateSQLStmt("partial_update", "members", m)
 	tags := getStructDBTags("partial", m)
 	fields := makeFieldString("update", `%s = :%s`, tags)
-	query := fmt.Sprintf(`UPDATE members SET %s WHERE member_id = :member_id`, strings.Join(fields, ", "))
+	query := fmt.Sprintf(`UPDATE members SET %s WHERE id = :id`, strings.Join(fields, ", "))
 	result, err := DB.NamedExec(query, m)
 
 	if err != nil {
@@ -243,7 +246,7 @@ func (a *memberAPI) DeleteMember(idType string, id string) error {
 }
 
 func (a *memberAPI) UpdateAll(ids []string, active int) (err error) {
-	prep := fmt.Sprintf("UPDATE members SET active = %d WHERE member_id IN (?);", active)
+	prep := fmt.Sprintf("UPDATE members SET active = %d WHERE id IN (?);", active)
 	query, args, err := sqlx.In(prep, ids)
 	if err != nil {
 		return err
@@ -277,7 +280,7 @@ func (a *memberAPI) Count(req *MemberArgs) (result int, err error) {
 	} else {
 
 		restricts, values := req.parse()
-		query := fmt.Sprintf(`SELECT COUNT(*) FROM (SELECT member_id FROM members WHERE %s) AS subquery`, restricts)
+		query := fmt.Sprintf(`SELECT COUNT(*) FROM (SELECT id FROM members WHERE %s) AS subquery`, restricts)
 
 		query, args, err := sqlx.In(query, values...)
 		if err != nil {

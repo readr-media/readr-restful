@@ -31,8 +31,9 @@ func (a *mockPointsAPI) teardown() {
 	a.mockPointsDS = nil
 }
 
-func (a *mockPointsAPI) Get(id string, objType *int64) (result []models.Points, err error) {
+func (a *mockPointsAPI) Get(id uint32, objType *int64) (result []models.Points, err error) {
 	for _, v := range a.mockPointsDS {
+
 		if v.MemberID == id {
 			if objType != nil {
 				if v.ObjectType == int(*objType) {
@@ -68,51 +69,37 @@ func (a *mockPointsAPI) Insert(pts models.Points) (result int, err error) {
 	return result, err
 }
 
-// func (a *mockPointsAPI) Update(pts models.Points) (result int, err error) {
-
-// 	if total, err := a.Get(pts.MemberID, nil); err == nil {
-// 		for k, v := range total {
-// 			if v.ObjectType != pts.ObjectType {
-// 				result += int(v.Points)
-// 			} else {
-// 				a.mockPointsDS[k] = pts
-// 				result += pts.Points
-// 			}
-// 		}
-// 	} else if err.Error() == "Points Not Found" {
-// 		return result, errors.New("Points Not Found")
-// 	}
-// 	return result, err
-// }
-
 func TestRoutePoints(t *testing.T) {
 
 	var pointTest mockPointsAPI
 
 	points := []models.Points{
 		models.Points{
-			MemberID:   "superman@superman.com",
+			PointsID:   0,
+			MemberID:   0,
 			ObjectType: 1,
 			ObjectID:   1,
 			Points:     500,
 			CreatedAt:  models.NullTime{Time: time.Date(2018, 3, 1, 17, 15, 0, 0, time.UTC), Valid: true},
-			UpdatedBy:  models.NullString{String: "wonderwomen@wonderwomen.com", Valid: true},
+			UpdatedBy:  models.NullInt{Int: 1, Valid: true},
 			UpdatedAt:  models.NullTime{Time: time.Date(2018, 3, 2, 17, 17, 0, 0, time.UTC), Valid: true}},
 		models.Points{
-			MemberID:   "superman@superman.com",
+			PointsID:   1,
+			MemberID:   0,
 			ObjectType: 2,
 			ObjectID:   3,
 			Points:     300,
 			CreatedAt:  models.NullTime{Time: time.Date(2018, 3, 1, 17, 15, 0, 0, time.UTC), Valid: true},
-			UpdatedBy:  models.NullString{String: "superman@superman.com", Valid: true},
+			UpdatedBy:  models.NullInt{Int: 0, Valid: true},
 			UpdatedAt:  models.NullTime{Time: time.Date(2018, 3, 2, 17, 17, 0, 0, time.UTC), Valid: true}},
 		models.Points{
-			MemberID:   "wonderwomen@wonderwomen.com",
+			PointsID:   2,
+			MemberID:   1,
 			ObjectType: 1,
 			ObjectID:   1,
 			Points:     500,
 			CreatedAt:  models.NullTime{Time: time.Date(2018, 3, 1, 17, 15, 0, 0, time.UTC), Valid: true},
-			UpdatedBy:  models.NullString{String: "wonderwomen@wonderwomen.com", Valid: true},
+			UpdatedBy:  models.NullInt{Int: 1, Valid: true},
 			UpdatedAt:  models.NullTime{Time: time.Date(2018, 3, 2, 17, 17, 0, 0, time.UTC), Valid: true}},
 	}
 
@@ -123,9 +110,9 @@ func TestRoutePoints(t *testing.T) {
 			teardown: func() { pointTest.teardown() },
 			register: &pointTest,
 			cases: []genericTestcase{
-				genericTestcase{"BothTypePoints", "GET", `/points/superman@superman.com`, ``, http.StatusOK, []models.Points{points[0], points[1]}},
-				genericTestcase{"SingleTypePoints", "GET", `/points/superman@superman.com/2`, ``, http.StatusOK, []models.Points{points[1]}},
-				genericTestcase{"PointsNotFound", "GET", `/points/wonderwomen@wonderwomen.com/2`, ``, http.StatusNotFound, `{"Error":"Points Not Found"}`},
+				genericTestcase{"BothTypePoints", "GET", `/points/0`, ``, http.StatusOK, []models.Points{points[0], points[1]}},
+				genericTestcase{"SingleTypePoints", "GET", `/points/0/2`, ``, http.StatusOK, []models.Points{points[1]}},
+				genericTestcase{"PointsNotFound", "GET", `/points/1/2`, ``, http.StatusNotFound, `{"Error":"Points Not Found"}`},
 			},
 		},
 		TestStep{
@@ -134,20 +121,11 @@ func TestRoutePoints(t *testing.T) {
 			teardown: func() { pointTest.teardown() },
 			register: &pointTest,
 			cases: []genericTestcase{
-				genericTestcase{"BasicPoints", "POST", `/points`, `{"member_id":"wonderwomen@wonderwomen.com","object_type": 2,"object_id": 1,"points": 100}`, http.StatusOK, `{"points":600}`},
-				genericTestcase{"DuplicatePoints", "POST", `/points`, `{"member_id":"superman@superman.com","object_type": 2,"object_id": 1,"points": 100}`, http.StatusBadRequest, `{"Error":"Already exists"}`},
+				genericTestcase{"BasicPoints", "POST", `/points`, `{"member_id":1,"object_type": 2,"object_id": 1,"points": 100}`, http.StatusOK, `{"points":600}`},
+				// Since primary key become auto_increment, it seems odd to post a "duplicate" points column
+				// genericTestcase{"DuplicatePoints", "POST", `/points`, `{"member_id":0,"object_type": 2,"object_id": 1,"points": 100}`, http.StatusBadRequest, `{"Error":"Already exists"}`},
 			},
 		},
-		// TestStep{
-		// 	name:     "PUT",
-		// 	init:     func() { pointTest.setup(points) },
-		// 	teardown: func() { pointTest.teardown() },
-		// 	register: &pointTest,
-		// 	cases: []genericTestcase{
-		// 		genericTestcase{"SinglePoints", "PUT", `/points`, `{"member_id":"superman@superman.com","object_type":1,"object_id":1,"points":100}`, http.StatusOK, `{"points":400}`},
-		// 		genericTestcase{"NotExistedPoints", "PUT", `/points`, `{"member_id":"flash@flash.com","object_type":1,"object_id":1,"points":100}`, http.StatusBadRequest, `{"Error":"Points Not Found"}`},
-		// 	},
-		// },
 	}
 	asserter := func(resp string, tc genericTestcase, t *testing.T) {
 		type response struct {

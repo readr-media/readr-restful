@@ -174,7 +174,7 @@ func initFollowTest() {
 		models.Member{MemberID: "followtest1@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2011, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"followtest1@mirrormedia.mg", true}, Points: models.NullInt{0, true}, UUID: "abc1d5b1-da54-4200-b59e-f06e59fd8467"},
 		models.Member{MemberID: "followtest2@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2012, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"followtest2@mirrormedia.mg", true}, Points: models.NullInt{0, true}, UUID: "abc1d5b1-da54-4200-b60e-f06e59fd8467"},
 	} {
-		err := models.MemberAPI.InsertMember(params)
+		_, err := models.MemberAPI.InsertMember(params)
 		if err != nil {
 			log.Printf("Insert member fail when init test case. Error: %v", err)
 		}

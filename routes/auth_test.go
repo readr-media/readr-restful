@@ -58,7 +58,7 @@ func initAuthTest() {
 
 		hpw, err := scrypt.Key([]byte(member.Password.String), []byte(member.Salt.String), 32768, 8, 1, 64)
 		member.Password = models.NullString{string(hpw), true}
-		err = models.MemberAPI.InsertMember(member)
+		_, err = models.MemberAPI.InsertMember(member)
 		if err != nil {
 			fmt.Errorf("Init auth test case fail, aborted. Error: %v", err)
 			return
@@ -141,8 +141,8 @@ func TestRouteLogin(t *testing.T) {
 		resp := userInfoResponse{}
 		json.Unmarshal([]byte(w.Body.String()), &resp)
 
-		if w.Code == http.StatusOK && (testcase.out.resp.Member.ID != resp.Member.ID) {
-			t.Errorf("Expect get user id %s but get %d, testcase %s", testcase.out.resp.Member.ID, resp.Member.ID, testcase.name)
+		if w.Code == http.StatusOK && (testcase.out.resp.Member.MemberID != resp.Member.MemberID) {
+			t.Errorf("Expect get user id %s but get %d, testcase %s", testcase.out.resp.Member.MemberID, resp.Member.MemberID, testcase.name)
 			t.Fail()
 		}
 

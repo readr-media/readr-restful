@@ -205,6 +205,7 @@ func (c latestPostCache) Key() string {
 	return c.key
 }
 func (c latestPostCache) Insert(post Post) {
+	fmt.Println(post)
 	conn := RedisHelper.Conn()
 	defer conn.Close()
 

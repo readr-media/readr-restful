@@ -85,16 +85,16 @@ func (a *mockMemberAPI) GetMember(idType string, id string) (models.Member, erro
 	return result, err
 }
 
-func (a *mockMemberAPI) InsertMember(m models.Member) error {
-	var err error
+func (a *mockMemberAPI) InsertMember(m models.Member) (id int, err error) {
 	for _, member := range mockMemberDS {
 		if member.MemberID == m.MemberID {
-			return errors.New("Duplicate entry")
+			return 0, errors.New("Duplicate entry")
 		}
 	}
+	m.ID = int64(len(mockMemberDS) + 1)
 	mockMemberDS = append(mockMemberDS, m)
 	err = nil
-	return err
+	return int(m.ID), err
 }
 func (a *mockMemberAPI) UpdateMember(m models.Member) error {
 

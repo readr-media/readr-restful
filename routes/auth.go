@@ -186,7 +186,7 @@ func (r *authHandler) userRegister(c *gin.Context) {
 	}
 	member.UUID = uuid.String()
 
-	err = models.MemberAPI.InsertMember(member)
+	lastID, err := models.MemberAPI.InsertMember(member)
 
 	if err != nil {
 		switch err.Error() {
@@ -201,10 +201,9 @@ func (r *authHandler) userRegister(c *gin.Context) {
 			return
 		}
 	}
-
-	c.Status(http.StatusOK)
+	resp := map[string]int{"last_id": lastID}
+	c.JSON(http.StatusOK, gin.H{"_items": resp})
 	return
-
 }
 
 func validateMode(mode string) bool {

@@ -134,7 +134,7 @@ func (r *postHandler) Post(c *gin.Context) {
 	}
 	if !post.UpdatedBy.Valid {
 		if post.Author.Valid {
-			post.UpdatedBy.String = post.Author.String
+			post.UpdatedBy.Int = post.Author.Int
 			post.UpdatedBy.Valid = true
 		} else {
 			c.JSON(http.StatusBadRequest, gin.H{"Error": "Neither updated_by or author is valid"})
@@ -187,7 +187,7 @@ func (r *postHandler) Put(c *gin.Context) {
 	switch {
 	case post.UpdatedBy.Valid:
 	case post.Author.Valid:
-		post.UpdatedBy.String = post.Author.String
+		post.UpdatedBy.Int = post.Author.Int
 		post.UpdatedBy.Valid = true
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Neither updated_by or author is valid"})
