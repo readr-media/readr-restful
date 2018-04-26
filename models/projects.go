@@ -45,6 +45,7 @@ type ProjectAPIInterface interface {
 	GetProjects(args GetProjectArgs) ([]Project, error)
 	InsertProject(p Project) error
 	UpdateProjects(p Project) error
+	SchedulePublish() error
 }
 
 type GetProjectArgs struct {
@@ -284,6 +285,14 @@ func (a *projectAPI) DeleteProjects(p Project) error {
 	go Algolia.DeleteProject([]int{p.ID})
 
 	return err
+}
+
+func (a *projectAPI) SchedulePublish() error {
+	_, err := DB.Exec("UPDATE projects SET publish_status=2 WHERE publish_status=3 AND published_at <= cast(now() as datetime);")
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 var ProjectAPI ProjectAPIInterface = new(projectAPI)

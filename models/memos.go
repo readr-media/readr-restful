@@ -38,6 +38,7 @@ type MemoInterface interface {
 	InsertMemo(memo Memo) error
 	UpdateMemo(memo Memo) error
 	UpdateMemos(args MemoUpdateArgs) error
+	SchedulePublish() error
 }
 
 type MemoGetArgs struct {
@@ -276,6 +277,14 @@ func (m *memoAPI) UpdateMemos(args MemoUpdateArgs) (err error) {
 		return errors.New("Posts Not Found")
 	}
 
+	return nil
+}
+
+func (a *memoAPI) SchedulePublish() error {
+	_, err := DB.Exec("UPDATE memos SET publish_status=2 WHERE publish_status=3 AND published_at <= cast(now() as datetime);")
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

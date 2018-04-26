@@ -60,11 +60,11 @@ func (a *mockPostAPI) GetPosts(args *models.PostArgs) (result []models.TaggedPos
 		result = result[:2]
 	}
 
-	if reflect.DeepEqual(args.Active, map[string][]int{"$nin": {0, 1, 2, 3, 4}}) {
+	if reflect.DeepEqual(args.Active, map[string][]int{"$nin": {0, 1}}) {
 		return []models.TaggedPostMember{}, nil
 	}
 	// Active filter
-	if reflect.DeepEqual(args.Active, map[string][]int{"$nin": {1, 4}}) {
+	if reflect.DeepEqual(args.Active, map[string][]int{"$nin": {1}}) {
 		result = []models.TaggedPostMember{
 			{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMemberDS[1]), UpdatedBy: models.MemberBasic{}}},
 			{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.MemberBasic{}, UpdatedBy: models.MemberBasic{}}},
@@ -264,7 +264,7 @@ func (a *mockPostAPI) Count(req *models.PostArgs) (result int, err error) {
 		return 4, nil
 	}
 	// CountActive
-	if reflect.DeepEqual(req.Active, map[string][]int{"$in": {2, 3}}) {
+	if reflect.DeepEqual(req.Active, map[string][]int{"$in": {0, 1}}) {
 		return 2, nil
 	}
 	return result, err
@@ -272,6 +272,10 @@ func (a *mockPostAPI) Count(req *models.PostArgs) (result int, err error) {
 
 func (a *mockPostAPI) Hot() (result []models.HotPost, err error) {
 	return result, err
+}
+
+func (a *mockPostAPI) SchedulePublish() error {
+	return nil
 }
 
 // // ---------------------------------- Post Test -------------------------------
@@ -312,12 +316,12 @@ func TestRouteGetPosts(t *testing.T) {
 				{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMemberDS[0]), UpdatedBy: memberToBasic(mockMemberDS[0])}},
 				{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.MemberBasic{}, UpdatedBy: models.MemberBasic{}}},
 			}}},
-		{"ActiveFilter", `/posts?active={"$nin":[1,4]}`, ExpectGetsResp{ExpectResp{http.StatusOK, ""},
+		{"ActiveFilter", `/posts?active={"$nin":[1]}`, ExpectGetsResp{ExpectResp{http.StatusOK, ""},
 			[]models.TaggedPostMember{
 				{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMemberDS[1]), UpdatedBy: models.MemberBasic{}}},
 				{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.MemberBasic{}, UpdatedBy: models.MemberBasic{}}},
 			}}},
-		{"NotFound", `/posts?active={"$nin":[0,1,2,3,4]}`, ExpectGetsResp{ExpectResp{http.StatusOK, ``},
+		{"NotFound", `/posts?active={"$nin":[0,1]}`, ExpectGetsResp{ExpectResp{http.StatusOK, ``},
 			[]models.TaggedPostMember{}}},
 		{"Type", `/posts?type={"$in":[1,2]}`, ExpectGetsResp{ExpectResp{http.StatusOK, ``},
 			[]models.TaggedPostMember{
@@ -430,6 +434,7 @@ func TestRoutePutPost(t *testing.T) {
 		{"Current", `{"id":1,"author":"wonderwoman@mirrormedia.mg"}`, ExpectResp{http.StatusOK, ""}},
 		{"NotExisted", `{"id":12345, "author":"superman@mirrormedia.mg"}`, ExpectResp{http.StatusBadRequest, `{"Error":"Post Not Found"}`}},
 		{"UpdateTags", `{"id":1, "tags":[5,3], "updated_by":"superman@mirrormedia.mg"}`, ExpectResp{http.StatusOK, ``}},
+		{"UpdateSchedule", `{"id":1, "tags":[5,3], "updated_by":"superman@mirrormedia.mg"}`, ExpectResp{http.StatusOK, ``}},
 	}
 	for _, tc := range testCase {
 		t.Run(tc.name, func(t *testing.T) {
@@ -544,7 +549,7 @@ func TestRouteCountPosts(t *testing.T) {
 		expect ExpectCountResp
 	}{
 		{"SimpleCount", `/posts/count`, ExpectCountResp{http.StatusOK, `{"_meta":{"total":4}}`, ``}},
-		{"CountActive", `/posts/count?active={"$in":[2,3]}`, ExpectCountResp{http.StatusOK, `{"_meta":{"total":2}}`, ``}},
+		{"CountActive", `/posts/count?active={"$in":[0,1]}`, ExpectCountResp{http.StatusOK, `{"_meta":{"total":2}}`, ``}},
 		{"CountAuthor", `/posts/count?author={"$nin":["superman@mirrormedia.mg", "Major.Tom@mirrormedia.mg"]}`, ExpectCountResp{http.StatusOK, `{"_meta":{"total":3}}`, ``}},
 		{"MoreThanOneActive", `/posts/count?active={"$nin":[1,0], "$in":[-1,3]}`,
 			ExpectCountResp{http.StatusBadRequest, ``,

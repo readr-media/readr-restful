@@ -13,15 +13,6 @@ import (
 
 type postHandler struct{}
 
-type postArgs struct {
-	MaxResult uint8  `form:"max_result"`
-	Page      uint16 `form:"page"`
-	Sorting   string `form:"sort"`
-	Active    string `form:"active"`
-	Author    string `form:"author"`
-	Type      string `form:"type"`
-}
-
 func (r *postHandler) bindQuery(c *gin.Context, args *models.PostArgs) (err error) {
 	if err = c.ShouldBindQuery(args); err == nil {
 		return nil
@@ -37,6 +28,15 @@ func (r *postHandler) bindQuery(c *gin.Context, args *models.PostArgs) (err erro
 			return err
 		} else if err == nil {
 			if err = models.ValidateActive(args.Active, models.PostStatus); err != nil {
+				return err
+			}
+		}
+	}
+	if c.Query("publish_status") != "" && args.PublishStatus == nil {
+		if err = json.Unmarshal([]byte(c.Query("publish_status")), &args.PublishStatus); err != nil {
+			return err
+		} else if err == nil {
+			if err = models.ValidateActive(args.PublishStatus, models.PostPublishStatus); err != nil {
 				return err
 			}
 		}
@@ -121,13 +121,16 @@ func (r *postHandler) Post(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Author"})
 		return
 	}
+
 	// CreatedAt and UpdatedAt set default to now
 	post.CreatedAt = models.NullTime{Time: time.Now(), Valid: true}
 	post.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
 
 	if !post.Active.Valid {
-		post.Active.Int = 3
-		post.Active.Valid = true
+		post.Active = models.NullInt{int64(models.PostStatus["active"].(float64)), true}
+	}
+	if !post.PublishStatus.Valid {
+		post.PublishStatus = models.NullInt{int64(models.PostPublishStatus["draft"].(float64)), true}
 	}
 	if !post.UpdatedBy.Valid {
 		if post.Author.Valid {
@@ -287,7 +290,7 @@ func (r *postHandler) PublishAll(c *gin.Context) {
 		return
 	}
 	payload.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
-	payload.Active = models.NullInt{Int: int64(models.PostStatus["active"].(float64)), Valid: true}
+	payload.PublishStatus = models.NullInt{Int: int64(models.PostPublishStatus["publish"].(float64)), Valid: true}
 	err = models.PostAPI.UpdateAll(payload)
 	if err != nil {
 		switch err.Error() {
@@ -330,6 +333,11 @@ func (r *postHandler) Hot(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"_items": result})
 }
 
+func (r *postHandler) SchedulePublish(c *gin.Context) {
+	models.PostAPI.SchedulePublish()
+	c.Status(http.StatusOK)
+}
+
 func (r *postHandler) SetRoutes(router *gin.Engine) {
 
 	postRouter := router.Group("/post")
@@ -348,6 +356,7 @@ func (r *postHandler) SetRoutes(router *gin.Engine) {
 
 		postsRouter.GET("/count", r.Count)
 		postsRouter.GET("/hot", r.Hot)
+		postsRouter.PUT("/schedule/publish", r.SchedulePublish)
 	}
 }
 

@@ -44,16 +44,20 @@
         },
         "posts":{
             "deactive": 9,
-            "active": 9,
-            "pending": 9,
-            "draft": 9,
-            "unpublish": 9
+            "active": 9
         },
         "post_type":{
             "review": 9,
             "news": 9,
             "video": 9,
             "live": 9
+        },
+        "post_publish_status":{
+            "unpublish": 9,
+            "draft": 9,
+            "publish": 9,
+            "schedule": 9,
+            "pending": 9
         },
         "tags":{
             "deactive": 9,
@@ -69,8 +73,10 @@
             "done": 9
         },
         "projects_publish_status":{
-            "active": 9,
-            "deactive": 9
+            "unpublish": 9,
+            "draft": 9,
+            "publish": 9,
+            "schedule": 9
         },
         "memos":{
             "active": 9,
@@ -78,10 +84,10 @@
             "pending": 9
         },
         "memos_publish_status":{
+            "unpublish": 9,
             "draft": 9,
-            "scheduling": 9,
-            "published": 9,
-            "unpublished": 9
+            "publish": 9,
+            "schedule": 9
         }
     }
 }

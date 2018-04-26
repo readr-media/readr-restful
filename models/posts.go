@@ -13,6 +13,7 @@ import (
 
 var PostStatus map[string]interface{}
 var PostType map[string]interface{}
+var PostPublishStatus map[string]interface{}
 
 // Post could use json:"omitempty" tag to ignore null field
 // However, struct type field like NullTime, NullString must be declared as pointer,
@@ -40,6 +41,7 @@ type Post struct {
 	LinkName        NullString `json:"link_name" db:"link_name" redis:"link_name"`
 	VideoID         NullString `json:"video_id" db:"video_id" redis:"video_id"`
 	VideoViews      NullInt    `json:"video_views" db:"video_views" redis:"video_views"`
+	PublishStatus   NullInt    `json:"publish_status" db:"publish_status"`
 }
 
 type postAPI struct{}
@@ -55,6 +57,7 @@ type PostInterface interface {
 	UpdatePost(p Post) error
 	Count(req *PostArgs) (result int, err error)
 	Hot() (result []HotPost, err error)
+	SchedulePublish() error
 }
 
 type TaggedPost struct {
@@ -115,11 +118,12 @@ type PostMember struct {
 }
 
 type PostUpdateArgs struct {
-	IDs         []int    `json:"ids"`
-	UpdatedBy   string   `form:"updated_by" json:"updated_by" db:"updated_by"`
-	UpdatedAt   NullTime `json:"-" db:"updated_at"`
-	PublishedAt NullTime `json:"-" db:"published_at"`
-	Active      NullInt  `json:"-" db:"active"`
+	IDs           []int    `json:"ids"`
+	UpdatedBy     string   `form:"updated_by" json:"updated_by" db:"updated_by"`
+	UpdatedAt     NullTime `json:"-" db:"updated_at"`
+	PublishedAt   NullTime `json:"-" db:"published_at"`
+	Active        NullInt  `json:"-" db:"active"`
+	PublishStatus NullInt  `json:"-" db:"publish_status"`
 }
 
 func (p *PostUpdateArgs) parse() (updates string, values []interface{}) {
@@ -128,6 +132,10 @@ func (p *PostUpdateArgs) parse() (updates string, values []interface{}) {
 	if p.Active.Valid {
 		setQuery = append(setQuery, "active = ?")
 		values = append(values, p.Active.Int)
+	}
+	if p.PublishStatus.Valid {
+		setQuery = append(setQuery, "publish_status = ?")
+		values = append(values, p.PublishStatus.Int)
 	}
 	if p.PublishedAt.Valid {
 		setQuery = append(setQuery, "published_at = ?")
@@ -152,12 +160,13 @@ func (p *PostUpdateArgs) parse() (updates string, values []interface{}) {
 
 // type PostArgs map[string]interface{}
 type PostArgs struct {
-	MaxResult uint8               `form:"max_result"`
-	Page      uint16              `form:"page"`
-	Sorting   string              `form:"sort"`
-	Active    map[string][]int    `form:"active"`
-	Author    map[string][]string `form:"author"`
-	Type      map[string][]int    `form:"type"`
+	MaxResult     uint8               `form:"max_result"`
+	Page          uint16              `form:"page"`
+	Sorting       string              `form:"sort"`
+	Active        map[string][]int    `form:"active"`
+	PublishStatus map[string][]int    `form:"publish_status"`
+	Author        map[string][]string `form:"author"`
+	Type          map[string][]int    `form:"type"`
 }
 
 func (p *PostArgs) Default() (result *PostArgs) {
@@ -169,7 +178,7 @@ func (p *PostArgs) DefaultActive() {
 }
 
 func (p *PostArgs) anyFilter() (result bool) {
-	return p.Active != nil || p.Author != nil || p.Type != nil
+	return p.Active != nil || p.PublishStatus != nil || p.Author != nil || p.Type != nil
 }
 
 func (p *PostArgs) parse() (restricts string, values []interface{}) {
@@ -178,6 +187,12 @@ func (p *PostArgs) parse() (restricts string, values []interface{}) {
 	if p.Active != nil {
 		for k, v := range p.Active {
 			where = append(where, fmt.Sprintf("%s %s (?)", "posts.active", operatorHelper(k)))
+			values = append(values, v)
+		}
+	}
+	if p.PublishStatus != nil {
+		for k, v := range p.PublishStatus {
+			where = append(where, fmt.Sprintf("%s %s (?)", "posts.publish_status", operatorHelper(k)))
 			values = append(values, v)
 		}
 	}
@@ -320,17 +335,19 @@ func (a *postAPI) InsertPost(p Post) (int, error) {
 	}
 
 	// Only insert a post when it's published
-	if p.Active.Valid == true && p.Active.Int == 1 {
-		if p.ID == 0 {
-			p.ID = uint32(lastID)
+	if p.Active.Valid == true && p.Active.Int == int64(PostStatus["active"].(float64)) {
+		if p.PublishStatus.Valid == true && p.PublishStatus.Int == int64(PostPublishStatus["publish"].(float64)) {
+			if p.ID == 0 {
+				p.ID = uint32(lastID)
+			}
+			go PostCache.Insert(p)
+			// Write to new post data to search feed
+			post, err := PostAPI.GetPost(p.ID)
+			if err != nil {
+				return 0, err
+			}
+			go Algolia.InsertPost([]TaggedPostMember{post})
 		}
-		go PostCache.Insert(p)
-		// Write to new post data to search feed
-		post, err := PostAPI.GetPost(p.ID)
-		if err != nil {
-			return 0, err
-		}
-		go Algolia.InsertPost([]TaggedPostMember{post})
 	}
 
 	return int(lastID), err
@@ -357,7 +374,7 @@ func (a *postAPI) UpdatePost(p Post) error {
 
 	go PostCache.Update(p)
 
-	if p.Active.Valid == true && p.Active.Int != 1 {
+	if (p.PublishStatus.Valid == true && p.PublishStatus.Int != int64(PostPublishStatus["publish"].(float64))) || (p.Active.Valid == true && p.Active.Int != int64(PostStatus["active"].(float64))) {
 		// Case: Set a post to unpublished state, Delete the post from cache/searcher
 		go Algolia.DeletePost([]int{int(p.ID)})
 	} else {
@@ -368,8 +385,8 @@ func (a *postAPI) UpdatePost(p Post) error {
 			return err
 		}
 
-		active := tpm.PostMember.Post.Active
-		if active.Valid && active.Int == 1 {
+		publishStatus := tpm.PostMember.Post.PublishStatus
+		if publishStatus.Valid == true && publishStatus.Int == int64(PostPublishStatus["publish"].(float64)) {
 			go Algolia.InsertPost([]TaggedPostMember{tpm})
 		}
 	}
@@ -421,7 +438,10 @@ func (a *postAPI) UpdateAll(req PostUpdateArgs) error {
 
 	go PostCache.UpdateAll(req)
 
-	if req.Active.Valid == true && req.Active.Int == 1 {
+	if (req.PublishStatus.Valid == true && req.PublishStatus.Int != int64(PostPublishStatus["publish"].(float64))) || (req.Active.Valid == true && req.Active.Int != int64(PostStatus["active"].(float64))) {
+		// Case: Set a post to unpublished state, Delete the post from cache/searcher
+		go Algolia.DeletePost(req.IDs)
+	} else if req.Active.Valid == true {
 		// Case: Publish posts. Read those post from database, then store to cache/searcher
 		tpms := []TaggedPostMember{}
 		for _, id := range req.IDs {
@@ -432,9 +452,6 @@ func (a *postAPI) UpdateAll(req PostUpdateArgs) error {
 			tpms = append(tpms, tpm)
 		}
 		go Algolia.InsertPost(tpms)
-	} else if req.Active.Valid == true {
-		// Case: Set a post to unpublished state, Delete the post from cache/searcher
-		go Algolia.DeletePost(req.IDs)
 	}
 
 	return nil
@@ -483,4 +500,12 @@ func (a *postAPI) Hot() (result []HotPost, err error) {
 		return result, err
 	}
 	return result, err
+}
+
+func (a *postAPI) SchedulePublish() error {
+	_, err := DB.Exec("UPDATE posts SET publish_status=2 WHERE publish_status=3 AND published_at <= cast(now() as datetime);")
+	if err != nil {
+		return err
+	}
+	return nil
 }

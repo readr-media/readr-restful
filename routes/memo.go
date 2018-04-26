@@ -106,7 +106,7 @@ func (r *memoHandler) Post(c *gin.Context) {
 	memo.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
 
 	if !memo.Active.Valid {
-		memo.Active.Int = int64(models.MemoStatus["pending"].(float64))
+		memo.Active.Int = int64(models.MemoStatus["active"].(float64))
 		memo.Active.Valid = true
 	}
 	if !memo.PublishStatus.Valid {
@@ -158,13 +158,13 @@ func (r *memoHandler) Put(c *gin.Context) {
 		}
 
 		switch memo.PublishStatus.Int {
-		case 2:
+		case int64(models.MemoPublishStatus["schedule"].(float64)):
 			if !memo.PublishedAt.Valid && !result.PublishedAt.Valid {
 				c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Publish Time"})
 				return
 			}
 			fallthrough
-		case 3:
+		case int64(models.MemoPublishStatus["publish"].(float64)):
 			if !memo.Title.Valid && !result.Title.Valid {
 				c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Memo Title"})
 				return
@@ -264,6 +264,11 @@ func (r *memoHandler) DeleteMany(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
+func (r *memoHandler) SchedulePublish(c *gin.Context) {
+	models.MemoAPI.SchedulePublish()
+	c.Status(http.StatusOK)
+}
+
 func (r *memoHandler) Count(c *gin.Context) {
 	var args = &models.MemoGetArgs{}
 	args = args.Default()
@@ -293,6 +298,7 @@ func (r *memoHandler) SetRoutes(router *gin.Engine) {
 	{
 		memosRouter.GET("", r.GetMany)
 		memosRouter.GET("/count", r.Count)
+		memosRouter.PUT("/schedule/publish", r.SchedulePublish)
 		memosRouter.DELETE("", r.DeleteMany)
 	}
 }
