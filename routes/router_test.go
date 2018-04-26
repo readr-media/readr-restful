@@ -78,6 +78,7 @@ func TestMain(m *testing.M) {
 	models.MemoPublishStatus = viper.GetStringMap("models.memos_publish_status")
 	models.PostStatus = viper.GetStringMap("models.posts")
 	models.PostType = viper.GetStringMap("models.post_type")
+	models.PostPublishStatus = viper.GetStringMap("models.post_publish_status")
 	models.ProjectActive = viper.GetStringMap("models.projects_active")
 	models.ProjectStatus = viper.GetStringMap("models.projects_status")
 	models.ProjectPublishStatus = viper.GetStringMap("models.projects_publish_status")

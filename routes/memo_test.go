@@ -106,6 +106,10 @@ func (m *mockMemoAPI) UpdateMemo(memo models.Memo) (err error) {
 }
 func (m *mockMemoAPI) UpdateMemos(args models.MemoUpdateArgs) (err error) { return nil }
 
+func (a *mockMemoAPI) SchedulePublish() error {
+	return nil
+}
+
 func TestRouteMemos(t *testing.T) {
 	for _, memo := range []models.Memo{
 		models.Memo{Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullString{"EMI", true}, Project: models.NullInt{420, true}, Active: models.NullInt{2, true}},
@@ -164,9 +168,9 @@ func TestRouteMemos(t *testing.T) {
 		for _, testcase := range []genericTestcase{
 			genericTestcase{"PutMemoOK", "PUT", "/memo", `{"id":101,"title":"MemoTestMod","updated_by":"EMI"}`, http.StatusOK, ``},
 			genericTestcase{"PutMemoUTF8", "PUT", "/memo", `{"id":101,"title":"順便測中文","updated_by":"EMIII"}`, http.StatusOK, ``},
-			genericTestcase{"PutMemoScheduleNoTime", "PUT", "/memo", `{"id":100,"updated_by":"EMI","publish_status":2}`, http.StatusBadRequest, `{"Error":"Invalid Publish Time"}`},
-			genericTestcase{"PutMemoSchedule", "PUT", "/memo", `{"id":100,"updated_by":"EMI","publish_status":2,"published_at":"2046-01-05T00:42:42+00:00"}`, http.StatusOK, ``}, //published_at is time string in RFC3339 format
-			genericTestcase{"PutMemoPublishNoContent", "PUT", "/memo", `{"id":101,"updated_by":"EMI","publish_status":3}`, http.StatusBadRequest, `{"Error":"Invalid Memo Content"}`},
+			genericTestcase{"PutMemoScheduleNoTime", "PUT", "/memo", `{"id":100,"updated_by":"EMI","publish_status":3}`, http.StatusBadRequest, `{"Error":"Invalid Publish Time"}`},
+			genericTestcase{"PutMemoSchedule", "PUT", "/memo", `{"id":100,"updated_by":"EMI","publish_status":3,"published_at":"2046-01-05T00:42:42+00:00"}`, http.StatusOK, ``}, //published_at is time string in RFC3339 format
+			genericTestcase{"PutMemoPublishNoContent", "PUT", "/memo", `{"id":101,"updated_by":"EMI","publish_status":2}`, http.StatusBadRequest, `{"Error":"Invalid Memo Content"}`},
 			genericTestcase{"PutMemoNoUpdater", "PUT", "/memo", `{"id":101,"title":"NoUpdater"}`, http.StatusBadRequest, `{"Error":"Neither updated_by or author is valid"}`},
 		} {
 			genericDoTest(testcase, t, asserter)

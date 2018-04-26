@@ -207,6 +207,11 @@ func (r *projectHandler) Put(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
+func (r *projectHandler) SchedulePublish(c *gin.Context) {
+	models.ProjectAPI.SchedulePublish()
+	c.Status(http.StatusOK)
+}
+
 func (r *projectHandler) Delete(c *gin.Context) {
 
 	id, err := strconv.Atoi(c.Param("id"))
@@ -237,6 +242,7 @@ func (r *projectHandler) SetRoutes(router *gin.Engine) {
 		projectRouter.GET("/list", r.Get)
 		projectRouter.POST("", r.Post)
 		projectRouter.PUT("", r.Put)
+		projectRouter.PUT("/schedule", r.SchedulePublish)
 		projectRouter.DELETE("/:id", r.Delete)
 	}
 }

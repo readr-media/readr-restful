@@ -34,13 +34,16 @@ func (p *postCache) Insert(post Post) {
 	if fmt.Sprint(post.Active.Int) != fmt.Sprint(PostStatus["active"]) {
 		return
 	}
+	if fmt.Sprint(post.PublishStatus.Int) != fmt.Sprint(PostPublishStatus["publish"]) {
+		return
+	}
 	for _, cache := range p.caches {
 		cache.Insert(post)
 	}
 }
 
 func (p *postCache) Update(post Post) {
-	if post.Active.Valid {
+	if post.Active.Valid || post.PublishStatus.Valid {
 		for _, cache := range p.caches {
 			cache.SyncFromDataStorage()
 		}
@@ -113,7 +116,7 @@ func (p *postCache) Delete(post_id uint32) {
 	}
 }
 func (p *postCache) UpdateAll(params PostUpdateArgs) {
-	if params.Active.Valid {
+	if params.Active.Valid || params.PublishStatus.Valid {
 		p.SyncFromDataStorage()
 		return
 	}
@@ -136,9 +139,6 @@ func (p *postCache) UpdateAll(params PostUpdateArgs) {
 					}
 					if params.UpdatedAt.Valid == true {
 						conn.Send("HSET", key, "updated_at", params.UpdatedAt)
-					}
-					if params.Active.Valid == true {
-						conn.Send("HSET", key, "active", params.Active)
 					}
 					if params.PublishedAt.Valid == true {
 						conn.Send("HSET", key, "published_at", params.PublishedAt)
@@ -257,7 +257,7 @@ func (c latestPostCache) SyncFromDataStorage() {
 	defer conn.Close()
 
 	//rows, err := DB.Queryx("SELECT p.*, f.follower FROM posts as p LEFT JOIN (SELECT post_id, GROUP_CONCAT(member_id) as follower FROM following_posts GROUP BY post_id) as f ON p.post_id = f.post_id WHERE active=" + fmt.Sprint(PostStatus["active"]) + " ORDER BY updated_at DESC LIMIT 20;")
-	rows, err := DB.Queryx(fmt.Sprint("SELECT p.*, f.follower, m.nickname AS m_name, m.profile_image AS m_image FROM posts as p LEFT JOIN (SELECT post_id, GROUP_CONCAT(member_id SEPARATOR ',') as follower FROM following_posts GROUP BY post_id) as f ON p.post_id = f.post_id LEFT JOIN members AS m ON m.member_id = p.author WHERE p.active=", fmt.Sprint(PostStatus["active"]), " ORDER BY updated_at DESC LIMIT 20;"))
+	rows, err := DB.Queryx(fmt.Sprint("SELECT p.*, f.follower, m.nickname AS m_name, m.profile_image AS m_image FROM posts as p LEFT JOIN (SELECT post_id, GROUP_CONCAT(member_id SEPARATOR ',') as follower FROM following_posts GROUP BY post_id) as f ON p.post_id = f.post_id LEFT JOIN members AS m ON m.member_id = p.author WHERE p.active=", fmt.Sprint(PostStatus["active"]), " AND p.publish_status=", fmt.Sprint(PostPublishStatus["publish"]), " ORDER BY updated_at DESC LIMIT 20;"))
 	if err != nil {
 		log.Println(err.Error())
 		return
@@ -326,7 +326,7 @@ func (c hottestPostCache) SyncFromDataStorage() {
 	session := MongoSession.Get()
 
 	// Read follow count from Mysql
-	rows, err := DB.Queryx(fmt.Sprint("SELECT p.post_id, IFNULL(f.count,0) as count FROM posts AS p LEFT JOIN (SELECT post_id, count(*) as count FROM post_tags GROUP BY post_id) AS f ON f.post_id = p.post_id WHERE p.active =", fmt.Sprint(PostStatus["active"])))
+	rows, err := DB.Queryx(fmt.Sprint("SELECT p.post_id, IFNULL(f.count,0) as count FROM posts AS p LEFT JOIN (SELECT post_id, count(*) as count FROM post_tags GROUP BY post_id) AS f ON f.post_id = p.post_id WHERE p.active =", fmt.Sprint(PostStatus["active"], " AND p.publish_status=", fmt.Sprint(PostPublishStatus["publish"]))))
 	if err != nil {
 		log.Println(err.Error())
 		return
@@ -393,7 +393,7 @@ func (c hottestPostCache) SyncFromDataStorage() {
 	if len(hotPosts) <= 0 {
 		return
 	}
-	query, args, err := sqlx.In(fmt.Sprint("SELECT p.*, f.follower, m.nickname AS m_name, m.profile_image AS m_image FROM posts as p LEFT JOIN (SELECT post_id, GROUP_CONCAT(member_id SEPARATOR ',') as follower FROM following_posts GROUP BY post_id) as f ON p.post_id = f.post_id LEFT JOIN members AS m ON m.member_id = p.author WHERE p.active=", fmt.Sprint(PostStatus["active"]), " AND p.post_id IN (?);"), hotPosts)
+	query, args, err := sqlx.In(fmt.Sprint("SELECT p.*, f.follower, m.nickname AS m_name, m.profile_image AS m_image FROM posts as p LEFT JOIN (SELECT post_id, GROUP_CONCAT(member_id SEPARATOR ',') as follower FROM following_posts GROUP BY post_id) as f ON p.post_id = f.post_id LEFT JOIN members AS m ON m.member_id = p.author WHERE p.active=", fmt.Sprint(PostStatus["active"]), " AND p.publish_status=", fmt.Sprint(PostPublishStatus["publish"]), " AND p.post_id IN (?);"), hotPosts)
 	if err != nil {
 		log.Printf("error to build `in` query when fetching post cache data", err)
 		return

@@ -136,6 +136,10 @@ func (a *mockProjectAPI) DeleteProjects(p models.Project) error {
 	return err
 }
 
+func (a *mockProjectAPI) SchedulePublish() error {
+	return nil
+}
+
 var MockProjectAPI mockProjectAPI
 
 func TestRouteProjects(t *testing.T) {
@@ -209,6 +213,7 @@ func TestRouteProjects(t *testing.T) {
 			genericTestcase{"UpdatePublishProjectWithNoSlug", "PUT", "/project", `{"id":32769,"status":2}`, http.StatusBadRequest, `{"Error":"Must Have Slug Before Publish"}`},
 			genericTestcase{"UpdateProjectStatusOK", "PUT", "/project", `{"id":32768,"status":2}`, http.StatusOK, ``},
 			genericTestcase{"UpdateProjectProgressOK", "PUT", "/project", `{"id":32768,"progress":99}`, http.StatusOK, ``},
+			genericTestcase{"UpdateMemoSchedule", "PUT", "/project", `{"id":32768,"publish_status":3,"published_at":"2046-01-05T00:42:42+00:00"}`, http.StatusOK, ``}, //published_at is time string in RFC3339 format
 		}
 		for _, tc := range testcases {
 			genericDoTest(tc, t, asserter)
