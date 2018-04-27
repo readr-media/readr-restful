@@ -10,17 +10,16 @@ ALTER TABLE post_tags DROP PRIMARY KEY;
 ALTER TABLE post_tags ADD COLUMN id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT FIRST;
 
 -- Add id to following_members -- 
-ALTER TABLE following_members DROP PRIMARY KEY;
-ALTER TABLE following_members ADD COLUMN id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT FIRST;
+create index reverse_member on following_members(custom_editor, member_id);
 
 -- Add id to following_projects -- 
-ALTER TABLE following_projects DROP PRIMARY KEY;
-ALTER TABLE following_projects ADD COLUMN id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT FIRST;
+ALTER TABLE following_projects MODIFY COLUMN project_id BIGINT UNSIGNED NOT NULL;
 ALTER TABLE following_projects ADD COLUMN `join` INT DEFAULT 0;
+create index reverse_member on following_projects(project_id, member_id);
 
 -- Add id to following_posts -- 
-ALTER TABLE following_posts DROP PRIMARY KEY;
-ALTER TABLE following_posts ADD COLUMN id BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT FIRST;
+ALTER TABLE following_posts MODIFY COLUMN post_id BIGINT UNSIGNED NOT NULL;
+create index reverse_member on following_posts(post_id, member_id);
 
 -- Add id to article_comments --
 ALTER TABLE article_comments MODIFY post_id BIGINT UNSIGNED NOT NULL;
