@@ -10,6 +10,10 @@ ALTER TABLE points MODIFY member_id BIGINT unsigned NOT NULL, MODIFY updated_by 
 UPDATE memos m LEFT JOIN (SELECT id, member_id FROM members) a ON m.author = a.member_id LEFT JOIN (SELECT id, member_id FROM members) u ON m.updated_by = u.member_id SET m.author = a.id, m.updated_by = u.id;
 ALTER TABLE memos MODIFY author BIGINT unsigned, MODIFY updated_by BIGINT unsigned;
 
+-- Upgrade updated_by in tags --
+UPDATE tags t LEFT JOIN (SELECT id, member_id FROM members) u ON t.updated_by = u.member_id SET t.updated_by = u.id;
+ALTER TABLE tags MODIFY updated_by BIGINT unsigned;
+
 -- Upgrade following_projects member_id to BIGINT unsigned --
 UPDATE following_projects fp LEFT JOIN (SELECT id, member_id FROM members) m ON fp.member_id = m.member_id SET fp.member_id = m.id;
 ALTER TABLE following_projects MODIFY member_id BIGINT unsigned NOT NULL;

@@ -13,15 +13,15 @@ import (
 )
 
 type Tag struct {
-	ID             int        `json:"id" db:"id"`
-	TagID          int        `json:"tag_id" db:"tag_id"`
-	Text           string     `json:"text" db:"tag_content"`
-	CreatedAt      NullTime   `json:"created_at" db:"created_at"`
-	UpdatedAt      NullTime   `json:"updated_at" db:"updated_at"`
-	UpdatedBy      NullString `json:"updated_by" db:"updated_by"`
-	Active         NullInt    `json:"active" db:"active"`
-	RelatedReviews NullInt    `json:"related_reviews" db:"related_reviews"`
-	RelatedNews    NullInt    `json:"related_news" db:"related_news"`
+	ID             int      `json:"id" db:"id"`
+	TagID          int      `json:"tag_id" db:"tag_id"`
+	Text           string   `json:"text" db:"tag_content"`
+	CreatedAt      NullTime `json:"created_at" db:"created_at"`
+	UpdatedAt      NullTime `json:"updated_at" db:"updated_at"`
+	UpdatedBy      NullInt  `json:"updated_by" db:"updated_by"`
+	Active         NullInt  `json:"active" db:"active"`
+	RelatedReviews NullInt  `json:"related_reviews" db:"related_reviews"`
+	RelatedNews    NullInt  `json:"related_news" db:"related_news"`
 }
 
 type TagInterface interface {

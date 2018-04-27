@@ -127,10 +127,10 @@ func (t *mockTagAPI) CountTags() (int, error) {
 func TestRouteTags(t *testing.T) {
 
 	tags := []models.Tag{
-		models.Tag{Text: "tag1", UpdatedBy: models.NullString{"AMI@mirrormedia.mg", true}},
-		models.Tag{Text: "tag2", UpdatedBy: models.NullString{"AMI@mirrormedia.mg", true}},
-		models.Tag{Text: "tag3", UpdatedBy: models.NullString{"AMI@mirrormedia.mg", true}},
-		models.Tag{Text: "tag4", UpdatedBy: models.NullString{"AMI@mirrormedia.mg", true}},
+		models.Tag{Text: "tag1", UpdatedBy: models.NullInt{931, true}},
+		models.Tag{Text: "tag2", UpdatedBy: models.NullInt{931, true}},
+		models.Tag{Text: "tag3", UpdatedBy: models.NullInt{931, true}},
+		models.Tag{Text: "tag4", UpdatedBy: models.NullInt{931, true}},
 	}
 
 	for _, tag := range tags {
@@ -141,8 +141,8 @@ func TestRouteTags(t *testing.T) {
 	}
 
 	for _, params := range []models.Post{
-		models.Post{ID: 43, Active: models.NullInt{1, true}, Type: models.NullInt{1, true}, Author: models.NullString{"AMI@mirrormedia.mg", true}, UpdatedBy: models.NullString{"AMI@mirrormedia.mg", true}},
-		models.Post{ID: 44, Active: models.NullInt{1, true}, Type: models.NullInt{0, true}, Author: models.NullString{"AMI@mirrormedia.mg", true}, UpdatedBy: models.NullString{"AMI@mirrormedia.mg", true}},
+		models.Post{ID: 43, Active: models.NullInt{1, true}, Type: models.NullInt{1, true}, Author: models.NullInt{931, true}, UpdatedBy: models.NullInt{931, true}},
+		models.Post{ID: 44, Active: models.NullInt{1, true}, Type: models.NullInt{0, true}, Author: models.NullInt{931, true}, UpdatedBy: models.NullInt{931, true}},
 	} {
 		_, err := models.PostAPI.InsertPost(params)
 		if err != nil {
@@ -151,7 +151,7 @@ func TestRouteTags(t *testing.T) {
 	}
 
 	for _, params := range []models.Member{
-		models.Member{MemberID: "AMI@mirrormedia.mg", Active: models.NullInt{1, true}, Points: models.NullInt{0, true}, UUID: "abc1d5b1-da54-4200-b61e-f06e59fd8467"},
+		models.Member{ID: 931, MemberID: "AMI@mirrormedia.mg", Active: models.NullInt{1, true}, Points: models.NullInt{0, true}, UUID: "abc1d5b1-da54-4200-b61e-f06e59fd8467"},
 	} {
 		_, err := models.MemberAPI.InsertMember(params)
 		if err != nil {
@@ -234,16 +234,16 @@ func TestRouteTags(t *testing.T) {
 	})
 	t.Run("InsertTag", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"PostTagOK", "POST", "/tags", `{"text":"insert1", "updated_by":"AMI@mirrormedia.mg"}`, http.StatusOK, `{"tag_id":5}`},
+			genericTestcase{"PostTagOK", "POST", "/tags", `{"text":"insert1", "updated_by":931}`, http.StatusOK, `{"tag_id":5}`},
 		} {
 			genericDoTest(testcase, t, asserter)
 		}
 	})
 	t.Run("UpdateTag", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"UpdateTagOK", "PUT", "/tags", `{"id":5, "text":"text5566", "updated_by":"AMI@mirrormedia.mg"}`, http.StatusOK, ``},
-			genericTestcase{"UpdateTagNoSuchTag", "PUT", "/tags", `{"id":6, "text":"text7788", "updated_by":"AMI@mirrormedia.mg"}`, http.StatusBadRequest, `{"Error":"Itme Not Found"}`},
-			genericTestcase{"UpdateTagDupe", "PUT", "/tags", `{"id":2, "text":"tag3", "updated_by":"AMI@mirrormedia.mg"}`, http.StatusBadRequest, `{"Error":"Duplicate Entry"}`},
+			genericTestcase{"UpdateTagOK", "PUT", "/tags", `{"id":5, "text":"text5566", "updated_by":931}`, http.StatusOK, ``},
+			genericTestcase{"UpdateTagNoSuchTag", "PUT", "/tags", `{"id":6, "text":"text7788", "updated_by":931}`, http.StatusBadRequest, `{"Error":"Itme Not Found"}`},
+			genericTestcase{"UpdateTagDupe", "PUT", "/tags", `{"id":2, "text":"tag3", "updated_by":931}`, http.StatusBadRequest, `{"Error":"Duplicate Entry"}`},
 			genericTestcase{"UpdateTagNoID", "PUT", "/tags", `{"text":"tag3"}`, http.StatusBadRequest, `{"Error":"Updater Not Sepcified"}`},
 		} {
 			genericDoTest(testcase, t, asserter)
@@ -267,9 +267,9 @@ func TestRouteTags(t *testing.T) {
 	})
 	t.Run("InsertDupeTag", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"PostTagDupe", "POST", "/tags", `{"text":"text5566","updated_by":"AMI@mirrormedia.mg"}`, http.StatusBadRequest, `{"Error":"Duplicate Entry"}`},
-			genericTestcase{"PostSameAsInactiveTagOK", "POST", "/tags", `{"text":"tag1", "updated_by":"AMI@mirrormedia.mg"}`, http.StatusOK, `{"tag_id":6}`},
-			genericTestcase{"PostSameAsActiveTag", "POST", "/tags", `{"text":"text5566", "updated_by":"AMI@mirrormedia.mg"}`, http.StatusBadRequest, `{"Error":"Duplicate Entry"}`},
+			genericTestcase{"PostTagDupe", "POST", "/tags", `{"text":"text5566","updated_by":931}`, http.StatusBadRequest, `{"Error":"Duplicate Entry"}`},
+			genericTestcase{"PostSameAsInactiveTagOK", "POST", "/tags", `{"text":"tag1", "updated_by":931}`, http.StatusOK, `{"tag_id":6}`},
+			genericTestcase{"PostSameAsActiveTag", "POST", "/tags", `{"text":"text5566", "updated_by":931}`, http.StatusBadRequest, `{"Error":"Duplicate Entry"}`},
 		} {
 			genericDoTest(testcase, t, asserter)
 		}
@@ -277,7 +277,7 @@ func TestRouteTags(t *testing.T) {
 	/*
 		t.Run("GetPostWithTags", func(t *testing.T) {
 			for _, testcase := range []genericTestcase{
-				genericTestcase{"GetPostWithTagsOK", "GET", "/post/43", ``, http.StatusOK, `{"_items":[{"tags":[{"id":"1","text":"text5566"},{"id":"2","text":"tag2"}],"id":43,"created_at":null,"like_amount":null,"comment_amount":null,"title":null,"content":null,"type":1,"link":null,"og_title":null,"og_description":null,"og_image":null,"active":1,"updated_at":null,"published_at":null,"link_title":null,"link_description":null,"link_image":null,"link_name":null,"author":{"id":"AMI@mirrormedia.mg","name":null,"nickname":null,"birthday":null,"gender":null,"work":null,"mail":null,"register_mode":null,"social_id":null,"talk_id":null,"created_at":null,"updated_at":null,"updated_by":null,"description":null,"profile_image":null,"identity":null,"role":null,"active":1,"custom_editor":null,"hide_profile":null,"profile_push":null,"post_push":null,"comment_push":null},"updated_by":{"id":"AMI@mirrormedia.mg","name":null,"nickname":null,"birthday":null,"gender":null,"work":null,"mail":null,"register_mode":null,"social_id":null,"talk_id":null,"created_at":null,"updated_at":null,"updated_by":null,"description":null,"profile_image":null,"identity":null,"role":null,"active":1,"custom_editor":null,"hide_profile":null,"profile_push":null,"post_push":null,"comment_push":null}}]}`},
+				genericTestcase{"GetPostWithTagsOK", "GET", "/post/43", ``, http.StatusOK, `{"_items":[{"tags":[{"id":"1","text":"text5566"},{"id":"2","text":"tag2"}],"id":43,"created_at":null,"like_amount":null,"comment_amount":null,"title":null,"content":null,"type":1,"link":null,"og_title":null,"og_description":null,"og_image":null,"active":1,"updated_at":null,"published_at":null,"link_title":null,"link_description":null,"link_image":null,"link_name":null,"author":{"id":931,"name":null,"nickname":null,"birthday":null,"gender":null,"work":null,"mail":null,"register_mode":null,"social_id":null,"talk_id":null,"created_at":null,"updated_at":null,"updated_by":null,"description":null,"profile_image":null,"identity":null,"role":null,"active":1,"custom_editor":null,"hide_profile":null,"profile_push":null,"post_push":null,"comment_push":null},"updated_by":{"id":931,"name":null,"nickname":null,"birthday":null,"gender":null,"work":null,"mail":null,"register_mode":null,"social_id":null,"talk_id":null,"created_at":null,"updated_at":null,"updated_by":null,"description":null,"profile_image":null,"identity":null,"role":null,"active":1,"custom_editor":null,"hide_profile":null,"profile_push":null,"post_push":null,"comment_push":null}}]}`},
 			} {
 				genericDoTest(testcase, t, asserter)
 			}

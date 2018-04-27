@@ -10,6 +10,10 @@ UPDATE points p LEFT JOIN (SELECT id, member_id FROM members) m ON p.member_id =
 ALTER TABLE memos MODIFY author VARCHAR(48), MODIFY updated_by VARCHAR(48);
 UPDATE memos m LEFT JOIN (SELECT id, member_id FROM members) a ON m.author = a.id LEFT JOIN (SELECT id, member_id FROM members) u ON m.updated_by = u.id SET m.author = a.member_id, m.updated_by = u.member_id;
 
+-- Downgrade updated_by in tags back to VARCHAR(48)--
+ALTER TABLE tags MODIFY updated_by VARCHAR(48);
+UPDATE tags t LEFT JOIN (SELECT id, member_id FROM members) u ON t.updated_by = u.id SET t.updated_by = u.member_id;
+
 -- Downgrade following_projects member_id back to VARCHAR(48) --
 ALTER TABLE following_projects MODIFY member_id VARCHAR(48) NOT NULL;
 UPDATE following_projects fp LEFT JOIN (SELECT id, member_id FROM members) m ON fp.member_id = m.id SET fp.member_id = m.member_id;
