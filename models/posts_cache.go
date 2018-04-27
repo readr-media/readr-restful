@@ -154,7 +154,7 @@ func (p *postCache) UpdateAll(params PostUpdateArgs) {
 		return
 	}
 }
-func (p *postCache) UpdateFollowing(action string, user_id string, post_id string) {
+func (p *postCache) UpdateFollowing(action string, user_id int64, post_id int64) {
 	conn := RedisHelper.Conn()
 	defer conn.Close()
 
