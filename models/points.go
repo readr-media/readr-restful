@@ -9,7 +9,7 @@ import (
 )
 
 type Points struct {
-	PointsID   uint32   `json:"id" db:"id"`
+	PointsID   int64    `json:"id" db:"id"`
 	MemberID   int64    `json:"member_id" db:"member_id" binding:"required"`
 	ObjectType int      `json:"object_type" db:"object_type" binding:"required"`
 	ObjectID   int      `json:"object_id" db:"object_id" binding:"required"`
@@ -24,12 +24,12 @@ type pointsAPI struct{}
 var PointsAPI PointsInterface = new(pointsAPI)
 
 type PointsInterface interface {
-	Get(id uint32, objType *int64) (result []Points, err error)
+	Get(id int64, objType *int64) (result []Points, err error)
 	Insert(pts Points) (result int, err error)
 }
 
 // Need to be change for the probability to accommodate id or id, objType type
-func (p *pointsAPI) Get(id uint32, objType *int64) (result []Points, err error) {
+func (p *pointsAPI) Get(id int64, objType *int64) (result []Points, err error) {
 
 	// GET should return point history of certain member_id rather than points id
 	baseQ := `SELECT * FROM points WHERE member_id = ?`

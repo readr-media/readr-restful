@@ -29,7 +29,7 @@ type ExpectResp struct {
 
 func memberToBasic(m models.Member) (result models.MemberBasic) {
 	result = models.MemberBasic{
-		ID:           m.MemberID,
+		ID:           m.ID,
 		Nickname:     m.Nickname,
 		ProfileImage: m.ProfileImage,
 		Description:  m.Description,
@@ -163,10 +163,10 @@ func (a *mockPostAPI) GetPost(id uint32) (models.TaggedPostMember, error) {
 	for _, value := range mockPostDS {
 		if value.ID == id {
 			for _, member := range mockMemberDS {
-				if value.Author.Valid && member.MemberID == value.Author.String {
+				if value.Author.Valid && member.ID == value.Author.Int {
 					author = member
 				}
-				if value.UpdatedBy.Valid && member.MemberID == value.UpdatedBy.String {
+				if value.UpdatedBy.Valid && member.ID == value.UpdatedBy.Int {
 					updatedBy = member
 				}
 			}

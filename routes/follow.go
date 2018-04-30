@@ -66,14 +66,14 @@ func (r *followingHandler) Push(c *gin.Context) {
 		case "follow":
 			if err = models.FollowingAPI.AddFollowing(params); err != nil {
 				log.Printf("%s fail: %v \n", body.Action, err.Error())
-				c.JSON(http.StatusOK, err.Error())
+				c.JSON(http.StatusOK, gin.H{"Error": err.Error()})
 				return
 			}
 			c.Status(http.StatusOK)
 		case "unfollow":
 			if err = models.FollowingAPI.DeleteFollowing(params); err != nil {
 				log.Printf("%s fail: %v \n", body.Action, err.Error())
-				c.JSON(http.StatusOK, err.Error())
+				c.JSON(http.StatusOK, gin.H{"Error": err.Error()})
 				return
 			}
 			c.Status(http.StatusOK)

@@ -13,8 +13,7 @@ import (
 )
 
 type Tag struct {
-	ID             int      `json:"id" db:"id"`
-	TagID          int      `json:"tag_id" db:"tag_id"`
+	ID             int      `json:"id" db:"tag_id"`
 	Text           string   `json:"text" db:"tag_content"`
 	CreatedAt      NullTime `json:"created_at" db:"created_at"`
 	UpdatedAt      NullTime `json:"updated_at" db:"updated_at"`
@@ -230,7 +229,7 @@ func (t *tagApi) UpdatePostTags(post_id int, tag_ids []int) error {
 
 	var insqueryBuffer bytes.Buffer
 	var insargs []interface{}
-	insqueryBuffer.WriteString("INSERT IGNORE INTO post_tags VALUES ")
+	insqueryBuffer.WriteString("INSERT IGNORE INTO post_tags (post_id, tag_id) VALUES ")
 	for index, tag_id := range tag_ids {
 		insqueryBuffer.WriteString("( ? ,? )")
 		insargs = append(insargs, post_id, tag_id)

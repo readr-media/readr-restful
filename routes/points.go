@@ -37,7 +37,7 @@ func (r *pointsHandler) Get(c *gin.Context) {
 			objtype = nil
 		}
 	}
-	points, err := models.PointsAPI.Get(uint32(uid), objtype)
+	points, err := models.PointsAPI.Get(int64(uid), objtype)
 	if err != nil {
 		switch err.Error() {
 		case "Points Not Found":

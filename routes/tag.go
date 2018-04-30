@@ -2,7 +2,6 @@ package routes
 
 import (
 	"encoding/json"
-	//"log"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -70,6 +69,7 @@ func (r *tagHandler) Post(c *gin.Context) {
 func (r *tagHandler) Put(c *gin.Context) {
 	args := models.Tag{}
 	err := c.Bind(&args)
+
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return

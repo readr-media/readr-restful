@@ -30,7 +30,7 @@ var mockFollowingDS = map[string][]followDS{
 func (a *mockFollowingAPI) AddFollowing(params models.FollowArgs) error {
 	store, ok := mockFollowingDS[params.Resource]
 	if !ok {
-		log.Fatalln("unexpected error")
+		return errors.New("Resource Not Supported")
 	}
 
 	store = append(store, followDS{ID: params.Subject, Object: params.Object})
@@ -39,7 +39,7 @@ func (a *mockFollowingAPI) AddFollowing(params models.FollowArgs) error {
 func (a *mockFollowingAPI) DeleteFollowing(params models.FollowArgs) error {
 	store, ok := mockFollowingDS[params.Resource]
 	if !ok {
-		log.Fatalln("unexpected error")
+		return errors.New("Resource Not Supported")
 	}
 
 	for index, follow := range store {
@@ -246,9 +246,9 @@ func TestFollowingGet(t *testing.T) {
 		in   CaseIn
 		out  CaseOut
 	}{
-		{"GetFollowingPostOK", CaseIn{"post", "", 71}, CaseOut{http.StatusOK, `[{"id":42,"author":"followtest1@mirrormedia.mg","created_at":null,"like_amount":null,"comment_amount":null,"title":null,"content":null,"type":0,"link":null,"og_title":null,"og_description":null,"og_image":null,"active":1,"updated_at":"2009-11-10T23:00:00Z","updated_by":null,"published_at":null,"link_title":null,"link_description":null,"link_image":null,"link_name":null,"video_id":null,"video_views":null,"publish_status":null},{"id":84,"author":"followtest2@mirrormedia.mg","created_at":null,"like_amount":null,"comment_amount":null,"title":null,"content":null,"type":1,"link":null,"og_title":null,"og_description":null,"og_image":null,"active":1,"updated_at":"2009-11-10T23:00:00Z","updated_by":null,"published_at":null,"link_title":null,"link_description":null,"link_image":null,"link_name":null,"video_id":null,"video_views":null,"publish_status":null}]`}},
-		{"GetFollowingPostReviewOK", CaseIn{"post", "review", 71}, CaseOut{http.StatusOK, `[{"id":42,"author":"followtest1@mirrormedia.mg","created_at":null,"like_amount":null,"comment_amount":null,"title":null,"content":null,"type":0,"link":null,"og_title":null,"og_description":null,"og_image":null,"active":1,"updated_at":"2009-11-10T23:00:00Z","updated_by":null,"published_at":null,"link_title":null,"link_description":null,"link_image":null,"link_name":null,"video_id":null,"video_views":null,"publish_status":null}]`}},
-		{"GetFollowingPostNewsOK", CaseIn{"post", "news", 71}, CaseOut{http.StatusOK, `[{"id":84,"author":"followtest2@mirrormedia.mg","created_at":null,"like_amount":null,"comment_amount":null,"title":null,"content":null,"type":1,"link":null,"og_title":null,"og_description":null,"og_image":null,"active":1,"updated_at":"2009-11-10T23:00:00Z","updated_by":null,"published_at":null,"link_title":null,"link_description":null,"link_image":null,"link_name":null,"video_id":null,"video_views":null,"publish_status":null}]`}},
+		{"GetFollowingPostOK", CaseIn{"post", "", 71}, CaseOut{http.StatusOK, `[{"id":42,"author":71,"created_at":null,"like_amount":null,"comment_amount":null,"title":null,"content":null,"type":0,"link":null,"og_title":null,"og_description":null,"og_image":null,"active":1,"updated_at":"2009-11-10T23:00:00Z","updated_by":null,"published_at":null,"link_title":null,"link_description":null,"link_image":null,"link_name":null,"video_id":null,"video_views":null,"publish_status":null},{"id":84,"author":72,"created_at":null,"like_amount":null,"comment_amount":null,"title":null,"content":null,"type":1,"link":null,"og_title":null,"og_description":null,"og_image":null,"active":1,"updated_at":"2009-11-10T23:00:00Z","updated_by":null,"published_at":null,"link_title":null,"link_description":null,"link_image":null,"link_name":null,"video_id":null,"video_views":null,"publish_status":null}]`}},
+		{"GetFollowingPostReviewOK", CaseIn{"post", "review", 71}, CaseOut{http.StatusOK, `[{"id":42,"author":71,"created_at":null,"like_amount":null,"comment_amount":null,"title":null,"content":null,"type":0,"link":null,"og_title":null,"og_description":null,"og_image":null,"active":1,"updated_at":"2009-11-10T23:00:00Z","updated_by":null,"published_at":null,"link_title":null,"link_description":null,"link_image":null,"link_name":null,"video_id":null,"video_views":null,"publish_status":null}]`}},
+		{"GetFollowingPostNewsOK", CaseIn{"post", "news", 71}, CaseOut{http.StatusOK, `[{"id":84,"author":72,"created_at":null,"like_amount":null,"comment_amount":null,"title":null,"content":null,"type":1,"link":null,"og_title":null,"og_description":null,"og_image":null,"active":1,"updated_at":"2009-11-10T23:00:00Z","updated_by":null,"published_at":null,"link_title":null,"link_description":null,"link_image":null,"link_name":null,"video_id":null,"video_views":null,"publish_status":null}]`}},
 		{"GetFollowingProjectOK", CaseIn{"project", "", 71}, CaseOut{http.StatusOK, `[{"id":420,"created_at":null,"updated_at":"2015-11-10T23:00:00Z","updated_by":null,"published_at":null,"post_id":42,"like_amount":null,"comment_amount":null,"active":1,"hero_image":null,"title":null,"description":null,"author":null,"og_title":null,"og_description":null,"og_image":null,"project_order":null,"status":null,"slug":null,"views":null,"publish_status":null,"progress":null,"memo_points":null}]`}},
 		{"GetFollowingFollowerNotExist", CaseIn{"project", "", 0}, CaseOut{http.StatusOK, `[]`}},
 	}
@@ -440,15 +440,15 @@ func TestFollowingAddDelete(t *testing.T) {
 		in   CaseIn
 		out  CaseOut
 	}{
-		{"AddFollowingPostOK", CaseIn{"follow", "post", "followtest0@mirrormedia.mg", "84"}, CaseOut{http.StatusOK, ""}},
-		{"AddFollowingMemberOK", CaseIn{"follow", "member", "followtest0@mirrormedia.mg", "followtest2@mirrormedia.mg"}, CaseOut{http.StatusOK, ""}},
-		{"AddFollowingProjectOK", CaseIn{"follow", "project", "followtest0@mirrormedia.mg", "840"}, CaseOut{http.StatusOK, ""}},
-		{"AddFollowingMissingResource", CaseIn{"follow", "", "followtest0@mirrormedia.mg", "followtest2@mirrormedia.mg"}, CaseOut{http.StatusOK, `{"Error":"Bad Request"}`}},
-		{"AddFollowingMissingAction", CaseIn{"", "member", "followtest0@mirrormedia.mg", "followtest2@mirrormedia.mg"}, CaseOut{http.StatusOK, `{"Error":"Bad Request"}`}},
-		{"AddFollowingWrongIDForPost", CaseIn{"follow", "post", "followtest0@mirrormedia.mg", "zexal"}, CaseOut{http.StatusOK, `{"Error":"Bad Request"}`}},
-		{"DeleteFollowingPostOK", CaseIn{"unfollow", "post", "followtest0@mirrormedia.mg", "84"}, CaseOut{http.StatusOK, ""}},
-		{"DeleteFollowingMemberOK", CaseIn{"unfollow", "member", "followtest0@mirrormedia.mg", "followtest2@mirrormedia.mg"}, CaseOut{http.StatusOK, ""}},
-		{"DeleteFollowingProjectOK", CaseIn{"unfollow", "project", "followtest0@mirrormedia.mg", "840"}, CaseOut{http.StatusOK, ""}},
+		{"AddFollowingPostOK", CaseIn{"follow", "post", "70", "84"}, CaseOut{http.StatusOK, ""}},
+		{"AddFollowingMemberOK", CaseIn{"follow", "member", "70", "72"}, CaseOut{http.StatusOK, ""}},
+		{"AddFollowingProjectOK", CaseIn{"follow", "project", "70", "840"}, CaseOut{http.StatusOK, ""}},
+		{"AddFollowingMissingResource", CaseIn{"follow", "", "70", "72"}, CaseOut{http.StatusOK, `{"Error":"Resource Not Supported"}`}},
+		{"AddFollowingMissingAction", CaseIn{"", "member", "70", "72"}, CaseOut{http.StatusOK, `{"Error":"Bad Request"}`}},
+		{"AddFollowingWrongIDForPost", CaseIn{"follow", "post", "70", "zexal"}, CaseOut{http.StatusOK, `{"Error":"Bad Request"}`}},
+		{"DeleteFollowingPostOK", CaseIn{"unfollow", "post", "70", "84"}, CaseOut{http.StatusOK, ""}},
+		{"DeleteFollowingMemberOK", CaseIn{"unfollow", "member", "70", "72"}, CaseOut{http.StatusOK, ""}},
+		{"DeleteFollowingProjectOK", CaseIn{"unfollow", "project", "70", "840"}, CaseOut{http.StatusOK, ""}},
 	}
 
 	for _, testcase := range TestFollowingGetCases {

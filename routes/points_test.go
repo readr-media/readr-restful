@@ -31,7 +31,7 @@ func (a *mockPointsAPI) teardown() {
 	a.mockPointsDS = nil
 }
 
-func (a *mockPointsAPI) Get(id uint32, objType *int64) (result []models.Points, err error) {
+func (a *mockPointsAPI) Get(id int64, objType *int64) (result []models.Points, err error) {
 	for _, v := range a.mockPointsDS {
 
 		if v.MemberID == id {
