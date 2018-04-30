@@ -10,7 +10,7 @@ import (
 
 type Points struct {
 	PointsID   uint32   `json:"id" db:"id"`
-	MemberID   uint32   `json:"member_id" db:"member_id" binding:"required"`
+	MemberID   int64    `json:"member_id" db:"member_id" binding:"required"`
 	ObjectType int      `json:"object_type" db:"object_type" binding:"required"`
 	ObjectID   int      `json:"object_id" db:"object_id" binding:"required"`
 	Points     int      `json:"points" db:"points"`

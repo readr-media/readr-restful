@@ -31,7 +31,7 @@ type Member struct {
 
 	CreatedAt NullTime   `json:"created_at" db:"created_at"`
 	UpdatedAt NullTime   `json:"updated_at" db:"updated_at"`
-	UpdatedBy NullString `json:"updated_by" db:"updated_by"`
+	UpdatedBy NullInt    `json:"updated_by" db:"updated_by"`
 	Password  NullString `json:"-" db:"password"`
 	Salt      NullString `json:"-" db:"salt"`
 	// Ignore password JSON marshall for now
@@ -119,7 +119,7 @@ func (m *MemberArgs) parse() (restricts string, values []interface{}) {
 		for i := range a {
 			a[i] = "?"
 		}
-		where = append(where, fmt.Sprintf("members.member_id IN (%s)", strings.Join(a, ", ")))
+		where = append(where, fmt.Sprintf("members.id IN (%s)", strings.Join(a, ", ")))
 		for i := range m.IDs {
 			values = append(values, m.IDs[i])
 		}
@@ -179,9 +179,6 @@ func (a *memberAPI) GetMember(idType string, id string) (Member, error) {
 
 func (a *memberAPI) InsertMember(m Member) (id int, err error) {
 
-	if !m.Points.Valid {
-		m.Points = NullInt{0, true}
-	}
 	tags := getStructDBTags("full", Member{})
 	query := fmt.Sprintf(`INSERT INTO members (%s) VALUES (:%s)`,
 		strings.Join(tags, ","), strings.Join(tags, ",:"))
