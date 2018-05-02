@@ -189,7 +189,7 @@ func DoTest(t *testing.T, ts TestStep, function interface{}) {
 			r.ServeHTTP(w, req)
 
 			if w.Code != tc.httpcode {
-				t.Errorf("%s want %d but get %d", tc.name, tc.httpcode, w.Code)
+				t.Errorf("%s want HTTP code %d but get %d", tc.name, tc.httpcode, w.Code)
 			}
 			switch tc.resp.(type) {
 			case string:
