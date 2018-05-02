@@ -49,30 +49,31 @@ func (r *followingHandler) Push(c *gin.Context) {
 
 	switch body.Action {
 	case "follow", "unfollow":
-
-		if _, err := strconv.Atoi(body.Object); body.Resource != "member" && err != nil {
+		object, err := strconv.Atoi(body.Object)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{"Error": "Bad Request"})
+			return
+		}
+		subject, err := strconv.Atoi(body.Subject)
+		if err != nil {
 			c.JSON(http.StatusOK, gin.H{"Error": "Bad Request"})
 			return
 		}
 
-		params := map[string]string{
-			"resource": body.Resource,
-			"subject":  body.Subject,
-			"object":   body.Object,
-		}
+		params := models.FollowArgs{Resource: body.Resource, Subject: int64(subject), Object: int64(object)}
 
 		switch body.Action {
 		case "follow":
 			if err = models.FollowingAPI.AddFollowing(params); err != nil {
 				log.Printf("%s fail: %v \n", body.Action, err.Error())
-				c.JSON(http.StatusOK, err.Error())
+				c.JSON(http.StatusOK, gin.H{"Error": err.Error()})
 				return
 			}
 			c.Status(http.StatusOK)
 		case "unfollow":
 			if err = models.FollowingAPI.DeleteFollowing(params); err != nil {
 				log.Printf("%s fail: %v \n", body.Action, err.Error())
-				c.JSON(http.StatusOK, err.Error())
+				c.JSON(http.StatusOK, gin.H{"Error": err.Error()})
 				return
 			}
 			c.Status(http.StatusOK)
@@ -84,18 +85,10 @@ func (r *followingHandler) Push(c *gin.Context) {
 }
 
 func (r *followingHandler) GetByUser(c *gin.Context) {
-	input := struct {
-		MemberId string `json:"subject"`
-		Resource string `json:"resource"`
-		Type     string `json:"resource_type,omitempty"`
-	}{}
+	var input models.GetFollowingArgs
 	c.ShouldBindJSON(&input)
 
-	result, err := models.FollowingAPI.GetFollowing(map[string]string{
-		"subject":       input.MemberId,
-		"resource":      input.Resource,
-		"resource_type": input.Type,
-	})
+	result, err := models.FollowingAPI.GetFollowing(input)
 
 	if err != nil {
 		switch err.Error() {
@@ -114,23 +107,21 @@ func (r *followingHandler) GetByUser(c *gin.Context) {
 func (r *followingHandler) GetByResource(c *gin.Context) {
 	var input models.GetFollowedArgs
 	c.ShouldBindJSON(&input)
-
 	if len(input.Ids) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Resource ID"})
 		return
 	}
+	for _, v := range input.Ids {
+		_, err := strconv.Atoi(v)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Resource ID"})
+			return
+		}
+	}
 
 	switch input.Resource {
-	case "member":
+	case "member", "post", "project":
 		break
-	case "post", "project":
-		for _, value := range input.Ids {
-			_, err := strconv.Atoi(string(value))
-			if err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Resource ID"})
-				return
-			}
-		}
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Unsupported Resource"})
 		return

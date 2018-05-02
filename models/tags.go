@@ -13,14 +13,14 @@ import (
 )
 
 type Tag struct {
-	ID             int        `json:"id" db:"tag_id"`
-	Text           string     `json:"text" db:"tag_content"`
-	CreatedAt      NullTime   `json:"created_at" db:"created_at"`
-	UpdatedAt      NullTime   `json:"updated_at" db:"updated_at"`
-	UpdatedBy      NullString `json:"updated_by" db:"updated_by"`
-	Active         NullInt    `json:"active" db:"active"`
-	RelatedReviews NullInt    `json:"related_reviews" db:"related_reviews"`
-	RelatedNews    NullInt    `json:"related_news" db:"related_news"`
+	ID             int      `json:"id" db:"tag_id"`
+	Text           string   `json:"text" db:"tag_content"`
+	CreatedAt      NullTime `json:"created_at" db:"created_at"`
+	UpdatedAt      NullTime `json:"updated_at" db:"updated_at"`
+	UpdatedBy      NullInt  `json:"updated_by" db:"updated_by"`
+	Active         NullInt  `json:"active" db:"active"`
+	RelatedReviews NullInt  `json:"related_reviews" db:"related_reviews"`
+	RelatedNews    NullInt  `json:"related_news" db:"related_news"`
 }
 
 type TagInterface interface {
@@ -229,7 +229,7 @@ func (t *tagApi) UpdatePostTags(post_id int, tag_ids []int) error {
 
 	var insqueryBuffer bytes.Buffer
 	var insargs []interface{}
-	insqueryBuffer.WriteString("INSERT IGNORE INTO post_tags VALUES ")
+	insqueryBuffer.WriteString("INSERT IGNORE INTO post_tags (post_id, tag_id) VALUES ")
 	for index, tag_id := range tag_ids {
 		insqueryBuffer.WriteString("( ? ,? )")
 		insargs = append(insargs, post_id, tag_id)

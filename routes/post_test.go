@@ -1,58 +1,45 @@
 package routes
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"net/http"
-	"net/http/httptest"
 	"reflect"
 	"testing"
 
 	"github.com/readr-media/readr-restful/models"
 )
 
-type mockPostAPI struct{}
-
-func initPostTest() {
-	mockPostDSBack = mockPostDS
+type mockPostAPI struct {
+	mockPostDS []models.TaggedPostMember
 }
 
-func clearPostTest() {
-	mockPostDS = mockPostDSBack
+func (a *mockPostAPI) setup(in interface{}) {
+	a.mockPostDS = make([]models.TaggedPostMember, len(in.([]models.TaggedPostMember)))
+	copy(a.mockPostDS, in.([]models.TaggedPostMember))
+	models.PostAPI = a
 }
 
-type ExpectResp struct {
-	httpcode int
-	err      string
-}
-
-func memberToBasic(m models.Member) (result models.MemberBasic) {
-	result = models.MemberBasic{
-		ID:           m.ID,
-		Nickname:     m.Nickname,
-		ProfileImage: m.ProfileImage,
-		Description:  m.Description,
-		Role:         m.Role,
-	}
-	return result
+func (a *mockPostAPI) teardown() {
+	a.mockPostDS = nil
 }
 
 func (a *mockPostAPI) GetPosts(args *models.PostArgs) (result []models.TaggedPostMember, err error) {
 	result = []models.TaggedPostMember{
-		{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.MemberBasic{}, UpdatedBy: models.MemberBasic{}}},
-		{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMemberDS[1]), UpdatedBy: models.MemberBasic{}}},
-		{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMemberDS[0]), UpdatedBy: memberToBasic(mockMemberDS[0])}},
-		{PostMember: models.PostMember{Post: mockPostDS[2], Member: memberToBasic(mockMemberDS[2]), UpdatedBy: models.MemberBasic{}}},
+		a.mockPostDS[3],
+		a.mockPostDS[1],
+		a.mockPostDS[0],
+		a.mockPostDS[2],
 	}
+
 	err = nil
 
 	if args.Sorting == "updated_at" {
 		result = []models.TaggedPostMember{
-			{PostMember: models.PostMember{Post: mockPostDS[2], Member: memberToBasic(mockMemberDS[2]), UpdatedBy: models.MemberBasic{}}},
-			{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMemberDS[0]), UpdatedBy: memberToBasic(mockMemberDS[0])}},
-			{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMemberDS[1]), UpdatedBy: models.MemberBasic{}}},
-			{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.MemberBasic{}, UpdatedBy: models.MemberBasic{}}},
+			a.mockPostDS[2],
+			a.mockPostDS[0],
+			a.mockPostDS[1],
+			a.mockPostDS[3],
 		}
 		err = nil
 	}
@@ -66,18 +53,19 @@ func (a *mockPostAPI) GetPosts(args *models.PostArgs) (result []models.TaggedPos
 	// Active filter
 	if reflect.DeepEqual(args.Active, map[string][]int{"$nin": {1}}) {
 		result = []models.TaggedPostMember{
-			{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMemberDS[1]), UpdatedBy: models.MemberBasic{}}},
-			{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.MemberBasic{}, UpdatedBy: models.MemberBasic{}}},
+			a.mockPostDS[1],
+			a.mockPostDS[3],
 		}
 		err = nil
 		return result, err
 	}
 	// Author filter
 	if args.Author != nil {
-		if reflect.DeepEqual(args.Author, map[string][]string{"$in": {"superman@mirrormedia.mg", "Major.Tom@mirrormedia.mg"}}) {
+		if reflect.DeepEqual(args.Author, map[string][]int64{"$in": {2, 3}}) {
 			result = []models.TaggedPostMember{
-				{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMemberDS[0]), UpdatedBy: memberToBasic(mockMemberDS[0])}},
-				{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.MemberBasic{}, UpdatedBy: models.MemberBasic{}}},
+				a.mockPostDS[1],
+				a.mockPostDS[2],
+				a.mockPostDS[3],
 			}
 			err = nil
 			return result, err
@@ -87,9 +75,9 @@ func (a *mockPostAPI) GetPosts(args *models.PostArgs) (result []models.TaggedPos
 	if args.Type != nil {
 		if reflect.DeepEqual(args.Type, map[string][]int{"$in": {1, 2}}) {
 			result = []models.TaggedPostMember{
-				{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.MemberBasic{}, UpdatedBy: models.MemberBasic{}}},
-				{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMemberDS[1]), UpdatedBy: models.MemberBasic{}}},
-				{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMemberDS[0]), UpdatedBy: memberToBasic(mockMemberDS[0])}},
+				a.mockPostDS[3],
+				a.mockPostDS[1],
+				a.mockPostDS[0],
 			}
 			err = nil
 			return result, err
@@ -155,22 +143,12 @@ func (a *mockPostAPI) GetPosts(args *models.PostArgs) (result []models.TaggedPos
 
 func (a *mockPostAPI) GetPost(id uint32) (models.TaggedPostMember, error) {
 	var (
-		result    models.TaggedPostMember
-		author    models.Member
-		updatedBy models.Member
+		result models.TaggedPostMember
 	)
 	err := errors.New("Post Not Found")
-	for _, value := range mockPostDS {
-		if value.ID == id {
-			for _, member := range mockMemberDS {
-				if value.Author.Valid && member.ID == value.Author.String {
-					author = member
-				}
-				if value.UpdatedBy.Valid && member.ID == value.UpdatedBy.String {
-					updatedBy = member
-				}
-			}
-			result = models.TaggedPostMember{PostMember: models.PostMember{Post: value, Member: memberToBasic(author), UpdatedBy: memberToBasic(updatedBy)}}
+	for _, value := range a.mockPostDS {
+		if value.PostMember.Post.ID == id {
+			result = value
 			err = nil
 			break
 		}
@@ -179,22 +157,26 @@ func (a *mockPostAPI) GetPost(id uint32) (models.TaggedPostMember, error) {
 }
 
 func (a *mockPostAPI) InsertPost(p models.Post) (int, error) {
-	for _, post := range mockPostDS {
-		if post.ID == p.ID {
-			err := errors.New("Duplicate entry")
-			return 0, err
-		}
+
+	var tpm models.TaggedPostMember
+	var id uint32
+	if len(a.mockPostDS) != 0 {
+		id = a.mockPostDS[len(a.mockPostDS)-1].ID
+	} else {
+		id = 1
 	}
-	mockPostDS = append(mockPostDS, p)
-	return len(mockPostDS) - 1, nil
+	p.ID = id
+	tpm.PostMember.Post = p
+	a.mockPostDS = append(a.mockPostDS, tpm)
+	return int(p.ID), nil
 }
 
-func (a *mockPostAPI) UpdatePost(p models.Post) error {
-	err := errors.New("Post Not Found")
-	for index, value := range mockPostDS {
+func (a *mockPostAPI) UpdatePost(p models.Post) (err error) {
+	err = errors.New("Post Not Found")
+	for index, value := range a.mockPostDS {
 		if value.ID == p.ID {
-			mockPostDS[index].LikeAmount = p.LikeAmount
-			mockPostDS[index].Title = p.Title
+			a.mockPostDS[index].LikeAmount = p.LikeAmount
+			a.mockPostDS[index].Title = p.Title
 			err = nil
 			return err
 		}
@@ -203,41 +185,24 @@ func (a *mockPostAPI) UpdatePost(p models.Post) error {
 }
 func (a *mockPostAPI) UpdateAll(req models.PostUpdateArgs) (err error) {
 
-	for _, v := range req.IDs {
-		if v == 1 || v == 2 || v == 4 || v == 6 {
-			err = nil
-		} else {
-			err = errors.New("Posts Not Found")
+	err = errors.New("Posts Not Found")
+
+	for _, r := range req.IDs {
+		for _, v := range a.mockPostDS {
+			if r == int(v.Post.ID) {
+				err = nil
+			}
 		}
 	}
+
 	return err
 }
 
-// func (a *mockPostAPI) UpdateAll(req models.PostUpdateArgs) (err error) {
-
-// 	result := make([]int, 0)
-// 	for _, value := range ids {
-// 		for i, v := range mockPostDS {
-// 			if v.ID == value {
-// 				mockPostDS[i].Active = models.NullInt{Int: int64(models.PostStatus["active"].(float64)), Valid: true}
-// 				result = append(result, i)
-// 			}
-// 		}
-// 	}
-// 	if len(result) == 0 {
-// 		err = errors.New("Posts Not Found")
-// 		return err
-// 	}
-// 	return err
-// }
-
-func (a *mockPostAPI) DeletePost(id uint32) error {
-	// result := models.Post{}
-	err := errors.New("Post Not Found")
-	for index, value := range mockPostDS {
+func (a *mockPostAPI) DeletePost(id uint32) (err error) {
+	err = errors.New("Post Not Found")
+	for index, value := range a.mockPostDS {
 		if value.ID == id {
 			mockPostDS[index].Active = models.NullInt{Int: int64(models.PostStatus["deactive"].(float64)), Valid: true}
-			// result = mockPostDS[index]
 			return nil
 		}
 	}
@@ -256,8 +221,8 @@ func (a *mockPostAPI) Count(req *models.PostArgs) (result int, err error) {
 
 	// CountAuthor
 	if req.Author != nil {
-		if reflect.DeepEqual(req.Author, map[string][]string{"$nin": {"superman@mirrormedia.mg", "Major.Tom@mirrormedia.mg"}}) {
-			return 3, nil
+		if reflect.DeepEqual(req.Author, map[string][]int64{"$nin": {0, 1}}) {
+			return 2, nil
 		}
 	}
 	if reflect.DeepEqual(req.Active, map[string][]int{"$nin": {0}}) {
@@ -278,307 +243,189 @@ func (a *mockPostAPI) SchedulePublish() error {
 	return nil
 }
 
-// // ---------------------------------- Post Test -------------------------------
-func TestRouteGetPosts(t *testing.T) {
+func TestRoutePost(t *testing.T) {
 
-	initPostTest()
+	var postTest mockPostAPI
 
-	type ExpectGetsResp struct {
-		ExpectResp
-		resp []models.TaggedPostMember
+	posts := []models.TaggedPostMember{
+		{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMembers[0]), UpdatedBy: memberToBasic(mockMembers[0])}},
+		{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMembers[1]), UpdatedBy: models.MemberBasic{}}},
+		{PostMember: models.PostMember{Post: mockPostDS[2], Member: memberToBasic(mockMembers[2]), UpdatedBy: models.MemberBasic{}}},
+		{PostMember: models.PostMember{Post: mockPostDS[3], Member: memberToBasic(mockMembers[2]), UpdatedBy: models.MemberBasic{}}},
 	}
-	testPostsGetCases := []struct {
-		name   string
-		route  string
-		expect ExpectGetsResp
-	}{
-		{"UpdatedAtDescending", "/posts", ExpectGetsResp{ExpectResp{http.StatusOK, ""},
-			[]models.TaggedPostMember{
-				{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.MemberBasic{}, UpdatedBy: models.MemberBasic{}}},
-				{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMemberDS[1]), UpdatedBy: models.MemberBasic{}}},
-				{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMemberDS[0]), UpdatedBy: memberToBasic(mockMemberDS[0])}},
-				{PostMember: models.PostMember{Post: mockPostDS[2], Member: memberToBasic(mockMemberDS[2]), UpdatedBy: models.MemberBasic{}}},
-			}}},
-		{"UpdatedAtAscending", "/posts?sort=updated_at", ExpectGetsResp{ExpectResp{http.StatusOK, ""},
-			[]models.TaggedPostMember{
-				{PostMember: models.PostMember{Post: mockPostDS[2], Member: memberToBasic(mockMemberDS[2]), UpdatedBy: models.MemberBasic{}}},
-				{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMemberDS[0]), UpdatedBy: memberToBasic(mockMemberDS[0])}},
-				{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMemberDS[1]), UpdatedBy: models.MemberBasic{}}},
-				{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.MemberBasic{}, UpdatedBy: models.MemberBasic{}}},
-			}}},
-		{"max_result", "/posts?max_result=2", ExpectGetsResp{ExpectResp{http.StatusOK, ""},
-			[]models.TaggedPostMember{
-				{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.MemberBasic{}, UpdatedBy: models.MemberBasic{}}},
-				{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMemberDS[1]), UpdatedBy: models.MemberBasic{}}},
-			}}},
-		{"AuthorFilter", `/posts?author={"$in":["superman@mirrormedia.mg", "Major.Tom@mirrormedia.mg"]}`, ExpectGetsResp{ExpectResp{http.StatusOK, ""},
-			[]models.TaggedPostMember{
-				{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMemberDS[0]), UpdatedBy: memberToBasic(mockMemberDS[0])}},
-				{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.MemberBasic{}, UpdatedBy: models.MemberBasic{}}},
-			}}},
-		{"ActiveFilter", `/posts?active={"$nin":[1]}`, ExpectGetsResp{ExpectResp{http.StatusOK, ""},
-			[]models.TaggedPostMember{
-				{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMemberDS[1]), UpdatedBy: models.MemberBasic{}}},
-				{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.MemberBasic{}, UpdatedBy: models.MemberBasic{}}},
-			}}},
-		{"NotFound", `/posts?active={"$nin":[0,1]}`, ExpectGetsResp{ExpectResp{http.StatusOK, ``},
-			[]models.TaggedPostMember{}}},
-		{"Type", `/posts?type={"$in":[1,2]}`, ExpectGetsResp{ExpectResp{http.StatusOK, ``},
-			[]models.TaggedPostMember{
-				{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.MemberBasic{}, UpdatedBy: models.MemberBasic{}}},
-				{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMemberDS[1]), UpdatedBy: models.MemberBasic{}}},
-				{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMemberDS[0]), UpdatedBy: memberToBasic(mockMemberDS[0])}},
-			}}},
-	}
-	for _, tc := range testPostsGetCases {
-		t.Run(tc.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("GET", tc.route, nil)
 
-			r.ServeHTTP(w, req)
-			if w.Code != tc.expect.httpcode {
-				t.Errorf("%s Want %d but get %d", tc.name, tc.expect.httpcode, w.Code)
+	teststep := []TestStep{
+		TestStep{
+			name:     "GET/posts",
+			init:     func() { postTest.setup(posts) },
+			teardown: func() { postTest.teardown() },
+			register: &postTest,
+			cases: []genericTestcase{
+				genericTestcase{"UpdatedAtDescending", "GET", `/posts`, ``, http.StatusOK,
+					[]models.TaggedPostMember{
+						posts[3], posts[1], posts[0], posts[2],
+					}},
+				genericTestcase{"UpdatedAtAscending", "GET", `/posts?sort=updated_at`, ``, http.StatusOK,
+					[]models.TaggedPostMember{posts[2], posts[0], posts[1], posts[3]}},
+				genericTestcase{"MaxResult", "GET", `/posts?max_result=2`, ``, http.StatusOK,
+					[]models.TaggedPostMember{posts[3], posts[1]}},
+				genericTestcase{"AuthorFilter", "GET", `/posts?author={"$in":[2,3]}`, ``, http.StatusOK,
+					[]models.TaggedPostMember{posts[1], posts[2], posts[3]}},
+				genericTestcase{"ActiveFilter", "GET", `/posts?active={"$nin":[1]}`, ``, http.StatusOK,
+					[]models.TaggedPostMember{posts[1], posts[3]}},
+				genericTestcase{"NotFound", "GET", `/posts?active={"$nin":[0,1]}`, ``, http.StatusOK,
+					[]models.TaggedPostMember{}},
+				genericTestcase{"Type", "GET", `/posts?type={"$in":[1,2]}`, ``, http.StatusOK,
+					[]models.TaggedPostMember{posts[3], posts[1], posts[0]}},
+			},
+		},
+		TestStep{
+			name:     "GET/post",
+			init:     func() { postTest.setup(posts) },
+			teardown: func() { postTest.teardown() },
+			register: &postTest,
+			cases: []genericTestcase{
+				genericTestcase{"UpdatedAtDescending", "GET", `/posts`, ``, http.StatusOK,
+					[]models.TaggedPostMember{
+						posts[3], posts[1], posts[0], posts[2],
+					}},
+				genericTestcase{"Current", "GET", `/post/1`, ``, http.StatusOK,
+					[]models.TaggedPostMember{posts[0]}},
+				genericTestcase{"NotExisted", "GET", `/post/3`, `{"Error":"Post Not Found"}`, http.StatusNotFound,
+					[]models.TaggedPostMember{}},
+			},
+		},
+		TestStep{
+			name:     "POST",
+			init:     func() { postTest.setup([]models.TaggedPostMember{}) },
+			teardown: func() { postTest.teardown() },
+			register: &postTest,
+			cases: []genericTestcase{
+				genericTestcase{"New", "POST", `/post`, `{"author":1,"title":"You can't save the world alone, but I can"}`, http.StatusOK, ``},
+				genericTestcase{"EmptyPayload", "POST", `/post`, `{}`, http.StatusBadRequest, `{"Error":"Invalid Post"}`},
+				// post_id will not repeat now
+				// genericTestcase{"Existing", "POST", "/post", `{"author":1}`, http.StatusBadRequest, `{"Error":"Post ID Already Taken"}`},
+				genericTestcase{"WithTags", "POST", `/post`, `{"author":53,"title":"Why so serious?", "tags":[1,2]}`, http.StatusOK, ``},
+			},
+		},
+		TestStep{
+			name:     "PUT",
+			init:     func() { postTest.setup(posts) },
+			teardown: func() { postTest.teardown() },
+			register: &postTest,
+			cases: []genericTestcase{
+				genericTestcase{"UpdateCurrent", "PUT", `/post`, `{"id":1,"author":2}`, http.StatusOK, ``},
+				genericTestcase{"NotExisted", "PUT", `/post`, `{"id":12345, "author":1}`, http.StatusBadRequest, `{"Error":"Post Not Found"}`},
+				genericTestcase{"UpdateTags", "PUT", `/post`, `{"id":1, "tags":[5,3], "updated_by":1}`, http.StatusOK, ``},
+				// UpdateSchedule the same with UpdateTags, need to be changed or confirmed
+				genericTestcase{"UpdateSchedule", "PUT", `/post`, `{"id":1, "tags":[5,3], "updated_by":1}`, http.StatusOK, ``},
+			},
+		},
+		TestStep{
+			name:     "DELETE/posts",
+			init:     func() { postTest.setup(posts) },
+			teardown: func() { postTest.teardown() },
+			register: &postTest,
+			cases: []genericTestcase{
+				genericTestcase{"SimpleDelete", "DELETE", `/posts?ids=[1,2]`, ``, http.StatusOK, ``},
+				genericTestcase{"EmptyID", "DELETE", `/posts?ids=[]`, ``, http.StatusBadRequest, `{"Error":"ID List Empty"}`},
+				genericTestcase{"NotFound", "DELETE", `/posts?ids=[3,5]`, ``, http.StatusNotFound, `{"Error":"Posts Not Found"}`},
+			},
+		},
+		TestStep{
+			name:     "DELETE/post",
+			init:     func() { postTest.setup(posts) },
+			teardown: func() { postTest.teardown() },
+			register: &postTest,
+			cases: []genericTestcase{
+				genericTestcase{"SimpleDelete", "DELETE", `/post/1`, ``, http.StatusOK, ``},
+				genericTestcase{"NotFound", "DELETE", `/post/12345`, ``, http.StatusNotFound, `{"Error":"Post Not Found"}`},
+			},
+		},
+		TestStep{
+			name:     "Publish",
+			init:     func() { postTest.setup(posts) },
+			teardown: func() { postTest.teardown() },
+			register: &postTest,
+			cases: []genericTestcase{
+				genericTestcase{"Posts", "PUT", `/posts`, `{"ids":[1,6]}`, http.StatusOK, ``},
+				genericTestcase{"NotFound", "PUT", `/posts`, `{"ids":[3,5]}`, http.StatusNotFound, `{"Error":"Posts Not Found"}`},
+				genericTestcase{"InvalidPayload", "PUT", `/posts`, `{}`, http.StatusBadRequest, `{"Error":"Invalid Request Body"}`},
+			},
+		},
+		TestStep{
+			name:     "Count",
+			init:     func() { postTest.setup(posts) },
+			teardown: func() { postTest.teardown() },
+			register: &postTest,
+			cases: []genericTestcase{
+				genericTestcase{"Posts", "GET", `/posts/count`, ``, http.StatusOK, `{"_meta":{"total":4}}`},
+				genericTestcase{"Active", "GET", `/posts/count?active={"$in":[0,1]}`, ``, http.StatusOK, `{"_meta":{"total":2}}`},
+				genericTestcase{"Author", "GET", `/posts/count?author={"$nin":[0,1]}`, ``, http.StatusOK, `{"_meta":{"total":2}}`},
+				genericTestcase{"MoreThanOneActive", "GET", `/posts/count?active={"$nin":[1,0], "$in":[-1,3]}`, ``, http.StatusBadRequest, `{"Error":"Too many active lists"}`},
+				genericTestcase{"NotEntirelyValidActive", "GET", `/posts/count?active={"$in":[-3,0,1]}`, ``, http.StatusBadRequest, `{"Error":"Not all active elements are valid"}`},
+				genericTestcase{"NoValidActive", "GET", `/posts/count?active={"$nin":[-3,-4]}`, ``, http.StatusBadRequest, `{"Error":"No valid active request"}`},
+				genericTestcase{"Type", "GET", `/posts/count?type={"$in":[1,2]}`, ``, http.StatusOK, `{"_meta":{"total":3}}`}},
+		},
+	}
+	asserter := func(resp string, tc genericTestcase, t *testing.T) {
+
+		type response struct {
+			Items []models.TaggedPostMember `json:"_items"`
+		}
+
+		var Response response
+		var expected = tc.resp.([]models.TaggedPostMember)
+
+		err := json.Unmarshal([]byte(resp), &Response)
+		if err != nil {
+			t.Errorf("%s, Unexpected result body: %v", tc.name, resp)
+		}
+
+		if len(Response.Items) != len(expected) {
+			t.Errorf("%s expect tag length to be %v but get %v", tc.name, len(expected), len(Response.Items))
+		} else {
+			// Exact same length
+			if len(Response.Items) != 0 && len(expected) != 0 {
+				for i := range expected {
+					if (Response.Items[i].PostMember.Post.ID != expected[i].PostMember.Post.ID) ||
+						(Response.Items[i].PostMember.Member != expected[i].PostMember.Member) ||
+						(Response.Items[i].PostMember.UpdatedBy != expected[i].PostMember.UpdatedBy) {
+						t.Errorf("%s, %vth round expect to get \n%v\n , but get \n%v\n", tc.name, i, expected[i], Response.Items[i])
+					}
+				}
 			}
-			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
-				t.Errorf("%s expect to get error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
-			}
-			expected, _ := json.Marshal(map[string][]models.TaggedPostMember{"_items": tc.expect.resp})
-			if w.Code == http.StatusOK && w.Body.String() != string(expected) {
-				t.Errorf("%s response want\n%s\nbut get\n%s", tc.name, string(expected), w.Body.String())
-			}
-			// Do we have to test Active for testRouteDelete ?
+		}
+	}
+	for _, ts := range teststep {
+		t.Run(ts.name, func(t *testing.T) {
+			DoTest(t, ts, asserter)
 		})
 	}
-	clearPostTest()
-}
-func TestRouteGetPost(t *testing.T) {
-	initPostTest()
-
-	type ExpectGetResp struct {
-		ExpectResp
-		resp models.TaggedPostMember
-	}
-	testPostGetCases := []struct {
-		name   string
-		route  string
-		expect ExpectGetResp
-	}{
-		{"Current", "/post/1", ExpectGetResp{ExpectResp{http.StatusOK, ""},
-			models.TaggedPostMember{
-				PostMember: models.PostMember{
-					Post:      mockPostDS[0],
-					Member:    memberToBasic(mockMemberDS[0]),
-					UpdatedBy: memberToBasic(mockMemberDS[0])},
-				Tags: models.NullString{}}}},
-		{"NotExisted", "/post/3", ExpectGetResp{ExpectResp{http.StatusNotFound, `{"Error":"Post Not Found"}`}, models.TaggedPostMember{}}},
-	}
-	for _, tc := range testPostGetCases {
-		t.Run(tc.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("GET", tc.route, nil)
-
-			r.ServeHTTP(w, req)
-			if w.Code != tc.expect.httpcode {
-				t.Errorf("%s Want %d but get %d", tc.name, tc.expect.httpcode, w.Code)
-			}
-			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
-				t.Errorf("%s expect to get error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
-			}
-
-			expected, _ := json.Marshal(map[string][]models.TaggedPostMember{"_items": []models.TaggedPostMember{tc.expect.resp}})
-			if w.Code == http.StatusOK && w.Body.String() != string(expected) {
-				t.Errorf("%s incorrect response", tc.name)
-			}
-		})
-	}
-	clearPostTest()
-}
-func TestRouteInsertPost(t *testing.T) {
-	initPostTest()
-	testCase := []struct {
-		name    string
-		payload string
-		expect  ExpectResp
-	}{
-		{"New", `{"author":"superman@mirrormedia.mg","title":"You can't save the world alone, but I can"}`, ExpectResp{http.StatusOK, ""}},
-		{"EmptyPayload", `{}`, ExpectResp{http.StatusBadRequest, `{"Error":"Invalid Post"}`}},
-		{"Existing", `{"id":1, "author":"superman@mirrormedia.mg"}`, ExpectResp{http.StatusBadRequest, `{"Error":"Post ID Already Taken"}`}},
-		{"WithTags", `{"id":53,"author":"Joker@mirrormedia.mg","title":"Why so serious?", "tags":[1,2]}`, ExpectResp{http.StatusOK, ""}},
-	}
-	for _, tc := range testCase {
-		t.Run(tc.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			var jsonStr = []byte(tc.payload)
-			req, _ := http.NewRequest("POST", "/post", bytes.NewBuffer(jsonStr))
-			req.Header.Set("Content-Type", "application/json")
-			r.ServeHTTP(w, req)
-
-			if w.Code != tc.expect.httpcode {
-				t.Errorf("%s want %d but get %d", tc.name, tc.expect.httpcode, w.Code)
-			}
-			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
-				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
-			}
-		})
-	}
-	clearPostTest()
-}
-
-func TestRoutePutPost(t *testing.T) {
-	initPostTest()
-	testCase := []struct {
-		name    string
-		payload string
-		expect  ExpectResp
-	}{
-		{"Current", `{"id":1,"author":"wonderwoman@mirrormedia.mg"}`, ExpectResp{http.StatusOK, ""}},
-		{"NotExisted", `{"id":12345, "author":"superman@mirrormedia.mg"}`, ExpectResp{http.StatusBadRequest, `{"Error":"Post Not Found"}`}},
-		{"UpdateTags", `{"id":1, "tags":[5,3], "updated_by":"superman@mirrormedia.mg"}`, ExpectResp{http.StatusOK, ``}},
-		{"UpdateSchedule", `{"id":1, "tags":[5,3], "updated_by":"superman@mirrormedia.mg"}`, ExpectResp{http.StatusOK, ``}},
-	}
-	for _, tc := range testCase {
-		t.Run(tc.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			var jsonStr = []byte(tc.payload)
-			req, _ := http.NewRequest("PUT", "/post", bytes.NewBuffer(jsonStr))
-			req.Header.Set("Content-Type", "application/json")
-			r.ServeHTTP(w, req)
-			if w.Code != tc.expect.httpcode {
-				t.Errorf("%s want %d but get %d", tc.name, tc.expect.httpcode, w.Code)
-			}
-			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
-				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
-			}
-		})
-	}
-	clearPostTest()
 }
 
-func TestRouteDeleteMultiplePosts(t *testing.T) {
-	initPostTest()
-	testCase := []struct {
-		name   string
-		route  string
-		expect ExpectResp
-	}{
-		{"Delete", `/posts?ids=[1, 2]`, ExpectResp{http.StatusOK, ``}},
-		{"Empty", `/posts?ids=[]`, ExpectResp{http.StatusBadRequest, `{"Error":"ID List Empty"}`}},
-		{"NotFound", `/posts?ids=[3, 5]`, ExpectResp{http.StatusNotFound, `{"Error":"Posts Not Found"}`}},
-	}
-	for _, tc := range testCase {
-		t.Run(tc.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("DELETE", tc.route, nil)
-			r.ServeHTTP(w, req)
+// type mockPostAPI struct{}
 
-			if w.Code != tc.expect.httpcode {
-				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
-			}
-			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
-				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
-			}
-		})
-	}
-	clearPostTest()
-}
-func TestRouteDeletePost(t *testing.T) {
-	initPostTest()
-	testCase := []struct {
-		name   string
-		route  string
-		expect ExpectResp
-	}{
-		{"Current", "/post/1", ExpectResp{http.StatusOK, ""}},
-		{"NotFound", "/post/12345", ExpectResp{http.StatusNotFound, `{"Error":"Post Not Found"}`}},
-	}
-	for _, tc := range testCase {
-		t.Run(tc.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("DELETE", tc.route, nil)
-			r.ServeHTTP(w, req)
-			if w.Code != tc.expect.httpcode {
-				t.Errorf("%s Want %d but get %d", tc.name, tc.expect.httpcode, w.Code)
-			}
-			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
-				t.Errorf("%s expect to get error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
-			}
-		})
-	}
-	clearPostTest()
+// func initPostTest() {
+// 	mockPostDSBack = mockPostDS
+// }
+
+// func clearPostTest() {
+// 	mockPostDS = mockPostDSBack
+// }
+
+type ExpectResp struct {
+	httpcode int
+	err      string
 }
 
-func TestRoutePublishMultiplePosts(t *testing.T) {
-	initPostTest()
-	testCase := []struct {
-		name    string
-		payload string
-		expect  ExpectResp
-	}{
-		{"CurrentPost", `{"ids": [1,6]}`, ExpectResp{http.StatusOK, ``}},
-		{"NotFound", `{"ids": [3,5]}`, ExpectResp{http.StatusNotFound, `{"Error":"Posts Not Found"}`}},
-		{"InvalidPayload", `{}`, ExpectResp{http.StatusBadRequest, `{"Error":"Invalid Request Body"}`}},
+func memberToBasic(m models.Member) (result models.MemberBasic) {
+	result = models.MemberBasic{
+		ID:           m.ID,
+		Nickname:     m.Nickname,
+		ProfileImage: m.ProfileImage,
+		Description:  m.Description,
+		Role:         m.Role,
 	}
-	for _, tc := range testCase {
-		t.Run(tc.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			jsonStr := []byte(tc.payload)
-			req, _ := http.NewRequest("PUT", "/posts", bytes.NewBuffer(jsonStr))
-			req.Header.Set("Content-Type", "application/json")
-			r.ServeHTTP(w, req)
-			if w.Code != tc.expect.httpcode {
-				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
-			}
-			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
-				t.Errorf("%s expect error message %s but get %s", tc.name, tc.expect.err, w.Body.String())
-			}
-		})
-	}
-	clearPostTest()
-}
-
-func TestRouteCountPosts(t *testing.T) {
-	initPostTest()
-	type ExpectCountResp struct {
-		httpcode int
-		resp     string
-		err      string
-	}
-	testCase := []struct {
-		name   string
-		route  string
-		expect ExpectCountResp
-	}{
-		{"SimpleCount", `/posts/count`, ExpectCountResp{http.StatusOK, `{"_meta":{"total":4}}`, ``}},
-		{"CountActive", `/posts/count?active={"$in":[0,1]}`, ExpectCountResp{http.StatusOK, `{"_meta":{"total":2}}`, ``}},
-		{"CountAuthor", `/posts/count?author={"$nin":["superman@mirrormedia.mg", "Major.Tom@mirrormedia.mg"]}`, ExpectCountResp{http.StatusOK, `{"_meta":{"total":3}}`, ``}},
-		{"MoreThanOneActive", `/posts/count?active={"$nin":[1,0], "$in":[-1,3]}`,
-			ExpectCountResp{http.StatusBadRequest, ``,
-				`{"Error":"Too many active lists"}`}},
-		{"NotEntirelyValidActive", `/posts/count?active={"$in":[-3,0,1]}`,
-			ExpectCountResp{http.StatusBadRequest, ``,
-				`{"Error":"Not all active elements are valid"}`}},
-		{"NoValidActive", `/posts/count?active={"$nin":[-3,-4]}`,
-			ExpectCountResp{http.StatusBadRequest, ``,
-				`{"Error":"No valid active request"}`}},
-		{"Type", `/posts/count?type={"$in":[1,2]}`,
-			ExpectCountResp{http.StatusOK, `{"_meta":{"total":3}}`, ``}},
-	}
-	for _, tc := range testCase {
-		t.Run(tc.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("GET", tc.route, nil)
-			r.ServeHTTP(w, req)
-
-			if w.Code != tc.expect.httpcode {
-				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
-			}
-			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
-				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
-			}
-			if w.Code == http.StatusOK && w.Body.String() != tc.expect.resp {
-				t.Errorf("%s incorrect response.\nWant\n%s\nBut get\n%s\n", tc.name, tc.expect.resp, w.Body.String())
-			}
-		})
-	}
-	clearPostTest()
+	return result
 }

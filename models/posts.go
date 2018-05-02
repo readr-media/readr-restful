@@ -20,7 +20,7 @@ var PostPublishStatus map[string]interface{}
 // like *NullTime, *NullString to be used with omitempty
 type Post struct {
 	ID              uint32     `json:"id" db:"post_id" redis:"post_id"`
-	Author          NullString `json:"author" db:"author" redis:"author"`
+	Author          NullInt    `json:"author" db:"author" redis:"author"`
 	CreatedAt       NullTime   `json:"created_at" db:"created_at" redis:"created_at"`
 	LikeAmount      NullInt    `json:"like_amount" db:"like_amount" redis:"like_amount"`
 	CommentAmount   NullInt    `json:"comment_amount" db:"comment_amount" redis:"comment_amount"`
@@ -33,7 +33,7 @@ type Post struct {
 	OgImage         NullString `json:"og_image" db:"og_image" redis:"og_image"`
 	Active          NullInt    `json:"active" db:"active" redis:"active"`
 	UpdatedAt       NullTime   `json:"updated_at" db:"updated_at" redis:"updated_at"`
-	UpdatedBy       NullString `json:"updated_by" db:"updated_by" redis:"updated_by"`
+	UpdatedBy       NullInt    `json:"updated_by" db:"updated_by" redis:"updated_by"`
 	PublishedAt     NullTime   `json:"published_at" db:"published_at" redis:"published_at"`
 	LinkTitle       NullString `json:"link_title" db:"link_title" redis:"link_title"`
 	LinkDescription NullString `json:"link_description" db:"link_description" redis:"link_description"`
@@ -99,10 +99,24 @@ func (t *TaggedPostMember) MarshalJSON() ([]byte, error) {
 	})
 }
 
+// Currently not used. Need to be modified
+// func (t *TaggedPostMember) UnmarshalJSON(text []byte) error {
+// 	if err := json.Unmarshal(text, *t); err != nil {
+// 		return err
+// 	}
+// 	if t.PostMember.Member.ID != 0 {
+// 		t.PostMember.Post.Author = NullInt{Int: t.PostMember.Member.ID, Valid: true}
+// 	}
+// 	if t.PostMember.UpdatedBy.ID != 0 {
+// 		t.PostMember.Post.UpdatedBy = NullInt{Int: t.PostMember.UpdatedBy.ID, Valid: true}
+// 	}
+// 	return nil
+// }
+
 // UpdatedBy wraps Member for embedded field updated_by
 // in the usage of anonymous struct in PostMember
 type MemberBasic struct {
-	ID           string     `json:"id" db:"member_id"`
+	ID           int64      `json:"id" db:"id"`
 	UUID         NullString `json:"uuid" db:"uuid"`
 	Nickname     NullString `json:"nickname" db:"nickname"`
 	ProfileImage NullString `json:"profile_image" db:"profile_image"`
@@ -160,13 +174,13 @@ func (p *PostUpdateArgs) parse() (updates string, values []interface{}) {
 
 // type PostArgs map[string]interface{}
 type PostArgs struct {
-	MaxResult     uint8               `form:"max_result"`
-	Page          uint16              `form:"page"`
-	Sorting       string              `form:"sort"`
-	Active        map[string][]int    `form:"active"`
-	PublishStatus map[string][]int    `form:"publish_status"`
-	Author        map[string][]string `form:"author"`
-	Type          map[string][]int    `form:"type"`
+	MaxResult     uint8              `form:"max_result"`
+	Page          uint16             `form:"page"`
+	Sorting       string             `form:"sort"`
+	Active        map[string][]int   `form:"active"`
+	PublishStatus map[string][]int   `form:"publish_status"`
+	Author        map[string][]int64 `form:"author"`
+	Type          map[string][]int   `form:"type"`
 }
 
 func (p *PostArgs) Default() (result *PostArgs) {
@@ -224,13 +238,12 @@ func (a *postAPI) GetPosts(req *PostArgs) (result []TaggedPostMember, err error)
 	updatedByField := makeFieldString("get", `updated_by.%s "updated_by.%s"`, tags)
 
 	authorIDQuery := strings.Split(authorField[0], " ")
-	authorField[0] = fmt.Sprintf(`IFNULL(%s, "") %s`, authorIDQuery[0], authorIDQuery[1])
+	authorField[0] = fmt.Sprintf(`IFNULL(%s, 0) %s`, authorIDQuery[0], authorIDQuery[1])
 	updatedByIDQuery := strings.Split(updatedByField[0], " ")
-	updatedByField[0] = fmt.Sprintf(`IFNULL(%s, "") %s`, updatedByIDQuery[0], updatedByIDQuery[1])
-
+	updatedByField[0] = fmt.Sprintf(`IFNULL(%s, 0) %s`, updatedByIDQuery[0], updatedByIDQuery[1])
 	query := fmt.Sprintf(`SELECT posts.*, %s, %s, t.tags as tags  FROM posts
-		LEFT JOIN members AS author ON posts.author = author.member_id
-		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.member_id
+		LEFT JOIN members AS author ON posts.author = author.id
+		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.id
 		LEFT JOIN (
 			SELECT pt.post_id as post_id, GROUP_CONCAT(CONCAT(t.tag_id, ":", t.tag_content) SEPARATOR ',') as tags
 			FROM post_tags as pt LEFT JOIN tags as t ON t.tag_id = pt.tag_id
@@ -274,13 +287,13 @@ func (a *postAPI) GetPost(id uint32) (TaggedPostMember, error) {
 	updatedBy := makeFieldString("get", `updated_by.%s "updated_by.%s"`, tags)
 
 	authorIDQuery := strings.Split(author[0], " ")
-	author[0] = fmt.Sprintf(`IFNULL(%s, "") %s`, authorIDQuery[0], authorIDQuery[1])
+	author[0] = fmt.Sprintf(`IFNULL(%s, 0) %s`, authorIDQuery[0], authorIDQuery[1])
 	updatedByIDQuery := strings.Split(updatedBy[0], " ")
-	updatedBy[0] = fmt.Sprintf(`IFNULL(%s, "") %s`, updatedByIDQuery[0], updatedByIDQuery[1])
+	updatedBy[0] = fmt.Sprintf(`IFNULL(%s, 0) %s`, updatedByIDQuery[0], updatedByIDQuery[1])
 
 	query := fmt.Sprintf(`SELECT posts.*, %s, %s, t.tags as tags FROM posts
-		LEFT JOIN members AS author ON posts.author = author.member_id 
-		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.member_id 
+		LEFT JOIN members AS author ON posts.author = author.id 
+		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.id 
 		LEFT JOIN (
 			SELECT pt.post_id as post_id, GROUP_CONCAT(CONCAT(t.tag_id, ":", t.tag_content) SEPARATOR ',') as tags 
 			FROM post_tags as pt LEFT JOIN tags as t ON t.tag_id = pt.tag_id 

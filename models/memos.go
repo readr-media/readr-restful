@@ -21,11 +21,11 @@ type Memo struct {
 	Title         NullString `json:"title" db:"title"`
 	Content       NullString `json:"content" db:"content"`
 	Link          NullString `json:"link" db:"link"`
-	Author        NullString `json:"author" db:"author"`
+	Author        NullInt    `json:"author" db:"author"`
 	Project       NullInt    `json:"project_id" db:"project_id"`
 	Active        NullInt    `json:"active" db:"active"`
 	UpdatedAt     NullTime   `json:"updated_at" db:"updated_at"`
-	UpdatedBy     NullString `json:"updated_by" db:"updated_by"`
+	UpdatedBy     NullInt    `json:"updated_by" db:"updated_by"`
 	PublishedAt   NullTime   `json:"published_at" db:"published_at"`
 	PublishStatus NullInt    `json:"publish_status" db:"publish_status"`
 	Order         NullInt    `json:"memo_order" db:"memo_order"`
@@ -45,8 +45,8 @@ type MemoGetArgs struct {
 	MaxResult     int              `form:"max_result"`
 	Page          int              `form:"page"`
 	Sorting       string           `form:"sort"`
-	Author        []string         `form:"author"`
-	Project       []int            `form:"project_id"`
+	Author        []int64          `form:"author"`
+	Project       []int64          `form:"project_id"`
 	Active        map[string][]int `form:"active"`
 	PublishStatus map[string][]int `form:"publish_status"`
 }
@@ -102,7 +102,7 @@ func (p *MemoGetArgs) parse() (restricts string, values []interface{}) {
 
 type MemoUpdateArgs struct {
 	IDs         []int    `json:"ids"`
-	UpdatedBy   string   `json:"updated_by"`
+	UpdatedBy   int64    `json:"updated_by"`
 	UpdatedAt   NullTime `json:"-"`
 	PublishedAt NullTime `json:"-"`
 	Active      NullInt  `json:"-"`
@@ -123,7 +123,7 @@ func (p *MemoUpdateArgs) parse() (updates string, values []interface{}) {
 		setQuery = append(setQuery, "updated_at = ?")
 		values = append(values, p.UpdatedAt.Time)
 	}
-	if p.UpdatedBy != "" {
+	if p.UpdatedBy != 0 {
 		setQuery = append(setQuery, "updated_by = ?")
 		values = append(values, p.UpdatedBy)
 	}

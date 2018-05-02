@@ -4,12 +4,16 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"reflect"
 	"regexp"
 	"sort"
+	"strconv"
 	"testing"
+	"time"
 
 	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/utils"
@@ -17,13 +21,48 @@ import (
 
 type mockMemberAPI struct{}
 
-func initMemberTest() {
-	copy(mockMemberDSBack, mockMemberDS)
+// Declare a backup struct for member test data
+var mockMembers = []models.Member{
+	models.Member{
+		ID:           1,
+		MemberID:     "superman@mirrormedia.mg",
+		UUID:         "3d64e480-3e30-11e8-b94b-cfe922eb374f",
+		Nickname:     models.NullString{String: "readr", Valid: true},
+		Active:       models.NullInt{Int: 1, Valid: true},
+		UpdatedAt:    models.NullTime{Time: time.Date(2017, 6, 8, 16, 27, 52, 0, time.UTC), Valid: true},
+		Mail:         models.NullString{String: "superman@mirrormedia.mg", Valid: true},
+		CustomEditor: models.NullBool{Bool: true, Valid: true},
+		Role:         models.NullInt{Int: 9, Valid: true},
+		Points:       models.NullInt{Int: 0, Valid: true},
+	},
+	models.Member{
+		ID:        2,
+		MemberID:  "test6743@test.test",
+		UUID:      "3d651126-3e30-11e8-b94b-cfe922eb374f",
+		Nickname:  models.NullString{String: "yeahyeahyeah", Valid: true},
+		Active:    models.NullInt{Int: 0, Valid: true},
+		Birthday:  models.NullTime{Time: time.Date(2001, 1, 3, 0, 0, 0, 0, time.UTC), Valid: true},
+		UpdatedAt: models.NullTime{Time: time.Date(2017, 11, 11, 23, 11, 37, 0, time.UTC), Valid: true},
+		Mail:      models.NullString{String: "Lulu_Brakus@yahoo.com", Valid: true},
+		Role:      models.NullInt{Int: 3, Valid: true},
+		Points:    models.NullInt{Int: 0, Valid: true},
+	},
+	models.Member{
+		ID:        3,
+		MemberID:  "Barney.Corwin@hotmail.com",
+		UUID:      "3d6512e8-3e30-11e8-b94b-cfe922eb374f",
+		Nickname:  models.NullString{String: "reader", Valid: true},
+		Active:    models.NullInt{Int: 0, Valid: true},
+		Gender:    models.NullString{String: "M", Valid: true},
+		UpdatedAt: models.NullTime{Time: time.Date(2017, 1, 3, 19, 32, 37, 0, time.UTC), Valid: true},
+		Birthday:  models.NullTime{Time: time.Date(1939, 11, 9, 0, 0, 0, 0, time.UTC), Valid: true},
+		Mail:      models.NullString{String: "Barney.Corwin@hotmail.com", Valid: true},
+		Role:      models.NullInt{Int: 1, Valid: true},
+		Points:    models.NullInt{Int: 0, Valid: true},
+	},
 }
 
-func clearMemberTest() {
-	copy(mockMemberDS, mockMemberDSBack)
-}
+var mockMemberDS = []models.Member{}
 
 func (a *mockMemberAPI) GetMembers(req *models.MemberArgs) (result []models.Member, err error) {
 
@@ -34,7 +73,7 @@ func (a *mockMemberAPI) GetMembers(req *models.MemberArgs) (result []models.Memb
 	}
 
 	if req.Role != nil {
-		result = []models.Member{mockMemberDS[1]}
+		result = []models.Member{mockMemberDS[2]}
 		err = nil
 		return result, err
 	}
@@ -74,10 +113,14 @@ func (a *mockMemberAPI) GetMembers(req *models.MemberArgs) (result []models.Memb
 }
 
 func (a *mockMemberAPI) GetMember(idType string, id string) (models.Member, error) {
+	intID, _ := strconv.Atoi(id)
 	result := models.Member{}
 	err := errors.New("User Not Found")
 	for _, value := range mockMemberDS {
-		if value.ID == id {
+		if idType == "id" && value.ID == int64(intID) {
+			result = value
+			err = nil
+		} else if idType == "member_id" && value.MemberID == id {
 			result = value
 			err = nil
 		}
@@ -85,16 +128,16 @@ func (a *mockMemberAPI) GetMember(idType string, id string) (models.Member, erro
 	return result, err
 }
 
-func (a *mockMemberAPI) InsertMember(m models.Member) error {
-	var err error
+func (a *mockMemberAPI) InsertMember(m models.Member) (id int, err error) {
 	for _, member := range mockMemberDS {
-		if member.ID == m.ID {
-			return errors.New("Duplicate entry")
+		if member.MemberID == m.MemberID {
+			return 0, errors.New("Duplicate entry")
 		}
 	}
+	m.ID = int64(len(mockMemberDS) + 1)
 	mockMemberDS = append(mockMemberDS, m)
 	err = nil
-	return err
+	return int(m.ID), err
 }
 func (a *mockMemberAPI) UpdateMember(m models.Member) error {
 
@@ -111,8 +154,9 @@ func (a *mockMemberAPI) UpdateMember(m models.Member) error {
 func (a *mockMemberAPI) DeleteMember(idType string, id string) error {
 
 	err := errors.New("User Not Found")
+	intID, _ := strconv.Atoi(id)
 	for index, value := range mockMemberDS {
-		if id == value.ID {
+		if int64(intID) == value.ID {
 			mockMemberDS[index].Active = models.NullInt{Int: int64(models.MemberStatus["delete"].(float64)), Valid: true}
 			return nil
 		}
@@ -120,7 +164,7 @@ func (a *mockMemberAPI) DeleteMember(idType string, id string) error {
 	return err
 }
 
-func (a *mockMemberAPI) UpdateAll(ids []string, active int) (err error) {
+func (a *mockMemberAPI) UpdateAll(ids []int64, active int) (err error) {
 
 	result := make([]int, 0)
 	for _, value := range ids {
@@ -152,7 +196,7 @@ func (a *mockMemberAPI) Count(req *models.MemberArgs) (result int, err error) {
 			return 2, nil
 		}
 		if k == "$nin" && reflect.DeepEqual(v, []int{-1}) {
-			return 2, nil
+			return 4, nil
 		}
 	}
 	return result, err
@@ -169,222 +213,144 @@ func (a *mockMemberAPI) GetUUIDsByNickname(key string, roles map[string][]int) (
 	return result, err
 }
 
-func TestRouteGetMembers(t *testing.T) {
-
-	initMemberTest()
-	type ExpectGetsResp struct {
-		ExpectResp
-		resp []models.Member
+func TestRouteMembers(t *testing.T) {
+	if os.Getenv("db_driver") == "mysql" {
+		_, _ = models.DB.Exec("truncate table members;")
+	} else {
+		mockMemberDS = []models.Member{}
 	}
-	testCase := []struct {
-		name   string
-		route  string
-		expect ExpectGetsResp
-	}{
-		{"UpdatedAtDescending", "/members", ExpectGetsResp{ExpectResp{http.StatusOK, ""},
-			[]models.Member{mockMemberDS[1], mockMemberDS[0], mockMemberDS[2]}}},
-		{"UpdatedAtAscending", "/members?sort=updated_at", ExpectGetsResp{ExpectResp{http.StatusOK, ""},
-			[]models.Member{mockMemberDS[2], mockMemberDS[0], mockMemberDS[1]}}},
-		{"max_result", "/members?max_result=2", ExpectGetsResp{ExpectResp{http.StatusOK, ""},
-			[]models.Member{mockMemberDS[1], mockMemberDS[0]}}},
-		{"ActiveFilter", `/members?active={"$nin":[0,-1]}`, ExpectGetsResp{ExpectResp{http.StatusOK, ""},
-			[]models.Member{mockMemberDS[0]}}},
-		{"CustomEditorFilter", `/members?custom_editor=true`, ExpectGetsResp{ExpectResp{http.StatusOK, ""},
-			[]models.Member{mockMemberDS[0]}}},
-		{"NoMatchMembers", `/members?active={"$nin":[-1,0,1]}`,
-			ExpectGetsResp{ExpectResp{
-				http.StatusOK, ``},
-				[]models.Member{}}},
-		{"MoreThanOneActive", `/members?active={"$nin":[1,0], "$in":[-1,3]}`,
-			ExpectGetsResp{
-				ExpectResp{http.StatusBadRequest, `{"Error":"Too many active lists"}`},
-				[]models.Member{}}},
-		{"NotEntirelyValidActive", `/members?active={"$in":[-3,0,1]}`,
-			ExpectGetsResp{
-				ExpectResp{http.StatusBadRequest, `{"Error":"Not all active elements are valid"}`},
-				[]models.Member{}}},
-		{"NoValidActive", `/members?active={"$nin":[3,4]}`,
-			ExpectGetsResp{
-				ExpectResp{http.StatusBadRequest, `{"Error":"No valid active request"}`},
-				[]models.Member{}}},
-		{"Role", `/members?role=1`, ExpectGetsResp{ExpectResp{http.StatusOK, ``}, []models.Member{mockMemberDS[1]}}},
+
+	for _, m := range mockMembers {
+		_, err := models.MemberAPI.InsertMember(m)
+		if err != nil {
+			log.Printf("Init member test fail %s", err.Error())
+		}
 	}
-	for _, tc := range testCase {
-		t.Run(tc.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("GET", tc.route, nil)
-			r.ServeHTTP(w, req)
 
-			if w.Code != tc.expect.httpcode {
-				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
-			}
-			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
-				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
-			}
+	asserter := func(resp string, tc genericTestcase, t *testing.T) {
+		type response struct {
+			Items []models.Member `json:"_items"`
+		}
 
-			expected, _ := json.Marshal(map[string][]models.Member{"_items": tc.expect.resp})
+		var Response response
+		var expected []models.Member = tc.resp.([]models.Member)
 
-			if w.Code == http.StatusOK && w.Body.String() != string(expected) {
-				t.Errorf("%s incorrect response.\nWant\n%s\nBut get\n%s\n", tc.name, string(expected), w.Body.String())
+		err := json.Unmarshal([]byte(resp), &Response)
+		if err != nil {
+			t.Errorf("%s, Unexpected result body: %v", resp)
+		}
+
+		if len(Response.Items) != len(expected) {
+			t.Errorf("%s expect member length to be %v but get %v", tc.name, len(expected), len(Response.Items))
+		}
+
+		for i, resp := range Response.Items {
+			exp := expected[i]
+			if resp.ID == exp.ID &&
+				resp.Active == exp.Active &&
+				resp.UpdatedAt == exp.UpdatedAt &&
+				resp.Role == exp.Role {
+				continue
 			}
-		})
+			t.Errorf("%s, expect to get %v, but %v ", tc.name, exp, resp)
+		}
 	}
-	clearMemberTest()
+
+	t.Run("GetMembers", func(t *testing.T) {
+		for _, testcase := range []genericTestcase{
+			genericTestcase{"UpdatedAtDescending", "GET", "/members", ``, http.StatusOK, []models.Member{mockMembers[1], mockMembers[0], mockMembers[2]}},
+			genericTestcase{"UpdatedAtAscending", "GET", "/members?sort=updated_at", ``, http.StatusOK, []models.Member{mockMembers[2], mockMembers[0], mockMembers[1]}},
+			genericTestcase{"max_result", "GET", "/members?max_result=2", ``, http.StatusOK, []models.Member{mockMembers[1], mockMembers[0]}},
+			genericTestcase{"ActiveFilter", "GET", `/members?active={"$nin":[0,-1]}`, ``, http.StatusOK, []models.Member{mockMembers[0]}},
+			genericTestcase{"CustomEditorFilter", "GET", `/members?custom_editor=true`, ``, http.StatusOK, []models.Member{mockMembers[0]}},
+			genericTestcase{"NoMatchMembers", "GET", `/members?active={"$nin":[-1,0,1]}`, ``, http.StatusOK, `{"_items":[]}`},
+			genericTestcase{"MoreThanOneActive", "GET", `/members?active={"$nin":[1,0], "$in":[-1,3]}`, ``, http.StatusBadRequest, `{"Error":"Too many active lists"}`},
+			genericTestcase{"NotEntirelyValidActive", "GET", `/members?active={"$in":[-3,0,1]}`, ``, http.StatusBadRequest, `{"Error":"Not all active elements are valid"}`},
+			genericTestcase{"NoValidActive", "GET", `/members?active={"$nin":[3,4]}`, ``, http.StatusBadRequest, `{"Error":"No valid active request"}`},
+			genericTestcase{"Role", "GET", `/members?role=1`, ``, http.StatusOK, []models.Member{mockMembers[2]}},
+		} {
+			genericDoTest(testcase, t, asserter)
+		}
+	})
+	t.Run("GetMember", func(t *testing.T) {
+		for _, testcase := range []genericTestcase{
+			genericTestcase{"Current", "GET", "/member/1", ``, http.StatusOK, []models.Member{mockMembers[0]}},
+			genericTestcase{"NotExisted", "GET", "/member/24601", ``, http.StatusNotFound, `{"Error":"User Not Found"}`},
+		} {
+			genericDoTest(testcase, t, asserter)
+		}
+	})
+	t.Run("PostMember", func(t *testing.T) {
+		for _, testcase := range []genericTestcase{
+			genericTestcase{"New", "POST", "/member", `{"member_id":"spaceoddity", "name":"Major Tom"}`, http.StatusOK, `{"_items":{"last_id":4}}`},
+			//genericTestcase{"EmptyPayload", "POST", "/member", `{}`, http.StatusBadRequest, `{"Error":"Invalid User"}`},
+			//genericTestcase{"Existed", "POST", "/member", `{"id": 1, "member_id":"superman@mirrormedia.mg"}`, http.StatusBadRequest, `{"Error":"User Already Existed"}`},
+		} {
+			genericDoTest(testcase, t, asserter)
+		}
+	})
+	t.Run("CountMembers", func(t *testing.T) {
+		for _, testcase := range []genericTestcase{
+			genericTestcase{"SimpleCount", "GET", "/members/count", ``, http.StatusOK, `{"_meta":{"total":4}}`},
+			genericTestcase{"CountActive", "GET", `/members/count?active={"$in":[1,-1]}`, ``, http.StatusOK, `{"_meta":{"total":2}}`},
+			genericTestcase{"CountCustomEditor", "GET", `/members/count?custom_editor=true`, ``, http.StatusOK, `{"_meta":{"total":1}}`},
+			genericTestcase{"MoreThanOneActive", "GET", `/members/count?active={"$nin":[1,0], "$in":[-1,3]}`, ``, http.StatusBadRequest, `{"Error":"Too many active lists"}`},
+			genericTestcase{"NotEntirelyValidActive", "GET", `/members/count?active={"$in":[-3,0,1]}`, ``, http.StatusBadRequest, `{"Error":"Not all active elements are valid"}`},
+			genericTestcase{"NoValidActive", "GET", `/members/count?active={"$nin":[3,4]}`, ``, http.StatusBadRequest, `{"Error":"No valid active request"}`},
+			genericTestcase{"Role", "GET", "/members/count?role=9", ``, http.StatusOK, `{"_meta":{"total":1}}`},
+		} {
+			genericDoTest(testcase, t, asserter)
+		}
+	})
+	t.Run("KeyNickname", func(t *testing.T) {
+		for _, testcase := range []genericTestcase{
+			genericTestcase{"Keyword", "GET", `/members/nickname?keyword=readr`, ``, http.StatusOK, `{"_items":[{"uuid":"3d64e480-3e30-11e8-b94b-cfe922eb374f","nickname":"readr"}]}`},
+			genericTestcase{"KeywordAndRoles", "GET", `/members/nickname?keyword=readr&roles={"$in":[3,9]}`, ``, http.StatusOK, `{"_items":[{"uuid":"3d64e480-3e30-11e8-b94b-cfe922eb374f","nickname":"readr"}]}`},
+			genericTestcase{"InvalidKeyword", "GET", `/members/nickname`, ``, http.StatusBadRequest, `{"Error":"Invalid keyword"}`},
+		} {
+			genericDoTest(testcase, t, asserter)
+		}
+	})
+	t.Run("PutMember", func(t *testing.T) {
+		for _, testcase := range []genericTestcase{
+			genericTestcase{"New", "PUT", "/member", `{"id":1, "name":"Clark Kent"}`, http.StatusOK, ``},
+			genericTestcase{"NotExisted", "PUT", "/member", `{"id":24601, "name":"spaceoddity"}`, http.StatusBadRequest, `{"Error":"User Not Found"}`},
+		} {
+			genericDoTest(testcase, t, asserter)
+		}
+	})
+
+	t.Run("DeleteMembers", func(t *testing.T) {
+		for _, testcase := range []genericTestcase{
+			genericTestcase{"Delete", "DELETE", `/members?ids=[2]`, ``, http.StatusOK, ``},
+			genericTestcase{"Empty", "DELETE", `/members?ids=[]`, ``, http.StatusBadRequest, `{"Error":"ID List Empty"}`},
+			//genericTestcase{"InvalidQueryArray", "DELETE", `/members?ids=["superman@mirrormedia.mg,"test6743"]`, ``, http.StatusBadRequest, `{"Error":"invalid character 't' after array element"}`},
+			genericTestcase{"NotFound", "DELETE", `/members?ids=[24601, 24602]`, ``, http.StatusBadRequest, `{"Error":"Members Not Found"}`},
+		} {
+			genericDoTest(testcase, t, asserter)
+		}
+	})
+	t.Run("DeleteMember", func(t *testing.T) {
+		for _, testcase := range []genericTestcase{
+			genericTestcase{"Current", "DELETE", `/member/3`, ``, http.StatusOK, ``},
+			genericTestcase{"NonExisted", "DELETE", `/member/24601`, ``, http.StatusNotFound, `{"Error":"User Not Found"}`},
+		} {
+			genericDoTest(testcase, t, asserter)
+		}
+	})
+	t.Run("ActivateMultipleMembers", func(t *testing.T) {
+		for _, testcase := range []genericTestcase{
+			genericTestcase{"CurrentMembers", "PUT", `/members`, `{"ids": [1,2]}`, http.StatusOK, ``},
+			genericTestcase{"NotFound", "PUT", `/members`, `{"ids": [24601, 24602]}`, http.StatusNotFound, `{"Error":"Members Not Found"}`},
+			genericTestcase{"InvalidPayload", "PUT", `/members`, `{}`, http.StatusBadRequest, `{"Error":"Invalid Request Body"}`},
+		} {
+			genericDoTest(testcase, t, asserter)
+		}
+	})
+
 }
 
-func TestRouteGetMember(t *testing.T) {
-
-	initMemberTest()
-
-	type ExpectGetResp struct {
-		ExpectResp
-		resp models.Member
-	}
-	testCase := []struct {
-		name   string
-		route  string
-		expect ExpectGetResp
-	}{
-		{"Current", "/member/superman@mirrormedia.mg", ExpectGetResp{ExpectResp{http.StatusOK, ""}, mockMemberDS[0]}},
-		{"NotExisted", "/member/wonderwoman@mirrormedia.mg", ExpectGetResp{ExpectResp{http.StatusNotFound, `{"Error":"User Not Found"}`}, models.Member{}}},
-	}
-	for _, tc := range testCase {
-		t.Run(tc.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("GET", tc.route, nil)
-
-			r.ServeHTTP(w, req)
-			if w.Code != tc.expect.httpcode {
-				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
-			}
-			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
-				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
-			}
-
-			expected, _ := json.Marshal(map[string][]models.Member{"_items": []models.Member{tc.expect.resp}})
-			if w.Code == http.StatusOK && w.Body.String() != string(expected) {
-				t.Errorf("%s incorrect response", tc.name)
-			}
-		})
-	}
-
-	clearMemberTest()
-}
-func TestRoutePostMember(t *testing.T) {
-	initMemberTest()
-	testCase := []struct {
-		name    string
-		payload string
-		expect  ExpectResp
-	}{
-		{"New", `{"id":"spaceoddity", "name":"Major Tom"}`, ExpectResp{http.StatusOK, ""}},
-		{"EmptyPayload", `{}`, ExpectResp{http.StatusBadRequest, `{"Error":"Invalid User"}`}},
-		{"Existed", `{"id":"superman@mirrormedia.mg"}`, ExpectResp{http.StatusBadRequest, `{"Error":"User Already Existed"}`}},
-	}
-	for _, tc := range testCase {
-		t.Run(tc.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			var jsonStr = []byte(tc.payload)
-			req, _ := http.NewRequest("POST", "/member", bytes.NewBuffer(jsonStr))
-			req.Header.Set("Content-Type", "application/json")
-			r.ServeHTTP(w, req)
-
-			if w.Code != tc.expect.httpcode {
-				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
-			}
-			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
-				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
-			}
-		})
-	}
-	clearMemberTest()
-}
-func TestRoutePutMember(t *testing.T) {
-	initMemberTest()
-	testCase := []struct {
-		name    string
-		payload string
-		expect  ExpectResp
-	}{
-		{"Current", `{"id":"superman@mirrormedia.mg", "name":"Clark Kent"}`, ExpectResp{http.StatusOK, ""}},
-		{"NotExisted", `{"id":"MajorTom@mirrormedia.mg", "name":"spaceoddity"}`, ExpectResp{http.StatusBadRequest, `{"Error":"User Not Found"}`}},
-	}
-	for _, tc := range testCase {
-		t.Run(tc.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			var jsonStr = []byte(tc.payload)
-			req, _ := http.NewRequest("PUT", "/member", bytes.NewBuffer(jsonStr))
-			req.Header.Set("Content-Type", "application/json")
-			r.ServeHTTP(w, req)
-
-			if w.Code != tc.expect.httpcode {
-				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
-			}
-			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
-				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
-			}
-		})
-	}
-
-	clearMemberTest()
-}
-
-func TestRouteDeleteMembers(t *testing.T) {
-	initMemberTest()
-	testCase := []struct {
-		name   string
-		route  string
-		expect ExpectResp
-	}{
-		{"Delete", `/members?ids=["superman@mirrormedia.mg","test6743"]`, ExpectResp{http.StatusOK, ""}},
-		{"Empty", `/members?ids=[]`, ExpectResp{http.StatusBadRequest, `{"Error":"ID List Empty"}`}},
-		{"InvalidQueryArray", `/members?ids=["superman@mirrormedia.mg,"test6743"]`, ExpectResp{http.StatusBadRequest, `{"Error":"invalid character 't' after array element"}`}},
-		{"NotFound", `/members?ids=["superman", "wonderwoman"]`, ExpectResp{http.StatusBadRequest, `{"Error":"Members Not Found"}`}},
-	}
-	for _, tc := range testCase {
-		t.Run(tc.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("DELETE", tc.route, nil)
-			r.ServeHTTP(w, req)
-
-			if w.Code != tc.expect.httpcode {
-				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
-			}
-			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
-				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
-			}
-		})
-	}
-	clearMemberTest()
-}
-func TestRouteDeleteMember(t *testing.T) {
-	initMemberTest()
-	testCase := []struct {
-		name   string
-		route  string
-		expect ExpectResp
-	}{
-		{"Current", "/member/superman@mirrormedia.mg", ExpectResp{http.StatusOK, ""}},
-		{"NonExisted", "/member/wonderwoman@mirrormedia.mg", ExpectResp{http.StatusNotFound, `{"Error":"User Not Found"}`}},
-	}
-	for _, tc := range testCase {
-		t.Run(tc.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("DELETE", tc.route, nil)
-			r.ServeHTTP(w, req)
-
-			if w.Code != tc.expect.httpcode {
-				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
-			}
-			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
-				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
-			}
-		})
-	}
-	clearMemberTest()
-}
-
-func TestUpdateMemberPassword(t *testing.T) {
+func TestRouteMemberUpdatePassword(t *testing.T) {
 
 	type ChangePWCaseIn struct {
 		ID       string `json:"id,omitempty"`
@@ -396,10 +362,10 @@ func TestUpdateMemberPassword(t *testing.T) {
 		in       ChangePWCaseIn
 		httpcode int
 	}{
-		{"ChangePWOK", ChangePWCaseIn{ID: "superman@mirrormedia.mg", Password: "angrypug"}, http.StatusOK},
-		{"ChangePWFail", ChangePWCaseIn{ID: "superman@mirrormedia.mg"}, http.StatusBadRequest},
+		{"ChangePWOK", ChangePWCaseIn{ID: "1", Password: "angrypug"}, http.StatusOK},
+		{"ChangePWFail", ChangePWCaseIn{ID: "1"}, http.StatusBadRequest},
 		{"ChangePWNoID", ChangePWCaseIn{Password: "angrypug"}, http.StatusBadRequest},
-		{"ChangePWMemberNotFound", ChangePWCaseIn{ID: "aquaman@mirrormedia.mg", Password: "angrypug"}, http.StatusNotFound},
+		{"ChangePWMemberNotFound", ChangePWCaseIn{ID: "24601", Password: "angrypug"}, http.StatusNotFound},
 	}
 
 	for _, testcase := range TestRouteChangePWCases {
@@ -420,7 +386,7 @@ func TestUpdateMemberPassword(t *testing.T) {
 		}
 
 		if w.Code == http.StatusOK {
-			member, err := models.MemberAPI.GetMember("member_id", testcase.in.ID)
+			member, err := models.MemberAPI.GetMember("id", testcase.in.ID)
 			if err != nil {
 				t.Errorf("Cannot get user after update PW, testcase %s", testcase.name)
 				t.Fail()
@@ -438,115 +404,4 @@ func TestUpdateMemberPassword(t *testing.T) {
 			}
 		}
 	}
-}
-
-func TestRouteActivateMultipleMembers(t *testing.T) {
-	initMemberTest()
-	testCase := []struct {
-		name    string
-		payload string
-		expect  ExpectResp
-	}{
-		{"CurrentMembers", `{"ids": ["superman@mirrormedia.mg","test6743"]}`, ExpectResp{http.StatusOK, ``}},
-		{"NotFound", `{"ids": ["ironman", "spiderman"]}`, ExpectResp{http.StatusNotFound, `{"Error":"Members Not Found"}`}},
-		{"InvalidPayload", `{}`, ExpectResp{http.StatusBadRequest, `{"Error":"Invalid Request Body"}`}},
-	}
-	for _, tc := range testCase {
-		t.Run(tc.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			jsonStr := []byte(tc.payload)
-			req, _ := http.NewRequest("PUT", "/members", bytes.NewBuffer(jsonStr))
-			req.Header.Set("Content-Type", "application/json")
-			r.ServeHTTP(w, req)
-			if w.Code != tc.expect.httpcode {
-				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
-			}
-			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
-				t.Errorf("%s expect error message %s but get %s", tc.name, tc.expect.err, w.Body.String())
-			}
-		})
-	}
-	clearMemberTest()
-}
-
-func TestRouteCountMembers(t *testing.T) {
-	initMemberTest()
-	type ExpectCountResp struct {
-		httpcode int
-		resp     string
-		err      string
-	}
-	testCase := []struct {
-		name   string
-		route  string
-		expect ExpectCountResp
-	}{
-		{"SimpleCount", `/members/count`, ExpectCountResp{http.StatusOK, `{"_meta":{"total":2}}`, ``}},
-		{"CountActive", `/members/count?active={"$in":[1,-1]}`, ExpectCountResp{http.StatusOK, `{"_meta":{"total":2}}`, ``}},
-		{"CountCustomEditor", `/members/count?custom_editor=true`, ExpectCountResp{http.StatusOK, `{"_meta":{"total":1}}`, ``}},
-		{"MoreThanOneActive", `/members/count?active={"$nin":[1,0], "$in":[-1,3]}`,
-			ExpectCountResp{http.StatusBadRequest, ``,
-				`{"Error":"Too many active lists"}`}},
-		{"NotEntirelyValidActive", `/members/count?active={"$in":[-3,0,1]}`,
-			ExpectCountResp{http.StatusBadRequest, ``,
-				`{"Error":"Not all active elements are valid"}`}},
-		{"NoValidActive", `/members/count?active={"$nin":[3,4]}`,
-			ExpectCountResp{http.StatusBadRequest, ``,
-				`{"Error":"No valid active request"}`}},
-		{"Role", "/members/count?role=9", ExpectCountResp{http.StatusOK, `{"_meta":{"total":1}}`, ``}},
-	}
-	for _, tc := range testCase {
-		t.Run(tc.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("GET", tc.route, nil)
-			r.ServeHTTP(w, req)
-
-			if w.Code != tc.expect.httpcode {
-				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
-			}
-			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
-				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
-			}
-			if w.Code == http.StatusOK && w.Body.String() != tc.expect.resp {
-				t.Errorf("%s incorrect response.\nWant\n%s\nBut get\n%s\n", tc.name, tc.expect.resp, w.Body.String())
-			}
-		})
-	}
-	clearMemberTest()
-}
-
-func TestRouteKeyNickname(t *testing.T) {
-	initMemberTest()
-	type ExpectKeyResp struct {
-		ExpectResp
-		resp string
-	}
-	testCase := []struct {
-		name   string
-		route  string
-		expect ExpectKeyResp
-	}{
-		{"Keyword", `/members/nickname?keyword=read`, ExpectKeyResp{ExpectResp{http.StatusOK, ``}, `{"_items":[{"uuid":"3d6512e8-3e30-11e8-b94b-cfe922eb374f","nickname":"reader"}]}`}},
-		{"KeywordAndRoles", `/members/nickname?keyword=read&roles={"$in":[3,9]}`, ExpectKeyResp{ExpectResp{http.StatusOK, ``}, `{"_items":[{"uuid":"3d6512e8-3e30-11e8-b94b-cfe922eb374f","nickname":"reader"}]}`}},
-		{"InvalidKeyword", `/members/nickname`, ExpectKeyResp{ExpectResp{http.StatusBadRequest, `{"Error":"Invalid keyword"}`}, ``}},
-	}
-	for _, tc := range testCase {
-		t.Run(tc.name, func(t *testing.T) {
-			w := httptest.NewRecorder()
-			req, _ := http.NewRequest("GET", tc.route, nil)
-			r.ServeHTTP(w, req)
-
-			if w.Code != tc.expect.httpcode {
-				t.Errorf("%s expect status %d but get %d", tc.name, tc.expect.httpcode, w.Code)
-			}
-			if w.Code != http.StatusOK && w.Body.String() != tc.expect.err {
-				t.Errorf("%s expect error message %v but get %v", tc.name, tc.expect.err, w.Body.String())
-			}
-
-			if w.Code == http.StatusOK && w.Body.String() != tc.expect.resp {
-				t.Errorf("%s incorrect response.\nWant\n%s\nBut get\n%s\n", tc.name, tc.expect.resp, w.Body.String())
-			}
-		})
-	}
-	clearMemberTest()
 }
