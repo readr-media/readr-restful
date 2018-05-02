@@ -248,10 +248,10 @@ func TestRoutePost(t *testing.T) {
 	var postTest mockPostAPI
 
 	posts := []models.TaggedPostMember{
-		{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMemberDS[0]), UpdatedBy: memberToBasic(mockMemberDS[0])}},
-		{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMemberDS[1]), UpdatedBy: models.MemberBasic{}}},
-		{PostMember: models.PostMember{Post: mockPostDS[2], Member: memberToBasic(mockMemberDS[2]), UpdatedBy: models.MemberBasic{}}},
-		{PostMember: models.PostMember{Post: mockPostDS[3], Member: memberToBasic(mockMemberDS[2]), UpdatedBy: models.MemberBasic{}}},
+		{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMembers[0]), UpdatedBy: memberToBasic(mockMembers[0])}},
+		{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMembers[1]), UpdatedBy: models.MemberBasic{}}},
+		{PostMember: models.PostMember{Post: mockPostDS[2], Member: memberToBasic(mockMembers[2]), UpdatedBy: models.MemberBasic{}}},
+		{PostMember: models.PostMember{Post: mockPostDS[3], Member: memberToBasic(mockMembers[2]), UpdatedBy: models.MemberBasic{}}},
 	}
 
 	teststep := []TestStep{
