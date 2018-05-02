@@ -144,20 +144,60 @@ func genericDoTest(tc genericTestcase, t *testing.T, function interface{}) {
 	})
 }
 
+// Declare a backup struct for member test data
+// var mockMemberDSBack []models.Member
+
+// var mockMemberDS = []models.Member{
+// 	models.Member{
+// 		ID:           1,
+// 		MemberID:     "superman@mirrormedia.mg",
+// 		UUID:         "3d64e480-3e30-11e8-b94b-cfe922eb374f",
+// 		Nickname:     models.NullString{String: "readr", Valid: true},
+// 		Active:       models.NullInt{Int: 1, Valid: true},
+// 		UpdatedAt:    models.NullTime{Time: time.Date(2017, 6, 8, 16, 27, 52, 0, time.UTC), Valid: true},
+// 		Mail:         models.NullString{String: "superman@mirrormedia.mg", Valid: true},
+// 		CustomEditor: models.NullBool{Bool: true, Valid: true},
+// 		Role:         models.NullInt{Int: 9, Valid: true},
+// 	},
+// 	models.Member{
+// 		ID:        2,
+// 		MemberID:  "test6743@test.test",
+// 		UUID:      "3d651126-3e30-11e8-b94b-cfe922eb374f",
+// 		Nickname:  models.NullString{String: "yeahyeahyeah", Valid: true},
+// 		Active:    models.NullInt{Int: 0, Valid: true},
+// 		Birthday:  models.NullTime{Time: time.Date(2001, 1, 3, 0, 0, 0, 0, time.UTC), Valid: true},
+// 		UpdatedAt: models.NullTime{Time: time.Date(2017, 11, 11, 23, 11, 37, 0, time.UTC), Valid: true},
+// 		Mail:      models.NullString{String: "Lulu_Brakus@yahoo.com", Valid: true},
+// 		Role:      models.NullInt{Int: 3, Valid: true},
+// 	},
+// 	models.Member{
+// 		ID:        3,
+// 		MemberID:  "Barney.Corwin@hotmail.com",
+// 		UUID:      "3d6512e8-3e30-11e8-b94b-cfe922eb374f",
+// 		Nickname:  models.NullString{String: "reader", Valid: true},
+// 		Active:    models.NullInt{Int: -1, Valid: true},
+// 		Gender:    models.NullString{String: "M", Valid: true},
+// 		UpdatedAt: models.NullTime{Time: time.Date(2017, 1, 3, 19, 32, 37, 0, time.UTC), Valid: true},
+// 		Birthday:  models.NullTime{Time: time.Date(1939, 11, 9, 0, 0, 0, 0, time.UTC), Valid: true},
+// 		Mail:      models.NullString{String: "Barney.Corwin@hotmail.com", Valid: true},
+// 		Role:      models.NullInt{Int: 1, Valid: true},
+// 	},
+// }
+
 var mockPostDSBack []models.Post
 
 var mockPostDS = []models.Post{
 	models.Post{
 		ID:        1,
-		Author:    models.NullInt{Int: 0, Valid: true},
+		Author:    models.NullInt{Int: 1, Valid: true},
 		Active:    models.NullInt{Int: 1, Valid: true},
 		UpdatedAt: models.NullTime{Time: time.Date(2017, 11, 8, 16, 27, 52, 0, time.UTC), Valid: true},
-		UpdatedBy: models.NullInt{Int: 0, Valid: true},
+		UpdatedBy: models.NullInt{Int: 1, Valid: true},
 		Type:      models.NullInt{Int: 1, Valid: true},
 	},
 	models.Post{
 		ID:         2,
-		Author:     models.NullInt{Int: 1, Valid: true},
+		Author:     models.NullInt{Int: 2, Valid: true},
 		Active:     models.NullInt{Int: 2, Valid: true},
 		Title:      models.NullString{String: "", Valid: true},
 		LikeAmount: models.NullInt{Int: 256, Valid: true},
@@ -166,7 +206,7 @@ var mockPostDS = []models.Post{
 	},
 	models.Post{
 		ID:         6,
-		Author:     models.NullInt{Int: 2, Valid: true},
+		Author:     models.NullInt{Int: 3, Valid: true},
 		Active:     models.NullInt{Int: 4, Valid: true},
 		Title:      models.NullString{String: "", Valid: true},
 		LikeAmount: models.NullInt{Int: 257, Valid: true},
@@ -176,7 +216,7 @@ var mockPostDS = []models.Post{
 	models.Post{
 		ID:        4,
 		Active:    models.NullInt{Int: 3, Valid: true},
-		Author:    models.NullInt{Int: 3, Valid: true},
+		Author:    models.NullInt{Int: 4, Valid: true},
 		UpdatedAt: models.NullTime{Time: time.Date(2018, 1, 3, 12, 22, 20, 0, time.UTC), Valid: true},
 		CreatedAt: models.NullTime{Time: time.Date(2017, 12, 31, 23, 59, 59, 999, time.UTC), Valid: true},
 		Type:      models.NullInt{Int: 1, Valid: true},

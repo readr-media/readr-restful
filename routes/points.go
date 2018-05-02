@@ -17,7 +17,7 @@ func (r *pointsHandler) Get(c *gin.Context) {
 
 	id := c.Param("id")
 	// Convert id to uint32
-	uid, err := strconv.ParseUint(id, 10, 32)
+	uid, err := strconv.ParseInt(id, 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Parsing id error. %v", err)})
 		return
@@ -37,7 +37,7 @@ func (r *pointsHandler) Get(c *gin.Context) {
 			objtype = nil
 		}
 	}
-	points, err := models.PointsAPI.Get(int64(uid), objtype)
+	points, err := models.PointsAPI.Get(uid, objtype)
 	if err != nil {
 		switch err.Error() {
 		case "Points Not Found":

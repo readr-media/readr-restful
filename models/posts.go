@@ -99,6 +99,20 @@ func (t *TaggedPostMember) MarshalJSON() ([]byte, error) {
 	})
 }
 
+// Currently not used. Need to be modified
+// func (t *TaggedPostMember) UnmarshalJSON(text []byte) error {
+// 	if err := json.Unmarshal(text, *t); err != nil {
+// 		return err
+// 	}
+// 	if t.PostMember.Member.ID != 0 {
+// 		t.PostMember.Post.Author = NullInt{Int: t.PostMember.Member.ID, Valid: true}
+// 	}
+// 	if t.PostMember.UpdatedBy.ID != 0 {
+// 		t.PostMember.Post.UpdatedBy = NullInt{Int: t.PostMember.UpdatedBy.ID, Valid: true}
+// 	}
+// 	return nil
+// }
+
 // UpdatedBy wraps Member for embedded field updated_by
 // in the usage of anonymous struct in PostMember
 type MemberBasic struct {
