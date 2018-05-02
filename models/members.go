@@ -181,6 +181,16 @@ func (a *memberAPI) GetMember(idType string, id string) (Member, error) {
 }
 
 func (a *memberAPI) InsertMember(m Member) (id int, err error) {
+	existedID := 0
+	err = DB.Get(&existedID, `SELECT id FROM members WHERE id=? OR member_id=? LIMIT 1;`, m.ID, m.MemberID)
+	if err != nil {
+		if err != sql.ErrNoRows {
+			return 0, err
+		}
+	}
+	if existedID != 0 {
+		return 0, errors.New("Duplicate entry")
+	}
 
 	tags := getStructDBTags("full", Member{})
 	query := fmt.Sprintf(`INSERT INTO members (%s) VALUES (:%s)`,

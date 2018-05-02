@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -19,28 +20,34 @@ func initAuthTest() {
 
 	var mockLoginMembers = []models.Member{
 		models.Member{
+			ID:           81,
 			MemberID:     "logintest1@mirrormedia.mg",
 			Password:     models.NullString{"hellopassword", true},
 			Role:         models.NullInt{1, true},
 			Active:       models.NullInt{1, true},
 			RegisterMode: models.NullString{"ordinary", true},
 			UUID:         "abc1d5b1-da54-4200-b57e-f06e59fd8467",
+			Points:       models.NullInt{Int: 0, Valid: true},
 		},
 		models.Member{
+			ID:           82,
 			MemberID:     "logintest2018",
 			Password:     models.NullString{"1233211234567", true},
 			Role:         models.NullInt{1, true},
 			Active:       models.NullInt{1, true},
 			RegisterMode: models.NullString{"oauth-fb", true},
 			UUID:         "abc1d5b1-da54-4200-b67e-f06e59fd8467",
+			Points:       models.NullInt{Int: 0, Valid: true},
 		},
 		models.Member{
+			ID:           83,
 			MemberID:     "logindeactived",
 			Password:     models.NullString{"88888888", true},
 			Role:         models.NullInt{1, true},
 			Active:       models.NullInt{0, true},
 			RegisterMode: models.NullString{"ordinary", true},
 			UUID:         "abc1d5b1-da54-4200-b77e-f06e59fd8467",
+			Points:       models.NullInt{Int: 0, Valid: true},
 		}}
 
 	for _, member := range mockLoginMembers {
@@ -52,11 +59,11 @@ func initAuthTest() {
 			return
 		}
 		member.Salt = models.NullString{string(salt), true}
-
 		hpw, err := scrypt.Key([]byte(member.Password.String), []byte(member.Salt.String), 32768, 8, 1, 64)
 		member.Password = models.NullString{string(hpw), true}
 		_, err = models.MemberAPI.InsertMember(member)
 		if err != nil {
+			log.Println(err)
 			fmt.Errorf("Init auth test case fail, aborted. Error: %v", err)
 			return
 		}

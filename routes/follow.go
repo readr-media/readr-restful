@@ -107,10 +107,16 @@ func (r *followingHandler) GetByUser(c *gin.Context) {
 func (r *followingHandler) GetByResource(c *gin.Context) {
 	var input models.GetFollowedArgs
 	c.ShouldBindJSON(&input)
-
 	if len(input.Ids) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Resource ID"})
 		return
+	}
+	for _, v := range input.Ids {
+		_, err := strconv.Atoi(v)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Resource ID"})
+			return
+		}
 	}
 
 	switch input.Resource {

@@ -242,7 +242,7 @@ func (r *projectHandler) SetRoutes(router *gin.Engine) {
 		projectRouter.GET("/list", r.Get)
 		projectRouter.POST("", r.Post)
 		projectRouter.PUT("", r.Put)
-		projectRouter.PUT("/schedule", r.SchedulePublish)
+		projectRouter.PUT("/schedule/publish", r.SchedulePublish)
 		projectRouter.DELETE("/:id", r.Delete)
 	}
 }

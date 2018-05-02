@@ -41,17 +41,17 @@ func memberToBasic(m models.Member) (result models.MemberBasic) {
 func (a *mockPostAPI) GetPosts(args *models.PostArgs) (result []models.TaggedPostMember, err error) {
 	result = []models.TaggedPostMember{
 		{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.MemberBasic{}, UpdatedBy: models.MemberBasic{}}},
-		{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMemberDS[1]), UpdatedBy: models.MemberBasic{}}},
-		{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMemberDS[0]), UpdatedBy: memberToBasic(mockMemberDS[0])}},
-		{PostMember: models.PostMember{Post: mockPostDS[2], Member: memberToBasic(mockMemberDS[2]), UpdatedBy: models.MemberBasic{}}},
+		{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMembers[1]), UpdatedBy: models.MemberBasic{}}},
+		{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMembers[0]), UpdatedBy: memberToBasic(mockMembers[0])}},
+		{PostMember: models.PostMember{Post: mockPostDS[2], Member: memberToBasic(mockMembers[2]), UpdatedBy: models.MemberBasic{}}},
 	}
 	err = nil
 
 	if args.Sorting == "updated_at" {
 		result = []models.TaggedPostMember{
-			{PostMember: models.PostMember{Post: mockPostDS[2], Member: memberToBasic(mockMemberDS[2]), UpdatedBy: models.MemberBasic{}}},
-			{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMemberDS[0]), UpdatedBy: memberToBasic(mockMemberDS[0])}},
-			{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMemberDS[1]), UpdatedBy: models.MemberBasic{}}},
+			{PostMember: models.PostMember{Post: mockPostDS[2], Member: memberToBasic(mockMembers[2]), UpdatedBy: models.MemberBasic{}}},
+			{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMembers[0]), UpdatedBy: memberToBasic(mockMembers[0])}},
+			{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMembers[1]), UpdatedBy: models.MemberBasic{}}},
 			{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.MemberBasic{}, UpdatedBy: models.MemberBasic{}}},
 		}
 		err = nil
@@ -66,7 +66,7 @@ func (a *mockPostAPI) GetPosts(args *models.PostArgs) (result []models.TaggedPos
 	// Active filter
 	if reflect.DeepEqual(args.Active, map[string][]int{"$nin": {1}}) {
 		result = []models.TaggedPostMember{
-			{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMemberDS[1]), UpdatedBy: models.MemberBasic{}}},
+			{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMembers[1]), UpdatedBy: models.MemberBasic{}}},
 			{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.MemberBasic{}, UpdatedBy: models.MemberBasic{}}},
 		}
 		err = nil
@@ -76,7 +76,7 @@ func (a *mockPostAPI) GetPosts(args *models.PostArgs) (result []models.TaggedPos
 	if args.Author != nil {
 		if reflect.DeepEqual(args.Author, map[string][]string{"$in": {"superman@mirrormedia.mg", "Major.Tom@mirrormedia.mg"}}) {
 			result = []models.TaggedPostMember{
-				{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMemberDS[0]), UpdatedBy: memberToBasic(mockMemberDS[0])}},
+				{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMembers[0]), UpdatedBy: memberToBasic(mockMembers[0])}},
 				{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.MemberBasic{}, UpdatedBy: models.MemberBasic{}}},
 			}
 			err = nil
@@ -88,8 +88,8 @@ func (a *mockPostAPI) GetPosts(args *models.PostArgs) (result []models.TaggedPos
 		if reflect.DeepEqual(args.Type, map[string][]int{"$in": {1, 2}}) {
 			result = []models.TaggedPostMember{
 				{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.MemberBasic{}, UpdatedBy: models.MemberBasic{}}},
-				{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMemberDS[1]), UpdatedBy: models.MemberBasic{}}},
-				{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMemberDS[0]), UpdatedBy: memberToBasic(mockMemberDS[0])}},
+				{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMembers[1]), UpdatedBy: models.MemberBasic{}}},
+				{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMembers[0]), UpdatedBy: memberToBasic(mockMembers[0])}},
 			}
 			err = nil
 			return result, err
@@ -162,7 +162,7 @@ func (a *mockPostAPI) GetPost(id uint32) (models.TaggedPostMember, error) {
 	err := errors.New("Post Not Found")
 	for _, value := range mockPostDS {
 		if value.ID == id {
-			for _, member := range mockMemberDS {
+			for _, member := range mockMembers {
 				if value.Author.Valid && member.ID == value.Author.Int {
 					author = member
 				}
@@ -295,30 +295,30 @@ func TestRouteGetPosts(t *testing.T) {
 		{"UpdatedAtDescending", "/posts", ExpectGetsResp{ExpectResp{http.StatusOK, ""},
 			[]models.TaggedPostMember{
 				{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.MemberBasic{}, UpdatedBy: models.MemberBasic{}}},
-				{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMemberDS[1]), UpdatedBy: models.MemberBasic{}}},
-				{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMemberDS[0]), UpdatedBy: memberToBasic(mockMemberDS[0])}},
-				{PostMember: models.PostMember{Post: mockPostDS[2], Member: memberToBasic(mockMemberDS[2]), UpdatedBy: models.MemberBasic{}}},
+				{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMembers[1]), UpdatedBy: models.MemberBasic{}}},
+				{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMembers[0]), UpdatedBy: memberToBasic(mockMembers[0])}},
+				{PostMember: models.PostMember{Post: mockPostDS[2], Member: memberToBasic(mockMembers[2]), UpdatedBy: models.MemberBasic{}}},
 			}}},
 		{"UpdatedAtAscending", "/posts?sort=updated_at", ExpectGetsResp{ExpectResp{http.StatusOK, ""},
 			[]models.TaggedPostMember{
-				{PostMember: models.PostMember{Post: mockPostDS[2], Member: memberToBasic(mockMemberDS[2]), UpdatedBy: models.MemberBasic{}}},
-				{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMemberDS[0]), UpdatedBy: memberToBasic(mockMemberDS[0])}},
-				{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMemberDS[1]), UpdatedBy: models.MemberBasic{}}},
+				{PostMember: models.PostMember{Post: mockPostDS[2], Member: memberToBasic(mockMembers[2]), UpdatedBy: models.MemberBasic{}}},
+				{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMembers[0]), UpdatedBy: memberToBasic(mockMembers[0])}},
+				{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMembers[1]), UpdatedBy: models.MemberBasic{}}},
 				{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.MemberBasic{}, UpdatedBy: models.MemberBasic{}}},
 			}}},
 		{"max_result", "/posts?max_result=2", ExpectGetsResp{ExpectResp{http.StatusOK, ""},
 			[]models.TaggedPostMember{
 				{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.MemberBasic{}, UpdatedBy: models.MemberBasic{}}},
-				{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMemberDS[1]), UpdatedBy: models.MemberBasic{}}},
+				{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMembers[1]), UpdatedBy: models.MemberBasic{}}},
 			}}},
 		{"AuthorFilter", `/posts?author={"$in":["superman@mirrormedia.mg", "Major.Tom@mirrormedia.mg"]}`, ExpectGetsResp{ExpectResp{http.StatusOK, ""},
 			[]models.TaggedPostMember{
-				{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMemberDS[0]), UpdatedBy: memberToBasic(mockMemberDS[0])}},
+				{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMembers[0]), UpdatedBy: memberToBasic(mockMembers[0])}},
 				{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.MemberBasic{}, UpdatedBy: models.MemberBasic{}}},
 			}}},
 		{"ActiveFilter", `/posts?active={"$nin":[1]}`, ExpectGetsResp{ExpectResp{http.StatusOK, ""},
 			[]models.TaggedPostMember{
-				{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMemberDS[1]), UpdatedBy: models.MemberBasic{}}},
+				{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMembers[1]), UpdatedBy: models.MemberBasic{}}},
 				{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.MemberBasic{}, UpdatedBy: models.MemberBasic{}}},
 			}}},
 		{"NotFound", `/posts?active={"$nin":[0,1]}`, ExpectGetsResp{ExpectResp{http.StatusOK, ``},
@@ -326,8 +326,8 @@ func TestRouteGetPosts(t *testing.T) {
 		{"Type", `/posts?type={"$in":[1,2]}`, ExpectGetsResp{ExpectResp{http.StatusOK, ``},
 			[]models.TaggedPostMember{
 				{PostMember: models.PostMember{Post: mockPostDS[3], Member: models.MemberBasic{}, UpdatedBy: models.MemberBasic{}}},
-				{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMemberDS[1]), UpdatedBy: models.MemberBasic{}}},
-				{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMemberDS[0]), UpdatedBy: memberToBasic(mockMemberDS[0])}},
+				{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMembers[1]), UpdatedBy: models.MemberBasic{}}},
+				{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMembers[0]), UpdatedBy: memberToBasic(mockMembers[0])}},
 			}}},
 	}
 	for _, tc := range testPostsGetCases {
@@ -367,8 +367,8 @@ func TestRouteGetPost(t *testing.T) {
 			models.TaggedPostMember{
 				PostMember: models.PostMember{
 					Post:      mockPostDS[0],
-					Member:    memberToBasic(mockMemberDS[0]),
-					UpdatedBy: memberToBasic(mockMemberDS[0])},
+					Member:    memberToBasic(mockMembers[0]),
+					UpdatedBy: memberToBasic(mockMembers[0])},
 				Tags: models.NullString{}}}},
 		{"NotExisted", "/post/3", ExpectGetResp{ExpectResp{http.StatusNotFound, `{"Error":"Post Not Found"}`}, models.TaggedPostMember{}}},
 	}

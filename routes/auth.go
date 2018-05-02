@@ -167,6 +167,7 @@ func (r *authHandler) userRegister(c *gin.Context) {
 		member.Salt = models.NullString{string(salt), true}
 		member.Password = models.NullString{string(hpw), true}
 		member.Active = models.NullInt{0, true}
+		member.Points = models.NullInt{0, true}
 
 	} else {
 
@@ -176,11 +177,13 @@ func (r *authHandler) userRegister(c *gin.Context) {
 		}
 
 		member.Active = models.NullInt{1, true}
+		member.Points = models.NullInt{0, true}
 	}
 
 	// 4. fill in data and defaults
 	uuid, err := utils.NewUUIDv4()
 	if err != nil {
+		log.Println(err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": "Unable to generate uuid for user"})
 		return
 	}
@@ -194,9 +197,11 @@ func (r *authHandler) userRegister(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"Error": "User Duplicated"})
 			return
 		case "More Than One Rows Affected", "No Row Inserted":
+			log.Println(err.Error())
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
 			return
 		default:
+			log.Println(err.Error())
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
 			return
 		}

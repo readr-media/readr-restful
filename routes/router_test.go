@@ -33,9 +33,10 @@ var r *gin.Engine
 type mockDatastore struct{}
 
 func TestMain(m *testing.M) {
+	os.Setenv("mode", "local")
+	os.Setenv("db_driver", "mock")
 	/*
-		os.Setenv("mode", "local")
-
+		os.Setenv("db_driver", "mysql")
 		// TODO: Should implement test set for MODELS
 		// Init Sql connetions
 		dbURI := "root:qwerty@tcp(127.0.0.1)/memberdb?parseTime=true"

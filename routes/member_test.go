@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"reflect"
 	"regexp"
 	"sort"
@@ -21,7 +22,7 @@ import (
 type mockMemberAPI struct{}
 
 // Declare a backup struct for member test data
-var mockMemberDS = []models.Member{
+var mockMembers = []models.Member{
 	models.Member{
 		ID:           1,
 		MemberID:     "superman@mirrormedia.mg",
@@ -60,6 +61,8 @@ var mockMemberDS = []models.Member{
 		Points:    models.NullInt{Int: 0, Valid: true},
 	},
 }
+
+var mockMemberDS = []models.Member{}
 
 func (a *mockMemberAPI) GetMembers(req *models.MemberArgs) (result []models.Member, err error) {
 
@@ -114,7 +117,10 @@ func (a *mockMemberAPI) GetMember(idType string, id string) (models.Member, erro
 	result := models.Member{}
 	err := errors.New("User Not Found")
 	for _, value := range mockMemberDS {
-		if value.ID == int64(intID) {
+		if idType == "id" && value.ID == int64(intID) {
+			result = value
+			err = nil
+		} else if idType == "member_id" && value.MemberID == id {
 			result = value
 			err = nil
 		}
@@ -208,7 +214,13 @@ func (a *mockMemberAPI) GetUUIDsByNickname(key string, roles map[string][]int) (
 }
 
 func TestRouteMembers(t *testing.T) {
-	for _, m := range mockMemberDS {
+	if os.Getenv("db_driver") == "mysql" {
+		_, _ = models.DB.Exec("truncate table members;")
+	} else {
+		mockMemberDS = []models.Member{}
+	}
+
+	for _, m := range mockMembers {
 		_, err := models.MemberAPI.InsertMember(m)
 		if err != nil {
 			log.Printf("Init member test fail %s", err.Error())
@@ -246,23 +258,23 @@ func TestRouteMembers(t *testing.T) {
 
 	t.Run("GetMembers", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"UpdatedAtDescending", "GET", "/members", ``, http.StatusOK, []models.Member{mockMemberDS[1], mockMemberDS[0], mockMemberDS[2]}},
-			genericTestcase{"UpdatedAtAscending", "GET", "/members?sort=updated_at", ``, http.StatusOK, []models.Member{mockMemberDS[2], mockMemberDS[0], mockMemberDS[1]}},
-			genericTestcase{"max_result", "GET", "/members?max_result=2", ``, http.StatusOK, []models.Member{mockMemberDS[1], mockMemberDS[0]}},
-			genericTestcase{"ActiveFilter", "GET", `/members?active={"$nin":[0,-1]}`, ``, http.StatusOK, []models.Member{mockMemberDS[0]}},
-			genericTestcase{"CustomEditorFilter", "GET", `/members?custom_editor=true`, ``, http.StatusOK, []models.Member{mockMemberDS[0]}},
+			genericTestcase{"UpdatedAtDescending", "GET", "/members", ``, http.StatusOK, []models.Member{mockMembers[1], mockMembers[0], mockMembers[2]}},
+			genericTestcase{"UpdatedAtAscending", "GET", "/members?sort=updated_at", ``, http.StatusOK, []models.Member{mockMembers[2], mockMembers[0], mockMembers[1]}},
+			genericTestcase{"max_result", "GET", "/members?max_result=2", ``, http.StatusOK, []models.Member{mockMembers[1], mockMembers[0]}},
+			genericTestcase{"ActiveFilter", "GET", `/members?active={"$nin":[0,-1]}`, ``, http.StatusOK, []models.Member{mockMembers[0]}},
+			genericTestcase{"CustomEditorFilter", "GET", `/members?custom_editor=true`, ``, http.StatusOK, []models.Member{mockMembers[0]}},
 			genericTestcase{"NoMatchMembers", "GET", `/members?active={"$nin":[-1,0,1]}`, ``, http.StatusOK, `{"_items":[]}`},
 			genericTestcase{"MoreThanOneActive", "GET", `/members?active={"$nin":[1,0], "$in":[-1,3]}`, ``, http.StatusBadRequest, `{"Error":"Too many active lists"}`},
 			genericTestcase{"NotEntirelyValidActive", "GET", `/members?active={"$in":[-3,0,1]}`, ``, http.StatusBadRequest, `{"Error":"Not all active elements are valid"}`},
 			genericTestcase{"NoValidActive", "GET", `/members?active={"$nin":[3,4]}`, ``, http.StatusBadRequest, `{"Error":"No valid active request"}`},
-			genericTestcase{"Role", "GET", `/members?role=1`, ``, http.StatusOK, []models.Member{mockMemberDS[2]}},
+			genericTestcase{"Role", "GET", `/members?role=1`, ``, http.StatusOK, []models.Member{mockMembers[2]}},
 		} {
 			genericDoTest(testcase, t, asserter)
 		}
 	})
 	t.Run("GetMember", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"Current", "GET", "/member/1", ``, http.StatusOK, []models.Member{mockMemberDS[0]}},
+			genericTestcase{"Current", "GET", "/member/1", ``, http.StatusOK, []models.Member{mockMembers[0]}},
 			genericTestcase{"NotExisted", "GET", "/member/24601", ``, http.StatusNotFound, `{"Error":"User Not Found"}`},
 		} {
 			genericDoTest(testcase, t, asserter)
