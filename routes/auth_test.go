@@ -17,9 +17,6 @@ import (
 
 func initAuthTest() {
 
-	// Backup current member test data
-	mockMemberDSBack = mockMemberDS
-
 	var mockLoginMembers = []models.Member{
 		models.Member{
 			MemberID:     "logintest1@mirrormedia.mg",
@@ -64,11 +61,6 @@ func initAuthTest() {
 			return
 		}
 	}
-}
-
-func clearAuthTest() {
-	//restore the backuped data
-	mockMemberDS = mockMemberDSBack
 }
 
 func TestRouteLogin(t *testing.T) {
@@ -145,11 +137,7 @@ func TestRouteLogin(t *testing.T) {
 			t.Errorf("Expect get user id %s but get %d, testcase %s", testcase.out.resp.Member.MemberID, resp.Member.MemberID, testcase.name)
 			t.Fail()
 		}
-
 	}
-
-	clearAuthTest()
-
 }
 
 func TestRouteRegister(t *testing.T) {
@@ -267,6 +255,4 @@ func TestRouteRegister(t *testing.T) {
 		}
 
 	}
-
-	clearAuthTest()
 }

@@ -2,7 +2,7 @@ package routes
 
 import (
 	"bytes"
-	//"fmt"
+	"fmt"
 	"log"
 	"os"
 	"testing"
@@ -50,14 +50,14 @@ func TestMain(m *testing.M) {
 		_, _ = models.DB.Exec("truncate table tags;")
 		_, _ = models.DB.Exec("truncate table post_tags;")
 		_, _ = models.DB.Exec("truncate table memos;")
-
-		// Init Redis connetions
-		models.RedisConn(map[string]string{
-			"url":      fmt.Sprint(viper.Get("redis.host"), ":", viper.Get("redis.port")),
-			"password": fmt.Sprint(viper.Get("redis.password")),
-		})
-		models.Algolia.Init()
 	*/
+	// Init Redis connetions
+	models.RedisConn(map[string]string{
+		"url":      fmt.Sprint(viper.Get("redis.host"), ":", viper.Get("redis.port")),
+		"password": fmt.Sprint(viper.Get("redis.password")),
+	})
+	models.Algolia.Init()
+
 	gin.SetMode(gin.TestMode)
 
 	r = gin.New()
@@ -141,46 +141,6 @@ func genericDoTest(tc genericTestcase, t *testing.T, function interface{}) {
 			}
 		}
 	})
-}
-
-// Declare a backup struct for member test data
-var mockMemberDSBack []models.Member
-
-var mockMemberDS = []models.Member{
-	models.Member{
-		ID:           0,
-		MemberID:     "superman@mirrormedia.mg",
-		UUID:         "3d64e480-3e30-11e8-b94b-cfe922eb374f",
-		Nickname:     models.NullString{String: "readr", Valid: true},
-		Active:       models.NullInt{Int: 1, Valid: true},
-		UpdatedAt:    models.NullTime{Time: time.Date(2017, 6, 8, 16, 27, 52, 0, time.UTC), Valid: true},
-		Mail:         models.NullString{String: "superman@mirrormedia.mg", Valid: true},
-		CustomEditor: models.NullBool{Bool: true, Valid: true},
-		Role:         models.NullInt{Int: 9, Valid: true},
-	},
-	models.Member{
-		ID:        1,
-		MemberID:  "test6743@test.test",
-		UUID:      "3d651126-3e30-11e8-b94b-cfe922eb374f",
-		Nickname:  models.NullString{String: "yeahyeahyeah", Valid: true},
-		Active:    models.NullInt{Int: 0, Valid: true},
-		Birthday:  models.NullTime{Time: time.Date(2001, 1, 3, 0, 0, 0, 0, time.UTC), Valid: true},
-		UpdatedAt: models.NullTime{Time: time.Date(2017, 11, 11, 23, 11, 37, 0, time.UTC), Valid: true},
-		Mail:      models.NullString{String: "Lulu_Brakus@yahoo.com", Valid: true},
-		Role:      models.NullInt{Int: 3, Valid: true},
-	},
-	models.Member{
-		ID:        2,
-		MemberID:  "Barney.Corwin@hotmail.com",
-		UUID:      "3d6512e8-3e30-11e8-b94b-cfe922eb374f",
-		Nickname:  models.NullString{String: "reader", Valid: true},
-		Active:    models.NullInt{Int: -1, Valid: true},
-		Gender:    models.NullString{String: "M", Valid: true},
-		UpdatedAt: models.NullTime{Time: time.Date(2017, 1, 3, 19, 32, 37, 0, time.UTC), Valid: true},
-		Birthday:  models.NullTime{Time: time.Date(1939, 11, 9, 0, 0, 0, 0, time.UTC), Valid: true},
-		Mail:      models.NullString{String: "Barney.Corwin@hotmail.com", Valid: true},
-		Role:      models.NullInt{Int: 1, Valid: true},
-	},
 }
 
 var mockPostDSBack []models.Post

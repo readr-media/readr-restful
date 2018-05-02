@@ -60,7 +60,7 @@ type MemberInterface interface {
 	GetMember(idType string, id string) (Member, error)
 	GetMembers(req *MemberArgs) ([]Member, error)
 	InsertMember(m Member) (id int, err error)
-	UpdateAll(ids []string, active int) error
+	UpdateAll(ids []int64, active int) error
 	UpdateMember(m Member) error
 	Count(req *MemberArgs) (result int, err error)
 	GetUUIDsByNickname(key string, roles map[string][]int) (result []NicknameUUID, err error)
@@ -149,7 +149,7 @@ func (a *memberAPI) GetMembers(req *MemberArgs) (result []Member, err error) {
 
 	query, args, err := sqlx.In(query, values...)
 	if err != nil {
-		return nil, err
+		return []Member{}, err
 	}
 	query = DB.Rebind(query)
 	query = query + fmt.Sprintf(`ORDER BY %s LIMIT ? OFFSET ?`, orderByHelper(req.Sorting))
@@ -157,6 +157,9 @@ func (a *memberAPI) GetMembers(req *MemberArgs) (result []Member, err error) {
 	err = DB.Select(&result, query, args...)
 	if err != nil {
 		return []Member{}, err
+	}
+	if len(result) == 0 {
+		return []Member{}, nil
 	}
 	return result, err
 }
@@ -183,7 +186,6 @@ func (a *memberAPI) InsertMember(m Member) (id int, err error) {
 	query := fmt.Sprintf(`INSERT INTO members (%s) VALUES (:%s)`,
 		strings.Join(tags, ","), strings.Join(tags, ",:"))
 	result, err := DB.NamedExec(query, m)
-
 	if err != nil {
 		if strings.Contains(err.Error(), "Duplicate entry") {
 			return 0, errors.New("Duplicate entry")
@@ -237,12 +239,12 @@ func (a *memberAPI) DeleteMember(idType string, id string) error {
 	if rowCnt > 1 {
 		return errors.New("More Than One Rows Affected")
 	} else if rowCnt == 0 {
-		return errors.New("Post Not Found")
+		return errors.New("User Not Found")
 	}
 	return err
 }
 
-func (a *memberAPI) UpdateAll(ids []string, active int) (err error) {
+func (a *memberAPI) UpdateAll(ids []int64, active int) (err error) {
 	prep := fmt.Sprintf("UPDATE members SET active = %d WHERE id IN (?);", active)
 	query, args, err := sqlx.In(prep, ids)
 	if err != nil {
@@ -303,7 +305,6 @@ func (a *memberAPI) GetUUIDsByNickname(key string, roles map[string][]int) (resu
 	query := `SELECT uuid, nickname FROM members WHERE active = ? AND nickname LIKE ?`
 	if len(roles) != 0 {
 		values := []interface{}{int(MemberStatus["active"].(float64)), key + "%"}
-		log.Println(roles)
 		for k, v := range roles {
 			query = fmt.Sprintf("%s %s", query, fmt.Sprintf(" AND %s %s (?)", "members.role", operatorHelper(k)))
 			values = append(values, v)
@@ -317,7 +318,6 @@ func (a *memberAPI) GetUUIDsByNickname(key string, roles map[string][]int) (resu
 
 		query = DB.Rebind(query)
 
-		log.Println(query, values)
 		err = DB.Select(&result, query, values...)
 		if err != nil {
 			return []NicknameUUID{}, err

@@ -163,7 +163,7 @@ func (r *memberHandler) Put(c *gin.Context) {
 }
 
 func (r *memberHandler) DeleteAll(c *gin.Context) {
-	ids := []string{}
+	ids := []int64{}
 	err := json.Unmarshal([]byte(c.Query("ids")), &ids)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
@@ -207,7 +207,7 @@ func (r *memberHandler) Delete(c *gin.Context) {
 
 func (r *memberHandler) ActivateAll(c *gin.Context) {
 	payload := struct {
-		IDs []string `json:"ids"`
+		IDs []int64 `json:"ids"`
 	}{}
 	err := c.Bind(&payload)
 	if err != nil {
@@ -247,7 +247,8 @@ func (r *memberHandler) PutPassword(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Input"})
 		return
 	}
-	member, err := models.MemberAPI.GetMember("member_id", input.ID)
+
+	member, err := models.MemberAPI.GetMember("id", input.ID)
 	if err != nil {
 		switch err.Error() {
 		case "User Not Found":
@@ -289,6 +290,7 @@ func (r *memberHandler) PutPassword(c *gin.Context) {
 	}
 
 	err = models.MemberAPI.UpdateMember(models.Member{
+		ID:       member.ID,
 		MemberID: member.MemberID,
 		Password: models.NullString{hpw, true},
 		Salt:     models.NullString{salt, true},

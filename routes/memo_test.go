@@ -149,12 +149,6 @@ func TestRouteMemos(t *testing.T) {
 				respmemo.Project == expmemo.Project {
 				continue
 			}
-			log.Println(respmemo.ID, expmemo.ID)
-			log.Println(respmemo.Title, expmemo.Title)
-			log.Println(respmemo.Active, expmemo.Active)
-			log.Println(respmemo.Author, expmemo.Author)
-			log.Println(respmemo.Project, expmemo.Project)
-
 			t.Errorf("%s, expect to get %v, but %v ", tc.name, expmemo, respmemo)
 		}
 	}

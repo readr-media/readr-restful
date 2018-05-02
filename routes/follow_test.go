@@ -166,7 +166,6 @@ func (*mockFollowingAPI) GetFollowMap(args models.GetFollowMapArgs) (list []mode
 }
 
 func initFollowTest() {
-	mockMemberDSBack = mockMemberDS
 	mockPostDSBack = mockPostDS
 
 	for _, params := range []models.Member{
@@ -219,7 +218,6 @@ func initFollowTest() {
 
 func clearFollowTest() {
 	//restore the backuped data
-	mockMemberDS = mockMemberDSBack
 	mockPostDS = mockPostDSBack
 }
 
