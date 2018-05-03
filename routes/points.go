@@ -1,6 +1,7 @@
 package routes
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -13,40 +14,50 @@ import (
 
 type pointsHandler struct{}
 
-func (r *pointsHandler) Get(c *gin.Context) {
-
-	id := c.Param("id")
-	// Convert id to uint32
-	uid, err := strconv.ParseInt(id, 10, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("Parsing id error. %v", err)})
-		return
+func (r *pointsHandler) bindQuery(c *gin.Context, args *models.PointsArgs) (err error) {
+	// Parse id
+	if c.Param("id") != "" {
+		id := c.Param("id")
+		// Convert id to uint32
+		args.ID, err = strconv.ParseInt(id, 10, 64)
+		if err != nil {
+			return fmt.Errorf("Parsing id error. %v", err)
+		}
 	}
+	// Parse ObjectType
 	typestr := c.Param("type")
-	var objtype *int64
+	// var objtype *int64
 	if typestr != "" && strings.HasPrefix(typestr, "/") {
 		if len(typestr) > 1 {
 			typestr = typestr[1:]
 			type64, err := strconv.ParseInt(typestr, 10, 32)
 			if err != nil {
-				c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
-				return
+				return fmt.Errorf("Parsing object type error. %v", err)
 			}
-			objtype = &type64
+			args.ObjectType = &type64
 		} else if len(typestr) == 1 {
-			objtype = nil
+			args.ObjectType = nil
 		}
 	}
-	points, err := models.PointsAPI.Get(uid, objtype)
-	if err != nil {
-		switch err.Error() {
-		case "Points Not Found":
-			c.JSON(http.StatusNotFound, gin.H{"Error": err.Error()})
-			return
-		default:
-			c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
-			return
+	if c.Query("object_ids") != "" && args.ObjectIDs == nil {
+		if err = json.Unmarshal([]byte(c.Query("object_ids")), &args.ObjectIDs); err != nil {
+			return err
 		}
+	}
+	return nil
+}
+
+func (r *pointsHandler) Get(c *gin.Context) {
+
+	var args = &models.PointsArgs{}
+	if err := r.bindQuery(c, args); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
+	}
+	points, err := models.PointsAPI.Get(args)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
 	}
 	c.JSON(http.StatusOK, gin.H{"_items": points})
 }
@@ -62,14 +73,8 @@ func (r *pointsHandler) Post(c *gin.Context) {
 	}
 	p, err := models.PointsAPI.Insert(pts)
 	if err != nil {
-		switch err.Error() {
-		case "Duplicate entry":
-			c.JSON(http.StatusBadRequest, gin.H{"Error": "Already exists"})
-			return
-		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
-			return
-		}
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		return
 	}
 	c.JSON(http.StatusOK, gin.H{"points": p})
 }
@@ -77,6 +82,7 @@ func (r *pointsHandler) Post(c *gin.Context) {
 func (r *pointsHandler) SetRoutes(router *gin.Engine) {
 	pointsRouter := router.Group("/points")
 	{
+		// pointsRouter.GET("", r.Get)
 		// Redirect path ended without / to use r.Get as well
 		pointsRouter.GET("/:id", r.Get)
 		pointsRouter.GET("/:id/*type", r.Get)
