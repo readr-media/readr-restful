@@ -187,7 +187,7 @@ func (c *commentHandler) CreateNotifications(comment CommentEvent) {
 	switch commentInfo.ResourceType {
 	case "post":
 		var postFollowers []string
-		rows, err := DB.Query(fmt.Sprintf(`SELECT member_id FROM following_posts WHERE post_id=%s;`, commentInfo.ResourceID))
+		rows, err := DB.Query(fmt.Sprintf(`SELECT m.member_id AS member_id FROM following_posts AS f LEFT JOIN members AS m ON m.id = f.member_id WHERE f.post_id=%s;`, commentInfo.ResourceID))
 		if err != nil {
 			log.Println("Error get postFollowers", commentInfo.ResourceID, err.Error())
 		}
@@ -202,7 +202,7 @@ func (c *commentHandler) CreateNotifications(comment CommentEvent) {
 
 		var author NullString
 		var postType NullString
-		rows, err = DB.Query(fmt.Sprintf(`SELECT author, type FROM posts WHERE post_id=%s LIMIT 1;`, commentInfo.ResourceID))
+		rows, err = DB.Query(fmt.Sprintf(`SELECT m.member_id AS author, type FROM posts LEFT JOIN members AS m ON m.id = posts.author WHERE posts.post_id=%s LIMIT 1;`, commentInfo.ResourceID))
 		if err != nil {
 			log.Println("Error get post info", commentInfo.ResourceID, err.Error())
 			return
@@ -219,7 +219,7 @@ func (c *commentHandler) CreateNotifications(comment CommentEvent) {
 		}
 
 		var authorFollowers []string
-		rows, err = DB.Query(fmt.Sprintf(`SELECT member_id FROM following_members WHERE custom_editor="%s";`, author.String))
+		rows, err = DB.Query(fmt.Sprintf(`SELECT m.member_id AS member_id FROM following_members AS f LEFT JOIN members AS m ON f.member_id = m.id WHERE f.custom_editor=%s;`, author.String))
 		if err != nil {
 			log.Println("Error get authorFollowers", author.String, err.Error())
 		}
@@ -306,7 +306,7 @@ func (c *commentHandler) CreateNotifications(comment CommentEvent) {
 		break
 	case "project":
 		var projectFollowers []string
-		rows, err := DB.Query(fmt.Sprintf(`SELECT member_id FROM following_projects WHERE project_id=%s;`, commentInfo.ResourceID))
+		rows, err := DB.Query(fmt.Sprintf(`SELECT m.member_id AS member_id FROM following_projects AS f LEFT JOIN members AS m ON f.member_id = m.id WHERE f.project_id=%s;`, commentInfo.ResourceID))
 		if err != nil {
 			log.Println("Error get projectFollowers", commentInfo.ResourceID, err.Error())
 		}
