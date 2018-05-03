@@ -1,8 +1,7 @@
 package models
 
 import (
-	"database/sql"
-	"errors"
+	"bytes"
 	"fmt"
 	"log"
 	"strings"
@@ -24,35 +23,54 @@ type pointsAPI struct{}
 var PointsAPI PointsInterface = new(pointsAPI)
 
 type PointsInterface interface {
-	Get(id int64, objType *int64) (result []Points, err error)
+	Get(args *PointsArgs) (result []Points, err error)
 	Insert(pts Points) (result int, err error)
 }
 
-// Need to be change for the probability to accommodate id or id, objType type
-func (p *pointsAPI) Get(id int64, objType *int64) (result []Points, err error) {
+type PointsArgs struct {
+	ID         int64
+	ObjectType *int64
+	ObjectIDs  []int
+
+	query bytes.Buffer
+	where []interface{}
+}
+
+func (a *PointsArgs) selectQuery(initial string) {
+
+	a.query.WriteString(initial)
+
+	restricts := make([]string, 0)
+	if a.ID != 0 {
+		restricts = append(restricts, "member_id = ?")
+		a.where = append(a.where, a.ID)
+	}
+	if a.ObjectType != nil {
+		restricts = append(restricts, "object_type = ?")
+		a.where = append(a.where, int(*a.ObjectType))
+	}
+	if a.ObjectIDs != nil {
+		ph := make([]string, len(a.ObjectIDs))
+		for i := range a.ObjectIDs {
+			ph[i] = "?"
+			a.where = append(a.where, a.ObjectIDs[i])
+		}
+		restricts = append(restricts, fmt.Sprintf("object_id IN (%s)", strings.Join(ph, ",")))
+	}
+	switch {
+	case len(restricts) > 0:
+		a.query.WriteString(fmt.Sprintf(" WHERE %s;", strings.Join(restricts, " AND ")))
+	default:
+		a.query.WriteString(";")
+	}
+}
+
+func (p *pointsAPI) Get(args *PointsArgs) (result []Points, err error) {
 
 	// GET should return point history of certain member_id rather than points id
-	baseQ := `SELECT * FROM points WHERE member_id = ?`
-	// Specifying object type case
-	if objType != nil {
-		var pts Points
-		err = DB.QueryRowx(baseQ+" AND object_type = ?", id, int(*objType)).StructScan(&pts)
-		switch {
-		case err == sql.ErrNoRows:
-			err = errors.New("Points Not Found")
-			return []Points{}, err
-		case err != nil:
-			log.Fatal(err)
-			return []Points{}, err
-		default:
-			err = nil
-		}
-		result = []Points{pts}
-	} else {
-		err = DB.Select(&result, baseQ, id)
-		if err != nil {
-			return []Points{}, err
-		}
+	args.selectQuery(`SELECT * FROM points`)
+	if err = DB.Select(&result, args.query.String(), args.where...); err != nil {
+		return []Points{}, err
 	}
 	return result, err
 }
