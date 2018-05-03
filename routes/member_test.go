@@ -112,19 +112,17 @@ func (a *mockMemberAPI) GetMembers(req *models.MemberArgs) (result []models.Memb
 	return result, err
 }
 
-func (a *mockMemberAPI) GetMember(idType string, id string) (models.Member, error) {
+func (a *mockMemberAPI) GetMember(idType string, id string) (result models.Member, err error) {
+	log.Println(idType, id)
 	intID, _ := strconv.Atoi(id)
-	result := models.Member{}
-	err := errors.New("User Not Found")
 	for _, value := range mockMemberDS {
 		if idType == "id" && value.ID == int64(intID) {
-			result = value
-			err = nil
+			return value, nil
 		} else if idType == "member_id" && value.MemberID == id {
-			result = value
-			err = nil
+			return value, nil
 		}
 	}
+	err = errors.New("User Not Found")
 	return result, err
 }
 
@@ -276,6 +274,7 @@ func TestRouteMembers(t *testing.T) {
 		for _, testcase := range []genericTestcase{
 			genericTestcase{"Current", "GET", "/member/1", ``, http.StatusOK, []models.Member{mockMembers[0]}},
 			genericTestcase{"NotExisted", "GET", "/member/24601", ``, http.StatusNotFound, `{"Error":"User Not Found"}`},
+			genericTestcase{"NotExisted", "GET", "/member/superman@mirrormedia.mg", ``, http.StatusOK, []models.Member{mockMembers[0]}},
 		} {
 			genericDoTest(testcase, t, asserter)
 		}
