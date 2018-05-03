@@ -76,7 +76,13 @@ func (r *permissionHandler) Post(c *gin.Context) {
 		return
 	}
 
-	err := models.PermissionAPI.InsertPermissions(input.Query)
+	permission, err := models.PermissionAPI.GetPermissions(input.Query)
+	if len(permission) > 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Duplicate Entry"})
+		return
+	}
+
+	err = models.PermissionAPI.InsertPermissions(input.Query)
 	switch {
 	case err != nil && err.Error() == "Duplicate Entry":
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Duplicate Entry"})

@@ -163,7 +163,7 @@ func TestRouteTags(t *testing.T) {
 		post_id int
 		tag_ids []int
 	}{
-		{43, []int{1, 2}},
+		{42, []int{1, 2}},
 		{44, []int{1, 3}},
 	} {
 		if err := models.TagAPI.UpdatePostTags(params.post_id, params.tag_ids); err != nil {
@@ -218,7 +218,7 @@ func TestRouteTags(t *testing.T) {
 				models.Tag{ID: 2, Text: "tag2", Active: models.NullInt{1, true}},
 			}},
 			genericTestcase{"GetTagKeywordAndStatsOK", "GET", "/tags?stats=1&keyword=tag2", ``, http.StatusOK, []models.Tag{
-				models.Tag{ID: 2, Text: "tag2", Active: models.NullInt{1, true}, RelatedReviews: models.NullInt{0, true}, RelatedNews: models.NullInt{1, true}},
+				models.Tag{ID: 2, Text: "tag2", Active: models.NullInt{1, true}, RelatedReviews: models.NullInt{1, true}, RelatedNews: models.NullInt{0, true}},
 			}},
 			genericTestcase{"GetTagSortingOK", "GET", "/tags?keyword=tag&sort=updated_at", ``, http.StatusOK, []models.Tag{
 				models.Tag{ID: 1, Text: "tag1", Active: models.NullInt{1, true}},
