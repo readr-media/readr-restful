@@ -219,7 +219,7 @@ func (c *commentHandler) CreateNotifications(comment CommentEvent) {
 		}
 
 		var authorFollowers []string
-		rows, err = DB.Query(fmt.Sprintf(`SELECT m.member_id AS member_id FROM following_members AS f LEFT JOIN members AS m ON f.member_id = m.id WHERE f.custom_editor=%s;`, author.String))
+		rows, err = DB.Query(fmt.Sprintf(`SELECT m.member_id AS member_id FROM following_members AS f LEFT JOIN members AS m ON f.member_id = m.id WHERE f.custom_editor="%s";`, author.String))
 		if err != nil {
 			log.Println("Error get authorFollowers", author.String, err.Error())
 		}
