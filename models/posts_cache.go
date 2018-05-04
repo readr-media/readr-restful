@@ -257,8 +257,8 @@ func (c latestPostCache) SyncFromDataStorage() {
 	conn := RedisHelper.Conn()
 	defer conn.Close()
 
-	//rows, err := DB.Queryx("SELECT p.*, f.follower FROM posts as p LEFT JOIN (SELECT post_id, GROUP_CONCAT(member_id) as follower FROM following_posts GROUP BY post_id) as f ON p.post_id = f.post_id WHERE active=" + fmt.Sprint(PostStatus["active"]) + " ORDER BY updated_at DESC LIMIT 20;")
-	rows, err := DB.Queryx(fmt.Sprint("SELECT p.*, f.follower, m.nickname AS m_name, m.profile_image AS m_image FROM posts as p LEFT JOIN (SELECT post_id, GROUP_CONCAT(member_id SEPARATOR ',') as follower FROM following_posts GROUP BY post_id) as f ON p.post_id = f.post_id LEFT JOIN members AS m ON m.member_id = p.author WHERE p.active=", fmt.Sprint(PostStatus["active"]), " AND p.publish_status=", fmt.Sprint(PostPublishStatus["publish"]), " ORDER BY updated_at DESC LIMIT 20;"))
+	//rows, err := DB.Queryx("SELECT p.*, f.follower FROM posts as p LEFT JOIN (SELECT post_id, GROUP_CONCAT(id) as follower FROM following_posts GROUP BY post_id) as f ON p.post_id = f.post_id WHERE active=" + fmt.Sprint(PostStatus["active"]) + " ORDER BY updated_at DESC LIMIT 20;")
+	rows, err := DB.Queryx(fmt.Sprint("SELECT p.*, f.follower, m.nickname AS m_name, m.profile_image AS m_image FROM posts as p LEFT JOIN (SELECT post_id, GROUP_CONCAT(id SEPARATOR ',') as follower FROM following_posts GROUP BY post_id) as f ON p.post_id = f.post_id LEFT JOIN members AS m ON m.id = p.author WHERE p.active=", fmt.Sprint(PostStatus["active"]), " AND p.publish_status=", fmt.Sprint(PostPublishStatus["publish"]), " ORDER BY updated_at DESC LIMIT 20;"))
 	if err != nil {
 		log.Println(err.Error())
 		return
@@ -394,7 +394,7 @@ func (c hottestPostCache) SyncFromDataStorage() {
 	if len(hotPosts) <= 0 {
 		return
 	}
-	query, args, err := sqlx.In(fmt.Sprint("SELECT p.*, f.follower, m.nickname AS m_name, m.profile_image AS m_image FROM posts as p LEFT JOIN (SELECT post_id, GROUP_CONCAT(member_id SEPARATOR ',') as follower FROM following_posts GROUP BY post_id) as f ON p.post_id = f.post_id LEFT JOIN members AS m ON m.member_id = p.author WHERE p.active=", fmt.Sprint(PostStatus["active"]), " AND p.publish_status=", fmt.Sprint(PostPublishStatus["publish"]), " AND p.post_id IN (?);"), hotPosts)
+	query, args, err := sqlx.In(fmt.Sprint("SELECT p.*, f.follower, m.nickname AS m_name, m.profile_image AS m_image FROM posts as p LEFT JOIN (SELECT post_id, GROUP_CONCAT(id SEPARATOR ',') as follower FROM following_posts GROUP BY post_id) as f ON p.post_id = f.post_id LEFT JOIN members AS m ON m.id = p.author WHERE p.active=", fmt.Sprint(PostStatus["active"]), " AND p.publish_status=", fmt.Sprint(PostPublishStatus["publish"]), " AND p.post_id IN (?);"), hotPosts)
 	if err != nil {
 		log.Printf("error to build `in` query when fetching post cache data", err)
 		return
