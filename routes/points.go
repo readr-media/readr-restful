@@ -44,12 +44,18 @@ func (r *pointsHandler) bindQuery(c *gin.Context, args *models.PointsArgs) (err 
 			return err
 		}
 	}
-	return nil
+	err = c.ShouldBindQuery(args)
+	return err
 }
 
 func (r *pointsHandler) Get(c *gin.Context) {
 
 	var args = &models.PointsArgs{}
+	args.Set(map[string]interface{}{
+		"max_result": 100,
+		"page":       1,
+		"sort":       "-created_at",
+	})
 	if err := r.bindQuery(c, args); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
@@ -70,6 +76,9 @@ func (r *pointsHandler) Post(c *gin.Context) {
 	}
 	if !pts.CreatedAt.Valid {
 		pts.CreatedAt = models.NullTime{Time: time.Now(), Valid: true}
+	}
+	if !pts.UpdatedAt.Valid {
+		pts.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
 	}
 	p, err := models.PointsAPI.Insert(pts)
 	if err != nil {
