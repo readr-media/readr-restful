@@ -15,6 +15,11 @@ import (
 type pointsHandler struct{}
 
 func (r *pointsHandler) bindQuery(c *gin.Context, args *models.PointsArgs) (err error) {
+
+	// Fill in MaxResult, Page, OrderBy first to avoid custom parsing result overwritten
+	if err = c.ShouldBindQuery(args); err != nil {
+		return err
+	}
 	// Parse id
 	if c.Param("id") != "" {
 		id := c.Param("id")
@@ -38,13 +43,15 @@ func (r *pointsHandler) bindQuery(c *gin.Context, args *models.PointsArgs) (err 
 		} else if len(typestr) == 1 {
 			args.ObjectType = nil
 		}
+	} else {
+		// typestr == "" or string has not prefix "/"
+		args.ObjectType = nil
 	}
 	if c.Query("object_ids") != "" && args.ObjectIDs == nil {
 		if err = json.Unmarshal([]byte(c.Query("object_ids")), &args.ObjectIDs); err != nil {
 			return err
 		}
 	}
-	err = c.ShouldBindQuery(args)
 	return err
 }
 
