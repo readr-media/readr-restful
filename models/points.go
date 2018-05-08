@@ -13,6 +13,7 @@ type Points struct {
 	ObjectType int      `json:"object_type" db:"object_type" binding:"required"`
 	ObjectID   int      `json:"object_id" db:"object_id" binding:"required"`
 	Points     int      `json:"points" db:"points"`
+	Balance    int      `json:"balance" db:"balance"`
 	CreatedAt  NullTime `json:"created_at" db:"created_at"`
 	UpdatedBy  NullInt  `json:"updated_by" db:"updated_by"`
 	UpdatedAt  NullTime `json:"updated_at" db:"updated_at"`
@@ -32,14 +33,15 @@ type PointsArgs struct {
 	ObjectType *int64
 	ObjectIDs  []int
 
+	MaxResult uint8  `form:"max_result"`
+	Page      uint16 `form:"page"`
+	OrderBy   string `form:"sort"`
+
 	query bytes.Buffer
 	where []interface{}
 }
 
-func (a *PointsArgs) selectQuery(initial string) {
-
-	a.query.WriteString(initial)
-
+func (a *PointsArgs) parseWhere() {
 	restricts := make([]string, 0)
 	if a.ID != 0 {
 		restricts = append(restricts, "member_id = ?")
@@ -57,12 +59,47 @@ func (a *PointsArgs) selectQuery(initial string) {
 		}
 		restricts = append(restricts, fmt.Sprintf("object_id IN (%s)", strings.Join(ph, ",")))
 	}
-	switch {
-	case len(restricts) > 0:
-		a.query.WriteString(fmt.Sprintf(" WHERE %s;", strings.Join(restricts, " AND ")))
-	default:
-		a.query.WriteString(";")
+	if len(restricts) > 0 {
+		a.query.WriteString(fmt.Sprintf(" WHERE %s", strings.Join(restricts, " AND ")))
 	}
+}
+
+func (a *PointsArgs) parseLimit() {
+	restricts := make([]string, 0)
+	if a.OrderBy != "" {
+		restricts = append(restricts, fmt.Sprintf("ORDER BY %s", orderByHelper(a.OrderBy)))
+	}
+	if a.MaxResult != 0 {
+		restricts = append(restricts, "LIMIT ?")
+		a.where = append(a.where, a.MaxResult)
+	}
+	if a.Page != 0 {
+		restricts = append(restricts, "OFFSET ?")
+		a.where = append(a.where, (a.Page-1)*uint16(a.MaxResult))
+	}
+	if len(restricts) > 0 {
+		a.query.WriteString(fmt.Sprintf(" %s", strings.Join(restricts, " ")))
+	}
+}
+
+func (a *PointsArgs) Set(in map[string]interface{}) {
+	for k, v := range in {
+		switch k {
+		case "max_result":
+			a.MaxResult = uint8(v.(int))
+		case "page":
+			a.Page = uint16(v.(int))
+		case "sort":
+			a.OrderBy = v.(string)
+		}
+	}
+}
+func (a *PointsArgs) selectQuery(initial string) {
+
+	a.query.WriteString(initial)
+	a.parseWhere()
+	a.parseLimit()
+	a.query.WriteString(";")
 }
 
 func (p *pointsAPI) Get(args *PointsArgs) (result []Points, err error) {
@@ -91,25 +128,21 @@ func (p *pointsAPI) Insert(pts Points) (result int, err error) {
 		}
 		err = tx.Commit()
 	}()
+	// Choose the latest transaction balance
+	if err = tx.Get(&result, `SELECT points FROM members WHERE id = ?`, pts.MemberID); err != nil {
+		return 0, err
+	}
+	// New Balance
+	result = result - pts.Points
+	pts.Balance = result
 	pointsU := fmt.Sprintf(`INSERT INTO points (%s) VALUES (:%s)`,
 		strings.Join(tags, ","), strings.Join(tags, ",:"))
 
 	if _, err := tx.NamedExec(pointsU, pts); err != nil {
 		return 0, err
 	}
-	memberU := fmt.Sprintf(`UPDATE members SET points = @updated_points := points - %d WHERE id = ?`, pts.Points)
-	if _, err = tx.Exec(memberU, pts.MemberID); err != nil {
+	if _, err = tx.Exec(`UPDATE members SET points = ?, updated_at = ? WHERE id = ?`, result, pts.CreatedAt, pts.MemberID); err != nil {
 		return 0, err
-	}
-	row, err := tx.Queryx(`SELECT @updated_points`)
-	if err != nil {
-		return 0, err
-	}
-	for row.Next() {
-		err = row.Scan(&result)
-		if err != nil {
-			return 0, err
-		}
 	}
 	return result, err
 }
