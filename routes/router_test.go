@@ -63,6 +63,7 @@ func TestMain(m *testing.M) {
 
 	r = gin.New()
 	AuthHandler.SetRoutes(r)
+	CommentsHandler.SetRoutes(r)
 	FollowingHandler.SetRoutes(r)
 	MemberHandler.SetRoutes(r)
 	MemoHandler.SetRoutes(r)
@@ -94,6 +95,7 @@ func TestMain(m *testing.M) {
 	models.MemoAPI = new(mockMemoAPI)
 	models.MailAPI = new(mockMailAPI)
 
+	models.CommentHandler = models.CommentHandlerStruct{new(mockCommentAPI)}
 	os.Exit(m.Run())
 }
 

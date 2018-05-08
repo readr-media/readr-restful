@@ -20,6 +20,7 @@ type follow interface {
 	Delete() (sql.Result, error)
 	GetFollowed(args GetFollowedArgs) (*sqlx.Rows, error)
 	GetFollowings(args GetFollowingArgs) (*sqlx.Rows, error)
+	GetFollowerMemberIDs(id string) ([]string, error)
 	GetMap(args GetFollowMapArgs) (*sqlx.Rows, error)
 	Insert() (sql.Result, error)
 }
@@ -48,6 +49,21 @@ func (f followPost) GetFollowed(params GetFollowedArgs) (*sqlx.Rows, error) {
 		return nil, err
 	}
 	return DB.Queryx(query, args...)
+}
+func (f followPost) GetFollowerMemberIDs(id string) (result []string, err error) {
+	rows, err := DB.Query(fmt.Sprintf(`SELECT m.member_id AS member_id FROM following_posts AS f LEFT JOIN members AS m ON m.id = f.member_id WHERE f.post_id=%s;`, id))
+	if err != nil {
+		log.Println("Error get postFollowers", id, err.Error())
+	}
+	for rows.Next() {
+		var follower string
+		err = rows.Scan(&follower)
+		if err != nil {
+			log.Println("Error scan postFollowers", id, err.Error())
+		}
+		result = append(result, follower)
+	}
+	return result, err
 }
 func (f followPost) GetMap(params GetFollowMapArgs) (*sqlx.Rows, error) {
 	post_type := f.postTypeHelper(params.Type)
@@ -101,6 +117,22 @@ func (f followMember) GetFollowed(params GetFollowedArgs) (*sqlx.Rows, error) {
 	}
 	return DB.Queryx(query, args...)
 }
+func (f followMember) GetFollowerMemberIDs(id string) (result []string, err error) {
+	log.Println(fmt.Sprintf(`SELECT m.member_id AS member_id FROM following_members AS f LEFT JOIN members AS m ON f.member_id = m.id WHERE f.custom_editor="%s";`, id))
+	rows, err := DB.Query(fmt.Sprintf(`SELECT m.member_id AS member_id FROM following_members AS f LEFT JOIN members AS m ON f.member_id = m.id WHERE f.custom_editor="%s";`, id))
+	if err != nil {
+		log.Println("Error get authorFollowers", id, err.Error())
+	}
+	for rows.Next() {
+		var follower string
+		err = rows.Scan(&follower)
+		if err != nil {
+			log.Println("Error scan authorFollowers", id, err.Error())
+		}
+		result = append(result, follower)
+	}
+	return result, err
+}
 func (f followMember) GetMap(params GetFollowMapArgs) (*sqlx.Rows, error) {
 	query := `
 		SELECT GROUP_CONCAT(member_resource.member_id) AS member_ids, member_resource.resource_ids
@@ -143,6 +175,21 @@ func (f followProject) GetFollowed(params GetFollowedArgs) (*sqlx.Rows, error) {
 		return nil, err
 	}
 	return DB.Queryx(query, args...)
+}
+func (f followProject) GetFollowerMemberIDs(id string) (result []string, err error) {
+	rows, err := DB.Query(fmt.Sprintf(`SELECT m.member_id AS member_id FROM following_projects AS f LEFT JOIN members AS m ON f.member_id = m.id WHERE f.project_id=%s;`, id))
+	if err != nil {
+		log.Println("Error get projectFollowers", id, err.Error())
+	}
+	for rows.Next() {
+		var follower string
+		err = rows.Scan(&follower)
+		if err != nil {
+			log.Println("Error scan authorFollowers", id, err.Error())
+		}
+		result = append(result, follower)
+	}
+	return result, err
 }
 func (f followProject) GetMap(params GetFollowMapArgs) (*sqlx.Rows, error) {
 	query := `
@@ -205,6 +252,7 @@ type FollowingAPIInterface interface {
 	DeleteFollowing(params FollowArgs) error
 	GetFollowing(params GetFollowingArgs) ([]interface{}, error)
 	GetFollowed(args GetFollowedArgs) (interface{}, error)
+	GetFollowerMemberIDs(resourceType string, id string) ([]string, error)
 	GetFollowMap(args GetFollowMapArgs) ([]FollowingMapItem, error)
 }
 
@@ -327,6 +375,21 @@ func (f *followingAPI) GetFollowed(args GetFollowedArgs) (interface{}, error) {
 		followed = append(followed, followedCount{resourceId, count, followers})
 	}
 	return followed, nil
+}
+func (f *followingAPI) GetFollowerMemberIDs(resourceType string, id string) ([]string, error) {
+	follow, err := CreateFollow(FollowArgs{Resource: resourceType})
+	if err != nil {
+		log.Println(err.Error())
+		return nil, err
+	}
+
+	ids, err := follow.GetFollowerMemberIDs(id)
+	if err != nil {
+		log.Println(err.Error())
+		return nil, err
+	}
+
+	return ids, nil
 }
 func (f *followingAPI) GetFollowMap(args GetFollowMapArgs) (list []FollowingMapItem, err error) {
 	follow, err := CreateFollow(FollowArgs{Resource: args.Resource})
