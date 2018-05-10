@@ -217,15 +217,7 @@ func (t *tagApi) UpdatePostTags(post_id int, tag_ids []int) error {
 		return err
 	}
 
-	delquery, args, err := sqlx.In(fmt.Sprintf("DELETE FROM post_tags WHERE post_id=%d AND tag_id NOT IN (?);", post_id), tag_ids)
-	if err != nil {
-		log.Printf("Fail to generate query: %v", err)
-		return err
-	}
-
-	delquery = DB.Rebind(delquery)
-
-	_ = tx.MustExec(delquery, args...)
+	_ = tx.MustExec(fmt.Sprintf("DELETE FROM post_tags WHERE post_id=%d;", post_id))
 
 	var insqueryBuffer bytes.Buffer
 	var insargs []interface{}
