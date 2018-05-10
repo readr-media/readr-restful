@@ -1,6 +1,8 @@
 package routes
 
 import (
+	"errors"
+	"fmt"
 	"log"
 	"regexp"
 	"strconv"
@@ -82,7 +84,24 @@ func (r *projectHandler) bindQuery(c *gin.Context, args *models.GetProjectArgs) 
 	if c.Query("keyword") != "" {
 		args.Keyword = c.Query("keyword")
 	}
-
+	if c.Query("fields") != "" {
+		if err = json.Unmarshal([]byte(c.Query("fields")), &args.Fields); err != nil {
+			log.Println(err.Error())
+			return err
+		}
+		for _, field := range args.Fields {
+			if !r.validate(field, fmt.Sprintf("^(%s)$", strings.Join(args.FullAuthorTags(), "|"))) {
+				return errors.New("Invalid Fields")
+			}
+		}
+	} else {
+		switch c.Query("mode") {
+		case "full":
+			args.Fields = args.FullAuthorTags()
+		default:
+			args.Fields = []string{"nickname"}
+		}
+	}
 	return nil
 }
 
@@ -122,6 +141,22 @@ func (r *projectHandler) Get(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"_items": projects})
+}
+
+func (r *projectHandler) GetAuthors(c *gin.Context) {
+	//project/authors?ids=[1000010,1000013]&mode=[full]&fields=["id","member_id"]
+	args := models.GetProjectArgs{}
+	if err := r.bindQuery(c, &args); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
+	}
+	fmt.Println(args)
+	authors, err := models.ProjectAPI.GetAuthors(args)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"_items": authors})
 }
 
 func (r *projectHandler) Post(c *gin.Context) {
@@ -234,16 +269,29 @@ func (r *projectHandler) Delete(c *gin.Context) {
 	}
 	c.Status(http.StatusOK)
 }
+func (r *projectHandler) PostAuthors(c *gin.Context) {
 
+}
+func (r *projectHandler) PutAuthors(c *gin.Context) {
+
+}
 func (r *projectHandler) SetRoutes(router *gin.Engine) {
 	projectRouter := router.Group("/project")
 	{
 		projectRouter.GET("/count", r.Count)
 		projectRouter.GET("/list", r.Get)
+		// projectRouter.GET("/author/:project_id/*mode", r.GetAuthors)
 		projectRouter.POST("", r.Post)
 		projectRouter.PUT("", r.Put)
 		projectRouter.PUT("/schedule/publish", r.SchedulePublish)
 		projectRouter.DELETE("/:id", r.Delete)
+
+		authorRouter := projectRouter.Group("/author")
+		{
+			authorRouter.GET("", r.GetAuthors)
+			authorRouter.POST("", r.PostAuthors)
+			authorRouter.PUT("", r.PutAuthors)
+		}
 	}
 }
 
@@ -260,6 +308,13 @@ func (r *projectHandler) validateProjectSorting(sort string) bool {
 		if matched, err := regexp.MatchString("-?(updated_at|published_at|project_id|project_order|status|slug)", v); err != nil || !matched {
 			return false
 		}
+	}
+	return true
+}
+
+func (r *projectHandler) validate(target string, paradigm string) bool {
+	if matched, err := regexp.MatchString(paradigm, target); err != nil || !matched {
+		return false
 	}
 	return true
 }

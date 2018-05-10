@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"database/sql"
@@ -20,6 +21,12 @@ var (
 
 	SQLInsertionFail = errors.New("SQL Insertion Fail")
 )
+
+type sqlfields []string
+
+func (s *sqlfields) GetFields(template string) (result string) {
+	return strings.Join(makeFieldString("get", template, *s), ", ")
+}
 
 // ------------------------------  NULLABLE TYPE DEFINITION -----------------------------
 
