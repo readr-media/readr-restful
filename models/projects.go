@@ -44,7 +44,7 @@ type ProjectAPIInterface interface {
 	DeleteProjects(p Project) error
 	GetProject(p Project) (Project, error)
 	GetProjects(args GetProjectArgs) ([]ProjectAuthors, error)
-	GetAuthors(args GetProjectArgs) (result []Stunt, err error)
+	// GetAuthors(args GetProjectArgs) (result []Stunt, err error)
 	InsertProject(p Project) error
 	UpdateProjects(p Project) error
 	SchedulePublish() error
@@ -194,18 +194,8 @@ func (a *projectAPI) GetProject(p Project) (Project, error) {
 }
 
 func (a *projectAPI) GetProjects(args GetProjectArgs) (result []ProjectAuthors, err error) {
-
-	if len(args.IDs) > 0 {
-		// make length of result = min(desired projects, max_result)
-		result = make([]ProjectAuthors, func(a, b int) int {
-			if a < b {
-				return a
-			}
-			return b
-		}(len(args.IDs), args.MaxResult))
-	} else {
-		result = make([]ProjectAuthors, args.MaxResult)
-	}
+	// Init appendable result slice
+	result = make([]ProjectAuthors, 0)
 
 	restricts, values := args.parse()
 	if len(restricts) > 0 {
@@ -224,64 +214,71 @@ func (a *projectAPI) GetProjects(args GetProjectArgs) (result []ProjectAuthors, 
 		return nil, err
 	}
 	query = DB.Rebind(query)
-	fmt.Println(query)
-	fmt.Println(values)
-	var temp []ProjectAuthor
-	if err = DB.Select(&temp, query, values...); err != nil {
+	var pa []ProjectAuthor
+	if err = DB.Select(&pa, query, values...); err != nil {
 		log.Println(err.Error())
 		return []ProjectAuthors{}, err
 	}
 	// For returning {"_items":null}
-	if len(temp) == 0 {
-		fmt.Println("result length is 0")
+	if len(pa) == 0 {
 		return nil, nil
 	}
-	for _, project := range temp {
-		for i, v := range result {
-			if v.ID != 0 {
-				if v.ID != project.ID {
-					continue
-				} else {
-					// Insert author to project with identical project_id
+	for _, project := range pa {
+
+		var notNullAuthor = func(in ProjectAuthor) ProjectAuthors {
+			pas := ProjectAuthors{Project: in.Project}
+			if project.Author != (Stunt{}) {
+				pas.Authors = append(pas.Authors, in.Author)
+			}
+			return pas
+		}
+		// First Project
+		if len(result) == 0 {
+			result = append(result, notNullAuthor(project))
+		} else {
+			for i, v := range result {
+				if v.ID == project.ID {
 					result[i].Authors = append(result[i].Authors, project.Author)
 					break
+				} else {
+					if i != (len(result) - 1) {
+						continue
+					} else {
+						result = append(result, notNullAuthor(project))
+					}
 				}
-			} else {
-				// Empty result append current Project and Author
-				result[i] = ProjectAuthors{Project: project.Project, Authors: []Stunt{project.Author}}
-				break
 			}
 		}
 	}
 	return result, nil
 }
 
-func (a *projectAPI) GetAuthors(args GetProjectArgs) (result []Stunt, err error) {
-	//select a.nickname, a.member_id, a.active from project_authors pa left join members a on pa.author_id = a.id where pa.project_id in (1000010, 1000013);
-	restricts, values := args.parse()
-	fmt.Printf("restricts: %v\n,values:%v\n", restricts, values)
-	fmt.Printf("args: %v\n", args)
+// func (a *projectAPI) GetAuthors(args GetProjectArgs) (result []Stunt, err error) {
+// 	//select a.nickname, a.member_id, a.active from project_authors pa left join members a on pa.author_id = a.id where pa.project_id in (1000010, 1000013);
+// 	restricts, values := args.parse()
+// 	fmt.Printf("restricts: %v\n,values:%v\n", restricts, values)
+// 	fmt.Printf("args: %v\n", args)
 
-	// projects.project_id IN (?), [1, 2]
-	var where string
-	if len(restricts) > 0 {
-		where = fmt.Sprintf(" WHERE %s", restricts)
-	}
-	query := fmt.Sprintf(`SELECT %s FROM project_authors projects LEFT JOIN members author ON projects.author_id = author.id %s;`,
-		args.Fields.GetFields(`author.%s "%s"`), where)
-	fmt.Printf("query is :%s\n", query)
-	fmt.Printf("values is %v\n", values)
-	query, params, err := sqlx.In(query, values...)
-	if err != nil {
-		return []Stunt{}, err
-	}
+// 	// projects.project_id IN (?), [1, 2]
+// 	var where string
+// 	if len(restricts) > 0 {
+// 		where = fmt.Sprintf(" WHERE %s", restricts)
+// 	}
+// 	query := fmt.Sprintf(`SELECT %s FROM project_authors projects LEFT JOIN members author ON projects.author_id = author.id %s;`,
+// 		args.Fields.GetFields(`author.%s "%s"`), where)
+// 	fmt.Printf("query is :%s\n", query)
+// 	fmt.Printf("values is %v\n", values)
+// 	query, params, err := sqlx.In(query, values...)
+// 	if err != nil {
+// 		return []Stunt{}, err
+// 	}
 
-	query = DB.Rebind(query)
-	if err := DB.Select(&result, query, params...); err != nil {
-		return []Stunt{}, err
-	}
-	return result, nil
-}
+// 	query = DB.Rebind(query)
+// 	if err := DB.Select(&result, query, params...); err != nil {
+// 		return []Stunt{}, err
+// 	}
+// 	return result, nil
+// }
 
 func (a *projectAPI) InsertProject(p Project) error {
 

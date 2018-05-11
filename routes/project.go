@@ -143,22 +143,6 @@ func (r *projectHandler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"_items": projects})
 }
 
-func (r *projectHandler) GetAuthors(c *gin.Context) {
-	//project/authors?ids=[1000010,1000013]&mode=[full]&fields=["id","member_id"]
-	args := models.GetProjectArgs{}
-	if err := r.bindQuery(c, &args); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
-		return
-	}
-	fmt.Println(args)
-	authors, err := models.ProjectAPI.GetAuthors(args)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
-		return
-	}
-	c.JSON(http.StatusOK, gin.H{"_items": authors})
-}
-
 func (r *projectHandler) Post(c *gin.Context) {
 
 	project := models.Project{}
@@ -269,6 +253,23 @@ func (r *projectHandler) Delete(c *gin.Context) {
 	}
 	c.Status(http.StatusOK)
 }
+
+// func (r *projectHandler) GetAuthors(c *gin.Context) {
+// 	//project/authors?ids=[1000010,1000013]&mode=[full]&fields=["id","member_id"]
+// 	args := models.GetProjectArgs{}
+// 	if err := r.bindQuery(c, &args); err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+// 		return
+// 	}
+// 	fmt.Println(args)
+// 	authors, err := models.ProjectAPI.GetAuthors(args)
+// 	if err != nil {
+// 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+// 		return
+// 	}
+// 	c.JSON(http.StatusOK, gin.H{"_items": authors})
+// }
+
 func (r *projectHandler) PostAuthors(c *gin.Context) {
 
 }
@@ -280,7 +281,6 @@ func (r *projectHandler) SetRoutes(router *gin.Engine) {
 	{
 		projectRouter.GET("/count", r.Count)
 		projectRouter.GET("/list", r.Get)
-		// projectRouter.GET("/author/:project_id/*mode", r.GetAuthors)
 		projectRouter.POST("", r.Post)
 		projectRouter.PUT("", r.Put)
 		projectRouter.PUT("/schedule/publish", r.SchedulePublish)
@@ -288,7 +288,7 @@ func (r *projectHandler) SetRoutes(router *gin.Engine) {
 
 		authorRouter := projectRouter.Group("/author")
 		{
-			authorRouter.GET("", r.GetAuthors)
+			// authorRouter.GET("", r.GetAuthors)
 			authorRouter.POST("", r.PostAuthors)
 			authorRouter.PUT("", r.PutAuthors)
 		}

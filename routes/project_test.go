@@ -27,73 +27,73 @@ func (a *mockProjectAPI) GetProject(p models.Project) (result models.Project, er
 	}
 }
 
-func (a *mockProjectAPI) GetProjects(args models.GetProjectArgs) (result []models.Project, err error) {
+func (a *mockProjectAPI) GetProjects(args models.GetProjectArgs) (result []models.ProjectAuthors, err error) {
 	if args.Keyword == "no" {
-		return []models.Project{
-			models.Project{ID: 32234, Title: models.NullString{"nonActive", true}, Active: models.NullInt{0, true}, Order: models.NullInt{60, true}},
+		return []models.ProjectAuthors{
+			{Project: models.Project{ID: 32234, Title: models.NullString{"nonActive", true}, Active: models.NullInt{0, true}, Order: models.NullInt{60, true}}},
 		}, nil
 	}
 	if args.Keyword == "327" {
-		return []models.Project{
-			models.Project{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}, Order: models.NullInt{99999, true}},
-			models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}},
-			models.Project{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{50470, true}, Description: models.NullString{"id not provided", true}},
+		return []models.ProjectAuthors{
+			{Project: models.Project{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}, Order: models.NullInt{99999, true}}},
+			{Project: models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}}},
+			{Project: models.Project{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{50470, true}, Description: models.NullString{"id not provided", true}}},
 		}, nil
 	}
 	if args.Sorting == "project_id" {
-		return []models.Project{
-			models.Project{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}},
-			models.Project{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{61, true}, Slug: models.NullString{"sampleslug0002", true}, Status: models.NullInt{2, true}},
-			models.Project{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}, Order: models.NullInt{99999, true}},
-			models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}},
-			models.Project{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{50470, true}, Description: models.NullString{"id not provided", true}},
+		return []models.ProjectAuthors{
+			{Project: models.Project{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}}},
+			{Project: models.Project{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{61, true}, Slug: models.NullString{"sampleslug0002", true}, Status: models.NullInt{2, true}}},
+			{Project: models.Project{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}, Order: models.NullInt{99999, true}}},
+			{Project: models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}}},
+			{Project: models.Project{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{50470, true}, Description: models.NullString{"id not provided", true}}},
 		}, nil
 	}
 	if len(args.Status) == 1 {
-		return []models.Project{
-			models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}},
-			models.Project{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{61, true}, Slug: models.NullString{"sampleslug0002", true}, Status: models.NullInt{2, true}},
+		return []models.ProjectAuthors{
+			{Project: models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}}},
+			{Project: models.Project{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{61, true}, Slug: models.NullString{"sampleslug0002", true}, Status: models.NullInt{2, true}}},
 		}, nil
 	}
 	if len(args.Slugs) == 1 {
-		return []models.Project{
-			models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}},
+		return []models.ProjectAuthors{
+			{Project: models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}}},
 		}, nil
 	} else if len(args.Slugs) == 2 {
-		return []models.Project{
-			models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}},
-			models.Project{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{61, true}, Slug: models.NullString{"sampleslug0002", true}, Status: models.NullInt{2, true}},
+		return []models.ProjectAuthors{
+			{Project: models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}}},
+			{Project: models.Project{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{61, true}, Slug: models.NullString{"sampleslug0002", true}, Status: models.NullInt{2, true}}},
 		}, nil
 	}
 	if len(args.IDs) == 2 {
-		return []models.Project{
-			models.Project{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}, Order: models.NullInt{99999, true}},
-			models.Project{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}},
+		return []models.ProjectAuthors{
+			{Project: models.Project{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}, Order: models.NullInt{99999, true}}},
+			{Project: models.Project{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}}},
 		}, nil
 	} else if len(args.IDs) == 1 {
-		return []models.Project{}, nil
+		return []models.ProjectAuthors{}, nil
 	}
 	if len(args.PublishStatus) == 1 {
-		return []models.Project{
-			models.Project{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}},
+		return []models.ProjectAuthors{
+			{Project: models.Project{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}}},
 		}, nil
 	}
 	if args.MaxResult == 1 && args.Page == 2 {
-		return []models.Project{
-			models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}},
+		return []models.ProjectAuthors{
+			{Project: models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}}},
 		}, nil
 	}
 	if args.MaxResult == 1 {
-		return []models.Project{
-			models.Project{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}, Order: models.NullInt{99999, true}},
+		return []models.ProjectAuthors{
+			{Project: models.Project{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}, Order: models.NullInt{99999, true}}},
 		}, nil
 	}
-	return []models.Project{
-		models.Project{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}, Order: models.NullInt{99999, true}},
-		models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}},
-		models.Project{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{50470, true}, Description: models.NullString{"id not provided", true}},
-		models.Project{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{61, true}, Slug: models.NullString{"sampleslug0002", true}, Status: models.NullInt{2, true}},
-		models.Project{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}},
+	return []models.ProjectAuthors{
+		{Project: models.Project{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}, Order: models.NullInt{99999, true}}},
+		{Project: models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}}},
+		{Project: models.Project{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{50470, true}, Description: models.NullString{"id not provided", true}}},
+		{Project: models.Project{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{61, true}, Slug: models.NullString{"sampleslug0002", true}, Status: models.NullInt{2, true}}},
+		{Project: models.Project{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}}},
 	}, nil
 }
 
