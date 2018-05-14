@@ -44,7 +44,7 @@ func main() {
 	models.TagStatus = viper.GetStringMap("models.tags")
 
 	// waiting: allow full utf8 support by incorporating `?charset=utf8mb4` in connection
-	dbURI := fmt.Sprintf("%s:%s@tcp(%s)/memberdb?parseTime=true", sqlUser, sqlPass, fmt.Sprintf("%s:%v", sqlHost, sqlPort))
+	dbURI := fmt.Sprintf("%s:%s@tcp(%s)/memberdb?parseTime=true&charset=utf8mb4", sqlUser, sqlPass, fmt.Sprintf("%s:%v", sqlHost, sqlPort))
 
 	// Start with default middleware
 	router := gin.Default()
