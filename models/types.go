@@ -16,7 +16,7 @@ import (
 var (
 	DuplicateError           = errors.New("Duplicate Entry")
 	InternalServerError      = errors.New("Internal Server Error")
-	ItemNotFoundError        = errors.New("Itme Not Found")
+	ItemNotFoundError        = errors.New("Item Not Found")
 	MultipleRowAffectedError = errors.New("More Than One Rows Affected")
 
 	SQLInsertionFail = errors.New("SQL Insertion Fail")

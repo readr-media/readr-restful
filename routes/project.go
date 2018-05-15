@@ -271,11 +271,37 @@ func (r *projectHandler) Delete(c *gin.Context) {
 // }
 
 func (r *projectHandler) PostAuthors(c *gin.Context) {
-
+	params := struct {
+		ProjectID *int  `json:"project_id"`
+		AuthorIDs []int `json:"author_ids"`
+	}{}
+	c.Bind(&params)
+	if params.ProjectID == nil || params.AuthorIDs == nil || len(params.AuthorIDs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Insufficient Parameters"})
+		return
+	}
+	if err := models.ProjectAPI.InsertAuthors(*params.ProjectID, params.AuthorIDs); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		return
+	}
 }
+
 func (r *projectHandler) PutAuthors(c *gin.Context) {
-
+	params := struct {
+		ProjectID *int  `json:"project_id"`
+		AuthorIDs []int `json:"author_ids"`
+	}{}
+	c.Bind(&params)
+	if params.ProjectID == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Insufficient Parameters"})
+		return
+	}
+	if err := models.ProjectAPI.UpdateAuthors(*params.ProjectID, params.AuthorIDs); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		return
+	}
 }
+
 func (r *projectHandler) SetRoutes(router *gin.Engine) {
 	projectRouter := router.Group("/project")
 	{

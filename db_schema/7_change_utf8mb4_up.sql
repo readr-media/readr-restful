@@ -22,9 +22,10 @@ ALTER TABLE `tags` CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 -- Create table project_author --
 -- await INDEX --
 CREATE TABLE `project_authors` (
-    `id` INT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
+    `id` BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
     `project_id` INT UNSIGNED NOT NULL,
-    `author_id` INT UNSIGNED NOT NULL
+    `author_id` INT UNSIGNED NOT NULL,
+    UNIQUE KEY `project_author` (`project_id`,`author_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `reports` (

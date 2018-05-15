@@ -8,6 +8,7 @@ import (
 
 	"database/sql"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -44,10 +45,11 @@ type ProjectAPIInterface interface {
 	DeleteProjects(p Project) error
 	GetProject(p Project) (Project, error)
 	GetProjects(args GetProjectArgs) ([]ProjectAuthors, error)
-	// GetAuthors(args GetProjectArgs) (result []Stunt, err error)
 	InsertProject(p Project) error
 	UpdateProjects(p Project) error
 	SchedulePublish() error
+	InsertAuthors(id int, authors []int) (err error)
+	UpdateAuthors(id int, authors []int) (err error)
 }
 
 type GetProjectArgs struct {
@@ -253,33 +255,6 @@ func (a *projectAPI) GetProjects(args GetProjectArgs) (result []ProjectAuthors, 
 	return result, nil
 }
 
-// func (a *projectAPI) GetAuthors(args GetProjectArgs) (result []Stunt, err error) {
-// 	//select a.nickname, a.member_id, a.active from project_authors pa left join members a on pa.author_id = a.id where pa.project_id in (1000010, 1000013);
-// 	restricts, values := args.parse()
-// 	fmt.Printf("restricts: %v\n,values:%v\n", restricts, values)
-// 	fmt.Printf("args: %v\n", args)
-
-// 	// projects.project_id IN (?), [1, 2]
-// 	var where string
-// 	if len(restricts) > 0 {
-// 		where = fmt.Sprintf(" WHERE %s", restricts)
-// 	}
-// 	query := fmt.Sprintf(`SELECT %s FROM project_authors projects LEFT JOIN members author ON projects.author_id = author.id %s;`,
-// 		args.Fields.GetFields(`author.%s "%s"`), where)
-// 	fmt.Printf("query is :%s\n", query)
-// 	fmt.Printf("values is %v\n", values)
-// 	query, params, err := sqlx.In(query, values...)
-// 	if err != nil {
-// 		return []Stunt{}, err
-// 	}
-
-// 	query = DB.Rebind(query)
-// 	if err := DB.Select(&result, query, params...); err != nil {
-// 		return []Stunt{}, err
-// 	}
-// 	return result, nil
-// }
-
 func (a *projectAPI) InsertProject(p Project) error {
 
 	query, _ := generateSQLStmt("insert", "projects", p)
@@ -316,12 +291,12 @@ func (a *projectAPI) InsertProject(p Project) error {
 		arg.IDs = []int{p.ID}
 		arg.MaxResult = 1
 		arg.Page = 1
-		// projects, err := ProjectAPI.GetProjects(arg)
-		// if err != nil {
-		// 	log.Println("Error When Getting Project to Insert to Algolia: %v", err.Error())
-		// 	return nil
-		// }
-		// go Algolia.InsertProject(projects)
+		projects, err := ProjectAPI.GetProjects(arg)
+		if err != nil {
+			log.Printf("Error When Getting Project to Insert to Algolia: %v", err.Error())
+			return nil
+		}
+		go Algolia.InsertProject(projects)
 	}
 
 	return nil
@@ -353,12 +328,12 @@ func (a *projectAPI) UpdateProjects(p Project) error {
 		arg.IDs = []int{p.ID}
 		arg.MaxResult = 1
 		arg.Page = 1
-		// projects, err := ProjectAPI.GetProjects(arg)
-		// if err != nil {
-		// 	log.Println("Error When Getting Project to Insert to Algolia: %v", err.Error())
-		// 	return nil
-		// }
-		// go Algolia.InsertProject(projects)
+		projects, err := ProjectAPI.GetProjects(arg)
+		if err != nil {
+			log.Printf("Error When Getting Project to Insert to Algolia: %v", err.Error())
+			return nil
+		}
+		go Algolia.InsertProject(projects)
 	}
 	return nil
 }
@@ -388,6 +363,107 @@ func (a *projectAPI) SchedulePublish() error {
 		return err
 	}
 	return nil
+}
+
+// func (a *projectAPI) GetAuthors(args GetProjectArgs) (result []Stunt, err error) {
+// 	//select a.nickname, a.member_id, a.active from project_authors pa left join members a on pa.author_id = a.id where pa.project_id in (1000010, 1000013);
+// 	restricts, values := args.parse()
+// 	fmt.Printf("restricts: %v\n,values:%v\n", restricts, values)
+// 	fmt.Printf("args: %v\n", args)
+
+// 	// projects.project_id IN (?), [1, 2]
+// 	var where string
+// 	if len(restricts) > 0 {
+// 		where = fmt.Sprintf(" WHERE %s", restricts)
+// 	}
+// 	query := fmt.Sprintf(`SELECT %s FROM project_authors projects LEFT JOIN members author ON projects.author_id = author.id %s;`,
+// 		args.Fields.GetFields(`author.%s "%s"`), where)
+// 	fmt.Printf("query is :%s\n", query)
+// 	fmt.Printf("values is %v\n", values)
+// 	query, params, err := sqlx.In(query, values...)
+// 	if err != nil {
+// 		return []Stunt{}, err
+// 	}
+
+// 	query = DB.Rebind(query)
+// 	if err := DB.Select(&result, query, params...); err != nil {
+// 		return []Stunt{}, err
+// 	}
+// 	return result, nil
+// }
+
+func (a *projectAPI) InsertAuthors(projectID int, authorIDs []int) (err error) {
+
+	var (
+		valueStr     []string
+		insertValues []interface{}
+	)
+	for _, author := range authorIDs {
+		valueStr = append(valueStr, `(?, ?)`)
+		insertValues = append(insertValues, projectID, author)
+	}
+	//INSERT IGNORE INTO project_authorIDs (project_id, author_id) VALUES ( ?, ? ), ( ?, ? );
+	query := fmt.Sprintf(`INSERT IGNORE INTO project_authors (project_id, author_id) VALUES %s;`, strings.Join(valueStr, ", "))
+	_, err = DB.Exec(query, insertValues...)
+	if err != nil {
+		sqlerr, ok := err.(*mysql.MySQLError)
+		if ok && sqlerr.Number == 1062 {
+			return DuplicateError
+		}
+		return err
+	}
+	return err
+}
+
+func (a *projectAPI) UpdateAuthors(projectID int, authorIDs []int) (err error) {
+
+	// Delete all author record if authorIDs is null
+	if authorIDs == nil || len(authorIDs) == 0 {
+		_, err = DB.Exec(`DELETE FROM project_authors WHERE project_id = ?`, projectID)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	tx, err := DB.Beginx()
+	if err != nil {
+		log.Printf("Fail to get sql connection: %v", err)
+		return err
+	}
+	// Either rollback or commit transaction
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+			return
+		}
+		err = tx.Commit()
+	}()
+
+	del, args, err := sqlx.In(`DELETE FROM project_authors WHERE project_id = ? AND author_id NOT IN (?)`, projectID, authorIDs)
+	if err != nil {
+		log.Printf("Fail to generate query: %v", err)
+		return err
+	}
+	del = DB.Rebind(del)
+	_, err = tx.Exec(del, args...)
+	if err != nil {
+
+	}
+	var (
+		valueStr     []string
+		insertValues []interface{}
+	)
+	for _, author := range authorIDs {
+		valueStr = append(valueStr, `(?, ?)`)
+		insertValues = append(insertValues, projectID, author)
+	}
+	//INSERT IGNORE INTO project_authorIDs (project_id, author_id) VALUES ( ?, ? ), ( ?, ? );
+	ins := fmt.Sprintf(`INSERT IGNORE INTO project_authors (project_id, author_id) VALUES %s;`, strings.Join(valueStr, ", "))
+	_, err = tx.Exec(ins, insertValues...)
+	if err != nil {
+		return err
+	}
+	return err
 }
 
 var ProjectAPI ProjectAPIInterface = new(projectAPI)
