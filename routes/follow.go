@@ -45,8 +45,6 @@ func (r *followingHandler) Push(c *gin.Context) {
 		return
 	}
 
-	//log.Printf("%v", body)
-
 	switch body.Action {
 	case "follow", "unfollow":
 		object, err := strconv.Atoi(body.Object)

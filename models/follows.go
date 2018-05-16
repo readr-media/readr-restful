@@ -118,7 +118,6 @@ func (f followMember) GetFollowed(params GetFollowedArgs) (*sqlx.Rows, error) {
 	return DB.Queryx(query, args...)
 }
 func (f followMember) GetFollowerMemberIDs(id string) (result []string, err error) {
-	log.Println(fmt.Sprintf(`SELECT m.member_id AS member_id FROM following_members AS f LEFT JOIN members AS m ON f.member_id = m.id WHERE f.custom_editor="%s";`, id))
 	rows, err := DB.Query(fmt.Sprintf(`SELECT m.member_id AS member_id FROM following_members AS f LEFT JOIN members AS m ON f.member_id = m.id WHERE f.custom_editor="%s";`, id))
 	if err != nil {
 		log.Println("Error get authorFollowers", id, err.Error())

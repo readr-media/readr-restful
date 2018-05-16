@@ -32,6 +32,9 @@ func main() {
 	sqlUser := viper.Get("sql.user")
 	sqlPass := viper.Get("sql.password")
 
+	models.CommentActive = viper.GetStringMap("models.comment")
+	models.CommentStatus = viper.GetStringMap("models.comment_status")
+	models.ReportedCommentStatus = viper.GetStringMap("models.reported_comment_status")
 	models.MemberStatus = viper.GetStringMap("models.members")
 	models.MemoStatus = viper.GetStringMap("models.memos")
 	models.MemoPublishStatus = viper.GetStringMap("models.memos_publish_status")
