@@ -51,6 +51,8 @@ func TestMain(m *testing.M) {
 		_, _ = models.DB.Exec("truncate table tags;")
 		_, _ = models.DB.Exec("truncate table post_tags;")
 		_, _ = models.DB.Exec("truncate table memos;")
+		_, _ = models.DB.Exec("truncate table comments;")
+		_, _ = models.DB.Exec("truncate table comments_reported;")
 	*/
 	// Init Redis connetions
 	models.RedisConn(map[string]string{
@@ -85,17 +87,21 @@ func TestMain(m *testing.M) {
 	models.ProjectStatus = viper.GetStringMap("models.projects_status")
 	models.ProjectPublishStatus = viper.GetStringMap("models.projects_publish_status")
 	models.TagStatus = viper.GetStringMap("models.tags")
+	models.CommentActive = viper.GetStringMap("models.comment")
+	models.CommentStatus = viper.GetStringMap("models.comment_status")
+	models.ReportedCommentStatus = viper.GetStringMap("models.reported_comment_status")
 
+	models.CommentAPI = new(mockCommentAPI)
+	models.FollowingAPI = new(mockFollowingAPI)
 	models.ProjectAPI = new(mockProjectAPI)
 	models.MemberAPI = new(mockMemberAPI)
 	models.PostAPI = new(mockPostAPI)
 	models.PermissionAPI = new(mockPermissionAPI)
-	models.FollowingAPI = new(mockFollowingAPI)
 	models.TagAPI = new(mockTagAPI)
 	models.MemoAPI = new(mockMemoAPI)
 	models.MailAPI = new(mockMailAPI)
 
-	models.CommentHandler = models.CommentHandlerStruct{new(mockCommentAPI)}
+	models.CommentHandler = models.CommentHandlerStruct{new(mocksCommentAPI)}
 	os.Exit(m.Run())
 }
 

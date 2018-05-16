@@ -1,400 +1,363 @@
 package models
 
 import (
+	"errors"
 	"fmt"
 	"log"
-	"regexp"
-	"strconv"
+	"strings"
 
-	"encoding/json"
-
-	"github.com/garyburd/redigo/redis"
 	"github.com/jmoiron/sqlx"
-	"gopkg.in/mgo.v2/bson"
 )
 
-type CommentEvent struct {
-	UpdatedAt  NullTime   `json:"updated_at" redis:"updated_at"`
-	CreateAt   NullTime   `json:"created_at" redis:"created_at"`
-	Body       NullString `json:"body" redis:"body"`
-	AssetID    NullString `json:"asset_id" redis:"asset_id"`
-	ParentID   NullString `json:"parent_id" redis:"parent_id"`
-	AuthorID   NullString `json:"author_id" redis:"author_id"`
-	ReplyCount NullInt    `json:"reply_count" redis:"reply_count"`
-	Status     NullString `json:"status" redis:"status"`
-	ID         NullString `json:"id" redis:"id"`
-	Visible    NullBool   `json:"visible" redis:"visible"`
+type Comment struct {
+	ID            int64      `json:"id" db:"id"`
+	Author        int64      `json:"author" db:"author"`
+	Body          NullString `json:"body" db:"body"`
+	OgTitle       NullString `json:"og_title" db:"og_title"`
+	OgDescription NullString `json:"og_description" db:"og_description"`
+	OgImage       NullString `json:"og_image" db:"og_image"`
+	LikeAmount    NullInt    `json:"like_amount" db:"like_amount"`
+	ParentID      NullString `json:"parent_id" db:"parent_id"`
+	Resource      NullString `json:"resource" db:"resource"`
+	Status        NullInt    `json:"status" db:"status"`
+	Active        NullInt    `json:"active" db:"active"`
+	UpdatedAt     NullTime   `json:"updated_at" db:"updated_at"`
+	CreatedAt     NullTime   `json:"created_at" db:"created_at"`
+	IP            NullString `json:"ip" db:"ip"`
 }
 
-type CommentInfo struct {
-	ID               string `id`
-	ParentAuthor     string `parent_author`
-	ResourceType     string `resource`
-	ResourceID       string
-	AuthorID         int      `db:"id"`
-	AuthorMail       string   `db:"member_id"`
-	AuthorNickname   string   `db:"nickname"`
-	ResourcePostType string   `db:"type"`
-	Commentors       []string `commentors`
+type CommentAuthor struct {
+	Comment
+	AuthorNickname string `json:"author_nickname" db:"author_nickname"`
+	AuthorImage    string `json:"author_image" db:"author_image"`
+	AuthorRole     int    `json:"author_role" db:"author_role"`
+	CommentAmount  int    `json:"comment_amount" db:"comment_amount"`
 }
 
-type CommentorInfo struct {
-	ID       NullString `db:"member_id"`
-	Image    NullString `db:"profile_image"`
-	Nickname NullString `db:"nickname"`
+type ReportedComment struct {
+	ID        int64      `json:"id" db:"id"`
+	CommentID int64      `json:"comment_id" db:"comment_id"`
+	Reporter  NullInt    `json:"reporter" db:"reporter"`
+	Reason    NullString `json:"reason" db:"reason"`
+	Solved    NullInt    `json:"solved" db:"solved"`
+	UpdatedAt NullTime   `json:"updated_at" db:"updated_at"`
+	CreatedAt NullTime   `json:"created_at" db:"created_at"`
 }
 
-func (c *CommentInfo) Parse() {
-	assetUrl := c.ResourceType
+type ReportedCommentAuthor struct {
+	CommentAuthor
+	Reason    NullString `json:"reason" db:"reason"`
+	CommentID int        `json:"comment_id" db:"comment_id"`
+	Reporter  int        `json:"reporter" db:"reporter"`
+	Solved    NullInt    `json:"solved" db:"solved"`
+}
 
-	r := regexp.MustCompile(`\/\/[a-zA-Z0-9_.]*\/(.*)\/[0-9]*$`)
-	rresult := r.FindStringSubmatch(assetUrl)
-	if len(rresult) < 2 {
-		c.ResourceType = ""
-	} else {
-		c.ResourceType = rresult[1]
+type GetCommentArgs struct {
+	MaxResult int              `form:"max_result"`
+	Page      int              `form:"page"`
+	Sorting   string           `form:"sort"`
+	Author    []int            `form:"author"`
+	Resource  []string         `form:"resource"`
+	Parent    []int            `form:"parent"`
+	Status    map[string][]int `form:"status"`
+}
+
+func (p *GetCommentArgs) Default() (result *GetCommentArgs) {
+	return &GetCommentArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at"}
+}
+
+func (p *GetCommentArgs) parse() (restricts string, values []interface{}) {
+	where := make([]string, 0)
+
+	if p.Status != nil {
+		for k, v := range p.Status {
+			where = append(where, fmt.Sprintf("%s %s (?)", "comments.status", operatorHelper(k)))
+			values = append(values, v)
+		}
+	}
+	if len(p.Author) != 0 {
+		where = append(where, fmt.Sprintf("%s %s (?)", "comments.author", operatorHelper("in")))
+		values = append(values, p.Author)
+	}
+	if len(p.Resource) != 0 {
+		where = append(where, fmt.Sprintf("%s %s (?)", "comments.resource", operatorHelper("in")))
+		values = append(values, p.Resource)
+	}
+	if len(p.Parent) != 0 {
+		where = append(where, fmt.Sprintf("%s %s (?)", "comments.parent", operatorHelper("in")))
+		values = append(values, p.Parent)
 	}
 
-	s := regexp.MustCompile(`\/\/[a-zA-Z0-9_.]*\/.*\/([0-9]*)$`)
-	sresult := s.FindStringSubmatch(assetUrl)
-	if len(sresult) < 2 {
-		c.ResourceID = ""
-	} else {
-		c.ResourceID = sresult[1]
+	where = append(where, "comments.active=1")
+
+	if len(where) > 1 {
+		restricts = strings.Join(where, " AND ")
+	} else if len(where) == 1 {
+		restricts = where[0]
 	}
+	return restricts, values
 }
 
-type UpdateNotificationArgs struct {
-	IDs      []string `json:"ids"`
-	MemberID string   `redis:"member_id" json:"member_id"`
-	Read     NullBool `redis:"read" json:"read"`
+type GetReportedCommentArgs struct {
+	MaxResult int              `form:"max_result"`
+	Page      int              `form:"page"`
+	Sorting   string           `form:"sort"`
+	Reporter  []int            `form:"reporter"`
+	Parent    []int            `form:"parent"`
+	Solved    map[string][]int `form:"solved"`
 }
 
-type CommentInfoGetter interface {
-	GetCommentInfo(comment CommentEvent) (commentInfo CommentInfo)
+func (p *GetReportedCommentArgs) Default() (result *GetReportedCommentArgs) {
+	return &GetReportedCommentArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at"}
 }
 
-type CommentInfoGet struct{}
+func (p *GetReportedCommentArgs) parse() (restricts string, values []interface{}) {
+	where := make([]string, 0)
 
-func (c *CommentInfoGet) GetCommentInfo(comment CommentEvent) (commentInfo CommentInfo) {
-
-	session := MongoSession.Get()
-	mongoConn := session.DB("talk").C("comments")
-
-	if comment.ParentID.Valid {
-		pipe := mongoConn.Pipe([]bson.M{
-			bson.M{"$match": bson.M{"id": comment.ID.String}},
-			bson.M{"$lookup": bson.M{"from": "assets", "localField": "asset_id", "foreignField": "id", "as": "asset"}},
-			bson.M{"$lookup": bson.M{"from": "comments", "localField": "parent_id", "foreignField": "id", "as": "parents"}},
-			bson.M{"$lookup": bson.M{"from": "comments", "localField": "asset_id", "foreignField": "asset_id", "as": "comments"}},
-			bson.M{"$unwind": "$asset"},
-			bson.M{"$unwind": "$parents"},
-			bson.M{"$project": bson.M{"_id": false, "id": "$id", "resource": "$asset.url", "parent_author": "$parents.author_id", "commentors": "$comments.author_id"}},
-		})
-		pipe.One(&commentInfo)
-	} else {
-		pipe := mongoConn.Pipe([]bson.M{
-			bson.M{"$match": bson.M{"id": comment.ID.String}},
-			bson.M{"$lookup": bson.M{"from": "assets", "localField": "asset_id", "foreignField": "id", "as": "asset"}},
-			bson.M{"$lookup": bson.M{"from": "comments", "localField": "asset_id", "foreignField": "asset_id", "as": "comments"}},
-			bson.M{"$unwind": "$asset"},
-			bson.M{"$project": bson.M{"_id": false, "id": "$id", "resource": "$asset.url", "commentors": "$comments.author_id"}},
-		})
-		pipe.One(&commentInfo)
+	if p.Solved != nil {
+		for k, v := range p.Solved {
+			where = append(where, fmt.Sprintf("%s %s (?)", "comments_reported.solved", operatorHelper(k)))
+			values = append(values, v)
+		}
+	}
+	if len(p.Reporter) != 0 {
+		where = append(where, fmt.Sprintf("%s %s (?)", "comments_reported.reporter", operatorHelper("in")))
+		values = append(values, p.Reporter)
 	}
 
-	commentInfo.Parse()
-	return commentInfo
+	if len(where) > 1 {
+		restricts = strings.Join(where, " AND ")
+		restricts = "WHERE " + restricts
+	} else if len(where) == 1 {
+		restricts = where[0]
+		restricts = "WHERE " + restricts
+	}
+	return restricts, values
 }
 
-type CommentHandlerStruct struct {
-	CommentInfoGetter
+type CommentUpdateArgs struct {
+	IDs       []int    `json:"ids"`
+	UpdatedAt NullTime `json:"-" db:"updated_at"`
+	Active    NullInt  `json:"active" db:"active"`
+	Status    NullInt  `json:"status" db:"status"`
 }
 
-func (c *CommentHandlerStruct) GetCommentorInfo(talk_id string) (commentorInfo CommentorInfo) {
-	err := DB.QueryRowx(fmt.Sprintf(`SELECT member_id, profile_image, nickname FROM members WHERE talk_id="%s" LIMIT 1;`, talk_id)).StructScan(&commentorInfo)
+func (p *CommentUpdateArgs) parse() (updates string, values []interface{}) {
+	setQuery := make([]string, 0)
+
+	if p.Active.Valid {
+		setQuery = append(setQuery, "active = ?")
+		values = append(values, p.Active.Int)
+	}
+	if p.Status.Valid {
+		setQuery = append(setQuery, "status = ?")
+		values = append(values, p.Status.Int)
+	}
+	if p.UpdatedAt.Valid {
+		setQuery = append(setQuery, "updated_at = ?")
+		values = append(values, p.UpdatedAt.Time)
+	}
+	if len(setQuery) > 1 {
+		updates = fmt.Sprintf(" %s", strings.Join(setQuery, " , "))
+	} else if len(setQuery) == 1 {
+		updates = fmt.Sprintf(" %s", setQuery[0])
+	}
+
+	return updates, values
+}
+
+type CommentInterface interface {
+	GetComments(args *GetCommentArgs) (result []CommentAuthor, err error)
+	InsertComment(comment Comment) (id int64, err error)
+	UpdateComment(comment Comment) (err error)
+	UpdateComments(req CommentUpdateArgs) (err error)
+
+	GetReportedComments(args *GetReportedCommentArgs) ([]ReportedCommentAuthor, error)
+	InsertReportedComments(report ReportedComment) (id int64, err error)
+	UpdateReportedComments(report ReportedComment) (err error)
+}
+
+type commentAPI struct{}
+
+func (c *commentAPI) GetComments(args *GetCommentArgs) (result []CommentAuthor, err error) {
+	restricts, values := args.parse()
+
+	query := fmt.Sprintf("SELECT comments.*, INET_NTOA(comments.ip) AS ip, members.nickname AS author_nickname, members.profile_image AS author_image, members.role AS author_role, IFNULL(count.count, 0) AS comment_amount FROM comments AS comments LEFT JOIN members AS members ON comments.author = members.id LEFT JOIN (SELECT count(*) AS count, parent_id FROM comments GROUP BY parent_id) AS count ON comments.id = count.parent_id WHERE %s ORDER BY %s LIMIT ? OFFSET ?;", restricts, orderByHelper(args.Sorting))
+	values = append(values, args.MaxResult, (args.Page-1)*args.MaxResult)
+
+	query, values, err = sqlx.In(query, values...)
 	if err != nil {
-		log.Println("Error commentor info", talk_id, err.Error())
-	}
-	return commentorInfo
-}
-
-func (c *CommentHandlerStruct) GetCommentorMemberIDs(ids []string) (result []string) {
-	query, args, err := sqlx.In(`SELECT member_id FROM members WHERE talk_id IN (?);`, ids)
-	if err != nil {
-		log.Println("Error in mixing sql `in` query", ids, err.Error())
-		return result
+		log.Println(err.Error())
+		return nil, err
 	}
 	query = DB.Rebind(query)
-	rows, err := DB.Query(query, args...)
+
+	rows, err := DB.Queryx(query, values...)
 	if err != nil {
-		return result
+		log.Println(err.Error())
+		return nil, err
 	}
+
 	for rows.Next() {
-		var memberID string
-		err = rows.Scan(&memberID)
-		if err != nil {
-			log.Println("Error get memberid by talkid", rows, err.Error())
-			return result
+		var comment CommentAuthor
+		if err = rows.StructScan(&comment); err != nil {
+			result = []CommentAuthor{}
+			return result, err
 		}
-		result = append(result, memberID)
+		result = append(result, comment)
 	}
-	return result
+
+	return result, err
 }
+func (c *commentAPI) InsertComment(comment Comment) (id int64, err error) {
+	tags := getStructDBTags("full", Comment{})
+	query := fmt.Sprintf(`INSERT INTO comments (%s) VALUES (:%s)`,
+		strings.Join(tags, ","), strings.Join(tags, ",:"))
 
-func (c *CommentHandlerStruct) CreateNotifications(comment CommentEvent) {
-	CommentNotifications := Notifications{} //:= make(map[string]Notification)
-
-	//func (c *commentHandler) CreateNotifications(comment CommentEvent) {
-	// Information to collect:
-	// 1. parent_id -> author -> is author? -> [comment_reply_author, comment_reply]
-	// 2. asset_id -> find all comment user id -> [comment_comment]
-	// 3. asset_id 判斷 resource -> if post -> find user who follows the post -> [follow_post_reply]
-	// 3. asset_id 判斷 resource -> if post -> find author -> find user who follows the author -> [follow_author_reply]
-	// 3. asset_id 判斷 resource -> if project -> find user who follows the project -> [follow_project_reply]
-	// 3. asset_id 判斷 resource -> if memo -> find project -> find user who follows the project -> [follow_memo_reply]
-
-	// Setps:
-	// Find followers by calling follwoing API
-	// Find user nickname, profile_image
-	// Write to redis
-
-	// Module: Query mongodb, get parent comment author id, all comment author id, resource type and id
-	commentInfo := c.GetCommentInfo(comment)
-
-	// Module: Get commentor's Profile Info
-	commentorInfo := c.GetCommentorInfo(comment.AuthorID.String)
-
-	switch commentInfo.ResourceType {
-	case "post":
-
-		// Module: find post's followers
-		i, err := strconv.Atoi(commentInfo.ResourceID)
-		if err != nil {
-			log.Println("Error parsing post id", commentInfo.ResourceID, err.Error())
-		}
-		postFollowers, err := FollowingAPI.GetFollowerMemberIDs("post", strconv.Itoa(i))
-		if err != nil {
-			log.Println("Error get post followers", commentInfo.ResourceID, err.Error())
-		}
-
-		// Module: find post post's info
-		/*
-			var author NullString
-			var postType NullString
-			var authorNickname NullString
-		*/
-		//rows, err = DB.Query(fmt.Sprintf(`SELECT m.member_id AS author, m.nickname, type FROM posts LEFT JOIN members AS m ON m.id = posts.author WHERE posts.post_id=%s LIMIT 1;`, commentInfo.ResourceID))
-		err = DB.QueryRowx(fmt.Sprintf(`SELECT m.id, m.member_id, m.nickname, type FROM posts LEFT JOIN members AS m ON m.id = posts.author WHERE posts.post_id=%s LIMIT 1;`, commentInfo.ResourceID)).StructScan(&commentInfo)
-		if err != nil {
-			log.Println("Error get comment info", commentInfo.ResourceID, err.Error())
-			return
-		}
-
-		/*for rows.Next() {
-			err = rows.Scan(&author, &authorNickname, &postType)
-		}
-		if !author.Valid || !authorNickname.Valid || !postType.Valid {
-
-		}
-
-		commentInfo.AuthorNickname = authorNickname.String
-		*/
-		// end module
-
-		// Module: find post author's followers
-		authorFollowers, err := FollowingAPI.GetFollowerMemberIDs("member", strconv.Itoa(commentInfo.AuthorID))
-		if err != nil {
-			log.Println("Error get author followers", commentInfo.AuthorID, err.Error())
-		}
-
-		for _, v := range postFollowers {
-			if v != commentorInfo.ID.String {
-				CommentNotifications[v] = NewNotification("follow_post_reply")
-			}
-		}
-
-		for _, v := range authorFollowers {
-			if v != commentorInfo.ID.String {
-				CommentNotifications[v] = NewNotification("follow_member_reply")
-			}
-		}
-
-		if commentInfo.AuthorMail != "" && commentInfo.AuthorMail != commentorInfo.ID.String {
-			CommentNotifications[commentInfo.AuthorMail] = NewNotification("post_reply")
-		}
-
-		if len(commentInfo.Commentors) > 0 {
-			// Module get member_id of all commentors
-			memberIDs := c.GetCommentorMemberIDs(commentInfo.Commentors)
-
-			for _, id := range memberIDs {
-				if id != commentorInfo.ID.String {
-					CommentNotifications[id] = NewNotification("comment_comment")
-				}
-			}
-		}
-
-		if commentInfo.ParentAuthor != "" && commentInfo.ParentAuthor != comment.AuthorID.String {
-			// Module: Get parent author's id
-			var parentCommentor string
-			err = DB.Get(&parentCommentor, fmt.Sprintf(`SELECT member_id FROM members WHERE talk_id="%s";`, commentInfo.ParentAuthor))
-			if err != nil {
-				log.Println("Error get memberid by talkid", commentInfo.ParentAuthor, err.Error())
-				return
-			}
-			if commentInfo.AuthorMail == commentorInfo.ID.String {
-				CommentNotifications[parentCommentor] = NewNotification("comment_reply_author")
-			} else {
-				CommentNotifications[parentCommentor] = NewNotification("comment_reply")
-			}
-			// end module
-		}
-
-		for k, v := range CommentNotifications {
-			v.SetCommentSubjects(commentorInfo)
-			v.SetCommentObjects(commentInfo)
-			CommentNotifications[k] = v
-		}
-
-		break
-	case "project":
-	case "memo":
-
-		// Module: find post project's followers
-		project_id, err := strconv.Atoi(commentInfo.ResourceID)
-		if err != nil {
-			log.Println("Error convert project id", commentInfo.ResourceID, err.Error())
-		}
-		projectFollowers, err := FollowingAPI.GetFollowerMemberIDs("project", strconv.Itoa(project_id))
-		if err != nil {
-			log.Println("Error get project followers", commentInfo.ResourceID, err.Error())
-		}
-
-		var projectTitle NullString
-		err = DB.Get(&projectTitle, fmt.Sprintf(`SELECT title FROM projects WHERE project_id=%s LIMIT 1;`, commentInfo.ResourceID))
-		if err != nil {
-			log.Println("Error get project title", commentInfo.ResourceID, err.Error())
-			return
-		}
-
-		for _, v := range projectFollowers {
-			if v != commentorInfo.ID.String {
-				if commentInfo.ResourceType == "project" {
-					CommentNotifications[v] = NewNotification("follow_project_reply")
-				} else if commentInfo.ResourceType == "memo" {
-					CommentNotifications[v] = NewNotification("follow_memo_reply")
-				}
-			}
-		}
-
-		if len(commentInfo.Commentors) > 0 {
-			// Module get member_id of all commentors
-			memberIDs := c.GetCommentorMemberIDs(commentInfo.Commentors)
-
-			for _, id := range memberIDs {
-				if id != commentorInfo.ID.String {
-					CommentNotifications[id] = NewNotification("comment_comment")
-				}
-			}
-		}
-
-		if commentInfo.ParentAuthor != "" && commentInfo.ParentAuthor != commentorInfo.ID.String {
-			var parentCommentor string
-			err = DB.Get(&parentCommentor, fmt.Sprintf(`SELECT member_id FROM members WHERE talk_id="%s";`, comment.ParentID.String))
-			if err != nil {
-				log.Println("Error get memberid by talkid", comment.ParentID.String, err.Error())
-				return
-			}
-			CommentNotifications[parentCommentor] = NewNotification("comment_reply")
-		}
-
-		for k, v := range CommentNotifications {
-			v.SetCommentSubjects(commentorInfo)
-			v.SetCommentObjects(commentInfo)
-			CommentNotifications[k] = v
-		}
-
-		break
-	default:
-		break
-	}
-
-	if len(CommentNotifications) > 0 {
-		CommentNotifications.Send()
-	}
-}
-
-//func (c *commentHandler) UpdateCommentCount(event_type string, comment CommentEvent) {}
-func (c *CommentHandlerStruct) ReadNotifications(arg UpdateNotificationArgs) error {
-	conn := RedisHelper.Conn()
-	defer conn.Close()
-
-	CommentNotifications := [][]byte{}
-
-	key := fmt.Sprint("notify_", arg.MemberID)
-
-	res, err := redis.Values(conn.Do("LRANGE", key, "0", "49"))
+	query = strings.Replace(query, ":ip", "INET_ATON(:ip)", 1)
+	result, err := DB.NamedExec(query, comment)
 	if err != nil {
-		log.Printf("Error getting redis key: %s , %v", key, err)
-		return err
-	}
-	if err = redis.ScanSlice(res, &CommentNotifications); err != nil {
-		log.Printf("Error scan redis key: %s , %v", key, err)
-		return err
-	}
-
-	if len(arg.IDs) > 0 {
-		for _, v := range arg.IDs {
-			k, err := strconv.Atoi(v)
-			if err != nil {
-				log.Printf("Error convert ids into integer index: %v", err)
-				continue
-			}
-			var cn Notification
-			if err := json.Unmarshal(CommentNotifications[k], &cn); err != nil {
-				log.Printf("Error scan redis comment notification: %s , %v", CommentNotifications[k], err)
-				continue
-			}
-			cn.Read = true
-			msg, err := json.Marshal(cn)
-			if err != nil {
-				log.Printf("Error dump redis comment notification: %v", err)
-				continue
-			}
-			CommentNotifications[k] = msg
+		if strings.Contains(err.Error(), "Duplicate entry") {
+			return 0, errors.New("Duplicate entry")
 		}
-	} else {
-		for k, v := range CommentNotifications {
-			var cn Notification
-			if err := json.Unmarshal(v, &cn); err != nil {
-
-				log.Printf("Error scan redis comment notification: %s , %v", v, err)
-				continue
-			}
-			cn.Read = true
-			msg, err := json.Marshal(cn)
-			if err != nil {
-				log.Printf("Error dump redis comment notification: %v", err)
-				continue
-			}
-			CommentNotifications[k] = msg
-		}
+		return 0, err
 	}
-
-	conn.Do("DEL", fmt.Sprint("notify_", arg.MemberID))
-	conn.Send("MULTI")
-	for _, v := range CommentNotifications {
-		conn.Send("RPUSH", redis.Args{}.Add(fmt.Sprint("notify_", arg.MemberID)).Add(v)...)
+	rowCnt, err := result.RowsAffected()
+	if err != nil {
+		log.Fatal(err)
 	}
-	conn.Send("LTRIM", redis.Args{}.Add(fmt.Sprint("notify_", arg.MemberID)).Add(0).Add(49)...)
-	if _, err := redis.Values(conn.Do("EXEC")); err != nil {
-		log.Printf("Error insert cache to redis: %v", err)
-		return err
+	if rowCnt > 1 {
+		return 0, errors.New("More Than One Rows Affected")
+	} else if rowCnt == 0 {
+		return 0, errors.New("Comment Not Found")
 	}
-
-	return nil
-
+	id, err = result.LastInsertId()
+	if err != nil {
+		log.Printf("Fail to get last insert ID when insert a comment: %v", err)
+		return 0, err
+	}
+	return id, err
 }
 
-var CommentHandler = CommentHandlerStruct{new(CommentInfoGet)}
+func (c *commentAPI) UpdateComment(comment Comment) (err error) {
+	tags := getStructDBTags("partial", comment)
+	fields := makeFieldString("update", `%s = :%s`, tags)
+	query := fmt.Sprintf(`UPDATE comments SET %s WHERE id = :id`,
+		strings.Join(fields, ", "))
+
+	result, err := DB.NamedExec(query, comment)
+
+	if err != nil {
+		return err
+	}
+	rowCnt, err := result.RowsAffected()
+	if rowCnt > 1 {
+		return errors.New("More Than One Rows Affected")
+	} else if rowCnt == 0 {
+		return errors.New("Report Not Found")
+	}
+
+	return err
+}
+func (c *commentAPI) UpdateComments(args CommentUpdateArgs) (err error) {
+	updateQuery, updateArgs := args.parse()
+	updateQuery = fmt.Sprintf("UPDATE comments SET %s ", updateQuery)
+
+	restrictQuery, restrictArgs, err := sqlx.In(`WHERE id IN (?)`, args.IDs)
+	if err != nil {
+		return err
+	}
+
+	restrictQuery = DB.Rebind(restrictQuery)
+	updateArgs = append(updateArgs, restrictArgs...)
+	_, err = DB.Exec(fmt.Sprintf("%s %s", updateQuery, restrictQuery), updateArgs...)
+	if err != nil {
+		return err
+	}
+	return err
+}
+
+func (c *commentAPI) GetReportedComments(args *GetReportedCommentArgs) (result []ReportedCommentAuthor, err error) {
+	restricts, values := args.parse()
+
+	query := fmt.Sprintf("SELECT comments.*, INET_NTOA(comments.ip) AS ip, comments_reported.reporter AS reporter, comments_reported.reason AS reason, comments_reported.solved AS solved, members.nickname AS author_nickname, members.profile_image AS author_image, members.role AS author_role, IFNULL(count.count, 0) AS comment_amount FROM comments AS comments LEFT JOIN members AS members ON comments.author = members.id LEFT JOIN (SELECT count(*) AS count, parent_id FROM comments GROUP BY parent_id) AS count ON comments.id = count.parent_id INNER JOIN comments_reported AS comments_reported ON comments_reported.comment_id = comments.id %s ORDER BY %s LIMIT ? OFFSET ?;", restricts, orderByHelper(args.Sorting))
+
+	values = append(values, args.MaxResult, (args.Page-1)*args.MaxResult)
+
+	query, values, err = sqlx.In(query, values...)
+	if err != nil {
+		log.Println(err.Error())
+		return nil, err
+	}
+	query = DB.Rebind(query)
+
+	rows, err := DB.Queryx(query, values...)
+	if err != nil {
+		log.Println(err.Error())
+		return nil, err
+	}
+
+	for rows.Next() {
+		var comment ReportedCommentAuthor
+		if err = rows.StructScan(&comment); err != nil {
+			result = []ReportedCommentAuthor{}
+			return result, err
+		}
+		result = append(result, comment)
+	}
+
+	return result, err
+}
+func (c *commentAPI) InsertReportedComments(report ReportedComment) (id int64, err error) {
+	tags := getStructDBTags("full", ReportedComment{})
+	query := fmt.Sprintf(`INSERT INTO comments_reported (%s) VALUES (:%s)`,
+		strings.Join(tags, ","), strings.Join(tags, ",:"))
+
+	result, err := DB.NamedExec(query, report)
+	if err != nil {
+		if strings.Contains(err.Error(), "Duplicate entry") {
+			return 0, errors.New("Duplicate entry")
+		}
+		return 0, err
+	}
+	rowCnt, err := result.RowsAffected()
+	if err != nil {
+		log.Fatal(err)
+	}
+	if rowCnt > 1 {
+		return 0, errors.New("More Than One Rows Affected")
+	} else if rowCnt == 0 {
+		return 0, errors.New("Report Not Found")
+	}
+	id, err = result.LastInsertId()
+	if err != nil {
+		log.Printf("Fail to get last insert ID when insert a report: %v", err)
+		return 0, err
+	}
+	return id, err
+}
+func (c *commentAPI) UpdateReportedComments(report ReportedComment) (err error) {
+	tags := getStructDBTags("partial", report)
+	fields := makeFieldString("update", `%s = :%s`, tags)
+	query := fmt.Sprintf(`UPDATE comments_reported SET %s WHERE id = :id`,
+		strings.Join(fields, ", "))
+
+	result, err := DB.NamedExec(query, report)
+
+	if err != nil {
+		return err
+	}
+	rowCnt, err := result.RowsAffected()
+	if rowCnt > 1 {
+		return errors.New("More Than One Rows Affected")
+	} else if rowCnt == 0 {
+		return errors.New("Report Not Found")
+	}
+
+	return err
+}
+
+var CommentAPI CommentInterface = new(commentAPI)
+var CommentActive map[string]interface{}
+var CommentStatus map[string]interface{}
+var ReportedCommentStatus map[string]interface{}
