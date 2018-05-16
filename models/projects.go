@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"database/sql"
+
+	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -42,10 +44,12 @@ type ProjectAPIInterface interface {
 	CountProjects(args GetProjectArgs) (int, error)
 	DeleteProjects(p Project) error
 	GetProject(p Project) (Project, error)
-	GetProjects(args GetProjectArgs) ([]Project, error)
+	GetProjects(args GetProjectArgs) ([]ProjectAuthors, error)
 	InsertProject(p Project) error
 	UpdateProjects(p Project) error
 	SchedulePublish() error
+	InsertAuthors(id int, authors []int) (err error)
+	UpdateAuthors(id int, authors []int) (err error)
 }
 
 type GetProjectArgs struct {
@@ -62,6 +66,8 @@ type GetProjectArgs struct {
 	MaxResult int    `form:"max_result" json:"max_result"`
 	Page      int    `form:"page" json:"page"`
 	Sorting   string `form:"sort" json:"sort"`
+
+	Fields sqlfields `form:"fields"`
 }
 
 func (g *GetProjectArgs) Default() {
@@ -117,6 +123,41 @@ func (p *GetProjectArgs) parse() (restricts string, values []interface{}) {
 	return restricts, values
 }
 
+func (p *GetProjectArgs) parseLimit() (limit map[string]string, values []interface{}) {
+	restricts := make([]string, 0)
+	limit = make(map[string]string, 2)
+	if p.Sorting != "" {
+		restricts = append(restricts, fmt.Sprintf("ORDER BY %s", orderByHelper(p.Sorting)))
+		limit["order"] = fmt.Sprintf("ORDER BY %s", orderByHelper(p.Sorting))
+	}
+	if p.MaxResult != 0 {
+		restricts = append(restricts, "LIMIT ?")
+		values = append(values, p.MaxResult)
+	}
+	if p.Page != 0 {
+		restricts = append(restricts, "OFFSET ?")
+		values = append(values, (p.Page-1)*(p.MaxResult))
+	}
+	if len(restricts) > 0 {
+		limit["full"] = fmt.Sprintf(" %s", strings.Join(restricts, " "))
+	}
+	return limit, values
+}
+
+func (g *GetProjectArgs) FullAuthorTags() (result []string) {
+	return getStructDBTags("full", Member{})
+}
+
+type ProjectAuthors struct {
+	Project
+	Authors []Stunt `json:"authors"`
+}
+
+type ProjectAuthor struct {
+	Project
+	Author Stunt `json:"author" db:"author"`
+}
+
 func (a *projectAPI) CountProjects(arg GetProjectArgs) (result int, err error) {
 	restricts, values := arg.parse()
 	query := fmt.Sprintf(`SELECT COUNT(project_id) FROM projects WHERE %s`, restricts)
@@ -154,34 +195,63 @@ func (a *projectAPI) GetProject(p Project) (Project, error) {
 	return project, err
 }
 
-func (a *projectAPI) GetProjects(args GetProjectArgs) ([]Project, error) {
-	restricts, values := args.parse()
-	query := fmt.Sprintf("SELECT * FROM projects WHERE %s ORDER BY %s LIMIT ? OFFSET ?;", restricts, orderByHelper(args.Sorting))
-	values = append(values, args.MaxResult, (args.Page-1)*args.MaxResult)
+func (a *projectAPI) GetProjects(args GetProjectArgs) (result []ProjectAuthors, err error) {
+	// Init appendable result slice
+	result = make([]ProjectAuthors, 0)
 
-	query, values, err := sqlx.In(query, values...)
+	restricts, values := args.parse()
+	if len(restricts) > 0 {
+		restricts = fmt.Sprintf("WHERE %s", restricts)
+	}
+	limit, largs := args.parseLimit()
+	// select *, a.nickname "a.nickname", a.member_id "a.member_id", a.points "a.points" from projects left join project_authors pa on projects.project_id = pa.project_id left join members a on pa.author_id = a.id where projects.project_id in (1000010, 1000013);
+	values = append(values, largs...)
+
+	query := fmt.Sprintf("SELECT projects.*, %s FROM (SELECT * FROM projects %s %s) AS projects LEFT JOIN project_authors pa ON projects.project_id = pa.project_id LEFT JOIN members author ON pa.author_id = author.id %s;",
+		args.Fields.GetFields(`author.%s "author.%s"`), restricts, limit["full"], limit["order"])
+
+	query, values, err = sqlx.In(query, values...)
 	if err != nil {
 		log.Println(err.Error())
 		return nil, err
 	}
 	query = DB.Rebind(query)
-
-	rows, err := DB.Queryx(query, values...)
-	if err != nil {
+	var pa []ProjectAuthor
+	if err = DB.Select(&pa, query, values...); err != nil {
 		log.Println(err.Error())
-		return nil, err
+		return []ProjectAuthors{}, err
 	}
+	// For returning {"_items":null}
+	if len(pa) == 0 {
+		return nil, nil
+	}
+	for _, project := range pa {
 
-	var result = []Project{}
-	for rows.Next() {
-		var project Project
-		if err = rows.StructScan(&project); err != nil {
-			result = []Project{}
-			return result, err
+		var notNullAuthor = func(in ProjectAuthor) ProjectAuthors {
+			pas := ProjectAuthors{Project: in.Project}
+			if project.Author != (Stunt{}) {
+				pas.Authors = append(pas.Authors, in.Author)
+			}
+			return pas
 		}
-		result = append(result, project)
+		// First Project
+		if len(result) == 0 {
+			result = append(result, notNullAuthor(project))
+		} else {
+			for i, v := range result {
+				if v.ID == project.ID {
+					result[i].Authors = append(result[i].Authors, project.Author)
+					break
+				} else {
+					if i != (len(result) - 1) {
+						continue
+					} else {
+						result = append(result, notNullAuthor(project))
+					}
+				}
+			}
+		}
 	}
-
 	return result, nil
 }
 
@@ -223,7 +293,7 @@ func (a *projectAPI) InsertProject(p Project) error {
 		arg.Page = 1
 		projects, err := ProjectAPI.GetProjects(arg)
 		if err != nil {
-			log.Println("Error When Getting Project to Insert to Algolia: %v", err.Error())
+			log.Printf("Error When Getting Project to Insert to Algolia: %v", err.Error())
 			return nil
 		}
 		go Algolia.InsertProject(projects)
@@ -260,7 +330,7 @@ func (a *projectAPI) UpdateProjects(p Project) error {
 		arg.Page = 1
 		projects, err := ProjectAPI.GetProjects(arg)
 		if err != nil {
-			log.Println("Error When Getting Project to Insert to Algolia: %v", err.Error())
+			log.Printf("Error When Getting Project to Insert to Algolia: %v", err.Error())
 			return nil
 		}
 		go Algolia.InsertProject(projects)
@@ -293,6 +363,107 @@ func (a *projectAPI) SchedulePublish() error {
 		return err
 	}
 	return nil
+}
+
+// func (a *projectAPI) GetAuthors(args GetProjectArgs) (result []Stunt, err error) {
+// 	//select a.nickname, a.member_id, a.active from project_authors pa left join members a on pa.author_id = a.id where pa.project_id in (1000010, 1000013);
+// 	restricts, values := args.parse()
+// 	fmt.Printf("restricts: %v\n,values:%v\n", restricts, values)
+// 	fmt.Printf("args: %v\n", args)
+
+// 	// projects.project_id IN (?), [1, 2]
+// 	var where string
+// 	if len(restricts) > 0 {
+// 		where = fmt.Sprintf(" WHERE %s", restricts)
+// 	}
+// 	query := fmt.Sprintf(`SELECT %s FROM project_authors projects LEFT JOIN members author ON projects.author_id = author.id %s;`,
+// 		args.Fields.GetFields(`author.%s "%s"`), where)
+// 	fmt.Printf("query is :%s\n", query)
+// 	fmt.Printf("values is %v\n", values)
+// 	query, params, err := sqlx.In(query, values...)
+// 	if err != nil {
+// 		return []Stunt{}, err
+// 	}
+
+// 	query = DB.Rebind(query)
+// 	if err := DB.Select(&result, query, params...); err != nil {
+// 		return []Stunt{}, err
+// 	}
+// 	return result, nil
+// }
+
+func (a *projectAPI) InsertAuthors(projectID int, authorIDs []int) (err error) {
+
+	var (
+		valueStr     []string
+		insertValues []interface{}
+	)
+	for _, author := range authorIDs {
+		valueStr = append(valueStr, `(?, ?)`)
+		insertValues = append(insertValues, projectID, author)
+	}
+	//INSERT IGNORE INTO project_authorIDs (project_id, author_id) VALUES ( ?, ? ), ( ?, ? );
+	query := fmt.Sprintf(`INSERT IGNORE INTO project_authors (project_id, author_id) VALUES %s;`, strings.Join(valueStr, ", "))
+	_, err = DB.Exec(query, insertValues...)
+	if err != nil {
+		sqlerr, ok := err.(*mysql.MySQLError)
+		if ok && sqlerr.Number == 1062 {
+			return DuplicateError
+		}
+		return err
+	}
+	return err
+}
+
+func (a *projectAPI) UpdateAuthors(projectID int, authorIDs []int) (err error) {
+
+	// Delete all author record if authorIDs is null
+	if authorIDs == nil || len(authorIDs) == 0 {
+		_, err = DB.Exec(`DELETE FROM project_authors WHERE project_id = ?`, projectID)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	tx, err := DB.Beginx()
+	if err != nil {
+		log.Printf("Fail to get sql connection: %v", err)
+		return err
+	}
+	// Either rollback or commit transaction
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+			return
+		}
+		err = tx.Commit()
+	}()
+
+	del, args, err := sqlx.In(`DELETE FROM project_authors WHERE project_id = ? AND author_id NOT IN (?)`, projectID, authorIDs)
+	if err != nil {
+		log.Printf("Fail to generate query: %v", err)
+		return err
+	}
+	del = DB.Rebind(del)
+	_, err = tx.Exec(del, args...)
+	if err != nil {
+
+	}
+	var (
+		valueStr     []string
+		insertValues []interface{}
+	)
+	for _, author := range authorIDs {
+		valueStr = append(valueStr, `(?, ?)`)
+		insertValues = append(insertValues, projectID, author)
+	}
+	//INSERT IGNORE INTO project_authorIDs (project_id, author_id) VALUES ( ?, ? ), ( ?, ? );
+	ins := fmt.Sprintf(`INSERT IGNORE INTO project_authors (project_id, author_id) VALUES %s;`, strings.Join(valueStr, ", "))
+	_, err = tx.Exec(ins, insertValues...)
+	if err != nil {
+		return err
+	}
+	return err
 }
 
 var ProjectAPI ProjectAPIInterface = new(projectAPI)

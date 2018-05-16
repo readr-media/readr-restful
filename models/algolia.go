@@ -109,7 +109,7 @@ func (a *algolia) insertResource(tpmsi interface{}, resource_name string) (err e
 			objects = append(objects, o)
 		}
 	case "project":
-		tpms, ok := tpmsi.([]Project)
+		tpms, ok := tpmsi.([]ProjectAuthors)
 		if !ok {
 			return errors.New("Invalid Data Format")
 		}
@@ -177,7 +177,7 @@ func (a *algolia) InsertPost(input []TaggedPostMember) error {
 	return a.insertResource(input, "post")
 }
 
-func (a *algolia) InsertProject(input []Project) error {
+func (a *algolia) InsertProject(input []ProjectAuthors) error {
 	return a.insertResource(input, "project")
 }
 

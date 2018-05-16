@@ -242,7 +242,7 @@ func TestRouteTags(t *testing.T) {
 	t.Run("UpdateTag", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
 			genericTestcase{"UpdateTagOK", "PUT", "/tags", `{"id":5, "text":"text5566", "updated_by":931}`, http.StatusOK, ``},
-			genericTestcase{"UpdateTagNoSuchTag", "PUT", "/tags", `{"id":6, "text":"text7788", "updated_by":931}`, http.StatusBadRequest, `{"Error":"Itme Not Found"}`},
+			genericTestcase{"UpdateTagNoSuchTag", "PUT", "/tags", `{"id":6, "text":"text7788", "updated_by":931}`, http.StatusBadRequest, `{"Error":"Item Not Found"}`},
 			genericTestcase{"UpdateTagDupe", "PUT", "/tags", `{"id":2, "text":"tag3", "updated_by":931}`, http.StatusBadRequest, `{"Error":"Duplicate Entry"}`},
 			genericTestcase{"UpdateTagNoID", "PUT", "/tags", `{"text":"tag3"}`, http.StatusBadRequest, `{"Error":"Updater Not Sepcified"}`},
 		} {

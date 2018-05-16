@@ -2,6 +2,7 @@ package models
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	"database/sql"
@@ -15,11 +16,17 @@ import (
 var (
 	DuplicateError           = errors.New("Duplicate Entry")
 	InternalServerError      = errors.New("Internal Server Error")
-	ItemNotFoundError        = errors.New("Itme Not Found")
+	ItemNotFoundError        = errors.New("Item Not Found")
 	MultipleRowAffectedError = errors.New("More Than One Rows Affected")
 
 	SQLInsertionFail = errors.New("SQL Insertion Fail")
 )
+
+type sqlfields []string
+
+func (s *sqlfields) GetFields(template string) (result string) {
+	return strings.Join(makeFieldString("get", template, *s), ", ")
+}
 
 // ------------------------------  NULLABLE TYPE DEFINITION -----------------------------
 
