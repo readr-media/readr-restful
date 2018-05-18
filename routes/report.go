@@ -143,10 +143,6 @@ func (r *reportHandler) Post(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Report"})
 		return
 	}
-	if report.Active.Valid == true && !r.validateReportStatus(report.Active.Int) {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Parameter"})
-		return
-	}
 
 	if report.PublishStatus.Valid == true && report.PublishStatus.Int == int64(models.ReportPublishStatus["publish"].(float64)) && report.Slug.Valid == false {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Must Have Slug Before Publish"})
@@ -157,6 +153,7 @@ func (r *reportHandler) Post(c *gin.Context) {
 		report.CreatedAt = models.NullTime{time.Now(), true}
 	}
 	report.UpdatedAt = models.NullTime{time.Now(), true}
+	report.Active = models.NullInt{int64(models.ReportActive["active"].(float64)), true}
 
 	err := models.ReportAPI.InsertReport(report)
 	if err != nil {

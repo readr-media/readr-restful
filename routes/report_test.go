@@ -21,7 +21,7 @@ var mockReportAuthors = []models.Stunt{}
 type mockReportAPI struct{}
 
 func (a *mockReportAPI) CountReports(arg models.GetReportArgs) (result int, err error) {
-	return 5, err
+	return 6, err
 }
 
 func (a *mockReportAPI) GetReport(p models.Report) (result models.Report, err error) {
@@ -35,7 +35,7 @@ func (a *mockReportAPI) GetReport(p models.Report) (result models.Report, err er
 func (a *mockReportAPI) GetReports(args models.GetReportArgs) (result []models.ReportAuthors, err error) {
 	if args.Keyword == "no" {
 		return []models.ReportAuthors{
-			{Report: models.Report{ID: 32234, Title: models.NullString{"nonActive", true}, Active: models.NullInt{0, true}}},
+			{Report: models.Report{ID: 32234, Title: models.NullString{"nonActive", true}, Active: models.NullInt{1, true}}},
 		}, nil
 	}
 	if args.Keyword == "327" {
@@ -49,6 +49,7 @@ func (a *mockReportAPI) GetReports(args models.GetReportArgs) (result []models.R
 		return []models.ReportAuthors{
 			{Report: models.Report{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}}},
 			{Report: models.Report{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0002", true}}},
+			{Report: models.Report{ID: 32234, Title: models.NullString{"nonActive", true}, Active: models.NullInt{1, true}}},
 			{Report: models.Report{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}}},
 			{Report: models.Report{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0001", true}, PublishStatus: models.NullInt{2, true}}},
 			{Report: models.Report{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Description: models.NullString{"id not provided", true}}},
@@ -118,6 +119,7 @@ func (a *mockReportAPI) GetReports(args models.GetReportArgs) (result []models.R
 		{Report: models.Report{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0001", true}, PublishStatus: models.NullInt{2, true}}},
 		{Report: models.Report{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Description: models.NullString{"id not provided", true}}},
 		{Report: models.Report{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0002", true}}},
+		{Report: models.Report{ID: 32234, Title: models.NullString{"nonActive", true}, Active: models.NullInt{1, true}}},
 		{Report: models.Report{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}}},
 		{Report: models.Report{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}}},
 	}, nil
@@ -243,11 +245,10 @@ func TestRouteReports(t *testing.T) {
 		testcases := []genericTestcase{
 			genericTestcase{"PostReportOK", "POST", "/report", `{"id":32768,"title":"OK","post_id":188,"like_amount":0,"comment_amount":0,"active":1,"slug":"sampleslug0001"}`, http.StatusOK, ``},
 			genericTestcase{"PostReportSlug", "POST", "/report", `{"id":32233,"title":"OK","post_id":188,"active":1,"slug":"sampleslug0002"}`, http.StatusOK, ``},
-			genericTestcase{"PostReportNonActive", "POST", "/report", `{"id":32234,"title":"nonActive","post_id":188,"active":0}`, http.StatusOK, ``},
+			genericTestcase{"PostReportNonActive", "POST", "/report", `{"id":32234,"title":"nonActive","post_id":188}`, http.StatusOK, ``},
 			genericTestcase{"PostReportNoID", "POST", "/report", `{"title":"OK","post_id":188,"description":"id not provided", "like_amount":0,"comment_amount":0,"active":1}`, http.StatusOK, ``},
 			genericTestcase{"PostReportEmptyBody", "POST", "/report", ``, http.StatusBadRequest, `{"Error":"Invalid Report"}`},
 			genericTestcase{"PostReportDupe", "POST", "/report", `{"id":32767, "title":"Dupe"}`, http.StatusBadRequest, `{"Error":"Report Already Existed"}`},
-			genericTestcase{"PostReportInvalidActive", "POST", "/report", `{"id":11493, "title":"InvActive", "active":3}`, http.StatusBadRequest, `{"Error":"Invalid Parameter"}`},
 		}
 		for _, tc := range testcases {
 			genericDoTest(tc, t, asserter)
@@ -272,6 +273,7 @@ func TestRouteReports(t *testing.T) {
 				models.ReportAuthors{Report: models.Report{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0001", true}, PublishStatus: models.NullInt{2, true}}},
 				models.ReportAuthors{Report: models.Report{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Description: models.NullString{"id not provided", true}}},
 				models.ReportAuthors{Report: models.Report{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0002", true}}},
+				models.ReportAuthors{Report: models.Report{ID: 32234, Title: models.NullString{"nonActive", true}, Active: models.NullInt{1, true}}},
 				models.ReportAuthors{Report: models.Report{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}}},
 				models.ReportAuthors{Report: models.Report{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}}},
 			}},
@@ -305,19 +307,20 @@ func TestRouteReports(t *testing.T) {
 			genericTestcase{"GetReportWithSorting", "GET", `/report/list?sort=id`, ``, http.StatusOK, []models.ReportAuthors{
 				models.ReportAuthors{Report: models.Report{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}}},
 				models.ReportAuthors{Report: models.Report{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0002", true}}},
+				models.ReportAuthors{Report: models.Report{ID: 32234, Title: models.NullString{"nonActive", true}, Active: models.NullInt{1, true}}},
 				models.ReportAuthors{Report: models.Report{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}}},
 				models.ReportAuthors{Report: models.Report{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0001", true}, PublishStatus: models.NullInt{2, true}}},
 				models.ReportAuthors{Report: models.Report{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Description: models.NullString{"id not provided", true}}},
 			}},
 			genericTestcase{"GetReportKeywordMatchTitle", "GET", `/report/list?keyword=no&active={"$in":[0,1]}`, ``, http.StatusOK, []models.ReportAuthors{
-				models.ReportAuthors{Report: models.Report{ID: 32234, Title: models.NullString{"nonActive", true}, Active: models.NullInt{0, true}}},
+				models.ReportAuthors{Report: models.Report{ID: 32234, Title: models.NullString{"nonActive", true}, Active: models.NullInt{1, true}}},
 			}},
 			genericTestcase{"GetReportKeywordMatchID", "GET", `/report/list?keyword=327`, ``, http.StatusOK, []models.ReportAuthors{
 				models.ReportAuthors{Report: models.Report{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0001", true}, PublishStatus: models.NullInt{2, true}}},
 				models.ReportAuthors{Report: models.Report{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Description: models.NullString{"id not provided", true}}},
 				models.ReportAuthors{Report: models.Report{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}}},
 			}},
-			genericTestcase{"GetReportCount", "GET", `/report/count`, ``, http.StatusOK, `{"_meta":{"total":5}}`},
+			genericTestcase{"GetReportCount", "GET", `/report/count`, ``, http.StatusOK, `{"_meta":{"total":6}}`},
 			genericTestcase{"GetReportWithAuthorsFieldsSet", "GET", `/report/list?ids=[1,32767]&fields=["id","nickname"]`, ``, http.StatusOK, []models.ReportAuthors{
 				models.ReportAuthors{
 					Report:  models.Report{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}},
