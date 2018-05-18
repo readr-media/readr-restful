@@ -186,7 +186,7 @@ func (r *reportHandler) Put(c *gin.Context) {
 		return
 	}
 
-	if report.PublishStatus.Valid == true && report.PublishStatus.Int == int64(models.ReportPublishStatus["publish"].(float64)) {
+	if report.PublishStatus.Valid == true && (report.PublishStatus.Int == int64(models.ReportPublishStatus["publish"].(float64)) || report.PublishStatus.Int == int64(models.ReportPublishStatus["schedule"].(float64))) {
 		p, err := models.ReportAPI.GetReport(report)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"Error": "Report Not Found"})
@@ -194,6 +194,28 @@ func (r *reportHandler) Put(c *gin.Context) {
 		} else if p.Slug.Valid == false {
 			c.JSON(http.StatusBadRequest, gin.H{"Error": "Must Have Slug Before Publish"})
 			return
+		}
+
+		switch p.PublishStatus.Int {
+		case int64(models.ReportPublishStatus["schedule"].(float64)):
+			if !report.PublishedAt.Valid && !p.PublishedAt.Valid {
+				c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Publish Time"})
+				return
+			}
+			fallthrough
+		case int64(models.ReportPublishStatus["publish"].(float64)):
+			if !report.Title.Valid && !p.Title.Valid {
+				c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Report Title"})
+				return
+			}
+			if !report.Slug.Valid && !p.Slug.Valid {
+				c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Report Content"})
+				return
+			}
+			if !report.PublishedAt.Valid {
+				report.PublishedAt = models.NullTime{Time: time.Now(), Valid: true}
+			}
+			break
 		}
 	}
 
