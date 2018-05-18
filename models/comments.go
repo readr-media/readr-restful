@@ -42,14 +42,12 @@ type ReportedComment struct {
 	Solved    NullInt    `json:"solved" db:"solved"`
 	UpdatedAt NullTime   `json:"updated_at" db:"updated_at"`
 	CreatedAt NullTime   `json:"created_at" db:"created_at"`
+	IP        NullString `json:"ip" db:"ip"`
 }
 
 type ReportedCommentAuthor struct {
-	CommentAuthor
-	Reason    NullString `json:"reason" db:"reason"`
-	CommentID int        `json:"comment_id" db:"comment_id"`
-	Reporter  int        `json:"reporter" db:"reporter"`
-	Solved    NullInt    `json:"solved" db:"solved"`
+	Comment CommentAuthor   `json:"comments" db:"comments"`
+	Report  ReportedComment `json:"reported" db:"reported"`
 }
 
 type GetCommentArgs struct {
@@ -279,8 +277,23 @@ func (c *commentAPI) UpdateComments(args CommentUpdateArgs) (err error) {
 
 func (c *commentAPI) GetReportedComments(args *GetReportedCommentArgs) (result []ReportedCommentAuthor, err error) {
 	restricts, values := args.parse()
+	commentTags := getStructDBTags("full", Comment{})
+	reportTags := getStructDBTags("full", ReportedComment{})
+	commentFields := makeFieldString("get", `comments.%s "comments.%s"`, commentTags)
+	reportFields := makeFieldString("get", `comments_reported.%s "reported.%s"`, reportTags)
 
-	query := fmt.Sprintf("SELECT comments.*, INET_NTOA(comments.ip) AS ip, comments_reported.reporter AS reporter, comments_reported.reason AS reason, comments_reported.solved AS solved, members.nickname AS author_nickname, members.profile_image AS author_image, members.role AS author_role, IFNULL(count.count, 0) AS comment_amount FROM comments AS comments LEFT JOIN members AS members ON comments.author = members.id LEFT JOIN (SELECT count(*) AS count, parent_id FROM comments GROUP BY parent_id) AS count ON comments.id = count.parent_id INNER JOIN comments_reported AS comments_reported ON comments_reported.comment_id = comments.id %s ORDER BY %s LIMIT ? OFFSET ?;", restricts, orderByHelper(args.Sorting))
+	//query = strings.Replace(query, ":ip", "INET_ATON(:ip)", 1)
+
+	query := fmt.Sprintf(`SELECT %s, %s, 
+		members.nickname AS "comments.author_nickname", members.profile_image AS "comments.author_image", 
+		members.role AS "comments.author_role", IFNULL(count.count, 0) AS "comments.comment_amount" 
+			FROM comments AS comments LEFT JOIN members AS members ON comments.author = members.id 
+				LEFT JOIN (SELECT count(*) AS count, parent_id FROM comments GROUP BY parent_id) AS count ON comments.id = count.parent_id 
+				INNER JOIN comments_reported AS comments_reported ON comments_reported.comment_id = comments.id 
+				%s ORDER BY %s LIMIT ? OFFSET ?;`,
+		strings.Replace(strings.Join(commentFields, ","), `comments.ip "comments.ip"`, `INET_NTOA(comments.ip) "comments.ip"`, 1),
+		strings.Replace(strings.Join(reportFields, ","), `comments_reported.ip "reported.ip"`, `INET_NTOA(comments_reported.ip) "reported.ip"`, 1),
+		restricts, "comments_reported."+orderByHelper(args.Sorting))
 
 	values = append(values, args.MaxResult, (args.Page-1)*args.MaxResult)
 
@@ -312,6 +325,7 @@ func (c *commentAPI) InsertReportedComments(report ReportedComment) (id int64, e
 	tags := getStructDBTags("full", ReportedComment{})
 	query := fmt.Sprintf(`INSERT INTO comments_reported (%s) VALUES (:%s)`,
 		strings.Join(tags, ","), strings.Join(tags, ",:"))
+	query = strings.Replace(query, ":ip", "INET_ATON(:ip)", 1)
 
 	result, err := DB.NamedExec(query, report)
 	if err != nil {

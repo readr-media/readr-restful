@@ -28,6 +28,7 @@ func initAuthTest() {
 			RegisterMode: models.NullString{"ordinary", true},
 			UUID:         "abc1d5b1-da54-4200-b57e-f06e59fd8467",
 			Points:       models.NullInt{Int: 0, Valid: true},
+			Mail:         models.NullString{"logintest1@mirrormedia.mg", true},
 		},
 		models.Member{
 			ID:           82,
@@ -38,6 +39,7 @@ func initAuthTest() {
 			RegisterMode: models.NullString{"oauth-fb", true},
 			UUID:         "abc1d5b1-da54-4200-b67e-f06e59fd8467",
 			Points:       models.NullInt{Int: 0, Valid: true},
+			Mail:         models.NullString{"logintest2018", true},
 		},
 		models.Member{
 			ID:           83,
@@ -48,6 +50,7 @@ func initAuthTest() {
 			RegisterMode: models.NullString{"ordinary", true},
 			UUID:         "abc1d5b1-da54-4200-b77e-f06e59fd8467",
 			Points:       models.NullInt{Int: 0, Valid: true},
+			Mail:         models.NullString{"logindeactived", true},
 		}}
 
 	for _, member := range mockLoginMembers {

@@ -122,6 +122,20 @@ func (a *algolia) insertResource(tpmsi interface{}, resource_name string) (err e
 			o["objectType"] = a.objectTypes[resource_name]
 			objects = append(objects, o)
 		}
+	case "report":
+		tpms, ok := tpmsi.([]ReportAuthors)
+		if !ok {
+			return errors.New("Invalid Data Format")
+		}
+		for _, tpm := range tpms {
+			if tpm.ID == 0 {
+				return errors.New("Project Has No ID")
+			}
+			o := a.extractStruct(tpm)
+			o["objectID"] = fmt.Sprintf("%s_%s", a.objectTypes[resource_name], fmt.Sprint(tpm.ID))
+			o["objectType"] = a.objectTypes[resource_name]
+			objects = append(objects, o)
+		}
 	default:
 		err = errors.New("Resource Not Supported")
 	}
@@ -181,10 +195,18 @@ func (a *algolia) InsertProject(input []ProjectAuthors) error {
 	return a.insertResource(input, "project")
 }
 
+func (a *algolia) InsertReport(input []ReportAuthors) error {
+	return a.insertResource(input, "report")
+}
+
 func (a *algolia) DeletePost(ids []int) error {
 	return a.deleteResource(ids, "post")
 }
 
 func (a *algolia) DeleteProject(ids []int) error {
 	return a.deleteResource(ids, "project")
+}
+
+func (a *algolia) DeleteReport(ids []int) error {
+	return a.deleteResource(ids, "report")
 }

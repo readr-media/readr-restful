@@ -36,13 +36,28 @@ func (c *mockCommentAPI) UpdateComment(comment models.Comment) (err error)      
 func (c *mockCommentAPI) UpdateComments(req models.CommentUpdateArgs) (err error)    { return err }
 
 func (c *mockCommentAPI) GetReportedComments(args *models.GetReportedCommentArgs) (result []models.ReportedCommentAuthor, err error) {
+
+	var mockCommentResult = []models.CommentAuthor{
+		models.CommentAuthor{models.Comment{ID: 1, Body: models.NullString{"Comment No.1", true}, Resource: models.NullString{"readr-post-90", true}, Author: 91, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}}, "commenttest1", "", 0, 0},
+		models.CommentAuthor{models.Comment{ID: 2, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"readr-post-91", true}, Author: 92, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, IP: models.NullString{"5.6.7.8", true}}, "commenttest2", "pi2", 3, 0},
+		models.CommentAuthor{models.Comment{ID: 3, Body: models.NullString{"Comment No.3", true}, Resource: models.NullString{"readr-post-90", true}, Author: 92, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, Status: models.NullInt{int64(models.CommentStatus["hide"].(float64)), true}}, "commenttest2", "", 0, 0},
+	}
+
+	var mockReports = []models.ReportedComment{
+		models.ReportedComment{ID: 1, CommentID: 2, Reporter: models.NullInt{92, true}, IP: models.NullString{"1.2.3.4", true}},
+		models.ReportedComment{ID: 2, CommentID: 2, Reporter: models.NullInt{90, true}},
+	}
+
 	switch len(args.Reporter) {
 	case 1:
-		result = append(result, models.ReportedCommentAuthor{models.CommentAuthor{models.Comment{ID: 2, Author: 92, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"readr-post-91", true}, Active: models.NullInt{1, true}}, "commenttest2", "pi2", 3, 0}, models.NullString{"", false}, 0, 90, models.NullInt{0, false}})
+
+		result = append(result, models.ReportedCommentAuthor{Comment: mockCommentResult[1], Report: mockReports[1]})
 		return result, err
 	case 0:
-		result = append(result, models.ReportedCommentAuthor{models.CommentAuthor{models.Comment{ID: 2, Author: 92, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"readr-post-91", true}, Active: models.NullInt{1, true}}, "commenttest2", "pi2", 3, 0}, models.NullString{"", false}, 0, 92, models.NullInt{0, false}})
-		result = append(result, models.ReportedCommentAuthor{models.CommentAuthor{models.Comment{ID: 2, Author: 92, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"readr-post-91", true}, Active: models.NullInt{1, true}}, "commenttest2", "pi2", 3, 0}, models.NullString{"", false}, 0, 90, models.NullInt{0, false}})
+		result = append(result, models.ReportedCommentAuthor{Comment: mockCommentResult[1], Report: mockReports[0]})
+		result = append(result, models.ReportedCommentAuthor{Comment: mockCommentResult[1], Report: mockReports[1]})
+		//result = append(result, models.ReportedCommentAuthor{models.CommentAuthor{models.Comment{ID: 2, Author: 92, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"readr-post-91", true}, Active: models.NullInt{1, true}}, "commenttest2", "pi2", 3, 0}, models.NullString{"", false}, 0, 92, models.NullInt{0, false}})
+		//result = append(result, models.ReportedCommentAuthor{models.CommentAuthor{models.Comment{ID: 2, Author: 92, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"readr-post-91", true}, Active: models.NullInt{1, true}}, "commenttest2", "pi2", 3, 0}, models.NullString{"", false}, 0, 90, models.NullInt{0, false}})
 		return result, err
 	}
 	return result, err
@@ -59,7 +74,7 @@ func TestRouteComments(t *testing.T) {
 
 	var mockComments = []models.Comment{
 		models.Comment{ID: 1, Body: models.NullString{"Comment No.1", true}, Resource: models.NullString{"readr-post-90", true}, Author: 91, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}},
-		models.Comment{ID: 2, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"readr-post-91", true}, Author: 92, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}},
+		models.Comment{ID: 2, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"readr-post-91", true}, Author: 92, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, IP: models.NullString{"5.6.7.8", true}},
 		models.Comment{ID: 3, Body: models.NullString{"Comment No.3", true}, Resource: models.NullString{"readr-post-90", true}, Author: 92, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, Status: models.NullInt{int64(models.CommentStatus["hide"].(float64)), true}},
 	}
 
@@ -70,7 +85,7 @@ func TestRouteComments(t *testing.T) {
 	}
 
 	var mockReports = []models.ReportedComment{
-		models.ReportedComment{ID: 1, CommentID: 2, Reporter: models.NullInt{92, true}},
+		models.ReportedComment{ID: 1, CommentID: 2, Reporter: models.NullInt{92, true}, IP: models.NullString{"1.2.3.4", true}},
 		models.ReportedComment{ID: 2, CommentID: 2, Reporter: models.NullInt{90, true}},
 	}
 
@@ -175,8 +190,8 @@ func TestRouteComments(t *testing.T) {
 	})
 	t.Run("GetReport", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"GetReportOK", "GET", "/reported_comment", ``, http.StatusOK, `{"_items":[{"id":2,"author":92,"body":"Comment No.2","og_title":null,"og_description":null,"og_image":null,"like_amount":null,"parent_id":null,"resource":"readr-post-91","status":null,"active":1,"updated_at":null,"created_at":null,"ip":null,"author_nickname":"commenttest2","author_image":"pi2","author_role":3,"comment_amount":0,"reason":null,"comment_id":0,"reporter":92,"solved":null},{"id":2,"author":92,"body":"Comment No.2","og_title":null,"og_description":null,"og_image":null,"like_amount":null,"parent_id":null,"resource":"readr-post-91","status":null,"active":1,"updated_at":null,"created_at":null,"ip":null,"author_nickname":"commenttest2","author_image":"pi2","author_role":3,"comment_amount":0,"reason":null,"comment_id":0,"reporter":90,"solved":null}]}`},
-			genericTestcase{"GetReportOK", "GET", "/reported_comment?reporter=[90]", ``, http.StatusOK, `{"_items":[{"id":2,"author":92,"body":"Comment No.2","og_title":null,"og_description":null,"og_image":null,"like_amount":null,"parent_id":null,"resource":"readr-post-91","status":null,"active":1,"updated_at":null,"created_at":null,"ip":null,"author_nickname":"commenttest2","author_image":"pi2","author_role":3,"comment_amount":0,"reason":null,"comment_id":0,"reporter":90,"solved":null}]}`},
+			genericTestcase{"GetReportOK", "GET", "/reported_comment", ``, http.StatusOK, `{"_items":[{"comments":{"id":2,"author":92,"body":"Comment No.2","og_title":null,"og_description":null,"og_image":null,"like_amount":null,"parent_id":null,"resource":"readr-post-91","status":null,"active":1,"updated_at":null,"created_at":null,"ip":"5.6.7.8","author_nickname":"commenttest2","author_image":"pi2","author_role":3,"comment_amount":0},"reported":{"id":1,"comment_id":2,"reporter":92,"reason":null,"solved":null,"updated_at":null,"created_at":null,"ip":"1.2.3.4"}},{"comments":{"id":2,"author":92,"body":"Comment No.2","og_title":null,"og_description":null,"og_image":null,"like_amount":null,"parent_id":null,"resource":"readr-post-91","status":null,"active":1,"updated_at":null,"created_at":null,"ip":"5.6.7.8","author_nickname":"commenttest2","author_image":"pi2","author_role":3,"comment_amount":0},"reported":{"id":2,"comment_id":2,"reporter":90,"reason":null,"solved":null,"updated_at":null,"created_at":null,"ip":null}}]}`},
+			genericTestcase{"GetReportOK", "GET", "/reported_comment?reporter=[90]", ``, http.StatusOK, `{"_items":[{"comments":{"id":2,"author":92,"body":"Comment No.2","og_title":null,"og_description":null,"og_image":null,"like_amount":null,"parent_id":null,"resource":"readr-post-91","status":null,"active":1,"updated_at":null,"created_at":null,"ip":"5.6.7.8","author_nickname":"commenttest2","author_image":"pi2","author_role":3,"comment_amount":0},"reported":{"id":2,"comment_id":2,"reporter":90,"reason":null,"solved":null,"updated_at":null,"created_at":null,"ip":null}}]}`},
 		} {
 			genericDoTest(testcase, t, asserter)
 		}

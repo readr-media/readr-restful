@@ -254,54 +254,6 @@ func (r *projectHandler) Delete(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-// func (r *projectHandler) GetAuthors(c *gin.Context) {
-// 	//project/authors?ids=[1000010,1000013]&mode=[full]&fields=["id","member_id"]
-// 	args := models.GetProjectArgs{}
-// 	if err := r.bindQuery(c, &args); err != nil {
-// 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
-// 		return
-// 	}
-// 	fmt.Println(args)
-// 	authors, err := models.ProjectAPI.GetAuthors(args)
-// 	if err != nil {
-// 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
-// 		return
-// 	}
-// 	c.JSON(http.StatusOK, gin.H{"_items": authors})
-// }
-
-func (r *projectHandler) PostAuthors(c *gin.Context) {
-	params := struct {
-		ProjectID *int  `json:"project_id"`
-		AuthorIDs []int `json:"author_ids"`
-	}{}
-	c.Bind(&params)
-	if params.ProjectID == nil || params.AuthorIDs == nil || len(params.AuthorIDs) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": "Insufficient Parameters"})
-		return
-	}
-	if err := models.ProjectAPI.InsertAuthors(*params.ProjectID, params.AuthorIDs); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
-		return
-	}
-}
-
-func (r *projectHandler) PutAuthors(c *gin.Context) {
-	params := struct {
-		ProjectID *int  `json:"project_id"`
-		AuthorIDs []int `json:"author_ids"`
-	}{}
-	c.Bind(&params)
-	if params.ProjectID == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": "Insufficient Parameters"})
-		return
-	}
-	if err := models.ProjectAPI.UpdateAuthors(*params.ProjectID, params.AuthorIDs); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
-		return
-	}
-}
-
 func (r *projectHandler) SetRoutes(router *gin.Engine) {
 	projectRouter := router.Group("/project")
 	{
@@ -311,13 +263,6 @@ func (r *projectHandler) SetRoutes(router *gin.Engine) {
 		projectRouter.PUT("", r.Put)
 		projectRouter.PUT("/schedule/publish", r.SchedulePublish)
 		projectRouter.DELETE("/:id", r.Delete)
-
-		authorRouter := projectRouter.Group("/author")
-		{
-			// authorRouter.GET("", r.GetAuthors)
-			authorRouter.POST("", r.PostAuthors)
-			authorRouter.PUT("", r.PutAuthors)
-		}
 	}
 }
 
