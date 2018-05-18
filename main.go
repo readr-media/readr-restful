@@ -38,6 +38,8 @@ func main() {
 	models.MemberStatus = viper.GetStringMap("models.members")
 	models.MemoStatus = viper.GetStringMap("models.memos")
 	models.MemoPublishStatus = viper.GetStringMap("models.memos_publish_status")
+	models.ReportActive = viper.GetStringMap("models.reports")
+	models.ReportPublishStatus = viper.GetStringMap("models.reports_publish_status")
 	models.PostStatus = viper.GetStringMap("models.posts")
 	models.PostType = viper.GetStringMap("models.post_type")
 	models.PostPublishStatus = viper.GetStringMap("models.post_publish_status")

@@ -22,12 +22,12 @@ CREATE TABLE reports (
 	`publish_status` TINYINT, 
 	INDEX (title), 
 	INDEX (project_id)
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE report_authors (
 	`id` BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT, 
 	`report_id` BIGINT UNSIGNED NOT NULL, 
 	`author_id` BIGINT UNSIGNED NOT NULL
-);
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 CREATE INDEX report_authors ON report_authors(report_id, author_id);
 CREATE INDEX report_authors_reverse ON report_authors(author_id, report_id);

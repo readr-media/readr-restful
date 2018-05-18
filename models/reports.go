@@ -27,7 +27,7 @@ type Report struct {
 	ProjectID     int        `json:"project_id" db:"project_id"`
 	UpdatedAt     NullTime   `json:"updated_at" db:"updated_at"`
 	UpdatedBy     NullString `json:"updated_by" db:"updated_by"`
-	PublishedAt   NullString `json:"published_at" db:"published_at"`
+	PublishedAt   NullTime   `json:"published_at" db:"published_at"`
 	Slug          NullString `json:"slug" db:"slug"`
 	Views         NullInt    `json:"views" db:"views"`
 	PublishStatus NullInt    `json:"publish_status" db:"publish_status"`
