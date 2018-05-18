@@ -53,6 +53,8 @@ func TestMain(m *testing.M) {
 		_, _ = models.DB.Exec("truncate table memos;")
 		_, _ = models.DB.Exec("truncate table comments;")
 		_, _ = models.DB.Exec("truncate table comments_reported;")
+		_, _ = models.DB.Exec("truncate table reports;")
+		_, _ = models.DB.Exec("truncate table report_authors;")
 	*/
 	// Init Redis connetions
 	models.RedisConn(map[string]string{
@@ -67,15 +69,16 @@ func TestMain(m *testing.M) {
 	AuthHandler.SetRoutes(r)
 	CommentsHandler.SetRoutes(r)
 	FollowingHandler.SetRoutes(r)
+	MailHandler.SetRoutes(r, initMailDialer())
 	MemberHandler.SetRoutes(r)
 	MemoHandler.SetRoutes(r)
+	MiscHandler.SetRoutes(r)
 	PermissionHandler.SetRoutes(r)
+	PointsHandler.SetRoutes(r)
 	PostHandler.SetRoutes(r)
 	ProjectHandler.SetRoutes(r)
+	ReportHandler.SetRoutes(r)
 	TagHandler.SetRoutes(r)
-	MiscHandler.SetRoutes(r)
-	MailHandler.SetRoutes(r, initMailDialer())
-	PointsHandler.SetRoutes(r)
 
 	models.MemberStatus = viper.GetStringMap("models.members")
 	models.MemoStatus = viper.GetStringMap("models.memos")
@@ -90,6 +93,8 @@ func TestMain(m *testing.M) {
 	models.CommentActive = viper.GetStringMap("models.comment")
 	models.CommentStatus = viper.GetStringMap("models.comment_status")
 	models.ReportedCommentStatus = viper.GetStringMap("models.reported_comment_status")
+	models.ReportActive = viper.GetStringMap("models.reports")
+	models.ReportPublishStatus = viper.GetStringMap("models.reports_publish_status")
 
 	models.CommentAPI = new(mockCommentAPI)
 	models.FollowingAPI = new(mockFollowingAPI)
@@ -100,6 +105,7 @@ func TestMain(m *testing.M) {
 	models.TagAPI = new(mockTagAPI)
 	models.MemoAPI = new(mockMemoAPI)
 	models.MailAPI = new(mockMailAPI)
+	models.ReportAPI = new(mockReportAPI)
 
 	models.CommentHandler = models.CommentHandlerStruct{new(mocksCommentAPI)}
 	os.Exit(m.Run())

@@ -48,8 +48,6 @@ type ProjectAPIInterface interface {
 	InsertProject(p Project) error
 	UpdateProjects(p Project) error
 	SchedulePublish() error
-	InsertAuthors(id int, authors []int) (err error)
-	UpdateAuthors(id int, authors []int) (err error)
 }
 
 type GetProjectArgs struct {
@@ -207,7 +205,7 @@ func (a *projectAPI) GetProjects(args GetProjectArgs) (result []ProjectAuthors, 
 	// select *, a.nickname "a.nickname", a.member_id "a.member_id", a.points "a.points" from projects left join project_authors pa on projects.project_id = pa.project_id left join members a on pa.author_id = a.id where projects.project_id in (1000010, 1000013);
 	values = append(values, largs...)
 
-	query := fmt.Sprintf("SELECT projects.*, %s FROM (SELECT * FROM projects %s %s) AS projects LEFT JOIN project_authors pa ON projects.project_id = pa.project_id LEFT JOIN members author ON pa.author_id = author.id %s;",
+	query := fmt.Sprintf("SELECT projects.*, %s FROM (SELECT * FROM projects %s %s) AS projects LEFT JOIN ( SELECT memos.author AS author_id, memos.project_id AS project_id FROM memos UNION SELECT author_id, reports.project_id FROM report_authors LEFT JOIN reports ON reports.id = report_authors.report_id ) AS pa ON projects.project_id = pa.project_id LEFT JOIN members author ON pa.author_id = author.id %s;",
 		args.Fields.GetFields(`author.%s "author.%s"`), restricts, limit["full"], limit["order"])
 
 	query, values, err = sqlx.In(query, values...)
@@ -217,13 +215,14 @@ func (a *projectAPI) GetProjects(args GetProjectArgs) (result []ProjectAuthors, 
 	}
 	query = DB.Rebind(query)
 	var pa []ProjectAuthor
+
 	if err = DB.Select(&pa, query, values...); err != nil {
 		log.Println(err.Error())
 		return []ProjectAuthors{}, err
 	}
-	// For returning {"_items":null}
+	// For returning {"_items":[]}
 	if len(pa) == 0 {
-		return nil, nil
+		return result, nil
 	}
 	for _, project := range pa {
 
@@ -289,6 +288,7 @@ func (a *projectAPI) InsertProject(p Project) error {
 		arg := GetProjectArgs{}
 		arg.Default()
 		arg.IDs = []int{p.ID}
+		arg.Fields = arg.FullAuthorTags()
 		arg.MaxResult = 1
 		arg.Page = 1
 		projects, err := ProjectAPI.GetProjects(arg)
@@ -326,6 +326,7 @@ func (a *projectAPI) UpdateProjects(p Project) error {
 		arg := GetProjectArgs{}
 		arg.Default()
 		arg.IDs = []int{p.ID}
+		arg.Fields = arg.FullAuthorTags()
 		arg.MaxResult = 1
 		arg.Page = 1
 		projects, err := ProjectAPI.GetProjects(arg)

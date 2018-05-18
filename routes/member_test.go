@@ -281,7 +281,7 @@ func TestRouteMembers(t *testing.T) {
 	})
 	t.Run("PostMember", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"New", "POST", "/member", `{"member_id":"spaceoddity", "name":"Major Tom"}`, http.StatusOK, `{"_items":{"last_id":4}}`},
+			genericTestcase{"New", "POST", "/member", `{"member_id":"spaceoddity", "name":"Major Tom", "mail":"spaceoddity"}`, http.StatusOK, `{"_items":{"last_id":4}}`},
 			//genericTestcase{"EmptyPayload", "POST", "/member", `{}`, http.StatusBadRequest, `{"Error":"Invalid User"}`},
 			//genericTestcase{"Existed", "POST", "/member", `{"id": 1, "member_id":"superman@mirrormedia.mg"}`, http.StatusBadRequest, `{"Error":"User Already Existed"}`},
 		} {

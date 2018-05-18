@@ -172,14 +172,6 @@ func (a *mockProjectAPI) SchedulePublish() error {
 	return nil
 }
 
-func (a *mockProjectAPI) InsertAuthors(projectID int, authorIDs []int) (err error) {
-	return err
-}
-
-func (a *mockProjectAPI) UpdateAuthors(projectID int, authorIDs []int) (err error) {
-	return err
-}
-
 var MockProjectAPI mockProjectAPI
 
 func TestRouteProjects(t *testing.T) {
@@ -365,25 +357,6 @@ func TestRouteProjects(t *testing.T) {
 			genericDoTest(tc, t, asserter)
 		}
 	})
-	t.Run("PostProjectAuthors", func(t *testing.T) {
-		testcases := []genericTestcase{
-			genericTestcase{"PostProjectAuthorsOK", "POST", `/project/author`, `{"project_id":1000010, "author_ids":[1]}`, http.StatusOK, ``},
-			genericTestcase{"PostProjectAuthorsInvalidParameters", "POST", "/project/author", `{"project_id":1000010}`, http.StatusBadRequest, `{"Error":"Insufficient Parameters"}`},
-		}
-		for _, tc := range testcases {
-			genericDoTest(tc, t, asserter)
-		}
-	})
-	t.Run("PutProjectAuthors", func(t *testing.T) {
-		testcases := []genericTestcase{
-			genericTestcase{"PutProjectAuthorsOK", "PUT", `/project/author`, `{"project_id":1000010, "author_ids":[1]}`, http.StatusOK, ``},
-			genericTestcase{"PutProjectAuthorsInvalidParameters", "PUT", "/project/author", `{"author_ids":[1000010]}`, http.StatusBadRequest, `{"Error":"Insufficient Parameters"}`},
-		}
-		for _, tc := range testcases {
-			genericDoTest(tc, t, asserter)
-		}
-	})
-
 	//Restore backuped data store
 	mockProjectDS = mockProjectDSBack
 }
