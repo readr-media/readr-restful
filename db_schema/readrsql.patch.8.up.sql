@@ -17,17 +17,17 @@ CREATE TABLE reports (
 	`updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP, 
 	`updated_by` BIGINT UNSIGNED, 
 	`published_at` DATETIME, 
-	`slug` VARCHAR(64), 
+	`slug` VARCHAR(64),
 	`views` INT, 
 	`publish_status` TINYINT, 
 	INDEX (title), 
 	INDEX (project_id)
 );
 
-CREATE TABLE report_authors 
+CREATE TABLE report_authors (
 	`id` BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT, 
-	`report_id` BIGINT UNSIGNED not null, 
-	`author_id` BIGINT UNSIGNED not null
+	`report_id` BIGINT UNSIGNED NOT NULL, 
+	`author_id` BIGINT UNSIGNED NOT NULL
 );
 CREATE INDEX report_authors ON report_authors(report_id, author_id);
 CREATE INDEX report_authors_reverse ON report_authors(author_id, report_id);
