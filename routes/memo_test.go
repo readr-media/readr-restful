@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/readr-media/readr-restful/models"
 )
@@ -36,51 +37,51 @@ func (m *mockMemoAPI) GetMemo(id int) (memo models.Memo, err error) {
 	}
 	return models.Memo{}, errors.New("Not Found")
 }
-func (m *mockMemoAPI) GetMemos(args *models.MemoGetArgs) (memos []models.Memo, err error) {
+func (m *mockMemoAPI) GetMemos(args *models.MemoGetArgs) (memos []models.MemoDetail, err error) {
 	switch {
 	case len(args.Author) > 0 && len(args.Project) > 0:
-		return []models.Memo{
-			models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullInt{135, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}},
+		return []models.MemoDetail{
+			models.MemoDetail{Memo: models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullInt{135, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}}},
 		}, nil
 	case len(args.Author) > 0 && len(args.Project) == 0:
-		return []models.Memo{
-			models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullInt{132, true}, Project: models.NullInt{421, true}, Active: models.NullInt{1, true}},
-			models.Memo{ID: 2, Title: models.NullString{"MemoTestDefault2", true}, Author: models.NullInt{135, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}},
-			models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullInt{135, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}},
+		return []models.MemoDetail{
+			models.MemoDetail{Memo: models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullInt{132, true}, Project: models.NullInt{421, true}, Active: models.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 2, Title: models.NullString{"MemoTestDefault2", true}, Author: models.NullInt{135, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullInt{135, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}}},
 		}, nil
 	case len(args.Author) == 0 && len(args.Project) > 0:
-		return []models.Memo{
-			models.Memo{ID: 3, Title: models.NullString{"MemoTestDefault3", true}, Author: models.NullInt{131, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}},
-			models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullInt{135, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}},
+		return []models.MemoDetail{
+			models.MemoDetail{Memo: models.Memo{ID: 3, Title: models.NullString{"MemoTestDefault3", true}, Author: models.NullInt{131, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullInt{135, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}}},
 		}, nil
 	case args.Sorting == "memo_id":
-		return []models.Memo{
-			models.Memo{ID: 1, Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}},
-			models.Memo{ID: 2, Title: models.NullString{"MemoTestDefault2", true}, Author: models.NullInt{135, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}},
-			models.Memo{ID: 3, Title: models.NullString{"MemoTestDefault3", true}, Author: models.NullInt{131, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}},
-			models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullInt{135, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}},
-			models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullInt{132, true}, Project: models.NullInt{421, true}, Active: models.NullInt{1, true}},
-			models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}},
+		return []models.MemoDetail{
+			models.MemoDetail{Memo: models.Memo{ID: 1, Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 2, Title: models.NullString{"MemoTestDefault2", true}, Author: models.NullInt{135, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 3, Title: models.NullString{"MemoTestDefault3", true}, Author: models.NullInt{131, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullInt{135, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullInt{132, true}, Project: models.NullInt{421, true}, Active: models.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
 		}, nil
 	case args.Page == 2:
-		return []models.Memo{
-			models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}},
+		return []models.MemoDetail{
+			models.MemoDetail{Memo: models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
 		}, nil
 	case args.MaxResult == 1:
-		return []models.Memo{
-			models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullInt{132, true}, Project: models.NullInt{421, true}, Active: models.NullInt{1, true}},
+		return []models.MemoDetail{
+			models.MemoDetail{Memo: models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullInt{132, true}, Project: models.NullInt{421, true}, Active: models.NullInt{1, true}}},
 		}, nil
 	default:
-		return []models.Memo{
-			models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullInt{132, true}, Project: models.NullInt{421, true}, Active: models.NullInt{1, true}},
-			models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}},
-			models.Memo{ID: 1, Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}},
-			models.Memo{ID: 2, Title: models.NullString{"MemoTestDefault2", true}, Author: models.NullInt{135, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}},
-			models.Memo{ID: 3, Title: models.NullString{"MemoTestDefault3", true}, Author: models.NullInt{131, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}},
-			models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullInt{135, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}},
+		return []models.MemoDetail{
+			models.MemoDetail{Memo: models.Memo{ID: 1, Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 2, Title: models.NullString{"MemoTestDefault2", true}, Author: models.NullInt{135, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullInt{132, true}, Project: models.NullInt{421, true}, Active: models.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 3, Title: models.NullString{"MemoTestDefault3", true}, Author: models.NullInt{131, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullInt{135, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}}},
 		}, nil
 	}
-	return []models.Memo{}, nil
+	return []models.MemoDetail{}, nil
 }
 func (m *mockMemoAPI) InsertMemo(memo models.Memo) (err error) {
 	if memo.ID == 0 {
@@ -123,6 +124,17 @@ func TestRouteMemos(t *testing.T) {
 		}
 	}
 
+	for _, params := range []models.Member{
+		models.Member{ID: 131, MemberID: "MemoTestDefault1@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2010, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"MemoTestDefault1@mirrormedia.mg", true}, Points: models.NullInt{0, true}, UUID: "abc1d5b1-da54-4200-b88e-f06e59fd8131", TalkID: models.NullString{"abc1d5b1-da54-4200-b58e-f06e59fd8131", true}},
+		models.Member{ID: 132, MemberID: "MemoTestDefault2@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2011, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"MemoTestDefault2@mirrormedia.mg", true}, Points: models.NullInt{0, true}, UUID: "abc1d5b1-da54-4200-b59e-f06e59fd8132", TalkID: models.NullString{"abc1d5b1-da54-4200-b59e-f06e59fd8132", true}},
+		models.Member{ID: 135, MemberID: "MemoTestDefault3@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2012, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"MemoTestDefault3@mirrormedia.mg", true}, Points: models.NullInt{0, true}, UUID: "abc1d5b1-da54-4200-b60e-f06e59fd8135", TalkID: models.NullString{"abc1d5b1-da54-4200-b60e-f06e59fd8135", true}},
+	} {
+		_, err := models.MemberAPI.InsertMember(params)
+		if err != nil {
+			log.Printf("Insert member fail when init test case. Error: %v", err)
+		}
+	}
+
 	asserter := func(resp string, tc genericTestcase, t *testing.T) {
 		type response struct {
 			Items []models.Memo `json:"_items"`
@@ -145,7 +157,6 @@ func TestRouteMemos(t *testing.T) {
 			if respmemo.ID == expmemo.ID &&
 				respmemo.Title == expmemo.Title &&
 				respmemo.Active == expmemo.Active &&
-				respmemo.Author == expmemo.Author &&
 				respmemo.Project == expmemo.Project {
 				continue
 			}
@@ -184,11 +195,11 @@ func TestRouteMemos(t *testing.T) {
 	})
 	t.Run("GetMemos", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"GetMemoDefaultOK", "GET", "/memos", ``, http.StatusOK, []models.Memo{
-				models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullInt{132, true}, Project: models.NullInt{421, true}, Active: models.NullInt{1, true}},
-				models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}},
+			genericTestcase{"GetMemoDefaultOK", "GET", "/memos?sort=project_id", ``, http.StatusOK, []models.Memo{
 				models.Memo{ID: 1, Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}},
 				models.Memo{ID: 2, Title: models.NullString{"MemoTestDefault2", true}, Author: models.NullInt{135, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}},
+				models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}},
+				models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullInt{132, true}, Project: models.NullInt{421, true}, Active: models.NullInt{1, true}},
 				models.Memo{ID: 3, Title: models.NullString{"MemoTestDefault3", true}, Author: models.NullInt{131, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}},
 				models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullInt{135, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}},
 			}},

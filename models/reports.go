@@ -139,11 +139,13 @@ func (g *GetReportArgs) FullAuthorTags() (result []string) {
 type ReportAuthors struct {
 	Report
 	Authors []Stunt `json:"authors"`
+	Project Project `json:"project"`
 }
 
 type ReportAuthor struct {
 	Report
-	Author Stunt `json:"author" db:"author"`
+	Author  Stunt   `json:"author" db:"author"`
+	Project Project `json:"projects" db:"projects"`
 }
 
 func (a *reportAPI) CountReports(arg GetReportArgs) (result int, err error) {
@@ -194,8 +196,15 @@ func (a *reportAPI) GetReports(args GetReportArgs) (result []ReportAuthors, err 
 	limit, largs := args.parseLimit()
 	values = append(values, largs...)
 
-	query := fmt.Sprintf("SELECT reports.*, %s FROM (SELECT * FROM reports %s %s) AS reports LEFT JOIN report_authors ra ON reports.id = ra.report_id LEFT JOIN members author ON ra.author_id = author.id %s;",
-		args.Fields.GetFields(`author.%s "author.%s"`), restricts, limit["full"], limit["order"])
+	projectTags := getStructDBTags("full", Project{})
+	projectField := makeFieldString("get", `projects.%s "projects.%s"`, projectTags)
+	projectIDQuery := strings.Split(projectField[0], " ")
+	projectPostQuery := strings.Split(projectField[5], " ")
+	projectField[0] = fmt.Sprintf(`IFNULL(%s, 0) %s`, projectIDQuery[0], projectIDQuery[1])
+	projectField[5] = fmt.Sprintf(`IFNULL(%s, 0) %s`, projectPostQuery[0], projectPostQuery[1])
+
+	query := fmt.Sprintf("SELECT reports.*, %s, %s FROM (SELECT * FROM reports %s %s) AS reports LEFT JOIN report_authors ra ON reports.id = ra.report_id LEFT JOIN members author ON ra.author_id = author.id LEFT JOIN projects ON reports.project_id = projects.project_id %s;",
+		args.Fields.GetFields(`author.%s "author.%s"`), strings.Join(projectField, ","), restricts, limit["full"], limit["order"])
 
 	query, values, err = sqlx.In(query, values...)
 	if err != nil {

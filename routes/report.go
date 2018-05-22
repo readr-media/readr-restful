@@ -136,7 +136,11 @@ func (r *reportHandler) Get(c *gin.Context) {
 func (r *reportHandler) Post(c *gin.Context) {
 
 	report := models.Report{}
-	c.Bind(&report)
+	err := c.ShouldBind(&report)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Report"})
+		return
+	}
 
 	// Pre-request test
 	if report.Title.Valid == false {
@@ -155,7 +159,7 @@ func (r *reportHandler) Post(c *gin.Context) {
 	report.UpdatedAt = models.NullTime{time.Now(), true}
 	report.Active = models.NullInt{int64(models.ReportActive["active"].(float64)), true}
 
-	err := models.ReportAPI.InsertReport(report)
+	err = models.ReportAPI.InsertReport(report)
 	if err != nil {
 		switch err.Error() {
 		case "Duplicate entry":
@@ -172,7 +176,12 @@ func (r *reportHandler) Post(c *gin.Context) {
 func (r *reportHandler) Put(c *gin.Context) {
 
 	report := models.Report{}
-	c.Bind(&report)
+	err := c.ShouldBind(&report)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Report Data"})
+		return
+	}
+
 	if report.ID == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Report Data"})
 		return
@@ -221,7 +230,7 @@ func (r *reportHandler) Put(c *gin.Context) {
 	}
 	report.UpdatedAt = models.NullTime{time.Now(), true}
 
-	err := models.ReportAPI.UpdateReport(report)
+	err = models.ReportAPI.UpdateReport(report)
 	if err != nil {
 		switch err.Error() {
 		case "Report Not Found":
@@ -284,7 +293,12 @@ func (r *reportHandler) PostAuthors(c *gin.Context) {
 		ReportID  *int  `json:"report_id"`
 		AuthorIDs []int `json:"author_ids"`
 	}{}
-	c.Bind(&params)
+	err := c.ShouldBind(&params)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Parameters"})
+		return
+	}
+
 	if params.ReportID == nil || params.AuthorIDs == nil || len(params.AuthorIDs) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Insufficient Parameters"})
 		return
@@ -300,7 +314,12 @@ func (r *reportHandler) PutAuthors(c *gin.Context) {
 		ReportID  *int  `json:"report_id"`
 		AuthorIDs []int `json:"author_ids"`
 	}{}
-	c.Bind(&params)
+	err := c.ShouldBind(&params)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Parameters"})
+		return
+	}
+
 	if params.ReportID == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Insufficient Parameters"})
 		return

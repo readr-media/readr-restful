@@ -34,7 +34,7 @@ type Memo struct {
 type MemoInterface interface {
 	CountMemos(args *MemoGetArgs) (int, error)
 	GetMemo(id int) (Memo, error)
-	GetMemos(args *MemoGetArgs) ([]Memo, error)
+	GetMemos(args *MemoGetArgs) ([]MemoDetail, error)
 	InsertMemo(memo Memo) error
 	UpdateMemo(memo Memo) error
 	UpdateMemos(args MemoUpdateArgs) error
@@ -100,6 +100,27 @@ func (p *MemoGetArgs) parse() (restricts string, values []interface{}) {
 	return restricts, values
 }
 
+func (p *MemoGetArgs) parseLimit() (limit map[string]string, values []interface{}) {
+	restricts := make([]string, 0)
+	limit = make(map[string]string, 2)
+	if p.Sorting != "" {
+		restricts = append(restricts, fmt.Sprintf("ORDER BY %s", orderByHelper(p.Sorting)))
+		limit["order"] = fmt.Sprintf("ORDER BY %s", orderByHelper(p.Sorting))
+	}
+	if p.MaxResult != 0 {
+		restricts = append(restricts, "LIMIT ?")
+		values = append(values, p.MaxResult)
+	}
+	if p.Page != 0 {
+		restricts = append(restricts, "OFFSET ?")
+		values = append(values, (p.Page-1)*(p.MaxResult))
+	}
+	if len(restricts) > 0 {
+		limit["full"] = fmt.Sprintf(" %s", strings.Join(restricts, " "))
+	}
+	return limit, values
+}
+
 type MemoUpdateArgs struct {
 	IDs         []int    `json:"ids"`
 	UpdatedBy   int64    `json:"updated_by"`
@@ -134,6 +155,12 @@ func (p *MemoUpdateArgs) parse() (updates string, values []interface{}) {
 	}
 
 	return updates, values
+}
+
+type MemoDetail struct {
+	Memo
+	Authors Member  `json:"author" db:"author"`
+	Project Project `json:"project" db:"project"`
 }
 
 type memoAPI struct{}
@@ -179,30 +206,50 @@ func (m *memoAPI) GetMemo(id int) (memo Memo, err error) {
 
 	return result, err
 }
-func (m *memoAPI) GetMemos(args *MemoGetArgs) (memos []Memo, err error) {
+func (m *memoAPI) GetMemos(args *MemoGetArgs) (memos []MemoDetail, err error) {
+
+	projectTags := getStructDBTags("full", Project{})
+	projectField := makeFieldString("get", `project.%s "project.%s"`, projectTags)
+	projectIDQuery := strings.Split(projectField[0], " ")
+	projectPostQuery := strings.Split(projectField[5], " ")
+	projectField[0] = fmt.Sprintf(`IFNULL(%s, 0) %s`, projectIDQuery[0], projectIDQuery[1])
+	projectField[5] = fmt.Sprintf(`IFNULL(%s, 0) %s`, projectPostQuery[0], projectPostQuery[1])
+
+	memberTags := getStructDBTags("full", Member{})
+	memberField := makeFieldString("get", `author.%s "author.%s"`, memberTags)
+	memberIDQuery := strings.Split(memberField[0], " ")
+	memberMemberIDQuery := strings.Split(memberField[1], " ")
+	memberUUIDQuery := strings.Split(memberField[2], " ")
+	memberField[0] = fmt.Sprintf(`IFNULL(%s, 0) %s`, memberIDQuery[0], memberIDQuery[1])
+	memberField[1] = fmt.Sprintf(`IFNULL(%s, "") %s`, memberMemberIDQuery[0], memberMemberIDQuery[1])
+	memberField[2] = fmt.Sprintf(`IFNULL(%s, "") %s`, memberUUIDQuery[0], memberUUIDQuery[1])
 
 	restricts, values := args.parse()
 
-	rawQuery := fmt.Sprintf(`SELECT * FROM memos %s `, restricts)
+	limit, largs := args.parseLimit()
+	values = append(values, largs...)
+
+	rawQuery := fmt.Sprintf(`SELECT memos.*, %s, %s FROM (SELECT * FROM memos %s %s) AS memos LEFT JOIN members AS author ON author.id = memos.author LEFT JOIN projects AS project ON project.project_id = memos.project_id %s;`, strings.Join(projectField, ","), strings.Join(memberField, ","), restricts, limit["full"], limit["order"])
+
 	query, sqlArgs, err := sqlx.In(rawQuery, values...)
 	if err != nil {
+		log.Println("GetMemos generate sql error", err)
 		return nil, err
 	}
 	query = DB.Rebind(query)
 
-	query = query + fmt.Sprintf(`ORDER BY %s LIMIT ? OFFSET ?`, orderByHelper(args.Sorting))
-	sqlArgs = append(sqlArgs, args.MaxResult, (args.Page-1)*args.MaxResult)
-
 	rows, err := DB.Queryx(query, sqlArgs...)
 	if err != nil {
+		log.Println("GetMemos query db error", err)
 		return nil, err
 	}
 
-	memos = []Memo{}
+	memos = []MemoDetail{}
 	for rows.Next() {
-		var memo Memo
+		var memo MemoDetail
 		if err = rows.StructScan(&memo); err != nil {
-			return []Memo{}, err
+			log.Println("GetMemos scan result error", err)
+			return []MemoDetail{}, err
 		}
 		memos = append(memos, memo)
 	}

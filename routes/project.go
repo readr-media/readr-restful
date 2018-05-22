@@ -109,7 +109,7 @@ func (r *projectHandler) Count(c *gin.Context) {
 	var args = models.GetProjectArgs{}
 	args.Default()
 	if err := r.bindQuery(c, &args); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Fields"})
 		return
 	}
 	if args.Active == nil {
@@ -129,7 +129,7 @@ func (r *projectHandler) Get(c *gin.Context) {
 	args.Default()
 
 	if err := r.bindQuery(c, &args); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Fields"})
 		return
 	}
 	if args.Active == nil {
@@ -146,7 +146,11 @@ func (r *projectHandler) Get(c *gin.Context) {
 func (r *projectHandler) Post(c *gin.Context) {
 
 	project := models.Project{}
-	c.Bind(&project)
+	err := c.ShouldBind(&project)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Project"})
+		return
+	}
 
 	// Pre-request test
 	if project.Title.Valid == false {
@@ -168,7 +172,7 @@ func (r *projectHandler) Post(c *gin.Context) {
 	}
 	project.UpdatedAt = models.NullTime{time.Now(), true}
 
-	err := models.ProjectAPI.InsertProject(project)
+	err = models.ProjectAPI.InsertProject(project)
 	if err != nil {
 		switch err.Error() {
 		case "Duplicate entry":
@@ -185,7 +189,12 @@ func (r *projectHandler) Post(c *gin.Context) {
 func (r *projectHandler) Put(c *gin.Context) {
 
 	project := models.Project{}
-	c.Bind(&project)
+	err := c.ShouldBind(&project)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
+	}
+
 	if project.ID == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Project Data"})
 		return
@@ -212,7 +221,7 @@ func (r *projectHandler) Put(c *gin.Context) {
 	}
 	project.UpdatedAt = models.NullTime{time.Now(), true}
 
-	err := models.ProjectAPI.UpdateProjects(project)
+	err = models.ProjectAPI.UpdateProjects(project)
 	if err != nil {
 		switch err.Error() {
 		case "Project Not Found":
