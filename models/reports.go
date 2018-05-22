@@ -49,8 +49,9 @@ type ReportAPIInterface interface {
 
 type GetReportArgs struct {
 	// Match List
-	IDs   []int    `form:"ids" json:"ids"`
-	Slugs []string `form:"slugs" json:"slugs"`
+	IDs     []int    `form:"ids" json:"ids"`
+	Slugs   []string `form:"slugs" json:"slugs"`
+	Project []int64  `form:"project_id" json:"project_id"`
 	// IN/NOT IN
 	Active        map[string][]int `form:"active" json:"active"`
 	PublishStatus map[string][]int `form:"publish_status" json:"publish_status"`
@@ -96,6 +97,10 @@ func (p *GetReportArgs) parse() (restricts string, values []interface{}) {
 	if len(p.Slugs) != 0 {
 		where = append(where, fmt.Sprintf("%s %s (?)", "reports.slug", operatorHelper("in")))
 		values = append(values, p.Slugs)
+	}
+	if len(p.Project) > 0 {
+		where = append(where, fmt.Sprintf("%s IN (?)", "project_id"))
+		values = append(values, p.Project)
 	}
 	if p.Keyword != "" {
 		p.Keyword = fmt.Sprintf("%s%s%s", "%", p.Keyword, "%")
