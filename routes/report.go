@@ -54,6 +54,12 @@ func (r *reportHandler) bindQuery(c *gin.Context, args *models.GetReportArgs) (e
 			return err
 		}
 	}
+	if c.Query("project_id") != "" {
+		if err = json.Unmarshal([]byte(c.Query("project_id")), &args.Project); err != nil {
+			log.Println(err.Error())
+			return err
+		}
+	}
 	if c.Query("max_result") != "" {
 		if err = json.Unmarshal([]byte(c.Query("max_result")), &args.MaxResult); err != nil {
 			log.Println(err.Error())
