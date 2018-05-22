@@ -223,9 +223,8 @@ func (a *reportAPI) GetReports(args GetReportArgs) (result []ReportAuthors, err 
 		return result, nil
 	}
 	for _, report := range ra {
-
 		var notNullAuthor = func(in ReportAuthor) ReportAuthors {
-			ras := ReportAuthors{Report: in.Report}
+			ras := ReportAuthors{Report: in.Report, Project: in.Project}
 			if report.Author != (Stunt{}) {
 				ras.Authors = append(ras.Authors, in.Author)
 			}
