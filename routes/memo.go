@@ -141,7 +141,7 @@ func (r *memoHandler) Put(c *gin.Context) {
 
 	err := c.ShouldBindJSON(&memo)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Memo Data"})
 		return
 	}
 	if memo.PublishStatus.Valid {
@@ -234,7 +234,7 @@ func (r *memoHandler) DeleteMany(c *gin.Context) {
 	params := models.MemoUpdateArgs{}
 	err := c.ShouldBindJSON(&params)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Memo"})
 		return
 	}
 	if len(params.IDs) == 0 {
