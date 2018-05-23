@@ -17,7 +17,7 @@ type Comment struct {
 	OgDescription NullString `json:"og_description" db:"og_description"`
 	OgImage       NullString `json:"og_image" db:"og_image"`
 	LikeAmount    NullInt    `json:"like_amount" db:"like_amount"`
-	ParentID      NullString `json:"parent_id" db:"parent_id"`
+	ParentID      NullInt    `json:"parent_id" db:"parent_id"`
 	Resource      NullString `json:"resource" db:"resource"`
 	Status        NullInt    `json:"status" db:"status"`
 	Active        NullInt    `json:"active" db:"active"`
