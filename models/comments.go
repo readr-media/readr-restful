@@ -28,10 +28,10 @@ type Comment struct {
 
 type CommentAuthor struct {
 	Comment
-	AuthorNickname string `json:"author_nickname" db:"author_nickname"`
-	AuthorImage    string `json:"author_image" db:"author_image"`
-	AuthorRole     int    `json:"author_role" db:"author_role"`
-	CommentAmount  int    `json:"comment_amount" db:"comment_amount"`
+	AuthorNickname NullString `json:"author_nickname" db:"author_nickname"`
+	AuthorImage    NullString `json:"author_image" db:"author_image"`
+	AuthorRole     NullInt    `json:"author_role" db:"author_role"`
+	CommentAmount  NullInt    `json:"comment_amount" db:"comment_amount"`
 }
 
 type ReportedComment struct {
