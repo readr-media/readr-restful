@@ -11,7 +11,7 @@ import (
 
 type Comment struct {
 	ID            int64      `json:"id" db:"id"`
-	Author        int64      `json:"author" db:"author"`
+	Author        NullInt    `json:"author" db:"author"`
 	Body          NullString `json:"body" db:"body"`
 	OgTitle       NullString `json:"og_title" db:"og_title"`
 	OgDescription NullString `json:"og_description" db:"og_description"`

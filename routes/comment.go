@@ -95,7 +95,7 @@ func (r *commentsHandler) PostComment(c *gin.Context) {
 		return
 	}
 
-	if !comment.Body.Valid || comment.Author == 0 || !comment.Resource.Valid {
+	if !comment.Body.Valid || !comment.Author.Valid || !comment.Resource.Valid {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Missing Required Parameters"})
 	}
 
@@ -119,7 +119,7 @@ func (r *commentsHandler) PutComment(c *gin.Context) {
 		return
 	}
 
-	if comment.ID == 0 || comment.ParentID.Valid || comment.Resource.Valid || comment.CreatedAt.Valid || comment.Author != 0 {
+	if comment.ID == 0 || comment.ParentID.Valid || comment.Resource.Valid || comment.CreatedAt.Valid || comment.Author.Valid {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Parameters"})
 		return
 	}
