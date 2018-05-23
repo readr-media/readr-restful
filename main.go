@@ -100,6 +100,7 @@ func main() {
 	routes.PointsHandler.SetRoutes(router)
 	routes.PostHandler.SetRoutes(router)
 	routes.ProjectHandler.SetRoutes(router)
+	routes.PubsubHandler.SetRoutes(router)
 	routes.ReportHandler.SetRoutes(router)
 	routes.TagHandler.SetRoutes(router)
 

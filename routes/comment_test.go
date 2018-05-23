@@ -179,6 +179,19 @@ func TestRouteComments(t *testing.T) {
 		}
 	}
 
+	transformPubsub := func(tc genericTestcase) genericTestcase {
+		meta := PubsubMessageMeta{
+			Subscription: "sub",
+			Message: PubsubMessageMetaBody{
+				ID:   "1",
+				Body: []byte(tc.body.(string)),
+				Attr: map[string]string{"type": "comment", "action": tc.method},
+			},
+		}
+
+		return genericTestcase{tc.name, "POST", "/restful/pubsub", meta, tc.httpcode, tc.resp}
+	}
+
 	t.Run("GetComment", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
 			genericTestcase{"GetCommentOK", "GET", `/comment?author=[90,91,92]&resource=["readr-post-90"]&sort=-updated_at`, ``, http.StatusOK, []models.CommentAuthor{mockCommentResult[0], mockCommentResult[2]}},
@@ -198,36 +211,36 @@ func TestRouteComments(t *testing.T) {
 	})
 	t.Run("InsertComment", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"InsertCommentOK", "POST", "/comment", `{"body":"成功", "resource":"readr-post-90", "author":91}`, http.StatusOK, ``},
-			genericTestcase{"InsertCommentWithIPOK", "POST", "/comment", `{"body":"成功2", "resource":"readr-post-92", "author":92, "ip":"1.2.3.4"}`, http.StatusOK, ``},
-			genericTestcase{"InsertCommentMissingRequired", "POST", "/comment", `{"body":"成功", "author":91}`, http.StatusBadRequest, `{"Error":"Missing Required Parameters"}`},
-			genericTestcase{"InsertCommentWithCreatedAt", "POST", "/comment", `{"body":"成功，created_at 被無視", "resource":"readr-post-90", "author":91, "created_at":"2046-01-05T00:42:42+00:00"}`, http.StatusOK, ``},
+			genericTestcase{"InsertCommentOK", "post", "/comment", `{"body":"成功","resource":"readr-post-90","author":91}`, http.StatusOK, ``},
+			genericTestcase{"InsertCommentWithIPOK", "post", "/comment", `{"body":"成功2","resource":"readr-post-92","author":92,"ip":"1.2.3.4"}`, http.StatusOK, ``},
+			genericTestcase{"InsertCommentMissingRequired", "post", "/comment", `{"body":"成功","author":91}`, http.StatusOK, `{"Error":"Missing Required Parameters"}`},
+			genericTestcase{"InsertCommentWithCreatedAt", "post", "/comment", `{"body":"成功，created_at 被無視","resource":"readr-post-90","author":91,"created_at":"2046-01-05T00:42:42+00:00"}`, http.StatusOK, ``},
 		} {
-			genericDoTest(testcase, t, asserter)
+			genericDoTest(transformPubsub(testcase), t, asserter)
 		}
 	})
 	t.Run("UpdateComment", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"UpdateCommentOK", "PUT", "/comment", `{"id":1, "body":"modified"}`, http.StatusOK, ``},
-			genericTestcase{"UpdateCommentMissingID", "PUT", "/comment", `{"solved":1}`, http.StatusBadRequest, `{"Error":"Invalid Parameters"}`},
-			genericTestcase{"UpdateAuthorFail", "PUT", "/comment", `{"id":1, "author":90}`, http.StatusBadRequest, `{"Error":"Invalid Parameters"}`},
+			genericTestcase{"UpdateCommentOK", "put", "/comment", `{"id":1, "body":"modified"}`, http.StatusOK, ``},
+			genericTestcase{"UpdateCommentMissingID", "put", "/comment", `{"solved":1}`, http.StatusOK, `{"Error":"Invalid Parameters"}`},
+			genericTestcase{"UpdateAuthorFail", "put", "/comment", `{"id":1, "author":90}`, http.StatusOK, `{"Error":"Invalid Parameters"}`},
 		} {
-			genericDoTest(testcase, t, asserter)
+			genericDoTest(transformPubsub(testcase), t, asserter)
 		}
 	})
 	t.Run("UpdateComments", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"UpdateCommentOK", "PUT", "/comment/status", `{"ids":[1,2,3], "status":0}`, http.StatusOK, ``},
-			genericTestcase{"UpdateCommentNoIDs", "PUT", "/comment/status", `{"status":0}`, http.StatusBadRequest, `{"Error":"ID List Empty"}`},
+			genericTestcase{"UpdateCommentOK", "putstatus", "/comment/status", `{"ids":[1,2,3], "status":0}`, http.StatusOK, ``},
+			genericTestcase{"UpdateCommentNoIDs", "putstatus", "/comment/status", `{"status":0}`, http.StatusOK, `{"Error":"ID List Empty"}`},
 		} {
-			genericDoTest(testcase, t, asserter)
+			genericDoTest(transformPubsub(testcase), t, asserter)
 		}
 	})
 	t.Run("DeleteComments", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"DeleteCommentOK", "DELETE", "/comment", `{"ids":[1,2]}`, http.StatusOK, ``},
+			genericTestcase{"DeleteCommentOK", "delete", "/comment", `{"ids":[1,2]}`, http.StatusOK, ``},
 		} {
-			genericDoTest(testcase, t, asserter)
+			genericDoTest(transformPubsub(testcase), t, asserter)
 		}
 	})
 	t.Run("InsertReport", func(t *testing.T) {
@@ -324,7 +337,8 @@ func TestPubsubComments(t *testing.T) {
 	}
 
 	asserter := func(resp string, tc genericTestcase, t *testing.T) {
-		log.Println("ok")
+		//log.Println("ok")
+		return
 	}
 	if os.Getenv("db_driver") == "mysql" {
 		t.Run("Comments", func(t *testing.T) {

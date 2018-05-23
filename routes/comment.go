@@ -279,10 +279,6 @@ func (r *commentsHandler) SetRoutes(router *gin.Engine) {
 	commentsRouter := router.Group("/comment")
 	{
 		commentsRouter.GET("", r.GetComments)
-		commentsRouter.POST("", r.PostComment)
-		commentsRouter.PUT("", r.PutComment)
-		commentsRouter.PUT("/status", r.PutCommentStatus)
-		commentsRouter.DELETE("", r.DeleteComment)
 	}
 	reportcommentsRouter := router.Group("/reported_comment")
 	{

@@ -77,6 +77,7 @@ func TestMain(m *testing.M) {
 	PointsHandler.SetRoutes(r)
 	PostHandler.SetRoutes(r)
 	ProjectHandler.SetRoutes(r)
+	PubsubHandler.SetRoutes(r)
 	ReportHandler.SetRoutes(r)
 	TagHandler.SetRoutes(r)
 

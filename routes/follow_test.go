@@ -405,9 +405,9 @@ func TestFollowMap(t *testing.T) {
 func TestFollowingAddDelete(t *testing.T) {
 
 	type PubsubWrapperMessage struct {
-		ID   string   `json:"messageId"`
-		Attr []string `json:"attributes"`
-		Body []byte   `json:"data"`
+		ID   string            `json:"messageId"`
+		Attr map[string]string `json:"attributes"`
+		Body []byte            `json:"data"`
 	}
 
 	type PubsubWrapper struct {
@@ -453,7 +453,7 @@ func TestFollowingAddDelete(t *testing.T) {
 			t.Fail()
 		}
 
-		jsonStr, err := json.Marshal(&PubsubWrapper{"subs", PubsubWrapperMessage{"1", []string{"1"}, bodyJsonStr}})
+		jsonStr, err := json.Marshal(&PubsubWrapper{"subs", PubsubWrapperMessage{"1", map[string]string{"type": "follow", "action": testcase.in.Action}, bodyJsonStr}})
 		if err != nil {
 			t.Errorf("Fail to marshal input objects, error: %v", err.Error())
 			t.Fail()
