@@ -78,11 +78,10 @@ func (p *GetCommentArgs) parse() (restricts string, values []interface{}) {
 		values = append(values, p.Author)
 	}
 	if len(p.Resource) != 0 {
-		where = append(where, fmt.Sprintf("%s %s (?)", "comments.resource", operatorHelper("in")))
+		where = append(where, fmt.Sprintf("%s %s (?) %s", "comments.resource", operatorHelper("in"), " AND comments.parent_id IS NULL"))
 		values = append(values, p.Resource)
-	}
-	if len(p.Parent) != 0 {
-		where = append(where, fmt.Sprintf("%s %s (?)", "comments.parent", operatorHelper("in")))
+	} else if len(p.Parent) != 0 {
+		where = append(where, fmt.Sprintf("%s %s (?)", "comments.parent_id", operatorHelper("in")))
 		values = append(values, p.Parent)
 	}
 
