@@ -2,6 +2,7 @@ package routes
 
 import (
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -30,6 +31,14 @@ func (c *mockCommentAPI) GetComments(args *models.GetCommentArgs) (result []mode
 		return []models.CommentAuthor{mockCommentResult[2]}, nil
 	}
 	return result, err
+}
+
+func (c *mockCommentAPI) GetComment(id int) (comment models.Comment, err error) {
+	if id == 1 {
+		return models.Comment{ID: 1, Body: models.NullString{"Comment No.1", true}, Resource: models.NullString{"readr-post-90", true}, Author: models.NullInt{91, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}}, nil
+	} else {
+		return comment, errors.New("Comment Not Found")
+	}
 }
 func (c *mockCommentAPI) InsertComment(comment models.Comment) (id int64, err error) { return id, err }
 func (c *mockCommentAPI) UpdateComment(comment models.Comment) (err error)           { return err }
@@ -197,6 +206,14 @@ func TestRouteComments(t *testing.T) {
 			genericTestcase{"GetCommentOK", "GET", `/comment?author=[90,91,92]&resource=["readr-post-90"]&sort=-updated_at`, ``, http.StatusOK, []models.CommentAuthor{mockCommentResult[0], mockCommentResult[2]}},
 			genericTestcase{"GetCommentMultipleResourceOK", "GET", `/comment?author=[90,91]&resource=["readr-post-90", "readr-post-91"]&sort=-updated_at`, ``, http.StatusOK, []models.CommentAuthor{mockCommentResult[0]}},
 			genericTestcase{"GetCommentFilterStatusOK", "GET", `/comment?author=[92]&status={"$in":[0]}`, ``, http.StatusOK, []models.CommentAuthor{mockCommentResult[2]}},
+		} {
+			genericDoTest(testcase, t, asserter)
+		}
+	})
+	t.Run("GetSingleComment", func(t *testing.T) {
+		for _, testcase := range []genericTestcase{
+			genericTestcase{"GetCommentOK", "GET", "/comment/1", ``, http.StatusOK, `{"_items":{"id":1,"author":91,"body":"Comment No.1","og_title":null,"og_description":null,"og_image":null,"like_amount":null,"parent_id":null,"resource":"readr-post-90","status":null,"active":1,"updated_at":null,"created_at":null,"ip":null}}`},
+			genericTestcase{"GetCommentNotfound", "GET", "/comment/101", ``, http.StatusNotFound, `{"Error":"Comment Not Found"}`},
 		} {
 			genericDoTest(testcase, t, asserter)
 		}

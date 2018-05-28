@@ -1,6 +1,7 @@
 package models
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -164,6 +165,7 @@ func (p *CommentUpdateArgs) parse() (updates string, values []interface{}) {
 }
 
 type CommentInterface interface {
+	GetComment(id int) (Comment, error)
 	GetComments(args *GetCommentArgs) (result []CommentAuthor, err error)
 	InsertComment(comment Comment) (id int64, err error)
 	UpdateComment(comment Comment) (err error)
@@ -175,6 +177,22 @@ type CommentInterface interface {
 }
 
 type commentAPI struct{}
+
+func (a *commentAPI) GetComment(id int) (Comment, error) {
+	comment := Comment{}
+	err := DB.QueryRowx("SELECT * FROM comments WHERE id = ?", id).StructScan(&comment)
+	switch {
+	case err == sql.ErrNoRows:
+		err = errors.New("Comment Not Found")
+		comment = Comment{}
+	case err != nil:
+		log.Println(err.Error())
+		comment = Comment{}
+	default:
+		err = nil
+	}
+	return comment, err
+}
 
 func (c *commentAPI) GetComments(args *GetCommentArgs) (result []CommentAuthor, err error) {
 	restricts, values := args.parse()
