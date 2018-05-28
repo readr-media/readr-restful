@@ -1,0 +1,1 @@
+ALTER TABLE comments MODIFY COLUMN body text;

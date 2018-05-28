@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -64,6 +65,24 @@ func (r *commentsHandler) bindReportQuery(c *gin.Context, args *models.GetReport
 		}
 	}
 	return nil
+}
+
+func (r *commentsHandler) GetComment(c *gin.Context) {
+
+	id, _ := strconv.Atoi(c.Param("id"))
+	result, err := models.CommentAPI.GetComment(id)
+
+	if err != nil {
+		switch err.Error() {
+		case "Comment Not Found":
+			c.JSON(http.StatusNotFound, gin.H{"Error": "Comment Not Found"})
+			return
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+			return
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{"_items": result})
 }
 
 func (r *commentsHandler) GetComments(c *gin.Context) {
@@ -278,6 +297,7 @@ func (r *commentsHandler) PubsubHandler(c *gin.Context) {
 func (r *commentsHandler) SetRoutes(router *gin.Engine) {
 	commentsRouter := router.Group("/comment")
 	{
+		commentsRouter.GET("/:id", r.GetComment)
 		commentsRouter.GET("", r.GetComments)
 	}
 	reportcommentsRouter := router.Group("/reported_comment")
