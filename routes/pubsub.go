@@ -2,7 +2,6 @@ package routes
 
 import (
 	"log"
-	"strconv"
 	"time"
 
 	"encoding/json"
@@ -33,9 +32,8 @@ type PubsubMessageMeta struct {
 
 type PubsubFollowMsgBody struct {
 	Resource string `json:"resource"`
-	Action   string `json:"action"`
-	Subject  string `json:"subject"`
-	Object   string `json:"object"`
+	Subject  int    `json:"subject"`
+	Object   int    `json:"object"`
 }
 
 type pubsubHandler struct{}
@@ -59,20 +57,7 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 			return
 		}
 
-		object, err := strconv.Atoi(body.Object)
-		if err != nil {
-			log.Printf("%s fail: %v \n", actionType, err.Error())
-			c.JSON(http.StatusOK, gin.H{"Error": "Bad Request"})
-			return
-		}
-		subject, err := strconv.Atoi(body.Subject)
-		if err != nil {
-			log.Printf("%s fail: %v \n", actionType, err.Error())
-			c.JSON(http.StatusOK, gin.H{"Error": "Bad Request"})
-			return
-		}
-
-		params := models.FollowArgs{Resource: body.Resource, Subject: int64(subject), Object: int64(object)}
+		params := models.FollowArgs{Resource: body.Resource, Subject: int64(body.Subject), Object: int64(body.Object)}
 
 		switch actionType {
 		case "follow":
