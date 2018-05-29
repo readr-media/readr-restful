@@ -416,10 +416,10 @@ func TestFollowingAddDelete(t *testing.T) {
 	}
 
 	type CaseIn struct {
-		Action   string `json:action,omitempty`
+		Action   string
 		Resource string `json:resource,omitempty`
-		Subject  string `json:subject,omitempty`
-		Object   string `json:object,omitempty`
+		Subject  int    `json:subject,omitempty`
+		Object   int    `json:object,omitempty`
 	}
 
 	type CaseOut struct {
@@ -435,15 +435,14 @@ func TestFollowingAddDelete(t *testing.T) {
 		in   CaseIn
 		out  CaseOut
 	}{
-		{"AddFollowingPostOK", CaseIn{"follow", "post", "70", "84"}, CaseOut{http.StatusOK, ""}},
-		{"AddFollowingMemberOK", CaseIn{"follow", "member", "70", "72"}, CaseOut{http.StatusOK, ""}},
-		{"AddFollowingProjectOK", CaseIn{"follow", "project", "70", "840"}, CaseOut{http.StatusOK, ""}},
-		{"AddFollowingMissingResource", CaseIn{"follow", "", "70", "72"}, CaseOut{http.StatusOK, `{"Error":"Resource Not Supported"}`}},
-		{"AddFollowingMissingAction", CaseIn{"", "member", "70", "72"}, CaseOut{http.StatusOK, `{"Error":"Bad Request"}`}},
-		{"AddFollowingWrongIDForPost", CaseIn{"follow", "post", "70", "zexal"}, CaseOut{http.StatusOK, `{"Error":"Bad Request"}`}},
-		{"DeleteFollowingPostOK", CaseIn{"unfollow", "post", "70", "84"}, CaseOut{http.StatusOK, ""}},
-		{"DeleteFollowingMemberOK", CaseIn{"unfollow", "member", "70", "72"}, CaseOut{http.StatusOK, ""}},
-		{"DeleteFollowingProjectOK", CaseIn{"unfollow", "project", "70", "840"}, CaseOut{http.StatusOK, ""}},
+		{"AddFollowingPostOK", CaseIn{"follow", "post", 70, 84}, CaseOut{http.StatusOK, ""}},
+		{"AddFollowingMemberOK", CaseIn{"follow", "member", 70, 72}, CaseOut{http.StatusOK, ""}},
+		{"AddFollowingProjectOK", CaseIn{"follow", "project", 70, 840}, CaseOut{http.StatusOK, ""}},
+		{"AddFollowingMissingResource", CaseIn{"follow", "", 70, 72}, CaseOut{http.StatusOK, `{"Error":"Resource Not Supported"}`}},
+		//{"AddFollowingMissingAction", CaseIn{"follow","", "member", "70", "72"}, CaseOut{http.StatusOK, `{"Error":"Bad Request"}`}},
+		{"DeleteFollowingPostOK", CaseIn{"unfollow", "post", 70, 84}, CaseOut{http.StatusOK, ""}},
+		{"DeleteFollowingMemberOK", CaseIn{"unfollow", "member", 70, 72}, CaseOut{http.StatusOK, ""}},
+		{"DeleteFollowingProjectOK", CaseIn{"unfollow", "project", 70, 840}, CaseOut{http.StatusOK, ""}},
 	}
 
 	for _, testcase := range TestFollowingGetCases {
