@@ -105,6 +105,14 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 				c.Status(http.StatusOK)
 				return
 			}
+
+			err = models.CommentAPI.UpdateCommentAmountByResource(comment.Resource.String, "+")
+			if err != nil {
+				log.Printf("%s %s fail: %v \n", msgType, "update comment amount", err.Error())
+				c.Status(http.StatusOK)
+				return
+			}
+
 			c.Status(http.StatusOK)
 
 		case "put":
@@ -128,6 +136,12 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 			if err != nil {
 				log.Printf("%s %s fail: %v \n", msgType, actionType, err.Error())
 			}
+
+			err = models.CommentAPI.UpdateCommentAmountByIDs([]int{int(comment.ID)})
+			if err != nil {
+				log.Printf("%s %s fail: %v \n", msgType, "update comment count", err.Error())
+			}
+
 			c.Status(http.StatusOK)
 
 		case "putstatus", "delete":
@@ -164,6 +178,12 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 					log.Printf("%s %s fail: %v \n", msgType, actionType, err.Error())
 				}
 			}
+
+			err = models.CommentAPI.UpdateCommentAmountByIDs(args.IDs)
+			if err != nil {
+				log.Printf("%s %s fail: %v \n", msgType, "update comment count", err.Error())
+			}
+
 			c.Status(http.StatusOK)
 		}
 

@@ -17,9 +17,9 @@ type mockCommentAPI struct{}
 func (c *mockCommentAPI) GetComments(args *models.GetCommentArgs) (result []models.CommentAuthor, err error) {
 
 	var mockCommentResult = []models.CommentAuthor{
-		models.CommentAuthor{models.Comment{ID: 1, Body: models.NullString{"Comment No.1", true}, Resource: models.NullString{"readr-post-90", true}, Author: models.NullInt{91, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}}, models.NullString{"commenttest1", true}, models.NullString{"", false}, models.NullInt{0, false}, models.NullInt{0, false}},
-		models.CommentAuthor{models.Comment{ID: 2, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"readr-post-91", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}}, models.NullString{"commenttest2", true}, models.NullString{"", true}, models.NullInt{0, false}, models.NullInt{0, false}},
-		models.CommentAuthor{models.Comment{ID: 3, Body: models.NullString{"Comment No.3", true}, Resource: models.NullString{"readr-post-90", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, Status: models.NullInt{int64(models.CommentStatus["hide"].(float64)), true}}, models.NullString{"commenttest2", true}, models.NullString{"", true}, models.NullInt{0, false}, models.NullInt{0, false}},
+		models.CommentAuthor{models.Comment{ID: 1, Body: models.NullString{"Comment No.1", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{91, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}}, models.NullString{"commenttest1", true}, models.NullString{"", false}, models.NullInt{0, false}, models.NullInt{0, false}},
+		models.CommentAuthor{models.Comment{ID: 2, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"http://dev.readr.tw/post/91", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}}, models.NullString{"commenttest2", true}, models.NullString{"", true}, models.NullInt{0, false}, models.NullInt{0, false}},
+		models.CommentAuthor{models.Comment{ID: 3, Body: models.NullString{"Comment No.3", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, Status: models.NullInt{int64(models.CommentStatus["hide"].(float64)), true}}, models.NullString{"commenttest2", true}, models.NullString{"", true}, models.NullInt{0, false}, models.NullInt{0, false}},
 	}
 
 	switch len(args.Author) {
@@ -35,7 +35,7 @@ func (c *mockCommentAPI) GetComments(args *models.GetCommentArgs) (result []mode
 
 func (c *mockCommentAPI) GetComment(id int) (comment models.Comment, err error) {
 	if id == 1 {
-		return models.Comment{ID: 1, Body: models.NullString{"Comment No.1", true}, Resource: models.NullString{"readr-post-90", true}, Author: models.NullInt{91, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}}, nil
+		return models.Comment{ID: 1, Body: models.NullString{"Comment No.1", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{91, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}}, nil
 	} else {
 		return comment, errors.New("Comment Not Found")
 	}
@@ -47,9 +47,9 @@ func (c *mockCommentAPI) UpdateComments(req models.CommentUpdateArgs) (err error
 func (c *mockCommentAPI) GetReportedComments(args *models.GetReportedCommentArgs) (result []models.ReportedCommentAuthor, err error) {
 
 	var mockCommentResult = []models.CommentAuthor{
-		models.CommentAuthor{models.Comment{ID: 1, Body: models.NullString{"Comment No.1", true}, Resource: models.NullString{"readr-post-90", true}, Author: models.NullInt{91, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}}, models.NullString{"commenttest1", true}, models.NullString{"", false}, models.NullInt{0, false}, models.NullInt{0, false}},
-		models.CommentAuthor{models.Comment{ID: 2, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"readr-post-91", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, IP: models.NullString{"5.6.7.8", true}}, models.NullString{"commenttest2", true}, models.NullString{"pi2", true}, models.NullInt{3, true}, models.NullInt{0, true}},
-		models.CommentAuthor{models.Comment{ID: 3, Body: models.NullString{"Comment No.3", true}, Resource: models.NullString{"readr-post-90", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, Status: models.NullInt{int64(models.CommentStatus["hide"].(float64)), true}}, models.NullString{"commenttest2", true}, models.NullString{"", true}, models.NullInt{0, false}, models.NullInt{0, false}},
+		models.CommentAuthor{models.Comment{ID: 1, Body: models.NullString{"Comment No.1", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{91, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}}, models.NullString{"commenttest1", true}, models.NullString{"", false}, models.NullInt{0, false}, models.NullInt{0, false}},
+		models.CommentAuthor{models.Comment{ID: 2, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"http://dev.readr.tw/post/91", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, IP: models.NullString{"5.6.7.8", true}}, models.NullString{"commenttest2", true}, models.NullString{"pi2", true}, models.NullInt{3, true}, models.NullInt{0, true}},
+		models.CommentAuthor{models.Comment{ID: 3, Body: models.NullString{"Comment No.3", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, Status: models.NullInt{int64(models.CommentStatus["hide"].(float64)), true}}, models.NullString{"commenttest2", true}, models.NullString{"", true}, models.NullInt{0, false}, models.NullInt{0, false}},
 	}
 
 	var mockReports = []models.ReportedComment{
@@ -65,8 +65,8 @@ func (c *mockCommentAPI) GetReportedComments(args *models.GetReportedCommentArgs
 	case 0:
 		result = append(result, models.ReportedCommentAuthor{Comment: mockCommentResult[1], Report: mockReports[0]})
 		result = append(result, models.ReportedCommentAuthor{Comment: mockCommentResult[1], Report: mockReports[1]})
-		//result = append(result, models.ReportedCommentAuthor{models.CommentAuthor{models.Comment{ID: 2, Author: 92, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"readr-post-91", true}, Active: models.NullInt{1, true}}, "commenttest2", "pi2", 3, 0}, models.NullString{"", false}, 0, 92, models.NullInt{0, false}})
-		//result = append(result, models.ReportedCommentAuthor{models.CommentAuthor{models.Comment{ID: 2, Author: 92, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"readr-post-91", true}, Active: models.NullInt{1, true}}, "commenttest2", "pi2", 3, 0}, models.NullString{"", false}, 0, 90, models.NullInt{0, false}})
+		//result = append(result, models.ReportedCommentAuthor{models.CommentAuthor{models.Comment{ID: 2, Author: 92, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"http://dev.readr.tw/post/91", true}, Active: models.NullInt{1, true}}, "commenttest2", "pi2", 3, 0}, models.NullString{"", false}, 0, 92, models.NullInt{0, false}})
+		//result = append(result, models.ReportedCommentAuthor{models.CommentAuthor{models.Comment{ID: 2, Author: 92, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"http://dev.readr.tw/post/91", true}, Active: models.NullInt{1, true}}, "commenttest2", "pi2", 3, 0}, models.NullString{"", false}, 0, 90, models.NullInt{0, false}})
 		return result, err
 	}
 	return result, err
@@ -77,20 +77,26 @@ func (c *mockCommentAPI) InsertReportedComments(report models.ReportedComment) (
 func (c *mockCommentAPI) UpdateReportedComments(report models.ReportedComment) (err error) {
 	return err
 }
+func (c *mockCommentAPI) UpdateCommentAmountByResource(resource string, action string) (err error) {
+	return err
+}
+func (c *mockCommentAPI) UpdateCommentAmountByIDs(ids []int) (err error) {
+	return err
+}
 
 func TestRouteComments(t *testing.T) {
 	log.Println("test start")
 
 	var mockComments = []models.Comment{
-		models.Comment{ID: 1, Body: models.NullString{"Comment No.1", true}, Resource: models.NullString{"readr-post-90", true}, Author: models.NullInt{91, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}},
-		models.Comment{ID: 2, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"readr-post-91", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, IP: models.NullString{"5.6.7.8", true}},
-		models.Comment{ID: 3, Body: models.NullString{"Comment No.3", true}, Resource: models.NullString{"readr-post-90", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, Status: models.NullInt{int64(models.CommentStatus["hide"].(float64)), true}},
+		models.Comment{ID: 1, Body: models.NullString{"Comment No.1", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{91, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}},
+		models.Comment{ID: 2, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"http://dev.readr.tw/post/91", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, IP: models.NullString{"5.6.7.8", true}},
+		models.Comment{ID: 3, Body: models.NullString{"Comment No.3", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, Status: models.NullInt{int64(models.CommentStatus["hide"].(float64)), true}},
 	}
 
 	var mockCommentResult = []models.CommentAuthor{
-		models.CommentAuthor{models.Comment{ID: 1, Body: models.NullString{"Comment No.1", true}, Resource: models.NullString{"readr-post-90", true}, Author: models.NullInt{91, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}}, models.NullString{"commenttest1", true}, models.NullString{"", false}, models.NullInt{0, false}, models.NullInt{0, false}},
-		models.CommentAuthor{models.Comment{ID: 2, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"readr-post-91", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}}, models.NullString{"commenttest2", true}, models.NullString{"", false}, models.NullInt{0, false}, models.NullInt{0, false}},
-		models.CommentAuthor{models.Comment{ID: 3, Body: models.NullString{"Comment No.3", true}, Resource: models.NullString{"readr-post-90", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, Status: models.NullInt{int64(models.CommentStatus["hide"].(float64)), true}}, models.NullString{"commenttest2", true}, models.NullString{"", false}, models.NullInt{0, false}, models.NullInt{0, false}},
+		models.CommentAuthor{models.Comment{ID: 1, Body: models.NullString{"Comment No.1", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{91, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}}, models.NullString{"commenttest1", true}, models.NullString{"", false}, models.NullInt{0, false}, models.NullInt{0, false}},
+		models.CommentAuthor{models.Comment{ID: 2, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"http://dev.readr.tw/post/91", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}}, models.NullString{"commenttest2", true}, models.NullString{"", false}, models.NullInt{0, false}, models.NullInt{0, false}},
+		models.CommentAuthor{models.Comment{ID: 3, Body: models.NullString{"Comment No.3", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, Status: models.NullInt{int64(models.CommentStatus["hide"].(float64)), true}}, models.NullString{"commenttest2", true}, models.NullString{"", false}, models.NullInt{0, false}, models.NullInt{0, false}},
 	}
 
 	var mockReports = []models.ReportedComment{
@@ -203,8 +209,8 @@ func TestRouteComments(t *testing.T) {
 
 	t.Run("GetComment", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"GetCommentOK", "GET", `/comment?author=[90,91,92]&resource=["readr-post-90"]&sort=-updated_at`, ``, http.StatusOK, []models.CommentAuthor{mockCommentResult[0], mockCommentResult[2]}},
-			genericTestcase{"GetCommentMultipleResourceOK", "GET", `/comment?author=[90,91]&resource=["readr-post-90", "readr-post-91"]&sort=-updated_at`, ``, http.StatusOK, []models.CommentAuthor{mockCommentResult[0]}},
+			genericTestcase{"GetCommentOK", "GET", `/comment?author=[90,91,92]&resource=["http://dev.readr.tw/post/90"]&sort=-updated_at`, ``, http.StatusOK, []models.CommentAuthor{mockCommentResult[0], mockCommentResult[2]}},
+			genericTestcase{"GetCommentMultipleResourceOK", "GET", `/comment?author=[90,91]&resource=["http://dev.readr.tw/post/90", "http://dev.readr.tw/post/91"]&sort=-updated_at`, ``, http.StatusOK, []models.CommentAuthor{mockCommentResult[0]}},
 			genericTestcase{"GetCommentFilterStatusOK", "GET", `/comment?author=[92]&status={"$in":[0]}`, ``, http.StatusOK, []models.CommentAuthor{mockCommentResult[2]}},
 		} {
 			genericDoTest(testcase, t, asserter)
@@ -212,7 +218,7 @@ func TestRouteComments(t *testing.T) {
 	})
 	t.Run("GetSingleComment", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"GetCommentOK", "GET", "/comment/1", ``, http.StatusOK, `{"_items":{"id":1,"author":91,"body":"Comment No.1","og_title":null,"og_description":null,"og_image":null,"like_amount":null,"parent_id":null,"resource":"readr-post-90","status":null,"active":1,"updated_at":null,"created_at":null,"ip":null}}`},
+			genericTestcase{"GetCommentOK", "GET", "/comment/1", ``, http.StatusOK, `{"_items":{"id":1,"author":91,"body":"Comment No.1","og_title":null,"og_description":null,"og_image":null,"like_amount":null,"parent_id":null,"resource":"http://dev.readr.tw/post/90","status":null,"active":1,"updated_at":null,"created_at":null,"ip":null}}`},
 			genericTestcase{"GetCommentNotfound", "GET", "/comment/101", ``, http.StatusNotFound, `{"Error":"Comment Not Found"}`},
 		} {
 			genericDoTest(testcase, t, asserter)
@@ -220,18 +226,18 @@ func TestRouteComments(t *testing.T) {
 	})
 	t.Run("GetReport", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"GetReportOK", "GET", "/reported_comment", ``, http.StatusOK, `{"_items":[{"comments":{"id":2,"author":92,"body":"Comment No.2","og_title":null,"og_description":null,"og_image":null,"like_amount":null,"parent_id":null,"resource":"readr-post-91","status":null,"active":1,"updated_at":null,"created_at":null,"ip":"5.6.7.8","author_nickname":"commenttest2","author_image":"pi2","author_role":3,"comment_amount":0},"reported":{"id":1,"comment_id":2,"reporter":92,"reason":null,"solved":null,"updated_at":null,"created_at":null,"ip":"1.2.3.4"}},{"comments":{"id":2,"author":92,"body":"Comment No.2","og_title":null,"og_description":null,"og_image":null,"like_amount":null,"parent_id":null,"resource":"readr-post-91","status":null,"active":1,"updated_at":null,"created_at":null,"ip":"5.6.7.8","author_nickname":"commenttest2","author_image":"pi2","author_role":3,"comment_amount":0},"reported":{"id":2,"comment_id":2,"reporter":90,"reason":null,"solved":null,"updated_at":null,"created_at":null,"ip":null}}]}`},
-			genericTestcase{"GetReportOK", "GET", "/reported_comment?reporter=[90]", ``, http.StatusOK, `{"_items":[{"comments":{"id":2,"author":92,"body":"Comment No.2","og_title":null,"og_description":null,"og_image":null,"like_amount":null,"parent_id":null,"resource":"readr-post-91","status":null,"active":1,"updated_at":null,"created_at":null,"ip":"5.6.7.8","author_nickname":"commenttest2","author_image":"pi2","author_role":3,"comment_amount":0},"reported":{"id":2,"comment_id":2,"reporter":90,"reason":null,"solved":null,"updated_at":null,"created_at":null,"ip":null}}]}`},
+			genericTestcase{"GetReportOK", "GET", "/reported_comment", ``, http.StatusOK, `{"_items":[{"comments":{"id":2,"author":92,"body":"Comment No.2","og_title":null,"og_description":null,"og_image":null,"like_amount":null,"parent_id":null,"resource":"http://dev.readr.tw/post/91","status":null,"active":1,"updated_at":null,"created_at":null,"ip":"5.6.7.8","author_nickname":"commenttest2","author_image":"pi2","author_role":3,"comment_amount":0},"reported":{"id":1,"comment_id":2,"reporter":92,"reason":null,"solved":null,"updated_at":null,"created_at":null,"ip":"1.2.3.4"}},{"comments":{"id":2,"author":92,"body":"Comment No.2","og_title":null,"og_description":null,"og_image":null,"like_amount":null,"parent_id":null,"resource":"http://dev.readr.tw/post/91","status":null,"active":1,"updated_at":null,"created_at":null,"ip":"5.6.7.8","author_nickname":"commenttest2","author_image":"pi2","author_role":3,"comment_amount":0},"reported":{"id":2,"comment_id":2,"reporter":90,"reason":null,"solved":null,"updated_at":null,"created_at":null,"ip":null}}]}`},
+			genericTestcase{"GetReportOK", "GET", "/reported_comment?reporter=[90]", ``, http.StatusOK, `{"_items":[{"comments":{"id":2,"author":92,"body":"Comment No.2","og_title":null,"og_description":null,"og_image":null,"like_amount":null,"parent_id":null,"resource":"http://dev.readr.tw/post/91","status":null,"active":1,"updated_at":null,"created_at":null,"ip":"5.6.7.8","author_nickname":"commenttest2","author_image":"pi2","author_role":3,"comment_amount":0},"reported":{"id":2,"comment_id":2,"reporter":90,"reason":null,"solved":null,"updated_at":null,"created_at":null,"ip":null}}]}`},
 		} {
 			genericDoTest(testcase, t, asserter)
 		}
 	})
 	t.Run("InsertComment", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"InsertCommentOK", "post", "/comment", `{"body":"成功","resource":"readr-post-90","author":91}`, http.StatusOK, ``},
-			genericTestcase{"InsertCommentWithIPOK", "post", "/comment", `{"body":"成功2","resource":"readr-post-92","author":92,"ip":"1.2.3.4"}`, http.StatusOK, ``},
+			genericTestcase{"InsertCommentOK", "post", "/comment", `{"body":"成功","resource":"http://dev.readr.tw/post/90","author":91}`, http.StatusOK, ``},
+			genericTestcase{"InsertCommentWithIPOK", "post", "/comment", `{"body":"成功2","resource":"http://dev.readr.tw/post/92","author":92,"ip":"1.2.3.4"}`, http.StatusOK, ``},
 			genericTestcase{"InsertCommentMissingRequired", "post", "/comment", `{"body":"成功","author":91}`, http.StatusOK, `{"Error":"Missing Required Parameters"}`},
-			genericTestcase{"InsertCommentWithCreatedAt", "post", "/comment", `{"body":"成功，created_at 被無視","resource":"readr-post-90","author":91,"created_at":"2046-01-05T00:42:42+00:00"}`, http.StatusOK, ``},
+			genericTestcase{"InsertCommentWithCreatedAt", "post", "/comment", `{"body":"成功，created_at 被無視","resource":"http://dev.readr.tw/post/90","author":91,"created_at":"2046-01-05T00:42:42+00:00"}`, http.StatusOK, ``},
 		} {
 			genericDoTest(transformPubsub(testcase), t, asserter)
 		}

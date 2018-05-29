@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -174,6 +175,9 @@ type CommentInterface interface {
 	GetReportedComments(args *GetReportedCommentArgs) ([]ReportedCommentAuthor, error)
 	InsertReportedComments(report ReportedComment) (id int64, err error)
 	UpdateReportedComments(report ReportedComment) (err error)
+
+	UpdateCommentAmountByResource(resource string, action string) (err error)
+	UpdateCommentAmountByIDs(ids []int) (err error)
 }
 
 type commentAPI struct{}
@@ -386,6 +390,84 @@ func (c *commentAPI) UpdateReportedComments(report ReportedComment) (err error) 
 	}
 
 	return err
+}
+
+func (c *commentAPI) UpdateCommentAmountByIDs(ids []int) (err error) {
+	query, values, err := sqlx.In("SELECT DISTINCT resource FROM comments WHERE id IN (?);", ids)
+	if err != nil {
+		log.Println(err.Error())
+		return err
+	}
+	query = DB.Rebind(query)
+
+	var resources []string
+	err = DB.Select(&resources, query, values...)
+	if err != nil {
+		log.Println(err.Error())
+		return err
+	}
+
+	for _, res := range resources {
+		id, name, idname := c.resourceParse(res)
+		log.Println(fmt.Sprintf(`UPDATE %s SET comment_amount=(SELECT count(id) FROM comments WHERE resource="%s" AND status=%d AND active=%d) WHERE %s="%s";`, name, res, int(CommentStatus["show"].(float64)), int(CommentActive["active"].(float64)), idname, id))
+		_, err := DB.Exec(fmt.Sprintf(`UPDATE %s SET comment_amount=(SELECT count(id) FROM comments WHERE resource="%s" AND status=%d AND active=%d) WHERE %s="%s";`, name, res, int(CommentStatus["show"].(float64)), int(CommentActive["active"].(float64)), idname, id))
+		if err != nil {
+			log.Println(err.Error())
+			return err
+		}
+	}
+
+	return err
+}
+
+func (c *commentAPI) UpdateCommentAmountByResource(resource string, action string) (err error) {
+	id, resource_name, idname := c.resourceParse(resource)
+	var adjustment string
+
+	switch action {
+	case "+":
+		adjustment = "+ 1"
+	case "-":
+		adjustment = "- 1"
+	default:
+		return errors.New("Unknown Action")
+	}
+
+	query := fmt.Sprintf(`UPDATE %s SET comment_amount= IF(comment_amount IS NULL, 1, comment_amount %s) WHERE %s="%s";`, resource_name, adjustment, idname, id)
+	if resource == "http://dev.readr.tw/post/92" {
+		log.Println(query)
+	}
+	_, err = DB.Exec(query)
+	if err != nil {
+		return err
+	}
+	return err
+}
+
+func (c *commentAPI) resourceParse(resource string) (string, string, string) {
+	log.Println(resource, regexp.MustCompile("//[a-zA-Z0-9_.]*/.*/([0-9]*)$").FindStringSubmatch(resource))
+	r_id := regexp.MustCompile("//[a-zA-Z0-9_.]*/.*/([0-9]*)$").FindStringSubmatch(resource)[1]
+	r := regexp.MustCompile("//[a-zA-Z0-9_.]*/(.*)/[0-9]*$")
+
+	r_name := ""
+	r_idname := ""
+
+	switch r.FindStringSubmatch(resource)[1] {
+	case "post":
+		r_name = "posts"
+		r_idname = "post_id"
+	case "project":
+		r_name = "projects"
+		r_idname = "project_id"
+	case "memo":
+		r_name = "memos"
+		r_idname = "memo_id"
+	case "report":
+		r_name = "reports"
+		r_idname = "id"
+	}
+
+	return r_id, r_name, r_idname
 }
 
 var CommentAPI CommentInterface = new(commentAPI)
