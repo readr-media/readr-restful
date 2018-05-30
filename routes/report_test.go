@@ -125,20 +125,19 @@ func (a *mockReportAPI) GetReports(args models.GetReportArgs) (result []models.R
 	}, nil
 }
 
-func (a *mockReportAPI) InsertReport(p models.Report) error {
+func (a *mockReportAPI) InsertReport(p models.Report) (int, error) {
 	for _, report := range mockReportDS {
 		if p.ID == report.ID {
-			return errors.New("Duplicate entry")
+			return 0, errors.New("Duplicate entry")
 		}
 	}
 
-	mockReportDS = append(mockReportDS, p)
 	if p.ID == 0 {
-		lastIndex := len(mockReportDS)
-		mockReportDS[lastIndex-1].ID = lastIndex
+		p.ID = 32769
 	}
 
-	return nil
+	mockReportDS = append(mockReportDS, p)
+	return int(p.ID), nil
 }
 
 func (a *mockReportAPI) UpdateReport(p models.Report) error {
@@ -192,7 +191,7 @@ func TestRouteReports(t *testing.T) {
 		models.Report{Active: models.NullInt{1, true}, Title: models.NullString{"Alpha", true}, PublishStatus: models.NullInt{1, true}},
 		models.Report{ID: 32767, Active: models.NullInt{1, true}, Title: models.NullString{"Omega", true}},
 	} {
-		err := models.ReportAPI.InsertReport(params)
+		_, err := models.ReportAPI.InsertReport(params)
 		if err != nil {
 			log.Printf("Insert report fail when init test case. Error: %v", err)
 		}
@@ -243,10 +242,10 @@ func TestRouteReports(t *testing.T) {
 
 	t.Run("PostReport", func(t *testing.T) {
 		testcases := []genericTestcase{
-			genericTestcase{"PostReportOK", "POST", "/report", `{"id":32768,"title":"OK","post_id":188,"like_amount":0,"comment_amount":0,"active":1,"slug":"sampleslug0001"}`, http.StatusOK, ``},
-			genericTestcase{"PostReportSlug", "POST", "/report", `{"id":32233,"title":"OK","post_id":188,"active":1,"slug":"sampleslug0002"}`, http.StatusOK, ``},
-			genericTestcase{"PostReportNonActive", "POST", "/report", `{"id":32234,"title":"nonActive","post_id":188}`, http.StatusOK, ``},
-			genericTestcase{"PostReportNoID", "POST", "/report", `{"title":"OK","post_id":188,"description":"id not provided", "like_amount":0,"comment_amount":0,"active":1}`, http.StatusOK, ``},
+			genericTestcase{"PostReportOK", "POST", "/report", `{"id":32768,"title":"OK","post_id":188,"like_amount":0,"comment_amount":0,"active":1,"slug":"sampleslug0001"}`, http.StatusOK, `{"_items":{"last_id":32768}}`},
+			genericTestcase{"PostReportSlug", "POST", "/report", `{"id":32233,"title":"OK","post_id":188,"active":1,"slug":"sampleslug0002"}`, http.StatusOK, `{"_items":{"last_id":32233}}`},
+			genericTestcase{"PostReportNonActive", "POST", "/report", `{"id":32234,"title":"nonActive","post_id":188}`, http.StatusOK, `{"_items":{"last_id":32234}}`},
+			genericTestcase{"PostReportNoID", "POST", "/report", `{"title":"OK","post_id":188,"description":"id not provided", "like_amount":0,"comment_amount":0,"active":1}`, http.StatusOK, `{"_items":{"last_id":32769}}`},
 			genericTestcase{"PostReportEmptyBody", "POST", "/report", ``, http.StatusBadRequest, `{"Error":"Invalid Report"}`},
 			genericTestcase{"PostReportDupe", "POST", "/report", `{"id":32767, "title":"Dupe"}`, http.StatusBadRequest, `{"Error":"Report Already Existed"}`},
 		}

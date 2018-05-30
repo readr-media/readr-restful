@@ -40,7 +40,7 @@ type ReportAPIInterface interface {
 	DeleteReport(p Report) error
 	GetReport(p Report) (Report, error)
 	GetReports(args GetReportArgs) ([]ReportAuthors, error)
-	InsertReport(p Report) error
+	InsertReport(p Report) (int, error)
 	UpdateReport(p Report) error
 	SchedulePublish() error
 	InsertAuthors(id int, authors []int) (err error)
@@ -256,30 +256,30 @@ func (a *reportAPI) GetReports(args GetReportArgs) (result []ReportAuthors, err 
 	return result, nil
 }
 
-func (a *reportAPI) InsertReport(p Report) error {
+func (a *reportAPI) InsertReport(p Report) (lastID int, err error) {
 
 	query, _ := generateSQLStmt("insert", "reports", p)
 	result, err := DB.NamedExec(query, p)
 
 	if err != nil {
 		if strings.Contains(err.Error(), "Duplicate entry") {
-			return errors.New("Duplicate entry")
+			return lastID, errors.New("Duplicate entry")
 		}
-		return err
+		return lastID, err
 	}
 	rowCnt, err := result.RowsAffected()
 	if err != nil {
 		log.Fatal(err)
 	}
 	if rowCnt > 1 {
-		return errors.New("More Than One Rows Affected") //Transaction rollback?
+		return lastID, errors.New("More Than One Rows Affected") //Transaction rollback?
 	} else if rowCnt == 0 {
-		return errors.New("No Row Inserted")
+		return lastID, errors.New("No Row Inserted")
 	}
-	lastID, err := result.LastInsertId()
+	lastid, err := result.LastInsertId()
 	if err != nil {
 		log.Printf("Fail to get last insert ID when insert a report: %v", err)
-		return err
+		return lastID, err
 	}
 
 	// Only insert a report when it's active
@@ -296,12 +296,12 @@ func (a *reportAPI) InsertReport(p Report) error {
 		reports, err := ReportAPI.GetReports(arg)
 		if err != nil {
 			log.Printf("Error When Getting Report to Insert to Algolia: %v", err.Error())
-			return nil
+			return lastID, nil
 		}
 		go Algolia.InsertReport(reports)
 	}
 
-	return nil
+	return int(lastid), nil
 }
 
 func (a *reportAPI) UpdateReport(p Report) error {

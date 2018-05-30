@@ -165,7 +165,7 @@ func (r *reportHandler) Post(c *gin.Context) {
 	report.UpdatedAt = models.NullTime{time.Now(), true}
 	report.Active = models.NullInt{int64(models.ReportActive["active"].(float64)), true}
 
-	err = models.ReportAPI.InsertReport(report)
+	lastID, err := models.ReportAPI.InsertReport(report)
 	if err != nil {
 		switch err.Error() {
 		case "Duplicate entry":
@@ -176,7 +176,8 @@ func (r *reportHandler) Post(c *gin.Context) {
 			return
 		}
 	}
-	c.Status(http.StatusOK)
+	resp := map[string]int{"last_id": lastID}
+	c.JSON(http.StatusOK, gin.H{"_items": resp})
 }
 
 func (r *reportHandler) Put(c *gin.Context) {
