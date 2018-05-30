@@ -104,11 +104,11 @@ type MemberInterface interface {
 	UpdateAll(ids []int64, active int) error
 	UpdateMember(m Member) error
 	Count(req *MemberArgs) (result int, err error)
-	GetUUIDsByNickname(key string, roles map[string][]int) (result []NicknameUUID, err error)
+	GetIDsByNickname(key string, roles map[string][]int) (result []NicknameID, err error)
 }
 
-type NicknameUUID struct {
-	UUID     string     `json:"uuid"`
+type NicknameID struct {
+	ID       int64      `json:"id"`
 	Nickname NullString `json:"nickname"`
 }
 
@@ -352,8 +352,8 @@ func (a *memberAPI) Count(req *MemberArgs) (result int, err error) {
 
 // GetMembersByNickname select nickname and uuid from active members only
 // when their nickname fits certain keyword
-func (a *memberAPI) GetUUIDsByNickname(key string, roles map[string][]int) (result []NicknameUUID, err error) {
-	query := `SELECT uuid, nickname FROM members WHERE active = ? AND nickname LIKE ?`
+func (a *memberAPI) GetIDsByNickname(key string, roles map[string][]int) (result []NicknameID, err error) {
+	query := `SELECT id, nickname FROM members WHERE active = ? AND nickname LIKE ?`
 	if len(roles) != 0 {
 		values := []interface{}{int(MemberStatus["active"].(float64)), key + "%"}
 		for k, v := range roles {
@@ -364,19 +364,19 @@ func (a *memberAPI) GetUUIDsByNickname(key string, roles map[string][]int) (resu
 		query, values, err := sqlx.In(query, values...)
 		if err != nil {
 			log.Println(err)
-			return []NicknameUUID{}, err
+			return []NicknameID{}, err
 		}
 
 		query = DB.Rebind(query)
 
 		err = DB.Select(&result, query, values...)
 		if err != nil {
-			return []NicknameUUID{}, err
+			return []NicknameID{}, err
 		}
 	} else {
 		err = DB.Select(&result, query, int(MemberStatus["active"].(float64)), key+"%")
 		if err != nil {
-			return []NicknameUUID{}, err
+			return []NicknameID{}, err
 		}
 	}
 	return result, err

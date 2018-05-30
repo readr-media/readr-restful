@@ -350,7 +350,7 @@ func (r *memberHandler) SearchKeyNickname(c *gin.Context) {
 		}
 	}
 
-	members, err := models.MemberAPI.GetUUIDsByNickname(keyword, roles)
+	members, err := models.MemberAPI.GetIDsByNickname(keyword, roles)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 		return
