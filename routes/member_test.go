@@ -200,11 +200,11 @@ func (a *mockMemberAPI) Count(req *models.MemberArgs) (result int, err error) {
 	return result, err
 }
 
-func (a *mockMemberAPI) GetUUIDsByNickname(key string, roles map[string][]int) (result []models.NicknameUUID, err error) {
+func (a *mockMemberAPI) GetIDsByNickname(key string, roles map[string][]int) (result []models.NicknameID, err error) {
 	for _, v := range mockMemberDS {
 		if v.Nickname.Valid {
 			if matched, err := regexp.MatchString(key, v.Nickname.String); err == nil && matched {
-				result = append(result, models.NicknameUUID{UUID: v.UUID, Nickname: v.Nickname})
+				result = append(result, models.NicknameID{ID: v.ID, Nickname: v.Nickname})
 			}
 		}
 	}
@@ -303,8 +303,8 @@ func TestRouteMembers(t *testing.T) {
 	})
 	t.Run("KeyNickname", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"Keyword", "GET", `/members/nickname?keyword=readr`, ``, http.StatusOK, `{"_items":[{"uuid":"3d64e480-3e30-11e8-b94b-cfe922eb374f","nickname":"readr"}]}`},
-			genericTestcase{"KeywordAndRoles", "GET", `/members/nickname?keyword=readr&roles={"$in":[3,9]}`, ``, http.StatusOK, `{"_items":[{"uuid":"3d64e480-3e30-11e8-b94b-cfe922eb374f","nickname":"readr"}]}`},
+			genericTestcase{"Keyword", "GET", `/members/nickname?keyword=readr`, ``, http.StatusOK, `{"_items":[{"id":1,"nickname":"readr"}]}`},
+			genericTestcase{"KeywordAndRoles", "GET", `/members/nickname?keyword=readr&roles={"$in":[3,9]}`, ``, http.StatusOK, `{"_items":[{"id":1,"nickname":"readr"}]}`},
 			genericTestcase{"InvalidKeyword", "GET", `/members/nickname`, ``, http.StatusBadRequest, `{"Error":"Invalid keyword"}`},
 		} {
 			genericDoTest(testcase, t, asserter)
