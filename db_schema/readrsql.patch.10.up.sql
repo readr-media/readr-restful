@@ -1,0 +1,4 @@
+UPDATE posts, (SELECT resource, COUNT(*) AS count FROM comments WHERE active=1 AND status=1 GROUP BY resource) AS comments SET posts.comment_amount = comments.count WHERE comments.resource = CONCAT('https://readr.tw/post/', posts.post_id);
+UPDATE projects, (SELECT resource, COUNT(*) AS count FROM comments WHERE active=1 AND status=1 GROUP BY resource) AS comments SET projects.comment_amount = comments.count WHERE comments.resource = CONCAT('https://readr.tw/project/', projects.project_id);
+UPDATE memos, (SELECT resource, COUNT(*) AS count FROM comments WHERE active=1 AND status=1 GROUP BY resource) AS comments SET memos.comment_amount = comments.count WHERE comments.resource = CONCAT('https://readr.tw/memo/', memos.memo_id);
+UPDATE reports, (SELECT resource, COUNT(*) AS count FROM comments WHERE active=1 AND status=1 GROUP BY resource) AS comments SET reports.comment_amount = comments.count WHERE comments.resource = CONCAT('https://readr.tw/report/', reports.id);

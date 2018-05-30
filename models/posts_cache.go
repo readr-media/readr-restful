@@ -4,14 +4,11 @@ import (
 	"fmt"
 	"log"
 	"reflect"
-	"regexp"
 	"sort"
-	"strconv"
 	"time"
 
 	"github.com/garyburd/redigo/redis"
 	"github.com/jmoiron/sqlx"
-	"gopkg.in/mgo.v2/bson"
 )
 
 type postCacheType interface {
@@ -298,8 +295,9 @@ type commentCount struct {
 	Count int    `bson:"count,omitempty"`
 }
 type followCount struct {
-	ID    int `db:"post_id"`
-	Count int `db:"count"`
+	ID           int `db:"post_id"`
+	FollowCount  int `db:"follow_count"`
+	CommentCount int `db:"comment_count"`
 }
 type postScore struct {
 	ID    int
@@ -324,10 +322,9 @@ func (c hottestPostCache) SyncFromDataStorage() {
 
 	PostScores := postScores{}
 	PostScoreIndex := postScoreIndex{}
-	session := MongoSession.Get()
 
 	// Read follow count from Mysql
-	rows, err := DB.Queryx(fmt.Sprint("SELECT p.post_id, IFNULL(f.count,0) as count FROM posts AS p LEFT JOIN (SELECT post_id, count(*) as count FROM post_tags GROUP BY post_id) AS f ON f.post_id = p.post_id WHERE p.active =", fmt.Sprint(PostStatus["active"], " AND p.publish_status=", fmt.Sprint(PostPublishStatus["publish"]))))
+	rows, err := DB.Queryx(fmt.Sprint("SELECT p.post_id, p.comment_amount AS comment_count, IFNULL(f.count,0) as follow_count FROM posts AS p LEFT JOIN (SELECT post_id, count(*) as count FROM post_tags GROUP BY post_id) AS f ON f.post_id = p.post_id WHERE p.active =", fmt.Sprint(PostStatus["active"], " AND p.publish_status=", fmt.Sprint(PostPublishStatus["publish"]))))
 	if err != nil {
 		log.Println(err.Error())
 		return
@@ -340,38 +337,7 @@ func (c hottestPostCache) SyncFromDataStorage() {
 			log.Printf("Error scan follow count from db: %v", err)
 			return
 		}
-		PostScores = append(PostScores, postScore{ID: count.ID, Score: 0.6 * float64(count.Count)})
-	}
-
-	// Read comment count from Talk Mongodb
-	mongoConn := session.DB("talk").C("comments")
-	pipe := mongoConn.Pipe([]bson.M{
-		bson.M{"$match": bson.M{"status": bson.M{"$in": []string{"NONE", "ACCEPTED"}}}},
-		bson.M{"$group": bson.M{"_id": "$asset_id", "count": bson.M{"$sum": 1}}},
-		bson.M{"$lookup": bson.M{"from": "assets", "localField": "_id", "foreignField": "id", "as": "asset"}},
-		bson.M{"$unwind": "$asset"},
-		bson.M{"$project": bson.M{"_id": false, "count": "$count", "id": "$asset.url"}},
-	})
-
-	var CommentCounts []commentCount
-	err = pipe.All(&CommentCounts)
-
-	if err != nil {
-		log.Printf("Error scan comment count from mongodb: %v", err)
-	}
-
-	r := regexp.MustCompile(`\d+$`)
-	for _, count := range CommentCounts {
-		id, err := strconv.Atoi(r.FindString(count.Url))
-		if err != nil {
-			//log.Printf("Error convert id to comment count from mongodb: %v", err)
-			continue
-		}
-		for index, score := range PostScores {
-			if score.ID == id {
-				PostScores[index].Score += 0.4 * float64(count.Count)
-			}
-		}
+		PostScores = append(PostScores, postScore{ID: count.ID, Score: 0.6*float64(count.FollowCount) + 0.4*float64(count.CommentCount)})
 	}
 
 	// Sort post Score
