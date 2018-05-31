@@ -20,7 +20,7 @@ type follow interface {
 	Delete() (sql.Result, error)
 	GetFollowed(args GetFollowedArgs) (*sqlx.Rows, error)
 	GetFollowings(args GetFollowingArgs) (*sqlx.Rows, error)
-	GetFollowerMemberIDs(id string) ([]string, error)
+	GetFollowerMemberIDs(id string) ([]int, error)
 	GetMap(args GetFollowMapArgs) (*sqlx.Rows, error)
 	Insert() (sql.Result, error)
 }
@@ -50,13 +50,13 @@ func (f followPost) GetFollowed(params GetFollowedArgs) (*sqlx.Rows, error) {
 	}
 	return DB.Queryx(query, args...)
 }
-func (f followPost) GetFollowerMemberIDs(id string) (result []string, err error) {
-	rows, err := DB.Query(fmt.Sprintf(`SELECT m.member_id AS member_id FROM following_posts AS f LEFT JOIN members AS m ON m.id = f.member_id WHERE f.post_id=%s;`, id))
+func (f followPost) GetFollowerMemberIDs(id string) (result []int, err error) {
+	rows, err := DB.Query(fmt.Sprintf(`SELECT member_id AS member_id FROM following_posts WHERE post_id=%s;`, id))
 	if err != nil {
 		log.Println("Error get postFollowers", id, err.Error())
 	}
 	for rows.Next() {
-		var follower string
+		var follower int
 		err = rows.Scan(&follower)
 		if err != nil {
 			log.Println("Error scan postFollowers", id, err.Error())
@@ -117,13 +117,13 @@ func (f followMember) GetFollowed(params GetFollowedArgs) (*sqlx.Rows, error) {
 	}
 	return DB.Queryx(query, args...)
 }
-func (f followMember) GetFollowerMemberIDs(id string) (result []string, err error) {
-	rows, err := DB.Query(fmt.Sprintf(`SELECT m.member_id AS member_id FROM following_members AS f LEFT JOIN members AS m ON f.member_id = m.id WHERE f.custom_editor="%s";`, id))
+func (f followMember) GetFollowerMemberIDs(id string) (result []int, err error) {
+	rows, err := DB.Query(fmt.Sprintf(`SELECT member_id FROM following_members WHERE custom_editor="%s";`, id))
 	if err != nil {
 		log.Println("Error get authorFollowers", id, err.Error())
 	}
 	for rows.Next() {
-		var follower string
+		var follower int
 		err = rows.Scan(&follower)
 		if err != nil {
 			log.Println("Error scan authorFollowers", id, err.Error())
@@ -175,13 +175,13 @@ func (f followProject) GetFollowed(params GetFollowedArgs) (*sqlx.Rows, error) {
 	}
 	return DB.Queryx(query, args...)
 }
-func (f followProject) GetFollowerMemberIDs(id string) (result []string, err error) {
-	rows, err := DB.Query(fmt.Sprintf(`SELECT m.member_id AS member_id FROM following_projects AS f LEFT JOIN members AS m ON f.member_id = m.id WHERE f.project_id=%s;`, id))
+func (f followProject) GetFollowerMemberIDs(id string) (result []int, err error) {
+	rows, err := DB.Query(fmt.Sprintf(`SELECT member_id FROM following_projects WHERE project_id=%s;`, id))
 	if err != nil {
 		log.Println("Error get projectFollowers", id, err.Error())
 	}
 	for rows.Next() {
-		var follower string
+		var follower int
 		err = rows.Scan(&follower)
 		if err != nil {
 			log.Println("Error scan authorFollowers", id, err.Error())
@@ -251,7 +251,7 @@ type FollowingAPIInterface interface {
 	DeleteFollowing(params FollowArgs) error
 	GetFollowing(params GetFollowingArgs) ([]interface{}, error)
 	GetFollowed(args GetFollowedArgs) (interface{}, error)
-	GetFollowerMemberIDs(resourceType string, id string) ([]string, error)
+	GetFollowerMemberIDs(resourceType string, id string) ([]int, error)
 	GetFollowMap(args GetFollowMapArgs) ([]FollowingMapItem, error)
 }
 
@@ -375,7 +375,7 @@ func (f *followingAPI) GetFollowed(args GetFollowedArgs) (interface{}, error) {
 	}
 	return followed, nil
 }
-func (f *followingAPI) GetFollowerMemberIDs(resourceType string, id string) ([]string, error) {
+func (f *followingAPI) GetFollowerMemberIDs(resourceType string, id string) ([]int, error) {
 	follow, err := CreateFollow(FollowArgs{Resource: resourceType})
 	if err != nil {
 		log.Println(err.Error())

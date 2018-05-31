@@ -108,7 +108,6 @@ func TestMain(m *testing.M) {
 	models.MailAPI = new(mockMailAPI)
 	models.ReportAPI = new(mockReportAPI)
 
-	models.CommentHandler = models.CommentHandlerStruct{new(mocksCommentAPI)}
 	os.Exit(m.Run())
 }
 
