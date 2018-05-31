@@ -131,8 +131,8 @@ func (a *mockFollowingAPI) GetFollowed(args models.GetFollowedArgs) (interface{}
 		return nil, nil
 	}
 }
-func (*mockFollowingAPI) GetFollowerMemberIDs(resourceType string, id string) ([]string, error) {
-	return []string{}, nil
+func (*mockFollowingAPI) GetFollowerMemberIDs(resourceType string, id string) ([]int, error) {
+	return []int{}, nil
 }
 func (*mockFollowingAPI) GetFollowMap(args models.GetFollowMapArgs) (list []models.FollowingMapItem, err error) {
 	switch {

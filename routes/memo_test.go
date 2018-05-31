@@ -150,6 +150,7 @@ func TestRouteMemos(t *testing.T) {
 
 		if len(Response.Items) != len(expected) {
 			t.Errorf("%s expect memo length to be %v but get %v", tc.name, len(expected), len(Response.Items))
+			return
 		}
 
 		for i, respmemo := range Response.Items {

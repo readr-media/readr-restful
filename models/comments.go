@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -166,7 +167,7 @@ func (p *CommentUpdateArgs) parse() (updates string, values []interface{}) {
 }
 
 type CommentInterface interface {
-	GetComment(id int) (Comment, error)
+	GetComment(id int) (CommentAuthor, error)
 	GetComments(args *GetCommentArgs) (result []CommentAuthor, err error)
 	InsertComment(comment Comment) (id int64, err error)
 	UpdateComment(comment Comment) (err error)
@@ -182,16 +183,16 @@ type CommentInterface interface {
 
 type commentAPI struct{}
 
-func (a *commentAPI) GetComment(id int) (Comment, error) {
-	comment := Comment{}
-	err := DB.QueryRowx("SELECT * FROM comments WHERE id = ?", id).StructScan(&comment)
+func (a *commentAPI) GetComment(id int) (CommentAuthor, error) {
+	comment := CommentAuthor{}
+	err := DB.QueryRowx("SELECT comments.*, INET_NTOA(comments.ip) AS ip, members.nickname AS author_nickname, members.profile_image AS author_image, members.role AS author_role, IFNULL(count.count, 0) AS comment_amount FROM comments LEFT JOIN members ON comments.author = members.id LEFT JOIN (SELECT count(*) AS count, parent_id FROM comments GROUP BY parent_id) AS count ON comments.id = count.parent_id WHERE comments.id = ?", id).StructScan(&comment)
 	switch {
 	case err == sql.ErrNoRows:
 		err = errors.New("Comment Not Found")
-		comment = Comment{}
+		comment = CommentAuthor{}
 	case err != nil:
 		log.Println(err.Error())
-		comment = Comment{}
+		comment = CommentAuthor{}
 	default:
 		err = nil
 	}
@@ -255,6 +256,9 @@ func (c *commentAPI) InsertComment(comment Comment) (id int64, err error) {
 		log.Printf("Fail to get last insert ID when insert a comment: %v", err)
 		return 0, err
 	}
+
+	c.generateCommentNotifications(int(id))
+
 	return id, err
 }
 
@@ -302,8 +306,6 @@ func (c *commentAPI) GetReportedComments(args *GetReportedCommentArgs) (result [
 	reportTags := getStructDBTags("full", ReportedComment{})
 	commentFields := makeFieldString("get", `comments.%s "comments.%s"`, commentTags)
 	reportFields := makeFieldString("get", `comments_reported.%s "reported.%s"`, reportTags)
-
-	//query = strings.Replace(query, ":ip", "INET_ATON(:ip)", 1)
 
 	query := fmt.Sprintf(`SELECT %s, %s, 
 		members.nickname AS "comments.author_nickname", members.profile_image AS "comments.author_image", 
@@ -408,8 +410,7 @@ func (c *commentAPI) UpdateCommentAmountByIDs(ids []int) (err error) {
 	}
 
 	for _, res := range resources {
-		id, name, idname := c.resourceParse(res)
-		log.Println(fmt.Sprintf(`UPDATE %s SET comment_amount=(SELECT count(id) FROM comments WHERE resource="%s" AND status=%d AND active=%d) WHERE %s="%s";`, name, res, int(CommentStatus["show"].(float64)), int(CommentActive["active"].(float64)), idname, id))
+		id, name, idname := c.parseCommentResource(res)
 		_, err := DB.Exec(fmt.Sprintf(`UPDATE %s SET comment_amount=(SELECT count(id) FROM comments WHERE resource="%s" AND status=%d AND active=%d) WHERE %s="%s";`, name, res, int(CommentStatus["show"].(float64)), int(CommentActive["active"].(float64)), idname, id))
 		if err != nil {
 			log.Println(err.Error())
@@ -421,7 +422,7 @@ func (c *commentAPI) UpdateCommentAmountByIDs(ids []int) (err error) {
 }
 
 func (c *commentAPI) UpdateCommentAmountByResource(resource string, action string) (err error) {
-	id, resource_name, idname := c.resourceParse(resource)
+	id, resource_name, idname := c.parseCommentResource(resource)
 	var adjustment string
 
 	switch action {
@@ -434,9 +435,6 @@ func (c *commentAPI) UpdateCommentAmountByResource(resource string, action strin
 	}
 
 	query := fmt.Sprintf(`UPDATE %s SET comment_amount= IF(comment_amount IS NULL, 1, comment_amount %s) WHERE %s="%s";`, resource_name, adjustment, idname, id)
-	if resource == "http://dev.readr.tw/post/92" {
-		log.Println(query)
-	}
 	_, err = DB.Exec(query)
 	if err != nil {
 		return err
@@ -444,8 +442,7 @@ func (c *commentAPI) UpdateCommentAmountByResource(resource string, action strin
 	return err
 }
 
-func (c *commentAPI) resourceParse(resource string) (string, string, string) {
-	log.Println(resource, regexp.MustCompile("//[a-zA-Z0-9_.]*/.*/([0-9]*)$").FindStringSubmatch(resource))
+func (c *commentAPI) parseCommentResource(resource string) (string, string, string) {
 	r_id := regexp.MustCompile("//[a-zA-Z0-9_.]*/.*/([0-9]*)$").FindStringSubmatch(resource)[1]
 	r := regexp.MustCompile("//[a-zA-Z0-9_.]*/(.*)/[0-9]*$")
 
@@ -468,6 +465,231 @@ func (c *commentAPI) resourceParse(resource string) (string, string, string) {
 	}
 
 	return r_id, r_name, r_idname
+}
+
+func (c *commentAPI) generateCommentNotifications(id int) (err error) {
+	ns := Notifications{}
+
+	commentDetail, err := c.GetComment(id)
+	if err != nil {
+		log.Println("Error get comment", id, err.Error())
+	}
+
+	r_id, r_name, _ := c.parseCommentResource(commentDetail.Resource.String)
+
+	var parentCommentDetail CommentAuthor
+	if commentDetail.ParentID.Valid {
+		parentCommentDetail, err = c.GetComment(int(commentDetail.ParentID.Int))
+		if err != nil {
+			log.Println("Error get parent comment", commentDetail.ParentID.Int, err.Error())
+		}
+	}
+
+	r_name = strings.TrimSuffix(r_name, "s")
+	switch r_name {
+	case "post":
+		res_id, _ := strconv.Atoi(r_id)
+		post, err := PostAPI.GetPost(uint32(res_id))
+		if err != nil {
+			log.Println("Error get post", res_id, err.Error())
+		}
+
+		postFollowers, err := FollowingAPI.GetFollowerMemberIDs("post", r_id)
+		if err != nil {
+			log.Println("Error get post followers", r_id, err.Error())
+		}
+
+		authorFollowers, err := FollowingAPI.GetFollowerMemberIDs("member", strconv.Itoa(int(post.Author.Int)))
+		if err != nil {
+			log.Println("Error get author followers", commentDetail.Author.Int, err.Error())
+		}
+		log.Println(authorFollowers)
+
+		var commentors []int
+		rows, err := DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, int(CommentStatus["show"].(float64)), int(CommentActive["active"].(float64))))
+		if err != nil {
+			log.Println("Error get commentors", commentDetail.Resource.String, err.Error())
+			return err
+		}
+		for rows.Next() {
+			var i int
+			err := rows.Scan(&i)
+			if err != nil {
+				log.Println("Error scan commentors", err)
+				return err
+			}
+			commentors = append(commentors, i)
+		}
+
+		for _, v := range postFollowers {
+			if v != int(commentDetail.Author.Int) {
+				ns[strconv.Itoa(v)] = NewNotification("follow_post_reply")
+			}
+		}
+
+		for _, v := range authorFollowers {
+			if v != int(commentDetail.Author.Int) {
+				ns[strconv.Itoa(v)] = NewNotification("follow_member_reply")
+			}
+		}
+
+		if commentDetail.Author.Int != post.Author.Int {
+			ns[strconv.Itoa(int(post.Author.Int))] = NewNotification("post_reply")
+		}
+
+		if len(commentors) > 0 {
+			for _, id := range commentors {
+				if id != int(commentDetail.Author.Int) {
+					ns[strconv.Itoa(id)] = NewNotification("comment_comment")
+				}
+			}
+		}
+
+		if parentCommentDetail.Author.Valid && parentCommentDetail.Author.Int != commentDetail.Author.Int {
+			if commentDetail.Author.Int == post.Author.Int {
+				ns[strconv.Itoa(int(parentCommentDetail.Author.Int))] = NewNotification("comment_reply_author")
+			} else {
+				ns[strconv.Itoa(int(parentCommentDetail.Author.Int))] = NewNotification("comment_reply")
+			}
+		}
+
+		for k, v := range ns {
+			v.SubjectID = strconv.Itoa(int(commentDetail.Author.Int))
+			v.Nickname = commentDetail.AuthorNickname.String
+			v.ProfileImage = commentDetail.AuthorImage.String
+			v.ObjectName = post.Member.Nickname.String
+			v.ObjectType = r_name
+			v.ObjectID = r_id
+			v.PostType = strconv.Itoa(int(post.Type.Int))
+			ns[k] = v
+		}
+
+		break
+
+	case "project":
+		res_id, _ := strconv.Atoi(r_id)
+		project, err := ProjectAPI.GetProject(Project{ID: res_id})
+		if err != nil {
+			log.Println("Error get post", r_id, err.Error())
+		}
+
+		projectFollowers, err := FollowingAPI.GetFollowerMemberIDs("project", r_id)
+		if err != nil {
+			log.Println("Error get project followers", r_id, err.Error())
+		}
+
+		var commentors []int
+		rows, err := DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, int(CommentStatus["show"].(float64)), int(CommentActive["active"].(float64))))
+		if err != nil {
+			log.Println("Error get commentors", commentDetail.Resource.String, err.Error())
+			return err
+		}
+		for rows.Next() {
+			var i int
+			err := rows.Scan(&i)
+			if err != nil {
+				log.Println("Error scan commentors", err)
+				return err
+			}
+			commentors = append(commentors, i)
+		}
+
+		for _, v := range projectFollowers {
+			if v != int(commentDetail.Author.Int) {
+				ns[strconv.Itoa(v)] = NewNotification("follow_project_reply")
+			}
+		}
+
+		if len(commentors) > 0 {
+			for _, id := range commentors {
+				if id != int(commentDetail.Author.Int) {
+					ns[strconv.Itoa(id)] = NewNotification("comment_comment")
+				}
+			}
+		}
+
+		if parentCommentDetail.Author.Valid && parentCommentDetail.Author.Int != commentDetail.Author.Int {
+			ns[strconv.Itoa(int(parentCommentDetail.Author.Int))] = NewNotification("comment_reply")
+		}
+
+		for k, v := range ns {
+			v.SubjectID = strconv.Itoa(int(commentDetail.Author.Int))
+			v.Nickname = commentDetail.AuthorNickname.String
+			v.ProfileImage = commentDetail.AuthorImage.String
+			v.ObjectName = project.Title.String
+			v.ObjectType = r_name
+			v.ObjectID = r_id
+			v.PostType = "0"
+			ns[k] = v
+		}
+
+		break
+
+	case "memo":
+		res_id, _ := strconv.Atoi(r_id)
+		memo, err := MemoAPI.GetMemo(res_id)
+		if err != nil {
+			log.Println("Error get post", r_id, err.Error())
+		}
+
+		projectFollowers, err := FollowingAPI.GetFollowerMemberIDs("project", strconv.Itoa(int(memo.Project.Int)))
+		if err != nil {
+			log.Println("Error get project followers", memo.Project.Int, err.Error())
+		}
+
+		var commentors []int
+		rows, err := DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, int(CommentStatus["show"].(float64)), int(CommentActive["active"].(float64))))
+		if err != nil {
+			log.Println("Error get commentors", commentDetail.Resource.String, err.Error())
+			return err
+		}
+		for rows.Next() {
+			var i int
+			err := rows.Scan(&i)
+			if err != nil {
+				log.Println("Error scan commentors", err)
+				return err
+			}
+			commentors = append(commentors, i)
+		}
+
+		for _, v := range projectFollowers {
+			if v != int(commentDetail.Author.Int) {
+				ns[strconv.Itoa(v)] = NewNotification("follow_memo_reply")
+			}
+		}
+
+		if len(commentors) > 0 {
+			for _, id := range commentors {
+				if id != int(commentDetail.Author.Int) {
+					ns[strconv.Itoa(id)] = NewNotification("comment_comment")
+				}
+			}
+		}
+
+		if parentCommentDetail.Author.Valid && parentCommentDetail.Author.Int != commentDetail.Author.Int {
+			ns[strconv.Itoa(int(parentCommentDetail.Author.Int))] = NewNotification("comment_reply")
+		}
+
+		for k, v := range ns {
+			v.SubjectID = strconv.Itoa(int(commentDetail.Author.Int))
+			v.Nickname = commentDetail.AuthorNickname.String
+			v.ProfileImage = commentDetail.AuthorImage.String
+			v.ObjectName = memo.Title.String
+			v.ObjectType = r_name
+			v.ObjectID = r_id
+			v.PostType = "0"
+			ns[k] = v
+		}
+
+		break
+
+	case "report":
+	default:
+		break
+	}
+	ns.Send()
+	return err
 }
 
 var CommentAPI CommentInterface = new(commentAPI)

@@ -33,9 +33,9 @@ func (c *mockCommentAPI) GetComments(args *models.GetCommentArgs) (result []mode
 	return result, err
 }
 
-func (c *mockCommentAPI) GetComment(id int) (comment models.Comment, err error) {
+func (c *mockCommentAPI) GetComment(id int) (comment models.CommentAuthor, err error) {
 	if id == 1 {
-		return models.Comment{ID: 1, Body: models.NullString{"Comment No.1", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{91, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}}, nil
+		return models.CommentAuthor{models.Comment{ID: 1, Body: models.NullString{"Comment No.1", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{91, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}}, models.NullString{"commenttest1", true}, models.NullString{"pi1", true}, models.NullInt{2, true}, models.NullInt{0, true}}, nil
 	} else {
 		return comment, errors.New("Comment Not Found")
 	}
@@ -176,7 +176,6 @@ func TestRouteComments(t *testing.T) {
 
 		if len(Response.Items) != len(expected) {
 			t.Errorf("%s expect member length to be %v but get %v", tc.name, len(expected), len(Response.Items))
-			log.Println(Response.Items)
 			return
 		}
 
@@ -218,7 +217,7 @@ func TestRouteComments(t *testing.T) {
 	})
 	t.Run("GetSingleComment", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"GetCommentOK", "GET", "/comment/1", ``, http.StatusOK, `{"_items":{"id":1,"author":91,"body":"Comment No.1","og_title":null,"og_description":null,"og_image":null,"like_amount":null,"parent_id":null,"resource":"http://dev.readr.tw/post/90","status":null,"active":1,"updated_at":null,"created_at":null,"ip":null}}`},
+			genericTestcase{"GetCommentOK", "GET", "/comment/1", ``, http.StatusOK, `{"_items":{"id":1,"author":91,"body":"Comment No.1","og_title":null,"og_description":null,"og_image":null,"like_amount":null,"parent_id":null,"resource":"http://dev.readr.tw/post/90","status":null,"active":1,"updated_at":null,"created_at":null,"ip":null,"author_nickname":"commenttest1","author_image":"pi1","author_role":2,"comment_amount":0}}`},
 			genericTestcase{"GetCommentNotfound", "GET", "/comment/101", ``, http.StatusNotFound, `{"Error":"Comment Not Found"}`},
 		} {
 			genericDoTest(testcase, t, asserter)
@@ -289,31 +288,6 @@ func TestRouteComments(t *testing.T) {
 
 }
 
-type mocksCommentAPI struct{}
-
-func (c *mocksCommentAPI) GetCommentInfo(comment models.CommentEvent) (commentInfo models.CommentInfo) {
-	switch comment.Body.String {
-	case "comment_reply_author":
-		commentInfo = models.CommentInfo{ParentAuthor: "abc1d5b1-da54-4200-b90e-f06e59fd9487", ResourceType: "https://readr.tw/post/91"}
-	case "comment_reply":
-		commentInfo = models.CommentInfo{ParentAuthor: "abc1d5b1-da54-4200-b90e-f06e59fd9487", ResourceType: "https://readr.tw/post/91"}
-	case "comment_comment":
-		commentInfo = models.CommentInfo{ResourceType: "https://readr.tw/post/92", Commentors: []string{"abc1d5b1-da54-4200-b90e-f06e59fd9487"}}
-	case "follow_member_reply":
-		commentInfo = models.CommentInfo{ResourceType: "https://readr.tw/post/90"}
-	case "follow_post_reply":
-		commentInfo = models.CommentInfo{ResourceType: "https://readr.tw/post/92"}
-	case "follow_project_reply":
-		commentInfo = models.CommentInfo{ResourceType: "https://readr.tw/project/920"}
-	case "follow_memo_reply":
-		commentInfo = models.CommentInfo{ResourceType: "https://readr.tw/memo/920"}
-	case "post_reply":
-		commentInfo = models.CommentInfo{ParentAuthor: "abc1d5b1-da54-4200-b90e-f06e59fd9487", ResourceType: "https://readr.tw/post/91"}
-	}
-	commentInfo.Parse()
-	return commentInfo
-}
-
 func TestPubsubComments(t *testing.T) {
 
 	for _, params := range []models.Member{
@@ -348,6 +322,15 @@ func TestPubsubComments(t *testing.T) {
 		}
 	}
 
+	for _, memo := range []models.Memo{
+		models.Memo{ID: 92, Title: models.NullString{"CommentTestDefault1", true}, Author: models.NullInt{92, true}, Project: models.NullInt{920, true}, Active: models.NullInt{1, true}},
+	} {
+		err := models.MemoAPI.InsertMemo(memo)
+		if err != nil {
+			log.Printf("Init memo test fail %s", err.Error())
+		}
+	}
+
 	for _, params := range []models.FollowArgs{
 		models.FollowArgs{Resource: "member", Subject: 91, Object: 90},
 		models.FollowArgs{Resource: "post", Subject: 91, Object: 92},
@@ -363,19 +346,35 @@ func TestPubsubComments(t *testing.T) {
 		//log.Println("ok")
 		return
 	}
+
+	transformPubsub := func(tc genericTestcase) genericTestcase {
+		meta := PubsubMessageMeta{
+			Subscription: "sub",
+			Message: PubsubMessageMetaBody{
+				ID:   "1",
+				Body: []byte(tc.body.(string)),
+				Attr: map[string]string{"type": "comment", "action": tc.method},
+			},
+		}
+
+		return genericTestcase{tc.name, "POST", "/restful/pubsub", meta, tc.httpcode, tc.resp}
+	}
+
 	if os.Getenv("db_driver") == "mysql" {
 		t.Run("Comments", func(t *testing.T) {
 			for _, testcase := range []genericTestcase{
-				genericTestcase{"comment_reply_author", "POST", "/comments", `{"updated_at":"2046-01-05T00:42:42+00:00","created_at":"2046-01-05T00:42:42+00:00","body":"comment_reply_author","asset_id":"post1","author_id":"abc1d5b1-da54-4200-b91e-f06e59fd9487","reply_count":0,"status":"NONE","id":"id","vidible":true}`, http.StatusOK, ``},
-				genericTestcase{"comment_reply", "POST", "/comments", `{"updated_at":"2046-01-05T00:42:42+00:00","created_at":"2046-01-05T00:42:42+00:00","body":"comment_reply","asset_id":"post1","author_id":"abc1d5b1-da54-4200-b92e-f06e59fd9487","reply_count":0,"status":"NONE","id":"id","vidible":true}`, http.StatusOK, ``},
-				genericTestcase{"comment_comment", "POST", "/comments", `{"updated_at":"2046-01-05T00:42:42+00:00","created_at":"2046-01-05T00:42:42+00:00","body":"comment_reply","asset_id":"post1","author_id":"abc1d5b1-da54-4200-b92e-f06e59fd9487","reply_count":0,"status":"NONE","id":"id","vidible":true}`, http.StatusOK, ``},
-				genericTestcase{"follow_member_reply", "POST", "/comments", `{"updated_at":"2046-01-05T00:42:42+00:00","created_at":"2046-01-05T00:42:42+00:00","body":"follow_member_reply","asset_id":"post1","author_id":"abc1d5b1-da54-4200-b92e-f06e59fd9487","reply_count":0,"status":"NONE","id":"id","vidible":true}`, http.StatusOK, ``},
-				genericTestcase{"follow_post_reply", "POST", "/comments", `{"updated_at":"2046-01-05T00:42:42+00:00","created_at":"2046-01-05T00:42:42+00:00","body":"follow_post_reply","asset_id":"post1","author_id":"abc1d5b1-da54-4200-b90e-f06e59fd9487","reply_count":0,"status":"NONE","id":"id","vidible":true}`, http.StatusOK, ``},
-				genericTestcase{"follow_project_reply", "POST", "/comments", `{"updated_at":"2046-01-05T00:42:42+00:00","created_at":"2046-01-05T00:42:42+00:00","body":"follow_project_reply","asset_id":"post1","author_id":"abc1d5b1-da54-4200-b90e-f06e59fd9487","reply_count":0,"status":"NONE","id":"id","vidible":true}`, http.StatusOK, ``},
-				genericTestcase{"follow_memo_reply", "POST", "/comments", `{"updated_at":"2046-01-05T00:42:42+00:00","created_at":"2046-01-05T00:42:42+00:00","body":"follow_memo_reply","asset_id":"post1","author_id":"abc1d5b1-da54-4200-b90e-f06e59fd9487","reply_count":0,"status":"NONE","id":"id","vidible":true}`, http.StatusOK, ``},
-				genericTestcase{"post_reply", "POST", "/comments", `{"updated_at":"2046-01-05T00:42:42+00:00","created_at":"2046-01-05T00:42:42+00:00","body":"post_reply","asset_id":"post1","author_id":"abc1d5b1-da54-4200-b90e-f06e59fd9487","reply_count":0,"status":"NONE","id":"id","vidible":true}`, http.StatusOK, ``},
+				/*
+					genericTestcase{"post_reply", "post", "/comment", `{"body":"base","resource":"http://test.readr.tw/post/90","author":91,"status":"NONE","vidible":true}`, http.StatusOK, ``},
+					genericTestcase{"comment_reply_author", "post", "/comment", `{"body":"comment_reply_author","resource":"http://test.readr.tw/post/90","parent_id":1,"author":90,"status":"NONE","vidible":true}`, http.StatusOK, ``},
+					genericTestcase{"comment_reply", "post", "/comment", `{"body":"comment_reply","resource":"http://test.readr.tw/post/90","parent_id":1,"author":92,"status":"NONE","vidible":true}`, http.StatusOK, ``},
+					genericTestcase{"comment_comment", "post", "/comment", `{"body":"comment_reply","resource":"http://test.readr.tw/post/90","author":92,"status":"NONE","vidible":true}`, http.StatusOK, ``},
+					genericTestcase{"follow_member_reply", "post", "/comment", `{"body":"follow_member_reply","resource":"http://test.readr.tw/post/90","author":92,"status":"NONE","vidible":true}`, http.StatusOK, ``},
+					genericTestcase{"follow_post_reply", "post", "/comment", `{"body":"follow_post_reply","resource":"http://test.readr.tw/post/92","author":90,"status":"NONE","vidible":true}`, http.StatusOK, ``},
+					genericTestcase{"follow_project_reply", "post", "/comment", `{"body":"follow_project_reply","resource":"http://test.readr.tw/project/920","author":90,"status":"NONE","vidible":true}`, http.StatusOK, ``},
+				*/
+				genericTestcase{"follow_memo_reply", "post", "/comment", `{"body":"follow_memo_reply","resource":"http://test.readr.tw/memo/92","author":90,"status":"NONE","vidible":true}`, http.StatusOK, ``},
 			} {
-				genericDoTest(testcase, t, asserter)
+				genericDoTest(transformPubsub(testcase), t, asserter)
 			}
 		})
 	}
@@ -389,6 +388,12 @@ func TestPubsubComments(t *testing.T) {
 		if err != nil {
 			log.Printf("Init test case fail. Error: %v", err)
 		}
+	}
+
+	if os.Getenv("db_driver") == "mysql" {
+		_, _ = models.DB.Exec("truncate table memos;")
+	} else {
+		mockMemoDS = []models.Memo{}
 	}
 
 }

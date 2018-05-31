@@ -2,7 +2,6 @@ package routes
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -272,28 +271,6 @@ func (r *commentsHandler) PutRC(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-func (r *commentsHandler) PubsubHandler(c *gin.Context) {
-
-	payload := models.CommentEvent{}
-
-	err := c.ShouldBindJSON(&payload)
-	if err != nil {
-		log.Println(err)
-		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
-		return
-	}
-
-	models.CommentHandler.CreateNotifications(payload)
-	if err != nil {
-		switch err.Error() {
-		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
-			return
-		}
-	}
-	c.Status(http.StatusOK)
-}
-
 func (r *commentsHandler) SetRoutes(router *gin.Engine) {
 	commentsRouter := router.Group("/comment")
 	{
@@ -305,10 +282,6 @@ func (r *commentsHandler) SetRoutes(router *gin.Engine) {
 		reportcommentsRouter.GET("", r.GetRC)
 		reportcommentsRouter.POST("", r.PostRC)
 		reportcommentsRouter.PUT("", r.PutRC)
-	}
-	commentsPubsubRouter := router.Group("/comments")
-	{
-		commentsPubsubRouter.POST("", r.PubsubHandler)
 	}
 }
 
