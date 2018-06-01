@@ -363,15 +363,14 @@ func TestPubsubComments(t *testing.T) {
 	if os.Getenv("db_driver") == "mysql" {
 		t.Run("Comments", func(t *testing.T) {
 			for _, testcase := range []genericTestcase{
-				/*
-					genericTestcase{"post_reply", "post", "/comment", `{"body":"base","resource":"http://test.readr.tw/post/90","author":91,"status":"NONE","vidible":true}`, http.StatusOK, ``},
-					genericTestcase{"comment_reply_author", "post", "/comment", `{"body":"comment_reply_author","resource":"http://test.readr.tw/post/90","parent_id":1,"author":90,"status":"NONE","vidible":true}`, http.StatusOK, ``},
-					genericTestcase{"comment_reply", "post", "/comment", `{"body":"comment_reply","resource":"http://test.readr.tw/post/90","parent_id":1,"author":92,"status":"NONE","vidible":true}`, http.StatusOK, ``},
-					genericTestcase{"comment_comment", "post", "/comment", `{"body":"comment_reply","resource":"http://test.readr.tw/post/90","author":92,"status":"NONE","vidible":true}`, http.StatusOK, ``},
-					genericTestcase{"follow_member_reply", "post", "/comment", `{"body":"follow_member_reply","resource":"http://test.readr.tw/post/90","author":92,"status":"NONE","vidible":true}`, http.StatusOK, ``},
-					genericTestcase{"follow_post_reply", "post", "/comment", `{"body":"follow_post_reply","resource":"http://test.readr.tw/post/92","author":90,"status":"NONE","vidible":true}`, http.StatusOK, ``},
-					genericTestcase{"follow_project_reply", "post", "/comment", `{"body":"follow_project_reply","resource":"http://test.readr.tw/project/920","author":90,"status":"NONE","vidible":true}`, http.StatusOK, ``},
-				*/
+
+				genericTestcase{"post_reply", "post", "/comment", `{"body":"base","resource":"http://test.readr.tw/post/90","author":91,"status":"NONE","vidible":true}`, http.StatusOK, ``},
+				genericTestcase{"comment_reply_author", "post", "/comment", `{"body":"comment_reply_author","resource":"http://test.readr.tw/post/90","parent_id":1,"author":90,"status":"NONE","vidible":true}`, http.StatusOK, ``},
+				genericTestcase{"comment_reply", "post", "/comment", `{"body":"comment_reply","resource":"http://test.readr.tw/post/90","parent_id":1,"author":92,"status":"NONE","vidible":true}`, http.StatusOK, ``},
+				genericTestcase{"comment_comment", "post", "/comment", `{"body":"comment_reply","resource":"http://test.readr.tw/post/90","author":92,"status":"NONE","vidible":true}`, http.StatusOK, ``},
+				genericTestcase{"follow_member_reply", "post", "/comment", `{"body":"follow_member_reply","resource":"http://test.readr.tw/post/90","author":92,"status":"NONE","vidible":true}`, http.StatusOK, ``},
+				genericTestcase{"follow_post_reply", "post", "/comment", `{"body":"follow_post_reply","resource":"http://test.readr.tw/post/92","author":90,"status":"NONE","vidible":true}`, http.StatusOK, ``},
+				genericTestcase{"follow_project_reply", "post", "/comment", `{"body":"follow_project_reply","resource":"http://test.readr.tw/project/920","author":90,"status":"NONE","vidible":true}`, http.StatusOK, ``},
 				genericTestcase{"follow_memo_reply", "post", "/comment", `{"body":"follow_memo_reply","resource":"http://test.readr.tw/memo/92","author":90,"status":"NONE","vidible":true}`, http.StatusOK, ``},
 			} {
 				genericDoTest(transformPubsub(testcase), t, asserter)

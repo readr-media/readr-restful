@@ -48,8 +48,14 @@ func (r *reportHandler) bindQuery(c *gin.Context, args *models.GetReportArgs) (e
 			return err
 		}
 	}
-	if c.Query("slugs") != "" {
-		if err = json.Unmarshal([]byte(c.Query("slugs")), &args.Slugs); err != nil {
+	if c.Query("report_slugs") != "" {
+		if err = json.Unmarshal([]byte(c.Query("report_slugs")), &args.Slugs); err != nil {
+			log.Println(err.Error())
+			return err
+		}
+	}
+	if c.Query("project_slugs") != "" {
+		if err = json.Unmarshal([]byte(c.Query("project_slugs")), &args.ProjectSlugs); err != nil {
 			log.Println(err.Error())
 			return err
 		}

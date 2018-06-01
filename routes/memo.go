@@ -43,6 +43,11 @@ func (r *memoHandler) bindQuery(c *gin.Context, args *models.MemoGetArgs) (err e
 			return err
 		}
 	}
+	if c.Query("slugs") != "" {
+		if err = json.Unmarshal([]byte(c.Query("slugs")), &args.Slugs); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
