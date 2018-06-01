@@ -47,6 +47,7 @@ type MemoGetArgs struct {
 	Sorting       string           `form:"sort"`
 	Author        []int64          `form:"author"`
 	Project       []int64          `form:"project_id"`
+	Slugs         []string         `form:"slugs"`
 	Active        map[string][]int `form:"active"`
 	PublishStatus map[string][]int `form:"publish_status"`
 }
@@ -72,25 +73,29 @@ func (p *MemoGetArgs) parse() (restricts string, values []interface{}) {
 
 	if p.Active != nil {
 		for k, v := range p.Active {
-			where = append(where, fmt.Sprintf("%s %s (?)", "active", operatorHelper(k)))
+			where = append(where, fmt.Sprintf("%s %s (?)", "memos.active", operatorHelper(k)))
 			values = append(values, v)
 		}
 	}
 
 	if p.PublishStatus != nil {
 		for k, v := range p.PublishStatus {
-			where = append(where, fmt.Sprintf("%s %s (?)", "publish_status", operatorHelper(k)))
+			where = append(where, fmt.Sprintf("%s %s (?)", "memos.publish_status", operatorHelper(k)))
 			values = append(values, v)
 		}
 	}
 
 	if len(p.Author) > 0 {
-		where = append(where, fmt.Sprintf("%s IN (?)", "author"))
+		where = append(where, fmt.Sprintf("%s IN (?)", "memos.author"))
 		values = append(values, p.Author)
 	}
 	if len(p.Project) > 0 {
-		where = append(where, fmt.Sprintf("%s IN (?)", "project_id"))
+		where = append(where, fmt.Sprintf("%s IN (?)", "memos.project_id"))
 		values = append(values, p.Project)
+	}
+	if len(p.Slugs) > 0 {
+		where = append(where, fmt.Sprintf("%s IN (?)", "project.slug"))
+		values = append(values, p.Slugs)
 	}
 	if len(where) > 1 {
 		restricts = fmt.Sprintf(" WHERE %s", strings.Join(where, " AND "))
@@ -104,7 +109,7 @@ func (p *MemoGetArgs) parseLimit() (limit map[string]string, values []interface{
 	restricts := make([]string, 0)
 	limit = make(map[string]string, 2)
 	if p.Sorting != "" {
-		restricts = append(restricts, fmt.Sprintf("ORDER BY %s", orderByHelper(p.Sorting)))
+		restricts = append(restricts, fmt.Sprintf("ORDER BY %s%s", "memos.", orderByHelper(p.Sorting)))
 		limit["order"] = fmt.Sprintf("ORDER BY %s", orderByHelper(p.Sorting))
 	}
 	if p.MaxResult != 0 {
@@ -168,7 +173,7 @@ type memoAPI struct{}
 func (m *memoAPI) CountMemos(args *MemoGetArgs) (result int, err error) {
 
 	restricts, values := args.parse()
-	query := fmt.Sprintf(`SELECT COUNT(memo_id) FROM memos %s`, restricts)
+	query := fmt.Sprintf(`SELECT COUNT(memo_id) FROM memos LEFT JOIN projects AS project ON project.project_id = memos.project_id %s`, restricts)
 
 	query, sqlArgs, err := sqlx.In(query, values...)
 	if err != nil {
@@ -229,7 +234,7 @@ func (m *memoAPI) GetMemos(args *MemoGetArgs) (memos []MemoDetail, err error) {
 	limit, largs := args.parseLimit()
 	values = append(values, largs...)
 
-	rawQuery := fmt.Sprintf(`SELECT memos.*, %s, %s FROM (SELECT * FROM memos %s %s) AS memos LEFT JOIN members AS author ON author.id = memos.author LEFT JOIN projects AS project ON project.project_id = memos.project_id %s;`, strings.Join(projectField, ","), strings.Join(memberField, ","), restricts, limit["full"], limit["order"])
+	rawQuery := fmt.Sprintf(`SELECT memos.*, %s, %s FROM (SELECT memos.* FROM memos LEFT JOIN projects AS project ON project.project_id = memos.project_id %s %s) AS memos LEFT JOIN members AS author ON author.id = memos.author LEFT JOIN projects AS project ON project.project_id = memos.project_id %s;`, strings.Join(projectField, ","), strings.Join(memberField, ","), restricts, limit["full"], limit["order"])
 
 	query, sqlArgs, err := sqlx.In(rawQuery, values...)
 	if err != nil {

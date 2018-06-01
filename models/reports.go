@@ -49,9 +49,10 @@ type ReportAPIInterface interface {
 
 type GetReportArgs struct {
 	// Match List
-	IDs     []int    `form:"ids" json:"ids"`
-	Slugs   []string `form:"slugs" json:"slugs"`
-	Project []int64  `form:"project_id" json:"project_id"`
+	IDs          []int    `form:"ids" json:"ids"`
+	Slugs        []string `form:"report_slugs" json:"report_slugs"`
+	ProjectSlugs []string `form:"project_slugs" json:"project_slugs"`
+	Project      []int64  `form:"project_id" json:"project_id"`
 	// IN/NOT IN
 	Active        map[string][]int `form:"active" json:"active"`
 	PublishStatus map[string][]int `form:"publish_status" json:"publish_status"`
@@ -98,8 +99,12 @@ func (p *GetReportArgs) parse() (restricts string, values []interface{}) {
 		where = append(where, fmt.Sprintf("%s %s (?)", "reports.slug", operatorHelper("in")))
 		values = append(values, p.Slugs)
 	}
+	if len(p.ProjectSlugs) != 0 {
+		where = append(where, fmt.Sprintf("%s %s (?)", "projects.slug", operatorHelper("in")))
+		values = append(values, p.ProjectSlugs)
+	}
 	if len(p.Project) > 0 {
-		where = append(where, fmt.Sprintf("%s IN (?)", "project_id"))
+		where = append(where, fmt.Sprintf("%s IN (?)", "reports.project_id"))
 		values = append(values, p.Project)
 	}
 	if p.Keyword != "" {
@@ -120,7 +125,7 @@ func (p *GetReportArgs) parseLimit() (limit map[string]string, values []interfac
 	restricts := make([]string, 0)
 	limit = make(map[string]string, 2)
 	if p.Sorting != "" {
-		restricts = append(restricts, fmt.Sprintf("ORDER BY %s", orderByHelper(p.Sorting)))
+		restricts = append(restricts, fmt.Sprintf("ORDER BY %s%s", "reports.", orderByHelper(p.Sorting)))
 		limit["order"] = fmt.Sprintf("ORDER BY %s", orderByHelper(p.Sorting))
 	}
 	if p.MaxResult != 0 {
@@ -155,7 +160,7 @@ type ReportAuthor struct {
 
 func (a *reportAPI) CountReports(arg GetReportArgs) (result int, err error) {
 	restricts, values := arg.parse()
-	query := fmt.Sprintf(`SELECT COUNT(id) FROM reports WHERE %s`, restricts)
+	query := fmt.Sprintf(`SELECT COUNT(id) FROM reports LEFT JOIN projects AS projects ON projects.project_id = reports.project_id WHERE %s`, restricts)
 
 	query, args, err := sqlx.In(query, values...)
 	if err != nil {
@@ -208,7 +213,7 @@ func (a *reportAPI) GetReports(args GetReportArgs) (result []ReportAuthors, err 
 	projectField[0] = fmt.Sprintf(`IFNULL(%s, 0) %s`, projectIDQuery[0], projectIDQuery[1])
 	projectField[5] = fmt.Sprintf(`IFNULL(%s, 0) %s`, projectPostQuery[0], projectPostQuery[1])
 
-	query := fmt.Sprintf("SELECT reports.*, %s, %s FROM (SELECT * FROM reports %s %s) AS reports LEFT JOIN report_authors ra ON reports.id = ra.report_id LEFT JOIN members author ON ra.author_id = author.id LEFT JOIN projects ON reports.project_id = projects.project_id %s;",
+	query := fmt.Sprintf("SELECT reports.*, %s, %s FROM (SELECT reports.* FROM reports LEFT JOIN projects AS projects ON projects.project_id = reports.project_id %s %s) AS reports LEFT JOIN report_authors ra ON reports.id = ra.report_id LEFT JOIN members author ON ra.author_id = author.id LEFT JOIN projects ON reports.project_id = projects.project_id %s;",
 		args.Fields.GetFields(`author.%s "author.%s"`), strings.Join(projectField, ","), restricts, limit["full"], limit["order"])
 
 	query, values, err = sqlx.In(query, values...)

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 
@@ -63,6 +64,13 @@ func (m *mockMemoAPI) GetMemos(args *models.MemoGetArgs) (memos []models.MemoDet
 			models.MemoDetail{Memo: models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullInt{132, true}, Project: models.NullInt{421, true}, Active: models.NullInt{1, true}}},
 			models.MemoDetail{Memo: models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
 		}, nil
+	case len(args.Slugs) == 1:
+		return []models.MemoDetail{
+
+			models.MemoDetail{Memo: models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 1, Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 2, Title: models.NullString{"MemoTestDefault2", true}, Author: models.NullInt{135, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
+		}, nil
 	case args.Page == 2:
 		return []models.MemoDetail{
 			models.MemoDetail{Memo: models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
@@ -112,6 +120,13 @@ func (a *mockMemoAPI) SchedulePublish() error {
 }
 
 func TestRouteMemos(t *testing.T) {
+
+	if os.Getenv("db_driver") == "mysql" {
+		_, _ = models.DB.Exec("truncate table projects;")
+	} else {
+		mockProjectDS = []models.Project{}
+	}
+
 	for _, memo := range []models.Memo{
 		models.Memo{Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}},
 		models.Memo{Title: models.NullString{"MemoTestDefault2", true}, Author: models.NullInt{135, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}},
@@ -132,6 +147,15 @@ func TestRouteMemos(t *testing.T) {
 		_, err := models.MemberAPI.InsertMember(params)
 		if err != nil {
 			log.Printf("Insert member fail when init test case. Error: %v", err)
+		}
+	}
+
+	for _, params := range []models.Project{
+		models.Project{ID: 420, Active: models.NullInt{1, true}, Title: models.NullString{"Test project for memo", true}, Slug: models.NullString{"testproject", true}},
+	} {
+		err := models.ProjectAPI.InsertProject(params)
+		if err != nil {
+			log.Printf("Insert project fail when init test case. Error: %v", err)
 		}
 	}
 
@@ -231,6 +255,11 @@ func TestRouteMemos(t *testing.T) {
 			genericTestcase{"GetMemoFilterMultipleCondition", "GET", `/memos?active={"$nin":[0]}&author=[135,132]&project_id=[422]`, ``, http.StatusOK, []models.Memo{
 				models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullInt{135, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}},
 			}},
+			genericTestcase{"GetMemoWithSlug", "GET", `/memos?slugs=["testproject"]`, ``, http.StatusOK, []models.Memo{
+				models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}},
+				models.Memo{ID: 1, Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}},
+				models.Memo{ID: 2, Title: models.NullString{"MemoTestDefault2", true}, Author: models.NullInt{135, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}},
+			}},
 		} {
 			genericDoTest(testcase, t, asserter)
 		}
@@ -255,4 +284,11 @@ func TestRouteMemos(t *testing.T) {
 			genericDoTest(testcase, t, asserter)
 		}
 	})
+
+	if os.Getenv("db_driver") == "mysql" {
+		_, _ = models.DB.Exec("truncate table projects;")
+	} else {
+		mockProjectDS = []models.Project{}
+	}
+
 }
