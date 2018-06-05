@@ -411,10 +411,12 @@ func (c *commentAPI) UpdateCommentAmountByIDs(ids []int) (err error) {
 
 	for _, res := range resources {
 		id, name, idname := c.parseCommentResource(res)
-		_, err := DB.Exec(fmt.Sprintf(`UPDATE %s SET comment_amount=(SELECT count(id) FROM comments WHERE resource="%s" AND status=%d AND active=%d) WHERE %s="%s";`, name, res, int(CommentStatus["show"].(float64)), int(CommentActive["active"].(float64)), idname, id))
-		if err != nil {
-			log.Println(err.Error())
-			return err
+		if name != "" {
+			_, err := DB.Exec(fmt.Sprintf(`UPDATE %s SET comment_amount=(SELECT count(id) FROM comments WHERE resource="%s" AND status=%d AND active=%d) WHERE %s="%s";`, name, res, int(CommentStatus["show"].(float64)), int(CommentActive["active"].(float64)), idname, id))
+			if err != nil {
+				log.Println(err.Error())
+				return err
+			}
 		}
 	}
 
@@ -423,45 +425,46 @@ func (c *commentAPI) UpdateCommentAmountByIDs(ids []int) (err error) {
 
 func (c *commentAPI) UpdateCommentAmountByResource(resource string, action string) (err error) {
 	id, resource_name, idname := c.parseCommentResource(resource)
-	var adjustment string
 
-	switch action {
-	case "+":
-		adjustment = "+ 1"
-	case "-":
-		adjustment = "- 1"
-	default:
-		return errors.New("Unknown Action")
-	}
+	if resource_name != "" {
+		var adjustment string
+		switch action {
+		case "+":
+			adjustment = "+ 1"
+		case "-":
+			adjustment = "- 1"
+		default:
+			return errors.New("Unknown Action")
+		}
 
-	query := fmt.Sprintf(`UPDATE %s SET comment_amount= IF(comment_amount IS NULL, 1, comment_amount %s) WHERE %s="%s";`, resource_name, adjustment, idname, id)
-	_, err = DB.Exec(query)
-	if err != nil {
-		return err
+		query := fmt.Sprintf(`UPDATE %s SET comment_amount= IF(comment_amount IS NULL, 1, comment_amount %s) WHERE %s="%s";`, resource_name, adjustment, idname, id)
+		_, err = DB.Exec(query)
+		if err != nil {
+			return err
+		}
 	}
 	return err
 }
 
 func (c *commentAPI) parseCommentResource(resource string) (string, string, string) {
-	r_id := regexp.MustCompile("//[a-zA-Z0-9_.]*/.*/([0-9]*)$").FindStringSubmatch(resource)[1]
-	r := regexp.MustCompile("//[a-zA-Z0-9_.]*/(.*)/[0-9]*$")
 
+	match_result := regexp.MustCompile("/post/([0-9]*)$").FindStringSubmatch(resource)
+	r_id := ""
 	r_name := ""
 	r_idname := ""
 
-	switch r.FindStringSubmatch(resource)[1] {
+	if len(match_result) > 1 {
+		r_id = string(match_result[1])
+		r_name = "post"
+	}
+
+	switch r_name {
 	case "post":
 		r_name = "posts"
 		r_idname = "post_id"
-	case "project":
-		r_name = "projects"
-		r_idname = "project_id"
-	case "memo":
-		r_name = "memos"
-		r_idname = "memo_id"
-	case "report":
-		r_name = "reports"
-		r_idname = "id"
+	default:
+		r_name = ""
+		r_idname = ""
 	}
 
 	return r_id, r_name, r_idname
@@ -685,7 +688,24 @@ func (c *commentAPI) generateCommentNotifications(id int) (err error) {
 		break
 
 	case "report":
+		break
 	default:
+
+		if parentCommentDetail.Author.Valid && parentCommentDetail.Author.Int != commentDetail.Author.Int {
+			ns[strconv.Itoa(int(parentCommentDetail.Author.Int))] = NewNotification("comment_reply")
+		}
+
+		for k, v := range ns {
+			v.SubjectID = strconv.Itoa(int(commentDetail.Author.Int))
+			v.Nickname = commentDetail.AuthorNickname.String
+			v.ProfileImage = commentDetail.AuthorImage.String
+			v.ObjectName = commentDetail.Resource.String
+			v.ObjectType = ""
+			v.ObjectID = ""
+			v.PostType = "0"
+			ns[k] = v
+		}
+
 		break
 	}
 	ns.Send()
