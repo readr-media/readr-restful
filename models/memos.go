@@ -1,12 +1,13 @@
 package models
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 	"log"
 	"regexp"
 	"strings"
+
+	"database/sql"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -42,14 +43,15 @@ type MemoInterface interface {
 }
 
 type MemoGetArgs struct {
-	MaxResult     int              `form:"max_result"`
-	Page          int              `form:"page"`
-	Sorting       string           `form:"sort"`
-	Author        []int64          `form:"author"`
-	Project       []int64          `form:"project_id"`
-	Slugs         []string         `form:"slugs"`
-	Active        map[string][]int `form:"active"`
-	PublishStatus map[string][]int `form:"publish_status"`
+	MaxResult            int              `form:"max_result"`
+	Page                 int              `form:"page"`
+	Sorting              string           `form:"sort"`
+	Author               []int64          `form:"author"`
+	Project              []int64          `form:"project_id"`
+	Slugs                []string         `form:"slugs"`
+	Active               map[string][]int `form:"active"`
+	MemoPublishStatus    map[string][]int `form:"memo_publish_status"`
+	ProjectPublishStatus map[string][]int `form:"project_publish_status"`
 }
 
 func (p *MemoGetArgs) Default() (result *MemoGetArgs) {
@@ -67,7 +69,7 @@ func (p *MemoGetArgs) Validate() bool {
 func (p *MemoGetArgs) parse() (restricts string, values []interface{}) {
 	where := make([]string, 0)
 
-	if p.PublishStatus == nil && p.Active == nil && len(p.Author) == 0 && len(p.Project) == 0 {
+	if p.MemoPublishStatus == nil && p.ProjectPublishStatus == nil && p.Active == nil && len(p.Author) == 0 && len(p.Project) == 0 {
 		return "", nil
 	}
 
@@ -78,9 +80,15 @@ func (p *MemoGetArgs) parse() (restricts string, values []interface{}) {
 		}
 	}
 
-	if p.PublishStatus != nil {
-		for k, v := range p.PublishStatus {
+	if p.MemoPublishStatus != nil {
+		for k, v := range p.MemoPublishStatus {
 			where = append(where, fmt.Sprintf("%s %s (?)", "memos.publish_status", operatorHelper(k)))
+			values = append(values, v)
+		}
+	}
+	if p.ProjectPublishStatus != nil {
+		for k, v := range p.ProjectPublishStatus {
+			where = append(where, fmt.Sprintf("%s %s (?)", "project.publish_status", operatorHelper(k)))
 			values = append(values, v)
 		}
 	}

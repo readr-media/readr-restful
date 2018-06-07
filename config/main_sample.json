@@ -13,10 +13,8 @@
             "talk_comments": ""
         }
     },
-    "mongo":{
-        "talk": {
-            "host": "",
-        }
+    "cralwer": {
+        "headers":{}
     },
     "mail":{
         "host": "",
