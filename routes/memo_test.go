@@ -79,6 +79,10 @@ func (m *mockMemoAPI) GetMemos(args *models.MemoGetArgs) (memos []models.MemoDet
 		return []models.MemoDetail{
 			models.MemoDetail{Memo: models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullInt{132, true}, Project: models.NullInt{421, true}, Active: models.NullInt{1, true}}},
 		}, nil
+	case len(args.ProjectPublishStatus) > 0:
+		return []models.MemoDetail{
+			models.MemoDetail{Memo: models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullInt{132, true}, Project: models.NullInt{421, true}, Active: models.NullInt{1, true}}},
+		}, nil
 	default:
 		return []models.MemoDetail{
 			models.MemoDetail{Memo: models.Memo{ID: 1, Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
@@ -152,6 +156,7 @@ func TestRouteMemos(t *testing.T) {
 
 	for _, params := range []models.Project{
 		models.Project{ID: 420, Active: models.NullInt{1, true}, Title: models.NullString{"Test project for memo", true}, Slug: models.NullString{"testproject", true}},
+		models.Project{ID: 421, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{3, true}, Title: models.NullString{"Test project for memo2", true}, Slug: models.NullString{"testproject2", true}},
 	} {
 		err := models.ProjectAPI.InsertProject(params)
 		if err != nil {
@@ -259,6 +264,9 @@ func TestRouteMemos(t *testing.T) {
 				models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}},
 				models.Memo{ID: 1, Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}},
 				models.Memo{ID: 2, Title: models.NullString{"MemoTestDefault2", true}, Author: models.NullInt{135, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}},
+			}},
+			genericTestcase{"GetMemoWithMemoStatusAndProjectStatus", "GET", `/memos?project_publish_status={"$in":[3]}`, ``, http.StatusOK, []models.Memo{
+				models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullInt{132, true}, Project: models.NullInt{421, true}, Active: models.NullInt{1, true}},
 			}},
 		} {
 			genericDoTest(testcase, t, asserter)

@@ -24,11 +24,20 @@ func (r *memoHandler) bindQuery(c *gin.Context, args *models.MemoGetArgs) (err e
 			}
 		}
 	}
-	if c.Query("publish_status") != "" {
-		if err = json.Unmarshal([]byte(c.Query("publish_status")), &args.PublishStatus); err != nil {
+	if c.Query("memo_publish_status") != "" {
+		if err = json.Unmarshal([]byte(c.Query("memo_publish_status")), &args.MemoPublishStatus); err != nil {
 			return err
 		} else if err == nil {
-			if err = models.ValidateActive(args.PublishStatus, models.MemoPublishStatus); err != nil {
+			if err = models.ValidateActive(args.MemoPublishStatus, models.MemoPublishStatus); err != nil {
+				return err
+			}
+		}
+	}
+	if c.Query("project_publish_status") != "" {
+		if err = json.Unmarshal([]byte(c.Query("project_publish_status")), &args.ProjectPublishStatus); err != nil {
+			return err
+		} else if err == nil {
+			if err = models.ValidateActive(args.ProjectPublishStatus, models.ProjectPublishStatus); err != nil {
 				return err
 			}
 		}
