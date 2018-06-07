@@ -96,6 +96,7 @@ func TestMain(m *testing.M) {
 	models.ReportedCommentStatus = viper.GetStringMap("models.reported_comment_status")
 	models.ReportActive = viper.GetStringMap("models.reports")
 	models.ReportPublishStatus = viper.GetStringMap("models.reports_publish_status")
+	OGParserHeaders = viper.GetStringMapString("cralwer.headers")
 
 	models.CommentAPI = new(mockCommentAPI)
 	models.FollowingAPI = new(mockFollowingAPI)

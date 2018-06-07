@@ -47,6 +47,7 @@ func main() {
 	models.ProjectStatus = viper.GetStringMap("models.projects_status")
 	models.ProjectPublishStatus = viper.GetStringMap("models.projects_publish_status")
 	models.TagStatus = viper.GetStringMap("models.tags")
+	routes.OGParserHeaders = viper.GetStringMapString("cralwer.headers")
 
 	// waiting: allow full utf8 support by incorporating `?charset=utf8mb4` in connection
 	dbURI := fmt.Sprintf("%s:%s@tcp(%s)/memberdb?parseTime=true&charset=utf8mb4", sqlUser, sqlPass, fmt.Sprintf("%s:%v", sqlHost, sqlPort))

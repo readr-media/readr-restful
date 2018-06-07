@@ -241,6 +241,16 @@ func TestRouteComments(t *testing.T) {
 			genericDoTest(transformPubsub(testcase), t, asserter)
 		}
 	})
+	t.Run("InsertCommentWithUrl", func(t *testing.T) {
+		for _, testcase := range []genericTestcase{
+			genericTestcase{"InsertCommentWithUrlOK", "post", "/comment", `{"body":"https://developers.facebook.com/","resource":"http://dev.readr.tw/post/90","author":91}`, http.StatusOK, ``},
+			//genericTestcase{"InsertCommentWithUnicodeOK", "post", "/comment", `{"body":"https://medium.com/@evonneyifangtsai/短評xdite參選台北市長-84b391b3bfae","resource":"http://dev.readr.tw/post/90","author":91}`, http.StatusOK, ``},
+			genericTestcase{"InsertCommentWithMultipleUrlOK", "post", "/comment", `{"body":"https://www.readr.tw/post/274 http://news.ltn.com.tw/news/focus/paper/1191781","resource":"http://dev.readr.tw/post/90","author":91}`, http.StatusOK, ``},
+			//genericTestcase{"PutCommentWithUrlOK", "put", "/comment", `{"id": 1, "body":"https://medium.com/@evonneyifangtsai/"}`, http.StatusOK, ``},
+		} {
+			genericDoTest(transformPubsub(testcase), t, asserter)
+		}
+	})
 	t.Run("UpdateComment", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
 			genericTestcase{"UpdateCommentOK", "put", "/comment", `{"id":1, "body":"modified"}`, http.StatusOK, ``},
