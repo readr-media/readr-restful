@@ -64,9 +64,6 @@ func main() {
 		"password": fmt.Sprint(viper.Get("redis.password")),
 	})
 
-	// Init Mongodb connection
-	models.MongoConn(fmt.Sprint(viper.Get("mongo.talk.host")))
-
 	// init mail sender
 	dialer := gomail.NewDialer(
 		viper.Get("mail.host").(string),
