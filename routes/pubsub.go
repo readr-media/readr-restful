@@ -67,7 +67,6 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"Error": "Bad Request"})
 			return
 		}
-
 		params := models.FollowArgs{Resource: body.Resource, Subject: int64(body.Subject), Object: int64(body.Object)}
 
 		switch actionType {
@@ -109,6 +108,7 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 			comment.Body.String = html.EscapeString(comment.Body.String)
 			escapedBody := url.PathEscape(comment.Body.String)
 			escapedBody = strings.Replace(escapedBody, `%2F`, "/", -1)
+			escapedBody = strings.Replace(escapedBody, `%20`, " ", -1)
 			commentUrls := r.parseUrl(escapedBody)
 			if len(commentUrls) > 0 {
 				for _, v := range commentUrls {
@@ -126,7 +126,7 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 							comment.OgImage = models.NullString{String: ogInfo.Image, Valid: true}
 						}
 					}
-					escapedBody = strings.Replace(escapedBody, v, fmt.Sprintf(`<a href="%s"> %s </a>`, v, v), -1)
+					escapedBody = strings.Replace(escapedBody, v, fmt.Sprintf(`<a href="%s">%s</a>`, v, v), -1)
 				}
 				comment.Body.String, _ = url.PathUnescape(escapedBody)
 			}
