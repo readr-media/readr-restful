@@ -187,7 +187,7 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 								comment.OgImage = models.NullString{String: ogInfo.Image, Valid: true}
 							}
 						}
-						escapedBody = strings.Replace(escapedBody, v, fmt.Sprintf(`<a href="%s"> %s </a>`, v, v), -1)
+						escapedBody = strings.Replace(escapedBody, v, fmt.Sprintf(`<a href="%s" target="_blank"> %s </a>`, v, v), -1)
 					}
 					comment.Body.String, _ = url.PathUnescape(escapedBody)
 				}
