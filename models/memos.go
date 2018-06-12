@@ -34,7 +34,7 @@ type Memo struct {
 
 type MemoInterface interface {
 	CountMemos(args *MemoGetArgs) (int, error)
-	GetMemo(id int) (Memo, error)
+	GetMemo(id int, abstractLength int64, memberID int64) (Memo, error)
 	GetMemos(args *MemoGetArgs) ([]MemoDetail, error)
 	InsertMemo(memo Memo) error
 	UpdateMemo(memo Memo) error
@@ -52,10 +52,12 @@ type MemoGetArgs struct {
 	Active               map[string][]int `form:"active"`
 	MemoPublishStatus    map[string][]int `form:"memo_publish_status"`
 	ProjectPublishStatus map[string][]int `form:"project_publish_status"`
+	MemberID             int64            `form:"member_id"`
+	AbstractLength       int64            `form:"abstract_length"`
 }
 
 func (p *MemoGetArgs) Default() (result *MemoGetArgs) {
-	return &MemoGetArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at"}
+	return &MemoGetArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at", AbstractLength: 20}
 }
 func (p *MemoGetArgs) DefaultActive() {
 	p.Active = map[string][]int{"$nin": []int{int(MemoStatus["deactive"].(float64))}}
@@ -199,10 +201,17 @@ func (m *memoAPI) CountMemos(args *MemoGetArgs) (result int, err error) {
 	}
 	return result, err
 }
-func (m *memoAPI) GetMemo(id int) (memo Memo, err error) {
+func (m *memoAPI) GetMemo(id int, abstractLength int64, memberID int64) (memo Memo, err error) {
 	result := Memo{}
 
-	err = DB.Get(&result, `SELECT * FROM memos WHERE memo_id = ?;`, id)
+	memoField := strings.Join(makeFieldString("general", `memos.%s`, getStructDBTags("full", Memo{})), ", ")
+	r := strings.NewReplacer("memos.content", "CASE WHEN (points.object_id IS NULL OR points.object_type IS NULL) THEN SUBSTRING(memos.content, 1, ?) ELSE memos.content END AS content")
+	memoField = r.Replace(memoField)
+
+	err = DB.Get(&result, fmt.Sprintf(`
+		SELECT %s FROM memos 
+		LEFT JOIN (SELECT DISTINCT object_id, object_type FROM points WHERE object_type = 2 AND member_id = ?) AS points 
+		on memos.project_id = points.object_id WHERE memo_id = ?;`, memoField), abstractLength, memberID, id)
 	if err != nil {
 		log.Println(err.Error())
 		switch {
@@ -220,6 +229,10 @@ func (m *memoAPI) GetMemo(id int) (memo Memo, err error) {
 	return result, err
 }
 func (m *memoAPI) GetMemos(args *MemoGetArgs) (memos []MemoDetail, err error) {
+
+	memoField := strings.Join(makeFieldString("general", `memos.%s`, getStructDBTags("full", Memo{})), ", ")
+	r := strings.NewReplacer("memos.content", "CASE WHEN (points.object_id IS NULL OR points.object_type IS NULL) THEN SUBSTRING(memos.content,1 , ?) ELSE memos.content END AS content")
+	memoField = r.Replace(memoField)
 
 	projectTags := getStructDBTags("full", Project{})
 	projectField := makeFieldString("get", `project.%s "project.%s"`, projectTags)
@@ -241,8 +254,17 @@ func (m *memoAPI) GetMemos(args *MemoGetArgs) (memos []MemoDetail, err error) {
 
 	limit, largs := args.parseLimit()
 	values = append(values, largs...)
+	values = append(values, args.MemberID)
+	// Prepend customized abstract length at the beginning of values
+	values = append([]interface{}{args.AbstractLength}, values...)
 
-	rawQuery := fmt.Sprintf(`SELECT memos.*, %s, %s FROM (SELECT memos.* FROM memos LEFT JOIN projects AS project ON project.project_id = memos.project_id %s %s) AS memos LEFT JOIN members AS author ON author.id = memos.author LEFT JOIN projects AS project ON project.project_id = memos.project_id %s;`, strings.Join(projectField, ","), strings.Join(memberField, ","), restricts, limit["full"], limit["order"])
+	rawQuery := fmt.Sprintf(`
+		SELECT %s, %s, %s FROM 
+		(SELECT memos.* FROM memos LEFT JOIN projects AS project ON project.project_id = memos.project_id %s %s) AS memos 
+		LEFT JOIN members AS author ON author.id = memos.author 
+		LEFT JOIN projects AS project ON project.project_id = memos.project_id 
+		LEFT JOIN (SELECT DISTINCT object_id, object_type FROM points WHERE object_type = 2 AND member_id = ?) AS points on memos.project_id = points.object_id %s;`,
+		memoField, strings.Join(projectField, ","), strings.Join(memberField, ","), restricts, limit["full"], limit["order"])
 
 	query, sqlArgs, err := sqlx.In(rawQuery, values...)
 	if err != nil {

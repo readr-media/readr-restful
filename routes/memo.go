@@ -57,7 +57,16 @@ func (r *memoHandler) bindQuery(c *gin.Context, args *models.MemoGetArgs) (err e
 			return err
 		}
 	}
-
+	if c.Query("abstract_length") != "" {
+		if args.AbstractLength, err = strconv.ParseInt(c.Query("abstract_length"), 10, 64); err != nil {
+			return err
+		}
+	}
+	if c.Query("member_id") != "" {
+		if args.MemberID, err = strconv.ParseInt(c.Query("member_id"), 10, 64); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -86,7 +95,12 @@ func (r *memoHandler) GetMany(c *gin.Context) {
 func (r *memoHandler) Get(c *gin.Context) {
 
 	id, _ := strconv.Atoi(c.Param("id"))
-	result, err := models.MemoAPI.GetMemo(id)
+	abstractLength, _ := strconv.ParseInt(c.Query("abstract_length"), 10, 64)
+	if abstractLength == 0 {
+		abstractLength = 20
+	}
+	memberID, _ := strconv.ParseInt(c.Query("member_id"), 10, 64)
+	result, err := models.MemoAPI.GetMemo(id, abstractLength, memberID)
 
 	if err != nil {
 		switch err.Error() {
@@ -159,7 +173,7 @@ func (r *memoHandler) Put(c *gin.Context) {
 		return
 	}
 	if memo.PublishStatus.Valid {
-		result, err := models.MemoAPI.GetMemo(memo.ID)
+		result, err := models.MemoAPI.GetMemo(memo.ID, 20, 0)
 		if err != nil {
 			switch err.Error() {
 			case "Not Found":

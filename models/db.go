@@ -68,6 +68,21 @@ func makeFieldString(mode string, pattern string, tags []string) (result []strin
 		for _, value := range tags {
 			result = append(result, fmt.Sprintf(pattern, value, value))
 		}
+	/*
+		Case "general" is created for all use scenerio
+		Just pass in pattern string and all the tags we want to format,
+		it could automatically generate corresponding amount of single tag according to counts of %s in pattern.
+		It could be used to replace both case "get" and "update".
+		We could take down mode argument and other switch cases for future refactor of makeFieldString.
+	*/
+	case "general":
+		for _, field := range tags {
+			fields := make([]interface{}, strings.Count(pattern, "%s"))
+			for i := range fields {
+				fields[i] = field
+			}
+			result = append(result, fmt.Sprintf(pattern, fields...))
+		}
 	}
 	return result
 }
