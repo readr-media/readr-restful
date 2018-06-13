@@ -25,10 +25,12 @@ func initMailDialer() gomail.Dialer {
 
 type mockMailAPI struct{}
 
-func (m *mockMailAPI) SetDialer(dialer gomail.Dialer)                             { return }
-func (m *mockMailAPI) Send(args models.MailArgs) (err error)                      { return nil }
-func (m *mockMailAPI) SendUpdateNote(args models.GetFollowMapArgs) (err error)    { return nil }
-func (m *mockMailAPI) SendUpdateNoteAll(args models.GetFollowMapArgs) (err error) { return nil }
+func (m *mockMailAPI) SetDialer(dialer gomail.Dialer)                                     { return }
+func (m *mockMailAPI) Send(args models.MailArgs) (err error)                              { return nil }
+func (m *mockMailAPI) SendUpdateNote(args models.GetFollowMapArgs) (err error)            { return nil }
+func (m *mockMailAPI) SendUpdateNoteAllResource(args models.GetFollowMapArgs) (err error) { return nil }
+func (m *mockMailAPI) GenDailyDigest() (err error)                                        { return err }
+func (m *mockMailAPI) SendDailyDigest() (err error)                                       { return err }
 
 func TestRouteEmail(t *testing.T) {
 

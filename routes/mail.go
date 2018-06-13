@@ -27,7 +27,7 @@ func (r *mailHandler) sendMail(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 	}
 
-	c.Status(200)
+	c.Status(http.StatusOK)
 }
 
 func (r *mailHandler) updateNote(c *gin.Context) {
@@ -45,7 +45,7 @@ func (r *mailHandler) updateNote(c *gin.Context) {
 		return
 	}
 	if args.Resource == "" {
-		if err := models.MailAPI.SendUpdateNoteAll(args); err != nil {
+		if err := models.MailAPI.SendUpdateNoteAllResource(args); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 			return
 		}
@@ -56,12 +56,37 @@ func (r *mailHandler) updateNote(c *gin.Context) {
 		}
 	}
 
-	c.Status(200)
+	c.Status(http.StatusOK)
+}
+
+func (r *mailHandler) GenDailyDigest(c *gin.Context) {
+
+	err := models.MailAPI.GenDailyDigest()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		return
+	}
+
+	c.Status(http.StatusOK)
+	//c.Data(http.StatusOK, "text/html; charset=utf-8", []byte(md))
+}
+
+func (r *mailHandler) SendDailyDigest(c *gin.Context) {
+
+	err := models.MailAPI.SendDailyDigest()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		return
+	}
+	c.Status(http.StatusOK)
 }
 
 func (r *mailHandler) SetRoutes(router *gin.Engine, dialer gomail.Dialer) {
 	router.POST("/mail", r.sendMail)
 	router.POST("/mail/updatenote", r.updateNote)
+	//router.POST("/mail/dailydigest", r.dailyDigest)
+	router.GET("/mail/gendailydigest", r.GenDailyDigest)
+	router.GET("/mail/senddailydigest", r.SendDailyDigest)
 
 	models.MailAPI.SetDialer(dialer)
 }
