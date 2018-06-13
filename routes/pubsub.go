@@ -105,7 +105,7 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 				return
 			}
 
-			comment.Body.String = html.EscapeString(comment.Body.String)
+			comment.Body.String = strings.Trim(html.EscapeString(comment.Body.String), " \n")
 			escapedBody := url.PathEscape(comment.Body.String)
 			escapedBody = strings.Replace(escapedBody, `%2F`, "/", -1)
 			escapedBody = strings.Replace(escapedBody, `%20`, " ", -1)
@@ -167,7 +167,7 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 			}
 
 			if comment.Body.Valid {
-				comment.Body.String = html.EscapeString(comment.Body.String)
+				comment.Body.String = strings.Trim(html.EscapeString(comment.Body.String), " \n")
 				escapedBody := url.PathEscape(comment.Body.String)
 				escapedBody = strings.Replace(escapedBody, `%2F`, "/", -1)
 				commentUrls := r.parseUrl(escapedBody)
