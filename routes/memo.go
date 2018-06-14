@@ -67,6 +67,10 @@ func (r *memoHandler) bindQuery(c *gin.Context, args *models.MemoGetArgs) (err e
 			return err
 		}
 	}
+	if c.Param("id") != "" {
+		id, _ := strconv.Atoi(c.Param("id"))
+		args.MemoID = int64(id)
+	}
 	return nil
 }
 
@@ -93,15 +97,15 @@ func (r *memoHandler) GetMany(c *gin.Context) {
 }
 
 func (r *memoHandler) Get(c *gin.Context) {
-
-	id, _ := strconv.Atoi(c.Param("id"))
-	abstractLength, _ := strconv.ParseInt(c.Query("abstract_length"), 10, 64)
-	if abstractLength == 0 {
-		abstractLength = 20
+	var args = &models.MemoGetArgs{}
+	if err := r.bindQuery(c, args); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
 	}
-	memberID, _ := strconv.ParseInt(c.Query("member_id"), 10, 64)
-	result, err := models.MemoAPI.GetMemo(id, abstractLength, memberID)
-
+	if args.AbstractLength == 0 {
+		args.AbstractLength = 20
+	}
+	result, err := models.MemoAPI.GetMemos(args)
 	if err != nil {
 		switch err.Error() {
 		case "Not Found":
