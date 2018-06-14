@@ -40,6 +40,9 @@ func (m *mockMemoAPI) GetMemo(id int) (memo models.Memo, err error) {
 }
 func (m *mockMemoAPI) GetMemos(args *models.MemoGetArgs) (memos []models.MemoDetail, err error) {
 	switch {
+	case args.MemoID == 1:
+		return []models.MemoDetail{
+			models.MemoDetail{Memo: models.Memo{ID: 1, Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}}}}, nil
 	case len(args.Author) > 0 && len(args.Project) > 0:
 		return []models.MemoDetail{
 			models.MemoDetail{Memo: models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullInt{135, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}}},
@@ -218,7 +221,10 @@ func TestRouteMemos(t *testing.T) {
 	})
 	t.Run("GetMemo", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"GetMemoOK", "GET", "/memo/1", ``, http.StatusOK, `{"_items":{"id":1,"created_at":null,"comment_amount":null,"title":"MemoTestDefault1","content":null,"link":null,"author":131,"project_id":420,"active":1,"updated_at":null,"updated_by":null,"published_at":null,"publish_status":null,"memo_order":null}}`},
+			// genericTestcase{"GetMemoOK", "GET", "/memo/1", ``, http.StatusOK, `{"_items":{"id":1,"created_at":null,"comment_amount":null,"title":"MemoTestDefault1","content":null,"link":null,"author":131,"project_id":420,"active":1,"updated_at":null,"updated_by":null,"published_at":null,"publish_status":null,"memo_order":null}}`},
+			genericTestcase{"GetMemoOK", "GET", "/memo/1", ``, http.StatusOK, []models.Memo{
+				models.Memo{ID: 1, Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}},
+			}},
 		} {
 			genericDoTest(testcase, t, asserter)
 		}

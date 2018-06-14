@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"regexp"
 	"strings"
 
@@ -52,10 +53,13 @@ type MemoGetArgs struct {
 	Active               map[string][]int `form:"active"`
 	MemoPublishStatus    map[string][]int `form:"memo_publish_status"`
 	ProjectPublishStatus map[string][]int `form:"project_publish_status"`
+	MemberID             int64            `form:"member_id"`
+	AbstractLength       int64            `form:"abstract_length"`
+	MemoID               int64
 }
 
 func (p *MemoGetArgs) Default() (result *MemoGetArgs) {
-	return &MemoGetArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at"}
+	return &MemoGetArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at", AbstractLength: 20}
 }
 func (p *MemoGetArgs) DefaultActive() {
 	p.Active = map[string][]int{"$nin": []int{int(MemoStatus["deactive"].(float64))}}
@@ -69,9 +73,9 @@ func (p *MemoGetArgs) Validate() bool {
 func (p *MemoGetArgs) parse() (restricts string, values []interface{}) {
 	where := make([]string, 0)
 
-	if p.MemoPublishStatus == nil && p.ProjectPublishStatus == nil && p.Active == nil && len(p.Author) == 0 && len(p.Project) == 0 {
-		return "", nil
-	}
+	// if p.MemoPublishStatus == nil && p.ProjectPublishStatus == nil && p.Active == nil && len(p.Author) == 0 && len(p.Project) == 0 {
+	// 	return "", nil
+	// }
 
 	if p.Active != nil {
 		for k, v := range p.Active {
@@ -105,6 +109,12 @@ func (p *MemoGetArgs) parse() (restricts string, values []interface{}) {
 		where = append(where, fmt.Sprintf("%s IN (?)", "project.slug"))
 		values = append(values, p.Slugs)
 	}
+
+	if p.MemoID != 0 {
+		where = append(where, fmt.Sprintf("%s = ?", "memos.memo_id"))
+		values = append(values, p.MemoID)
+	}
+
 	if len(where) > 1 {
 		restricts = fmt.Sprintf(" WHERE %s", strings.Join(where, " AND "))
 	} else if len(where) == 1 {
@@ -172,8 +182,12 @@ func (p *MemoUpdateArgs) parse() (updates string, values []interface{}) {
 
 type MemoDetail struct {
 	Memo
-	Authors Member  `json:"author" db:"author"`
-	Project Project `json:"project" db:"project"`
+	Authors Member `json:"author" db:"author"`
+	// Project Project `json:"project" db:"project"`
+	Project struct {
+		Project
+		Paid bool `json:"paid"`
+	} `json:"project" db:"project"`
 }
 
 type memoAPI struct{}
@@ -200,9 +214,9 @@ func (m *memoAPI) CountMemos(args *MemoGetArgs) (result int, err error) {
 	return result, err
 }
 func (m *memoAPI) GetMemo(id int) (memo Memo, err error) {
-	result := Memo{}
 
-	err = DB.Get(&result, `SELECT * FROM memos WHERE memo_id = ?;`, id)
+	err = DB.Get(&memo, `SELECT * FROM memos WHERE memo_id = ?;`, id)
+
 	if err != nil {
 		log.Println(err.Error())
 		switch {
@@ -217,9 +231,45 @@ func (m *memoAPI) GetMemo(id int) (memo Memo, err error) {
 		}
 	}
 
-	return result, err
+	return memo, err
 }
 func (m *memoAPI) GetMemos(args *MemoGetArgs) (memos []MemoDetail, err error) {
+
+	// Implementation of business logic
+	// Get paid data for projects and roles data for member
+	var (
+		roleProject string
+		roleArgs    []interface{}
+		isAdmin     bool
+	)
+	roleArgs = append(roleArgs, args.MemberID, args.MemberID)
+	if len(args.Project) > 0 {
+		roleProject = fmt.Sprintf("AND %s IN (?)", "object_id")
+		roleArgs = append(roleArgs, args.Project)
+	}
+
+	// User payment in points would be negative values
+	roleQuery := fmt.Sprintf(`SELECT user.id, user.role, projects.object_type, projects.object_id, points.points FROM
+		(SELECT id, role FROM members WHERE id = ?) AS user
+		LEFT JOIN (SELECT DISTINCT member_id, object_type, object_id FROM points WHERE member_id = ? AND object_type = 2 %s) AS projects ON projects.member_id = user.id
+		LEFT JOIN (SELECT DISTINCT object_id, points FROM points WHERE points < 0) as points ON points.object_id = projects.object_id;`, roleProject)
+
+	roleResult := []struct {
+		ID         int64   `db:"id"`
+		Role       NullInt `db:"role"`
+		ObjectType *int    `db:"object_type"`
+		ObjectID   *int    `db:"object_id"`
+		Points     *int    `db:"points"`
+	}{}
+	roleQuery, roleArgs, err = sqlx.In(roleQuery, roleArgs...)
+	roleQuery = DB.Rebind(roleQuery)
+	if err = DB.Select(&roleResult, roleQuery, roleArgs...); err != nil {
+		return []MemoDetail{}, err
+	}
+
+	if len(roleResult) > 0 && roleResult[0].Role.Valid {
+		isAdmin = (roleResult[0].Role.Int == 9)
+	}
 
 	projectTags := getStructDBTags("full", Project{})
 	projectField := makeFieldString("get", `project.%s "project.%s"`, projectTags)
@@ -242,7 +292,12 @@ func (m *memoAPI) GetMemos(args *MemoGetArgs) (memos []MemoDetail, err error) {
 	limit, largs := args.parseLimit()
 	values = append(values, largs...)
 
-	rawQuery := fmt.Sprintf(`SELECT memos.*, %s, %s FROM (SELECT memos.* FROM memos LEFT JOIN projects AS project ON project.project_id = memos.project_id %s %s) AS memos LEFT JOIN members AS author ON author.id = memos.author LEFT JOIN projects AS project ON project.project_id = memos.project_id %s;`, strings.Join(projectField, ","), strings.Join(memberField, ","), restricts, limit["full"], limit["order"])
+	rawQuery := fmt.Sprintf(`
+		SELECT memos.*, %s, %s FROM 
+		(SELECT memos.* FROM memos LEFT JOIN projects AS project ON project.project_id = memos.project_id %s %s) AS memos 
+		LEFT JOIN members AS author ON author.id = memos.author 
+		LEFT JOIN projects AS project ON project.project_id = memos.project_id %s;`,
+		strings.Join(projectField, ","), strings.Join(memberField, ","), restricts, limit["full"], limit["order"])
 
 	query, sqlArgs, err := sqlx.In(rawQuery, values...)
 	if err != nil {
@@ -250,7 +305,6 @@ func (m *memoAPI) GetMemos(args *MemoGetArgs) (memos []MemoDetail, err error) {
 		return nil, err
 	}
 	query = DB.Rebind(query)
-
 	rows, err := DB.Queryx(query, sqlArgs...)
 	if err != nil {
 		log.Println("GetMemos query db error", err)
@@ -258,11 +312,37 @@ func (m *memoAPI) GetMemos(args *MemoGetArgs) (memos []MemoDetail, err error) {
 	}
 
 	memos = []MemoDetail{}
+
 	for rows.Next() {
 		var memo MemoDetail
 		if err = rows.StructScan(&memo); err != nil {
 			log.Println("GetMemos scan result error", err)
 			return []MemoDetail{}, err
+		}
+		abstract := []rune(memo.Content.String)
+		abstract = abstract[:int(math.Min(float64(len(memo.Content.String)), float64(args.AbstractLength)))]
+		var fulltext string
+		// Default show abstract
+		if memo.Content.Valid {
+			fulltext = memo.Content.String
+			memo.Content.String = string(abstract)
+		}
+		// Show full content if
+		// 1. User is admin
+		// 2. The memo belongs to a finished project
+		// 3. User paid for this project
+		if isAdmin {
+			memo.Content.String = fulltext
+		} else if memo.Project.Status.Valid && memo.Project.PublishStatus.Int == 2 {
+			memo.Content.String = fulltext
+		} else {
+			for _, project := range roleResult {
+				if project.ObjectID != nil && memo.Project.ID == *project.ObjectID && project.Points != nil {
+					memo.Project.Paid = true
+					memo.Content.String = fulltext
+					break
+				}
+			}
 		}
 		memos = append(memos, memo)
 	}
