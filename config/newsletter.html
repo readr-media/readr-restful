@@ -186,13 +186,13 @@
   <header class='newsletter-header'>
     <div class='newsletter-header__banner'>
       <a class='newsletter-header__link' href='https://www.readr.tw?utm=dailydigest' target='_blank'>
-        <img class='newsletter-header__logo' src='https://www.readr.tw/public/icons/readr-logo-backstage.svg' alt='newsletter-header__logo'>
+        <img class='newsletter-header__logo' src='https://www.readr.tw/assets/icons/readr-logo-backstage.png' alt='newsletter-header__logo'>
       </a>
       <p class="newsletter-header__date">{{.DateYear}}/{{.DateMonth}}/{{.DateDay}}</p>
     </div>
   </header>
   <div class='newsletter-content'>
-    <!-- Reports section -->
+    {{if .HasReport}}
     <section class='newsletter-content__section reports'>
       <header class='section-header'>
         <h1 class='section-header__title'>報導</h1>
@@ -209,7 +209,8 @@
       </article>
       {{end}}
     </section>
-    <!-- Memos section -->
+    {{end}}
+    {{if .HasMemo}}
     <section class='newsletter-content__section memos'>
       <header class='section-header'>
         <h1 class='section-header__title'>採訪筆記</h1>
@@ -235,7 +236,8 @@
       </div>
       {{end}}
     </section>
-    <!-- Latest posts section  -->
+    {{end}}
+    {{if .HasPost}}
     <section class='newsletter-content__section latests'>
       <header class='section-header'>
         <h1 class='section-header__title'>視角</h1>
@@ -276,7 +278,8 @@
       </div>
       {{end}}
     </section>
-    <!-- READr's posts section  -->
+    {{end}}
+    {{if .HasReadrPost}}
     <section class='newsletter-content__section latests'>
       <header class='section-header'>
         <h1 class='section-header__title'>READr</h1>
@@ -292,6 +295,7 @@
       </article>
       {{end}}
     </section>
+    {{end}}
   </div>
 </body>
 </html>
