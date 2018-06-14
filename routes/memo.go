@@ -177,7 +177,7 @@ func (r *memoHandler) Put(c *gin.Context) {
 		return
 	}
 	if memo.PublishStatus.Valid {
-		result, err := models.MemoAPI.GetMemo(memo.ID, 20, 0)
+		result, err := models.MemoAPI.GetMemo(memo.ID)
 		if err != nil {
 			switch err.Error() {
 			case "Not Found":

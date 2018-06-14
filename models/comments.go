@@ -630,8 +630,7 @@ func (c *commentAPI) generateCommentNotifications(id int) (err error) {
 
 	case "memo":
 		res_id, _ := strconv.Atoi(r_id)
-		// Default to get abstract content
-		memo, err := MemoAPI.GetMemo(res_id, 20, 0)
+		memo, err := MemoAPI.GetMemo(res_id)
 		if err != nil {
 			log.Println("Error get post", r_id, err.Error())
 		}

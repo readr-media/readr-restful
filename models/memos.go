@@ -35,7 +35,7 @@ type Memo struct {
 
 type MemoInterface interface {
 	CountMemos(args *MemoGetArgs) (int, error)
-	GetMemo(id int, abstractLength int64, memberID int64) (Memo, error)
+	GetMemo(id int) (Memo, error)
 	GetMemos(args *MemoGetArgs) ([]MemoDetail, error)
 	InsertMemo(memo Memo) error
 	UpdateMemo(memo Memo) error
@@ -213,18 +213,10 @@ func (m *memoAPI) CountMemos(args *MemoGetArgs) (result int, err error) {
 	}
 	return result, err
 }
-func (m *memoAPI) GetMemo(id int, abstractLength int64, memberID int64) (memo Memo, err error) {
-	result := Memo{}
+func (m *memoAPI) GetMemo(id int) (memo Memo, err error) {
 
-	memoField := strings.Join(makeFieldString("general", `memos.%s`, getStructDBTags("full", Memo{})), ", ")
-	r := strings.NewReplacer("memos.content", "CASE WHEN (points.object_id IS NULL OR points.object_type IS NULL) THEN SUBSTRING(memos.content, 1, ?) ELSE memos.content END AS content")
-	memoField = r.Replace(memoField)
+	err = DB.Get(&memo, `SELECT * FROM memos WHERE memo_id = ?;`, id)
 
-	query := fmt.Sprintf(`
-		SELECT %s FROM memos 
-		LEFT JOIN (SELECT DISTINCT object_id, object_type FROM points WHERE object_type = 2 AND member_id = ?) AS points 
-		on memos.project_id = points.object_id WHERE memo_id = ?;`, memoField)
-	err = DB.Get(&result, query, abstractLength, memberID, id)
 	if err != nil {
 		log.Println(err.Error())
 		switch {
@@ -239,7 +231,7 @@ func (m *memoAPI) GetMemo(id int, abstractLength int64, memberID int64) (memo Me
 		}
 	}
 
-	return result, err
+	return memo, err
 }
 func (m *memoAPI) GetMemos(args *MemoGetArgs) (memos []MemoDetail, err error) {
 
@@ -335,12 +327,16 @@ func (m *memoAPI) GetMemos(args *MemoGetArgs) (memos []MemoDetail, err error) {
 			fulltext = memo.Content.String
 			memo.Content.String = string(abstract)
 		}
-		// Admin show full text whatsoever
+		// Show full content if
+		// 1. User is admin
+		// 2. The memo belongs to a finished project
+		// 3. User paid for this project
 		if isAdmin {
+			memo.Content.String = fulltext
+		} else if memo.Project.Status.Valid && memo.Project.PublishStatus.Int == 2 {
 			memo.Content.String = fulltext
 		} else {
 			for _, project := range roleResult {
-				// Memos belongs to project matches roleResult
 				if project.ObjectID != nil && memo.Project.ID == *project.ObjectID && project.Points != nil {
 					memo.Project.Paid = true
 					memo.Content.String = fulltext

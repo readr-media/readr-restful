@@ -29,7 +29,7 @@ func (m *mockMemoAPI) CountMemos(args *models.MemoGetArgs) (count int, err error
 	}
 	return 0, nil
 }
-func (m *mockMemoAPI) GetMemo(id int, abstractLength int64, memberID int64) (memo models.Memo, err error) {
+func (m *mockMemoAPI) GetMemo(id int) (memo models.Memo, err error) {
 
 	for _, v := range mockMemoDS {
 		if v.ID == id {
