@@ -170,13 +170,17 @@ func (m *mailApi) SendUpdateNoteAllResource(args GetFollowMapArgs) (err error) {
 }
 
 type dailyDigest struct {
-	DateDay    int
-	DateMonth  int
-	DateYear   int
-	Reports    []dailyReport
-	Memos      []dailyMemoAuthor
-	Posts      []dailyPostAuthor
-	ReadrPosts []dailyPost
+	DateDay      int
+	DateMonth    int
+	DateYear     int
+	Reports      []dailyReport
+	Memos        []dailyMemoAuthor
+	Posts        []dailyPostAuthor
+	ReadrPosts   []dailyPost
+	HasReport    bool
+	HasMemo      bool
+	HasPost      bool
+	HasReadrPost bool
 }
 type dailyReport struct {
 	ID          int    `db:"id"`
@@ -282,6 +286,10 @@ OLP:
 	}
 	fw := bufio.NewWriter(f)
 
+	data.HasReport = len(data.Reports) > 0
+	data.HasMemo = len(data.Memos) > 0
+	data.HasPost = len(data.Posts) > 0
+	data.HasReadrPost = len(data.ReadrPosts) > 0
 	err = t.Execute(fw, data)
 	if err = fw.Flush(); err != nil {
 		log.Println("err when writing newsletter content", err.Error())
@@ -371,18 +379,28 @@ func (m *mailApi) SendDailyDigest() (err error) {
 	if err != nil {
 		log.Println("Get mailing list error:", err.Error())
 	}
-	list = []string{"hcchien@mirrormedia.mg", "kaiwenhsiung@mirrormedia.mg", "cyu2197@gmail.com"} //for test
+	list = []string{"hcchien@mirrormedia.mg", "kaiwenhsiung@mirrormedia.mg", "yychen@mirrormedia.mg"} //for test
 
-	args := MailArgs{
-		Receiver: list,
-		Subject:  "[Readr+] Daily Digest",
-		Payload:  string(s),
-		BCC:      []string{"yychen@mirrormedia.mg"},
-	}
+	for len(list) > 0 {
+		receiver := list
+		if len(list) > 490 {
+			receiver = list[:490]
+			list = list[490:]
+		} else {
+			list = []string{}
+		}
 
-	err = m.Send(args)
-	if err != nil {
-		log.Println("Send mail error:", err.Error())
+		args := MailArgs{
+			Receiver: receiver,
+			Subject:  "[Readr+] Daily Digest",
+			Payload:  string(s),
+			BCC:      []string{"yychen@mirrormedia.mg"},
+		}
+
+		err = m.Send(args)
+		if err != nil {
+			log.Println("Send mail error:", err.Error())
+		}
 	}
 
 	return err
