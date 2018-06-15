@@ -30,7 +30,7 @@ type MailInterface interface {
 	SendUpdateNote(args GetFollowMapArgs) (err error)
 	SendUpdateNoteAllResource(args GetFollowMapArgs) (err error)
 	GenDailyDigest() (err error)
-	SendDailyDigest() (err error)
+	SendDailyDigest(receiver []string) (err error)
 }
 
 type mailApi struct {
@@ -369,25 +369,27 @@ func (m *mailApi) htmlEscape(s string, length int) string {
 		return string(r)
 	}
 }
-func (m *mailApi) SendDailyDigest() (err error) {
+func (m *mailApi) SendDailyDigest(mailList []string) (err error) {
 	s, err := ioutil.ReadFile("tmp/newsletter.html")
 	if err != nil {
 		log.Println("File readr error:", err.Error())
 	}
 
-	list, err := m.getMailingList()
-	if err != nil {
-		log.Println("Get mailing list error:", err.Error())
+	if len(mailList) == 0 {
+		mailList, err = m.getMailingList()
+		if err != nil {
+			log.Println("Get mailing list error:", err.Error())
+		}
+		mailList = []string{"hcchien@mirrormedia.mg", "kaiwenhsiung@mirrormedia.mg", "yychen@mirrormedia.mg"} //for test
 	}
-	list = []string{"hcchien@mirrormedia.mg", "kaiwenhsiung@mirrormedia.mg", "yychen@mirrormedia.mg"} //for test
 
-	for len(list) > 0 {
-		receiver := list
-		if len(list) > 490 {
-			receiver = list[:490]
-			list = list[490:]
+	for len(mailList) > 0 {
+		receiver := mailList
+		if len(mailList) > 490 {
+			receiver = mailList[:490]
+			mailList = mailList[490:]
 		} else {
-			list = []string{}
+			mailList = []string{}
 		}
 
 		args := MailArgs{

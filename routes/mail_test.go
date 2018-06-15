@@ -30,7 +30,7 @@ func (m *mockMailAPI) Send(args models.MailArgs) (err error)                    
 func (m *mockMailAPI) SendUpdateNote(args models.GetFollowMapArgs) (err error)            { return nil }
 func (m *mockMailAPI) SendUpdateNoteAllResource(args models.GetFollowMapArgs) (err error) { return nil }
 func (m *mockMailAPI) GenDailyDigest() (err error)                                        { return err }
-func (m *mockMailAPI) SendDailyDigest() (err error)                                       { return err }
+func (m *mockMailAPI) SendDailyDigest(s []string) (err error)                             { return err }
 
 func TestRouteEmail(t *testing.T) {
 

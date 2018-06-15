@@ -4,6 +4,7 @@ import (
 	"log"
 	"regexp"
 
+	"encoding/json"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -72,8 +73,14 @@ func (r *mailHandler) GenDailyDigest(c *gin.Context) {
 }
 
 func (r *mailHandler) SendDailyDigest(c *gin.Context) {
-
-	err := models.MailAPI.SendDailyDigest()
+	receiver := []string{}
+	if c.Query("receiver") != "" {
+		if err := json.Unmarshal([]byte(c.Query("receiver")), &receiver); err != nil {
+			log.Println(err.Error())
+			return
+		}
+	}
+	err := models.MailAPI.SendDailyDigest(receiver)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 		return
