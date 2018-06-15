@@ -224,7 +224,7 @@ type dailyPost struct {
 }
 
 func (m *mailApi) GenDailyDigest() (err error) {
-	date := time.Now().AddDate(0, 0, -1)
+	date := time.Now() //.AddDate(0, 0, -1)
 	reports, err := m.getDailyReport()
 	if err != nil {
 		log.Println("getDailyReport", err)
@@ -370,6 +370,7 @@ func (m *mailApi) htmlEscape(s string, length int) string {
 	}
 }
 func (m *mailApi) SendDailyDigest(mailList []string) (err error) {
+	date := time.Now()
 	s, err := ioutil.ReadFile("tmp/newsletter.html")
 	if err != nil {
 		log.Println("File readr error:", err.Error())
@@ -394,7 +395,7 @@ func (m *mailApi) SendDailyDigest(mailList []string) (err error) {
 
 		args := MailArgs{
 			Receiver: receiver,
-			Subject:  "[Readr+] Daily Digest",
+			Subject:  fmt.Sprintf("Readr %d/%d 選文", int(date.Month()), date.Day()),
 			Payload:  string(s),
 			BCC:      []string{"yychen@mirrormedia.mg"},
 		}
