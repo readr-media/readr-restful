@@ -21,6 +21,7 @@ pipeline:
     commands:
     - gcloud source repos clone default default
     - cp default/readr-restful/main.json config/main.json
+    - cp default/readr-restful/newsletter.html config/newsletter.html
     when:
       event: [push]
       branch: [master, dev]

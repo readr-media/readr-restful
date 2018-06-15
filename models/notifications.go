@@ -52,6 +52,11 @@ func (n Notifications) Send() {
 	for k, _ := range n {
 		ids = append(ids, k)
 	}
+
+	if len(ids) == 0 {
+		return //no need further actions
+	}
+
 	mailMapping, err := n.getMemberMail(ids)
 	if err != nil {
 		log.Printf("Error getting mail list: %v", err)

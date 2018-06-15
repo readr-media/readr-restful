@@ -308,6 +308,9 @@ func (r *memoHandler) Count(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
+	if args.Active == nil {
+		args.DefaultActive()
+	}
 	count, err := models.MemoAPI.CountMemos(args)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})

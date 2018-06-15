@@ -6,6 +6,7 @@ RUN export GIN_MODE=release
 RUN mkdir /config
 ADD app /app
 ADD default/readr-restful/main.json /config/main.json
+ADD default/readr-restful/newsletter.html /config/newsletter.html
 
 VOLUME /var/log
 EXPOSE 8080

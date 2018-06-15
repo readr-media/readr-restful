@@ -91,7 +91,7 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 		switch actionType {
 
 		case "post":
-			comment := models.Comment{}
+			comment := models.InsertCommentArgs{}
 			err := json.Unmarshal(input.Message.Body, &comment)
 			if err != nil {
 				log.Printf("%s %s fail: %v \n", msgType, actionType, err.Error())
@@ -142,7 +142,7 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 				return
 			}
 
-			err = models.CommentAPI.UpdateCommentAmountByResource(comment.Resource.String, "+")
+			err = models.CommentAPI.UpdateCommentAmountByResource(comment.ResourceName.String, int(comment.ResourceID.Int), "+")
 			if err != nil {
 				log.Printf("%s %s fail: %v \n", msgType, "update comment amount", err.Error())
 				c.Status(http.StatusOK)
@@ -170,6 +170,7 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 				comment.Body.String = strings.Trim(html.EscapeString(comment.Body.String), " \n")
 				escapedBody := url.PathEscape(comment.Body.String)
 				escapedBody = strings.Replace(escapedBody, `%2F`, "/", -1)
+				escapedBody = strings.Replace(escapedBody, `%20`, " ", -1)
 				commentUrls := r.parseUrl(escapedBody)
 				if len(commentUrls) > 0 {
 					for _, v := range commentUrls {
@@ -198,11 +199,6 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 			err = models.CommentAPI.UpdateComment(comment)
 			if err != nil {
 				log.Printf("%s %s fail: %v \n", msgType, actionType, err.Error())
-			}
-
-			err = models.CommentAPI.UpdateCommentAmountByIDs([]int{int(comment.ID)})
-			if err != nil {
-				log.Printf("%s %s fail: %v \n", msgType, "update comment count", err.Error())
 			}
 
 			c.Status(http.StatusOK)
@@ -240,11 +236,6 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 				default:
 					log.Printf("%s %s fail: %v \n", msgType, actionType, err.Error())
 				}
-			}
-
-			err = models.CommentAPI.UpdateCommentAmountByIDs(args.IDs)
-			if err != nil {
-				log.Printf("%s %s fail: %v \n", msgType, "update comment count", err.Error())
 			}
 
 			c.Status(http.StatusOK)

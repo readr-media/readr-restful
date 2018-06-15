@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -51,6 +50,25 @@ type ReportedComment struct {
 type ReportedCommentAuthor struct {
 	Comment CommentAuthor   `json:"comments" db:"comments"`
 	Report  ReportedComment `json:"reported" db:"reported"`
+}
+
+type InsertCommentArgs struct {
+	ID            int64      `json:"id" db:"id"`
+	Author        NullInt    `json:"author" db:"author"`
+	Body          NullString `json:"body" db:"body"`
+	OgTitle       NullString `json:"og_title" db:"og_title"`
+	OgDescription NullString `json:"og_description" db:"og_description"`
+	OgImage       NullString `json:"og_image" db:"og_image"`
+	LikeAmount    NullInt    `json:"like_amount" db:"like_amount"`
+	ParentID      NullInt    `json:"parent_id" db:"parent_id"`
+	Resource      NullString `json:"resource" db:"resource"`
+	Status        NullInt    `json:"status" db:"status"`
+	Active        NullInt    `json:"active" db:"active"`
+	UpdatedAt     NullTime   `json:"updated_at" db:"updated_at"`
+	CreatedAt     NullTime   `json:"created_at" db:"created_at"`
+	IP            NullString `json:"ip" db:"ip"`
+	ResourceName  NullString `json:"resource_name"`
+	ResourceID    NullInt    `json:"resource_id"`
 }
 
 type GetCommentArgs struct {
@@ -169,7 +187,7 @@ func (p *CommentUpdateArgs) parse() (updates string, values []interface{}) {
 type CommentInterface interface {
 	GetComment(id int) (CommentAuthor, error)
 	GetComments(args *GetCommentArgs) (result []CommentAuthor, err error)
-	InsertComment(comment Comment) (id int64, err error)
+	InsertComment(comment InsertCommentArgs) (id int64, err error)
 	UpdateComment(comment Comment) (err error)
 	UpdateComments(req CommentUpdateArgs) (err error)
 
@@ -177,8 +195,7 @@ type CommentInterface interface {
 	InsertReportedComments(report ReportedComment) (id int64, err error)
 	UpdateReportedComments(report ReportedComment) (err error)
 
-	UpdateCommentAmountByResource(resource string, action string) (err error)
-	UpdateCommentAmountByIDs(ids []int) (err error)
+	UpdateCommentAmountByResource(resource string, resourceID int, action string) (err error)
 }
 
 type commentAPI struct{}
@@ -229,7 +246,7 @@ func (c *commentAPI) GetComments(args *GetCommentArgs) (result []CommentAuthor, 
 
 	return result, err
 }
-func (c *commentAPI) InsertComment(comment Comment) (id int64, err error) {
+func (c *commentAPI) InsertComment(comment InsertCommentArgs) (id int64, err error) {
 	tags := getStructDBTags("full", Comment{})
 	query := fmt.Sprintf(`INSERT INTO comments (%s) VALUES (:%s)`,
 		strings.Join(tags, ","), strings.Join(tags, ",:"))
@@ -257,7 +274,7 @@ func (c *commentAPI) InsertComment(comment Comment) (id int64, err error) {
 		return 0, err
 	}
 
-	c.generateCommentNotifications(int(id))
+	c.generateCommentNotifications(comment)
 
 	return id, err
 }
@@ -394,6 +411,7 @@ func (c *commentAPI) UpdateReportedComments(report ReportedComment) (err error) 
 	return err
 }
 
+/*
 func (c *commentAPI) UpdateCommentAmountByIDs(ids []int) (err error) {
 	query, values, err := sqlx.In("SELECT DISTINCT resource FROM comments WHERE id IN (?);", ids)
 	if err != nil {
@@ -422,11 +440,12 @@ func (c *commentAPI) UpdateCommentAmountByIDs(ids []int) (err error) {
 
 	return err
 }
+*/
 
-func (c *commentAPI) UpdateCommentAmountByResource(resource string, action string) (err error) {
-	id, resource_name, idname := c.parseCommentResource(resource)
+func (c *commentAPI) UpdateCommentAmountByResource(resourceName string, resourceID int, action string) (err error) {
+	tableName, idName := c.parseCommentResource(resourceName)
 
-	if resource_name != "" {
+	if resourceName != "" {
 		var adjustment string
 		switch action {
 		case "+":
@@ -437,7 +456,7 @@ func (c *commentAPI) UpdateCommentAmountByResource(resource string, action strin
 			return errors.New("Unknown Action")
 		}
 
-		query := fmt.Sprintf(`UPDATE %s SET comment_amount= IF(comment_amount IS NULL, 1, comment_amount %s) WHERE %s="%s";`, resource_name, adjustment, idname, id)
+		query := fmt.Sprintf(`UPDATE %s SET comment_amount= IF(comment_amount IS NULL, 1, comment_amount %s) WHERE %s="%s";`, tableName, adjustment, idName, resourceID)
 		_, err = DB.Exec(query)
 		if err != nil {
 			return err
@@ -446,39 +465,34 @@ func (c *commentAPI) UpdateCommentAmountByResource(resource string, action strin
 	return err
 }
 
-func (c *commentAPI) parseCommentResource(resource string) (string, string, string) {
+func (c *commentAPI) parseCommentResource(resource string) (string, string) {
 
-	match_result := regexp.MustCompile("/post/([0-9]*)$").FindStringSubmatch(resource)
-	r_id := ""
-	r_name := ""
-	r_idname := ""
+	tableName := ""
+	idName := ""
 
-	if len(match_result) > 1 {
-		r_id = string(match_result[1])
-		r_name = "post"
-	}
-
-	switch r_name {
+	switch resource {
 	case "post":
-		r_name = "posts"
-		r_idname = "post_id"
+		tableName = "posts"
+		idName = "post_id"
 	default:
-		r_name = ""
-		r_idname = ""
+		tableName = ""
+		idName = ""
 	}
 
-	return r_id, r_name, r_idname
+	return tableName, idName
 }
 
-func (c *commentAPI) generateCommentNotifications(id int) (err error) {
+func (c *commentAPI) generateCommentNotifications(comment InsertCommentArgs) (err error) {
 	ns := Notifications{}
 
-	commentDetail, err := c.GetComment(id)
+	commentDetail, err := c.GetComment(int(comment.ID))
 	if err != nil {
-		log.Println("Error get comment", id, err.Error())
+		log.Println("Error get comment", comment.ID, err.Error())
 	}
 
-	r_id, r_name, _ := c.parseCommentResource(commentDetail.Resource.String)
+	resourceID := int(comment.ResourceID.Int)
+	resourceName := comment.ResourceName.String
+	resourceIDStr := strconv.Itoa(int(resourceID))
 
 	var parentCommentDetail CommentAuthor
 	if commentDetail.ParentID.Valid {
@@ -488,18 +502,16 @@ func (c *commentAPI) generateCommentNotifications(id int) (err error) {
 		}
 	}
 
-	r_name = strings.TrimSuffix(r_name, "s")
-	switch r_name {
+	switch resourceName {
 	case "post":
-		res_id, _ := strconv.Atoi(r_id)
-		post, err := PostAPI.GetPost(uint32(res_id))
+		post, err := PostAPI.GetPost(uint32(resourceID))
 		if err != nil {
-			log.Println("Error get post", res_id, err.Error())
+			log.Println("Error get post", resourceID, err.Error())
 		}
 
-		postFollowers, err := FollowingAPI.GetFollowerMemberIDs("post", r_id)
+		postFollowers, err := FollowingAPI.GetFollowerMemberIDs("post", resourceIDStr)
 		if err != nil {
-			log.Println("Error get post followers", r_id, err.Error())
+			log.Println("Error get post followers", resourceIDStr, err.Error())
 		}
 
 		authorFollowers, err := FollowingAPI.GetFollowerMemberIDs("member", strconv.Itoa(int(post.Author.Int)))
@@ -561,8 +573,8 @@ func (c *commentAPI) generateCommentNotifications(id int) (err error) {
 			v.Nickname = commentDetail.AuthorNickname.String
 			v.ProfileImage = commentDetail.AuthorImage.String
 			v.ObjectName = post.Member.Nickname.String
-			v.ObjectType = r_name
-			v.ObjectID = r_id
+			v.ObjectType = resourceName
+			v.ObjectID = resourceIDStr
 			v.PostType = strconv.Itoa(int(post.Type.Int))
 			ns[k] = v
 		}
@@ -570,15 +582,14 @@ func (c *commentAPI) generateCommentNotifications(id int) (err error) {
 		break
 
 	case "project":
-		res_id, _ := strconv.Atoi(r_id)
-		project, err := ProjectAPI.GetProject(Project{ID: res_id})
+		project, err := ProjectAPI.GetProject(Project{ID: resourceID})
 		if err != nil {
-			log.Println("Error get post", r_id, err.Error())
+			log.Println("Error get post", resourceID, err.Error())
 		}
 
-		projectFollowers, err := FollowingAPI.GetFollowerMemberIDs("project", r_id)
+		projectFollowers, err := FollowingAPI.GetFollowerMemberIDs("project", resourceIDStr)
 		if err != nil {
-			log.Println("Error get project followers", r_id, err.Error())
+			log.Println("Error get project followers", resourceIDStr, err.Error())
 		}
 
 		var commentors []int
@@ -620,8 +631,8 @@ func (c *commentAPI) generateCommentNotifications(id int) (err error) {
 			v.Nickname = commentDetail.AuthorNickname.String
 			v.ProfileImage = commentDetail.AuthorImage.String
 			v.ObjectName = project.Title.String
-			v.ObjectType = r_name
-			v.ObjectID = r_id
+			v.ObjectType = resourceName
+			v.ObjectID = resourceIDStr
 			v.PostType = "0"
 			ns[k] = v
 		}
@@ -629,10 +640,9 @@ func (c *commentAPI) generateCommentNotifications(id int) (err error) {
 		break
 
 	case "memo":
-		res_id, _ := strconv.Atoi(r_id)
-		memo, err := MemoAPI.GetMemo(res_id)
+		memo, err := MemoAPI.GetMemo(resourceID)
 		if err != nil {
-			log.Println("Error get post", r_id, err.Error())
+			log.Println("Error get post", resourceID, err.Error())
 		}
 
 		projectFollowers, err := FollowingAPI.GetFollowerMemberIDs("project", strconv.Itoa(int(memo.Project.Int)))
@@ -679,8 +689,8 @@ func (c *commentAPI) generateCommentNotifications(id int) (err error) {
 			v.Nickname = commentDetail.AuthorNickname.String
 			v.ProfileImage = commentDetail.AuthorImage.String
 			v.ObjectName = memo.Title.String
-			v.ObjectType = r_name
-			v.ObjectID = r_id
+			v.ObjectType = resourceName
+			v.ObjectID = resourceIDStr
 			v.PostType = "0"
 			ns[k] = v
 		}
