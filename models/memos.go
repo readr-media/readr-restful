@@ -1,6 +1,7 @@
 package models
 
 import (
+	"database/sql"
 	"errors"
 	"fmt"
 	"log"
@@ -8,8 +9,7 @@ import (
 	"regexp"
 	"strings"
 
-	"database/sql"
-
+	"github.com/PuerkitoBio/goquery"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -313,20 +313,40 @@ func (m *memoAPI) GetMemos(args *MemoGetArgs) (memos []MemoDetail, err error) {
 
 	memos = []MemoDetail{}
 
+	cutAbstract := func(html string, length int64) (result string, err error) {
+		// buf := bytes.NewBuffer(strings.NewReader(html))
+
+		doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+		if err != nil {
+			return "", err
+		}
+		content := doc.Find("p:not(:has(img))").First().Text()
+
+		abstract := []rune(content)
+		abstract = abstract[:int(math.Min(float64(len(content)), float64(length)))]
+		result = fmt.Sprintf("<p>%s</p>", string(abstract))
+		return result, nil
+	}
+
 	for rows.Next() {
-		var memo MemoDetail
+		var (
+			abstract string
+			fulltext string
+			memo     MemoDetail
+		)
 		if err = rows.StructScan(&memo); err != nil {
 			log.Println("GetMemos scan result error", err)
 			return []MemoDetail{}, err
 		}
-		abstract := []rune(memo.Content.String)
-		abstract = abstract[:int(math.Min(float64(len(memo.Content.String)), float64(args.AbstractLength)))]
-		var fulltext string
-		// Default show abstract
+
 		if memo.Content.Valid {
 			fulltext = memo.Content.String
-			memo.Content.String = string(abstract)
+
+			abstract, _ = cutAbstract(memo.Content.String, args.AbstractLength)
+			// Default show abstract
+			memo.Content.String = abstract
 		}
+		// Default show abstract
 		// Show full content if
 		// 1. User is admin
 		// 2. The memo belongs to a finished project
