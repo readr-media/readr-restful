@@ -353,7 +353,7 @@ func (m *memoAPI) GetMemos(args *MemoGetArgs) (memos []MemoDetail, err error) {
 		// 3. User paid for this project
 		if isAdmin {
 			memo.Content.String = fulltext
-		} else if memo.Project.Status.Valid && memo.Project.PublishStatus.Int == 2 {
+		} else if memo.Project.Status.Valid && memo.Project.Status.Int == 2 {
 			memo.Content.String = fulltext
 		} else {
 			for _, project := range roleResult {
