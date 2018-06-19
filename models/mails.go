@@ -381,7 +381,6 @@ func (m *mailApi) SendDailyDigest(mailList []string) (err error) {
 		if err != nil {
 			log.Println("Get mailing list error:", err.Error())
 		}
-		mailList = []string{} //for test
 	}
 
 	for len(mailList) > 0 {
