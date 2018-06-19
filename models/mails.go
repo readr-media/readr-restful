@@ -381,7 +381,7 @@ func (m *mailApi) SendDailyDigest(mailList []string) (err error) {
 		if err != nil {
 			log.Println("Get mailing list error:", err.Error())
 		}
-		mailList = []string{"hcchien@mirrormedia.mg", "kaiwenhsiung@mirrormedia.mg", "yychen@mirrormedia.mg"} //for test
+		mailList = []string{} //for test
 	}
 
 	for len(mailList) > 0 {
@@ -394,10 +394,9 @@ func (m *mailApi) SendDailyDigest(mailList []string) (err error) {
 		}
 
 		args := MailArgs{
-			Receiver: receiver,
-			Subject:  fmt.Sprintf("Readr %d/%d 選文", int(date.Month()), date.Day()),
-			Payload:  string(s),
-			BCC:      []string{"yychen@mirrormedia.mg"},
+			Subject: fmt.Sprintf("Readr %d/%d 選文", int(date.Month()), date.Day()),
+			Payload: string(s),
+			BCC:     receiver,
 		}
 
 		err = m.Send(args)
