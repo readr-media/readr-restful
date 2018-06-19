@@ -104,7 +104,9 @@
       display: flex;
       border: solid 1px #979797;
       margin: 11px 0 0 0;
-      min-height: 77px;
+      max-height: 77px;
+      height: 77px;
+      overflow: hidden;
     }
     .source-figure__link-title {
       font-size: 18px;
@@ -117,6 +119,12 @@
       min-width: 132px;
       height: 75px;
       object-fit: cover;
+    }
+    @media screen and (max-width: 425px) {
+      .source-figure__link-title {
+        font-size: 14px;
+        margin: auto 13px;
+      }
     }
   </style>
   <style>
