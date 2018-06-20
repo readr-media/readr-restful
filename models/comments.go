@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -196,6 +197,7 @@ type CommentInterface interface {
 	UpdateReportedComments(report ReportedComment) (err error)
 
 	UpdateCommentAmountByResource(resource string, resourceID int, action string) (err error)
+	UpdateAllCommentAmount() (err error)
 }
 
 type commentAPI struct{}
@@ -274,6 +276,7 @@ func (c *commentAPI) InsertComment(comment InsertCommentArgs) (id int64, err err
 		return 0, err
 	}
 
+	comment.ID = id
 	c.generateCommentNotifications(comment)
 
 	return id, err
@@ -428,7 +431,7 @@ func (c *commentAPI) UpdateCommentAmountByIDs(ids []int) (err error) {
 	}
 
 	for _, res := range resources {
-		id, name, idname := c.parseCommentResource(res)
+		id, name, idname := c.getResourceTableInfo(res)
 		if name != "" {
 			_, err := DB.Exec(fmt.Sprintf(`UPDATE %s SET comment_amount=(SELECT count(id) FROM comments WHERE resource="%s" AND status=%d AND active=%d) WHERE %s="%s";`, name, res, int(CommentStatus["show"].(float64)), int(CommentActive["active"].(float64)), idname, id))
 			if err != nil {
@@ -443,7 +446,7 @@ func (c *commentAPI) UpdateCommentAmountByIDs(ids []int) (err error) {
 */
 
 func (c *commentAPI) UpdateCommentAmountByResource(resourceName string, resourceID int, action string) (err error) {
-	tableName, idName := c.parseCommentResource(resourceName)
+	tableName, idName := c.getResourceTableInfo(resourceName)
 
 	if resourceName != "" {
 		var adjustment string
@@ -456,7 +459,7 @@ func (c *commentAPI) UpdateCommentAmountByResource(resourceName string, resource
 			return errors.New("Unknown Action")
 		}
 
-		query := fmt.Sprintf(`UPDATE %s SET comment_amount= IF(comment_amount IS NULL, 1, comment_amount %s) WHERE %s="%s";`, tableName, adjustment, idName, resourceID)
+		query := fmt.Sprintf(`UPDATE %s SET comment_amount= IF(comment_amount IS NULL, 1, comment_amount %s) WHERE %s="%d";`, tableName, adjustment, idName, resourceID)
 		_, err = DB.Exec(query)
 		if err != nil {
 			return err
@@ -465,21 +468,100 @@ func (c *commentAPI) UpdateCommentAmountByResource(resourceName string, resource
 	return err
 }
 
-func (c *commentAPI) parseCommentResource(resource string) (string, string) {
+func (c *commentAPI) UpdateAllCommentAmount() (err error) {
+	query, values, err := sqlx.In("SELECT count(id) AS count, resource FROM comments GROUP BY resource;")
+	if err != nil {
+		log.Println(err.Error())
+		return err
+	}
+	query = DB.Rebind(query)
 
-	tableName := ""
-	idName := ""
+	var resources []struct {
+		Count    int    `db:"count"`
+		Resource string `db:"resource"`
+	}
+
+	err = DB.Select(&resources, query, values...)
+	if err != nil {
+		log.Println(err.Error())
+		return err
+	}
+
+	tx, err := DB.Begin()
+	stmPost, _ := tx.Prepare(`UPDATE posts SET comment_amount=? WHERE post_id=? AND (comment_amount!=? OR comment_amount IS NULL);`)
+	stmProject, _ := tx.Prepare(`UPDATE projects SET comment_amount=? WHERE slug=? AND (comment_amount!=? OR comment_amount IS NULL);`)
+	stmMemo, _ := tx.Prepare(`UPDATE memos SET comment_amount=? WHERE memo_id=? AND (comment_amount!=? OR comment_amount IS NULL);`)
+	stmReport, _ := tx.Prepare(`UPDATE reports SET comment_amount=? WHERE slug=? AND (comment_amount!=? OR comment_amount IS NULL);`)
+
+	for _, v := range resources {
+		resourceType, resourceID := c.parseResourceInfo(v.Resource)
+		switch resourceType {
+		case "post":
+			_, err := stmPost.Exec(v.Count, resourceID, v.Count)
+			if err != nil {
+				log.Println("Error update comment counts: ", err.Error())
+			}
+		case "project":
+			_, err := stmProject.Exec(v.Count, resourceID, v.Count)
+			if err != nil {
+				log.Println("Error update comment counts: ", err.Error())
+			}
+		case "memo":
+			_, err := stmMemo.Exec(v.Count, resourceID, v.Count)
+			if err != nil {
+				log.Println("Error update comment counts: ", err.Error())
+			}
+		case "report":
+			_, err := stmReport.Exec(v.Count, resourceID, v.Count)
+			if err != nil {
+				log.Println("Error update comment counts: ", err.Error())
+			}
+		}
+	}
+	tx.Commit()
+
+	return err
+}
+
+func (c *commentAPI) getResourceTableInfo(resource string) (tableName string, idName string) {
 
 	switch resource {
 	case "post":
 		tableName = "posts"
 		idName = "post_id"
+	case "project":
+		tableName = "projects"
+		idName = "project_id"
+	case "memo":
+		tableName = "memos"
+		idName = "memo_id"
+	case "report":
+		tableName = "memos"
+		idName = "id"
 	default:
 		tableName = ""
 		idName = ""
 	}
 
 	return tableName, idName
+}
+
+func (c *commentAPI) parseResourceInfo(resourceString string) (resourceType string, resourceID string) {
+	if matched, _ := regexp.MatchString(`\/post\/[0-9]*$`, resourceString); matched {
+		id := regexp.MustCompile(`\/post\/([0-9]*)$`).FindStringSubmatch(resourceString)
+		return "post", id[1]
+	} else if matched, _ := regexp.MatchString(`\/series\/(.*)$`, resourceString); matched {
+		slug := regexp.MustCompile(`\/series\/(.*)$`).FindStringSubmatch(resourceString)
+		return "project", slug[1]
+	} else if matched, _ := regexp.MatchString(`\/project\/(.*)$`, resourceString); matched {
+		slug := regexp.MustCompile(`\/project\/(.*)$`).FindStringSubmatch(resourceString)
+		return "report", slug[1]
+	} else if matched, _ := regexp.MatchString(`\/series\/.*/([0-9]*)$`, resourceString); matched {
+		id := regexp.MustCompile(`\/series\/.*/([0-9]*)$`).FindStringSubmatch(resourceString)
+		return "report", id[1]
+	} else {
+		return resourceType, resourceID
+	}
 }
 
 func (c *commentAPI) generateCommentNotifications(comment InsertCommentArgs) (err error) {
@@ -584,7 +666,7 @@ func (c *commentAPI) generateCommentNotifications(comment InsertCommentArgs) (er
 	case "project":
 		project, err := ProjectAPI.GetProject(Project{ID: resourceID})
 		if err != nil {
-			log.Println("Error get post", resourceID, err.Error())
+			log.Println("Error get project", resourceID, err.Error())
 		}
 
 		projectFollowers, err := FollowingAPI.GetFollowerMemberIDs("project", resourceIDStr)
@@ -642,7 +724,7 @@ func (c *commentAPI) generateCommentNotifications(comment InsertCommentArgs) (er
 	case "memo":
 		memo, err := MemoAPI.GetMemo(resourceID)
 		if err != nil {
-			log.Println("Error get post", resourceID, err.Error())
+			log.Println("Error get memo", resourceID, err.Error())
 		}
 
 		projectFollowers, err := FollowingAPI.GetFollowerMemberIDs("project", strconv.Itoa(int(memo.Project.Int)))

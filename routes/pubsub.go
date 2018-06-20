@@ -198,7 +198,14 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 
 			err = models.CommentAPI.UpdateComment(comment)
 			if err != nil {
-				log.Printf("%s %s fail: %v \n", msgType, actionType, err.Error())
+				log.Printf("%s %s UpdateComment fail: %v \n", msgType, actionType, err.Error())
+			}
+
+			if comment.Status.Valid || comment.Active.Valid {
+				err = models.CommentAPI.UpdateAllCommentAmount()
+				if err != nil {
+					log.Printf("%s %s UpdateAllCommentAmount fail: %v \n", msgType, actionType, err.Error())
+				}
 			}
 
 			c.Status(http.StatusOK)
@@ -235,6 +242,13 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 					log.Printf("%s %s fail: %v \n", msgType, actionType, "Comments Not Found")
 				default:
 					log.Printf("%s %s fail: %v \n", msgType, actionType, err.Error())
+				}
+			}
+
+			if args.Status.Valid || args.Active.Valid {
+				err = models.CommentAPI.UpdateAllCommentAmount()
+				if err != nil {
+					log.Printf("%s %s UpdateAllCommentAmount fail: %v \n", msgType, actionType, err.Error())
 				}
 			}
 

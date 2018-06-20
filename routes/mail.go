@@ -91,9 +91,8 @@ func (r *mailHandler) SendDailyDigest(c *gin.Context) {
 func (r *mailHandler) SetRoutes(router *gin.Engine, dialer gomail.Dialer) {
 	router.POST("/mail", r.sendMail)
 	router.POST("/mail/updatenote", r.updateNote)
-	//router.POST("/mail/dailydigest", r.dailyDigest)
-	router.GET("/mail/gendailydigest", r.GenDailyDigest)
-	router.GET("/mail/senddailydigest", r.SendDailyDigest)
+	router.POST("/mail/gendailydigest", r.GenDailyDigest)
+	router.POST("/mail/senddailydigest", r.SendDailyDigest)
 
 	models.MailAPI.SetDialer(dialer)
 }
