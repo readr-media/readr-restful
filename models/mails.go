@@ -385,9 +385,9 @@ func (m *mailApi) SendDailyDigest(mailList []string) (err error) {
 
 	for len(mailList) > 0 {
 		receiver := mailList
-		if len(mailList) > 490 {
-			receiver = mailList[:490]
-			mailList = mailList[490:]
+		if len(mailList) > 100 {
+			receiver = mailList[:100]
+			mailList = mailList[100:]
 		} else {
 			mailList = []string{}
 		}
