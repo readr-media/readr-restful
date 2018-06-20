@@ -252,7 +252,7 @@ func (m *memoAPI) GetMemos(args *MemoGetArgs) (memos []MemoDetail, err error) {
 	roleQuery := fmt.Sprintf(`SELECT user.id, user.role, projects.object_type, projects.object_id, points.points FROM
 		(SELECT id, role FROM members WHERE id = ?) AS user
 		LEFT JOIN (SELECT DISTINCT member_id, object_type, object_id FROM points WHERE member_id = ? AND object_type = 2 %s) AS projects ON projects.member_id = user.id
-		LEFT JOIN (SELECT DISTINCT object_id, points FROM points WHERE points <= 0) as points ON points.object_id = projects.object_id;`, roleProject)
+		LEFT JOIN (SELECT DISTINCT object_id, points FROM points WHERE points >= 0) as points ON points.object_id = projects.object_id;`, roleProject)
 
 	roleResult := []struct {
 		ID         int64   `db:"id"`
@@ -352,16 +352,19 @@ func (m *memoAPI) GetMemos(args *MemoGetArgs) (memos []MemoDetail, err error) {
 		// 2. The memo belongs to a finished project
 		// 3. User paid for this project
 		if isAdmin {
+			fmt.Println("first process")
 			memo.Content.String = fulltext
 		} else if memo.Project.Status.Valid && memo.Project.Status.Int == 2 {
+			fmt.Println("second process")
 			memo.Content.String = fulltext
-		} else {
-			for _, project := range roleResult {
-				if project.ObjectID != nil && memo.Project.ID == *project.ObjectID && project.Points != nil {
-					memo.Project.Paid = true
-					memo.Content.String = fulltext
-					break
-				}
+		}
+
+		for _, project := range roleResult {
+			if project.ObjectID != nil && memo.Project.ID == *project.ObjectID && project.Points != nil {
+				fmt.Println("paid!")
+				memo.Project.Paid = true
+				memo.Content.String = fulltext
+				break
 			}
 		}
 		memos = append(memos, memo)
