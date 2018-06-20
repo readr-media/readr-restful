@@ -82,17 +82,15 @@ func (c *mockCommentAPI) UpdateReportedComments(report models.ReportedComment) (
 func (c *mockCommentAPI) UpdateCommentAmountByResource(resourceName string, resourceID int, action string) (err error) {
 	return err
 }
-func (c *mockCommentAPI) UpdateCommentAmountByIDs(ids []int) (err error) {
-	return err
-}
+func (c *mockCommentAPI) UpdateAllCommentAmount() (err error) { return err }
 
 func TestRouteComments(t *testing.T) {
 	log.Println("test start")
 
 	var mockComments = []models.InsertCommentArgs{
-		models.InsertCommentArgs{ID: 1, Body: models.NullString{"Comment No.1", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{91, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}},
-		models.InsertCommentArgs{ID: 2, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"http://dev.readr.tw/post/91", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, IP: models.NullString{"5.6.7.8", true}},
-		models.InsertCommentArgs{ID: 3, Body: models.NullString{"Comment No.3", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, Status: models.NullInt{int64(models.CommentStatus["hide"].(float64)), true}},
+		models.InsertCommentArgs{ID: 1, Body: models.NullString{"Comment No.1", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{91, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, ResourceName: models.NullString{"post", true}, ResourceID: models.NullInt{90, true}},
+		models.InsertCommentArgs{ID: 2, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"http://dev.readr.tw/post/91", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, IP: models.NullString{"5.6.7.8", true}, ResourceName: models.NullString{"post", true}, ResourceID: models.NullInt{91, true}},
+		models.InsertCommentArgs{ID: 3, Body: models.NullString{"Comment No.3", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, Status: models.NullInt{int64(models.CommentStatus["hide"].(float64)), true}, ResourceName: models.NullString{"post", true}, ResourceID: models.NullInt{90, true}},
 	}
 
 	var mockCommentResult = []models.CommentAuthor{
@@ -235,17 +233,17 @@ func TestRouteComments(t *testing.T) {
 	})
 	t.Run("InsertComment", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"InsertCommentOK", "post", "/comment", `{"body":"成功","resource":"http://dev.readr.tw/post/90","author":91}`, http.StatusOK, ``},
-			genericTestcase{"InsertCommentWithIPOK", "post", "/comment", `{"body":"成功2","resource":"http://dev.readr.tw/post/92","author":92,"ip":"1.2.3.4"}`, http.StatusOK, ``},
+			genericTestcase{"InsertCommentOK", "post", "/comment", `{"body":"成功","resource":"http://dev.readr.tw/post/90","author":91,"resource_name":"post","resource_id":90}`, http.StatusOK, ``},
+			genericTestcase{"InsertCommentWithIPOK", "post", "/comment", `{"body":"成功2","resource":"http://dev.readr.tw/post/92","author":92,"ip":"1.2.3.4","resource_name":"post","resource_id":92}`, http.StatusOK, ``},
 			genericTestcase{"InsertCommentMissingRequired", "post", "/comment", `{"body":"成功","author":91}`, http.StatusOK, `{"Error":"Missing Required Parameters"}`},
-			genericTestcase{"InsertCommentWithCreatedAt", "post", "/comment", `{"body":"成功，created_at 被無視","resource":"http://dev.readr.tw/post/90","author":91,"created_at":"2046-01-05T00:42:42+00:00"}`, http.StatusOK, ``},
+			genericTestcase{"InsertCommentWithCreatedAt", "post", "/comment", `{"body":"成功，created_at 被無視","resource":"http://dev.readr.tw/post/90","author":91,"created_at":"2046-01-05T00:42:42+00:00","resource_name":"post","resource_id":90}`, http.StatusOK, ``},
 		} {
 			genericDoTest(transformPubsub(testcase), t, asserter)
 		}
 	})
 	t.Run("InsertCommentWithUrl", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"InsertCommentWithUrlOK", "post", "/comment", `{"body":"https://developers.facebook.com/","resource":"http://dev.readr.tw/post/90","author":91}`, http.StatusOK, ``},
+			genericTestcase{"InsertCommentWithUrlOK", "post", "/comment", `{"body":"https://developers.facebook.com/","resource":"http://dev.readr.tw/post/90","author":91,"resource_name":"post","resource_id":90}`, http.StatusOK, ``},
 			//genericTestcase{"InsertCommentWithUnicodeOK", "post", "/comment", `{"body":"https://medium.com/@evonneyifangtsai/短評xdite參選台北市長-84b391b3bfae","resource":"http://dev.readr.tw/post/90","author":91}`, http.StatusOK, ``},
 			//genericTestcase{"InsertCommentWithMultipleUrlOK", "post", "/comment", `{"body":"https://www.readr.tw/post/274 http://news.ltn.com.tw/news/focus/paper/1191781","resource":"http://dev.readr.tw/post/90","author":91}`, http.StatusOK, ``},
 			//genericTestcase{"PutCommentWithUrlOK", "put", "/comment", `{"id": 1, "body":"https://medium.com/@evonneyifangtsai/"}`, http.StatusOK, ``},
@@ -378,13 +376,13 @@ func TestPubsubComments(t *testing.T) {
 			for _, testcase := range []genericTestcase{
 
 				genericTestcase{"post_reply", "post", "/comment", `{"body":"base","resource":"http://test.readr.tw/post/90","author":91,"status":"NONE","vidible":true,"resource_name":"post","resource_id":90}`, http.StatusOK, ``},
-				genericTestcase{"comment_reply_author", "post", "/comment", `{"body":"comment_reply_author","resource":"http://test.readr.tw/post/90","parent_id":1,"author":90,"status":"NONE","vidible":true}`, http.StatusOK, ``},
-				genericTestcase{"comment_reply", "post", "/comment", `{"body":"comment_reply","resource":"http://test.readr.tw/post/90","parent_id":1,"author":92,"status":"NONE","vidible":true}`, http.StatusOK, ``},
-				genericTestcase{"comment_comment", "post", "/comment", `{"body":"comment_reply","resource":"http://test.readr.tw/post/90","author":92,"status":"NONE","vidible":true}`, http.StatusOK, ``},
-				genericTestcase{"follow_member_reply", "post", "/comment", `{"body":"follow_member_reply","resource":"http://test.readr.tw/post/90","author":92,"status":"NONE","vidible":true}`, http.StatusOK, ``},
-				genericTestcase{"follow_post_reply", "post", "/comment", `{"body":"follow_post_reply","resource":"http://test.readr.tw/post/92","author":90,"status":"NONE","vidible":true}`, http.StatusOK, ``},
-				genericTestcase{"follow_project_reply", "post", "/comment", `{"body":"follow_project_reply","resource":"http://test.readr.tw/project/920","author":90,"status":"NONE","vidible":true}`, http.StatusOK, ``},
-				genericTestcase{"follow_memo_reply", "post", "/comment", `{"body":"follow_memo_reply","resource":"http://test.readr.tw/memo/92","author":90,"status":"NONE","vidible":true}`, http.StatusOK, ``},
+				genericTestcase{"comment_reply_author", "post", "/comment", `{"body":"comment_reply_author","resource":"http://test.readr.tw/post/90","parent_id":1,"author":90,"status":"NONE","vidible":true,"resource_name":"post","resource_id":90}`, http.StatusOK, ``},
+				genericTestcase{"comment_reply", "post", "/comment", `{"body":"comment_reply","resource":"http://test.readr.tw/post/90","parent_id":1,"author":92,"status":"NONE","vidible":true,"resource_name":"post","resource_id":90}`, http.StatusOK, ``},
+				genericTestcase{"comment_comment", "post", "/comment", `{"body":"comment_reply","resource":"http://test.readr.tw/post/90","author":92,"status":"NONE","vidible":true,"resource_name":"post","resource_id":90}`, http.StatusOK, ``},
+				genericTestcase{"follow_member_reply", "post", "/comment", `{"body":"follow_member_reply","resource":"http://test.readr.tw/post/90","author":92,"status":"NONE","vidible":true,"resource_name":"post","resource_id":90}`, http.StatusOK, ``},
+				genericTestcase{"follow_post_reply", "post", "/comment", `{"body":"follow_post_reply","resource":"http://test.readr.tw/post/92","author":90,"status":"NONE","vidible":true,"resource_name":"post","resource_id":92}`, http.StatusOK, ``},
+				genericTestcase{"follow_project_reply", "post", "/comment", `{"body":"follow_project_reply","resource":"http://test.readr.tw/series/asdffffff","author":90,"status":"NONE","vidible":true,"resource_name":"project","resource_id":1}`, http.StatusOK, ``},
+				genericTestcase{"follow_memo_reply", "post", "/comment", `{"body":"follow_memo_reply","resource":"http://test.readr.tw/series/projestslug/1","author":90,"status":"NONE","vidible":true,"resource_name":"memo","resource_id":1}`, http.StatusOK, ``},
 			} {
 				genericDoTest(transformPubsub(testcase), t, asserter)
 			}

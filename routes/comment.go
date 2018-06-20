@@ -165,11 +165,22 @@ func (r *commentsHandler) PutRC(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
+func (r *commentsHandler) UpdateCommentCounts(c *gin.Context) {
+	err := models.CommentAPI.UpdateAllCommentAmount()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		return
+	}
+
+	c.Status(http.StatusOK)
+}
+
 func (r *commentsHandler) SetRoutes(router *gin.Engine) {
 	commentsRouter := router.Group("/comment")
 	{
 		commentsRouter.GET("/:id", r.GetComment)
 		commentsRouter.GET("", r.GetComments)
+		commentsRouter.PUT("/counts", r.UpdateCommentCounts)
 	}
 	reportcommentsRouter := router.Group("/reported_comment")
 	{
