@@ -82,7 +82,11 @@ func (r *mailHandler) SendDailyDigest(c *gin.Context) {
 	}
 	err := models.MailAPI.SendDailyDigest(receiver)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		if err.Error() == "Not Found" {
+			c.JSON(http.StatusNotFound, gin.H{"Error": "DailyDigest File Not Found, Please Generate a File First."})
+		} else {
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		}
 		return
 	}
 	c.Status(http.StatusOK)
