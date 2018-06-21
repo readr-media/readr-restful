@@ -1,17 +1,16 @@
 package models
 
 import (
-	"bufio"
 	"bytes"
+	"errors"
 	"fmt"
 	"log"
-	"os"
 	"strings"
 	"time"
 
-	"io/ioutil"
 	"text/template"
 
+	"github.com/garyburd/redigo/redis"
 	"github.com/spf13/viper"
 	"gopkg.in/gomail.v2"
 )
@@ -241,7 +240,6 @@ func (m *mailApi) GenDailyDigest() (err error) {
 		return err
 	}
 
-	//buf := new(bytes.Buffer)
 	t := template.New("newsletter.html")
 	t = template.Must(t.ParseFiles("config/newsletter.html"))
 
@@ -276,27 +274,19 @@ OLP:
 		data.Posts = append(data.Posts, dailyPostAuthor{ID: p.AuthorID, Name: p.AuthorName, Image: p.Image, Posts: []dailyPost{p}})
 	}
 
-	if _, err := os.Stat("tmp"); os.IsNotExist(err) {
-		os.Mkdir("tmp", 0755)
-	}
-	f, err := os.OpenFile("tmp/newsletter.html", os.O_RDWR|os.O_TRUNC|os.O_CREATE, 0755)
-	if err != nil {
-		log.Println("err when open newsletter tmp file", err.Error())
-		return err
-	}
-	fw := bufio.NewWriter(f)
-
 	data.HasReport = len(data.Reports) > 0
 	data.HasMemo = len(data.Memos) > 0
 	data.HasPost = len(data.Posts) > 0
 	data.HasReadrPost = len(data.ReadrPosts) > 0
-	err = t.Execute(fw, data)
-	if err = fw.Flush(); err != nil {
-		log.Println("err when writing newsletter content", err.Error())
-		return err
-	}
 
-	//s := buf.String()
+	buf := new(bytes.Buffer)
+	err = t.Execute(buf, data)
+	s := buf.String()
+
+	conn := RedisHelper.Conn()
+	defer conn.Close()
+	conn.Send("SET", "dailydigest", s)
+
 	return err
 }
 
@@ -371,9 +361,17 @@ func (m *mailApi) htmlEscape(s string, length int) string {
 }
 func (m *mailApi) SendDailyDigest(mailList []string) (err error) {
 	date := time.Now()
-	s, err := ioutil.ReadFile("tmp/newsletter.html")
+
+	conn := RedisHelper.Conn()
+	defer conn.Close()
+	s, err := redis.Bytes(conn.Do("GET", "dailydigest"))
 	if err != nil {
-		log.Println("File readr error:", err.Error())
+		log.Println("Send mail error: ", err.Error())
+		if err.Error() == "redigo: nil returned" {
+			return errors.New("Not Found")
+		} else {
+			return err
+		}
 	}
 
 	if len(mailList) == 0 {
