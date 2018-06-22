@@ -58,11 +58,14 @@ func (m *mailApi) Send(args MailArgs) (err error) {
 
 func (m *mailApi) SendUpdateNote(args GetFollowMapArgs) (err error) {
 
-	followingMap, err := FollowingAPI.GetFollowMap(args)
+	mapInterface, err := FollowingAPI.Get(&args)
 	if err != nil {
 		return err
 	}
-
+	followingMap, ok := mapInterface.([]FollowingMapItem)
+	if !ok {
+		log.Println("Error assert mapInterface @ SendIpdateNote ")
+	}
 	var (
 		follower_index = make(map[string][]string)
 		follower_info  = make(map[string]Member)
@@ -115,9 +118,13 @@ func (m *mailApi) SendUpdateNoteAllResource(args GetFollowMapArgs) (err error) {
 		followers_list []string
 	)
 	for _, t := range []string{"member", "post", "project"} {
-		followingMap, err := FollowingAPI.GetFollowMap(GetFollowMapArgs{Resource: t, UpdateAfter: args.UpdateAfter})
+		mapInterface, err := FollowingAPI.Get(&GetFollowMapArgs{Resource: Resource{ResourceName: t}, UpdateAfter: args.UpdateAfter})
 		if err != nil {
 			return err
+		}
+		followingMap, ok := mapInterface.([]FollowingMapItem)
+		if !ok {
+			log.Println("Error assert mapInterface @ SendIpdateNote ")
 		}
 		for _, m := range followingMap {
 			for _, v := range m.Followers {

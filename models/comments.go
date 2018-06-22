@@ -591,14 +591,23 @@ func (c *commentAPI) generateCommentNotifications(comment InsertCommentArgs) (er
 			log.Println("Error get post", resourceID, err.Error())
 		}
 
-		postFollowers, err := FollowingAPI.GetFollowerMemberIDs("post", resourceIDStr)
+		postInterface, err := FollowingAPI.Get(&GetFollowerMemberIDsArgs{int64(resourceID), 2})
 		if err != nil {
 			log.Println("Error get post followers", resourceIDStr, err.Error())
 		}
+		postFollowers, ok := postInterface.([]int)
+		if !ok {
+			log.Println("Error assert projectInterface ", err.Error())
+		}
+		log.Println(postFollowers)
 
-		authorFollowers, err := FollowingAPI.GetFollowerMemberIDs("member", strconv.Itoa(int(post.Author.Int)))
+		authorInterface, err := FollowingAPI.Get(&GetFollowerMemberIDsArgs{int64(post.Author.Int), 1})
 		if err != nil {
 			log.Println("Error get author followers", commentDetail.Author.Int, err.Error())
+		}
+		authorFollowers, ok := authorInterface.([]int)
+		if !ok {
+			log.Println("Error assert projectInterface ", err.Error())
 		}
 		log.Println(authorFollowers)
 
@@ -669,9 +678,13 @@ func (c *commentAPI) generateCommentNotifications(comment InsertCommentArgs) (er
 			log.Println("Error get project", resourceID, err.Error())
 		}
 
-		projectFollowers, err := FollowingAPI.GetFollowerMemberIDs("project", resourceIDStr)
+		projectInterface, err := FollowingAPI.Get(&GetFollowerMemberIDsArgs{int64(resourceID), 3})
 		if err != nil {
 			log.Println("Error get project followers", resourceIDStr, err.Error())
+		}
+		projectFollowers, ok := projectInterface.([]int)
+		if !ok {
+			log.Println("Error assert projectInterface ", err.Error())
 		}
 
 		var commentors []int
@@ -726,12 +739,15 @@ func (c *commentAPI) generateCommentNotifications(comment InsertCommentArgs) (er
 		if err != nil {
 			log.Println("Error get memo", resourceID, err.Error())
 		}
-
-		projectFollowers, err := FollowingAPI.GetFollowerMemberIDs("project", strconv.Itoa(int(memo.Project.Int)))
+		// params :=
+		projectInterface, err := FollowingAPI.Get(&GetFollowerMemberIDsArgs{ID: int64(memo.Project.Int), FollowType: 3})
 		if err != nil {
 			log.Println("Error get project followers", memo.Project.Int, err.Error())
 		}
-
+		projectFollowers, ok := projectInterface.([]int)
+		if !ok {
+			log.Println("Error assert projectInterface at memo", err.Error())
+		}
 		var commentors []int
 		rows, err := DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, int(CommentStatus["show"].(float64)), int(CommentActive["active"].(float64))))
 		if err != nil {

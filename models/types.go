@@ -20,6 +20,7 @@ var (
 	MultipleRowAffectedError = errors.New("More Than One Rows Affected")
 
 	SQLInsertionFail = errors.New("SQL Insertion Fail")
+	SQLUpdateFail    = errors.New("SQL Update Fail")
 )
 
 type sqlfields []string
