@@ -41,11 +41,11 @@ func (r *mailHandler) updateNote(c *gin.Context) {
 		return
 	}
 
-	if ok, err := regexp.MatchString("(post|project|member)", args.Resource); args.Resource != "" && (err != nil || !ok) {
+	if ok, err := regexp.MatchString("(post|project|member)", args.ResourceName); args.ResourceName != "" && (err != nil || !ok) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Resource"})
 		return
 	}
-	if args.Resource == "" {
+	if args.ResourceName == "" {
 		if err := models.MailAPI.SendUpdateNoteAllResource(args); err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 			return

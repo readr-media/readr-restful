@@ -1,7 +1,9 @@
 package routes
 
 import (
-	"strconv"
+	"encoding/json"
+	"errors"
+	"fmt"
 
 	"net/http"
 
@@ -11,93 +13,153 @@ import (
 
 type followingHandler struct{}
 
-func (r *followingHandler) GetByUser(c *gin.Context) {
-	var input models.GetFollowingArgs
-	c.ShouldBindJSON(&input)
+func bind(c *gin.Context) (result interface{}, err error) {
 
-	result, err := models.FollowingAPI.GetFollowing(input)
+	var metadata = func(method, resource string) (table, key string, followtype int, active map[string][]int, err error) {
 
+		switch resource {
+		case "member":
+			table = "members"
+			key = "id"
+			followtype = 1
+			if method == "user" {
+				active = map[string][]int{"$in": []int{1}}
+			}
+		case "post":
+			table = "posts"
+			key = "post_id"
+			followtype = 2
+			if method == "user" {
+				active = map[string][]int{"$in": []int{1}}
+			}
+		case "project":
+			table = "projects"
+			key = "project_id"
+			followtype = 3
+			if method == "user" {
+				active = map[string][]int{"$in": []int{1}}
+			}
+		case "memo":
+			table = "memos"
+			key = "memo_id"
+			followtype = 4
+			if method == "user" {
+				active = map[string][]int{"$in": []int{1}}
+			}
+		case "report":
+			table = "reports"
+			key = "id"
+			followtype = 5
+			if method == "user" {
+				active = map[string][]int{"$in": []int{1}}
+			}
+		default:
+			return "", "", 0, nil, errors.New("Unsupported Resource")
+		}
+		return table, key, followtype, active, nil
+	}
+
+	switch c.Param("method") {
+	case "user":
+
+		var params = &models.GetFollowingArgs{}
+		// if there is no url paramter, bind json
+		if c.Query("resource") == "" && c.Query("id") == "" {
+			if err = c.ShouldBindJSON(params); err != nil {
+				return nil, err
+			}
+		} else {
+			if err = c.Bind(params); err != nil {
+				return nil, err
+			}
+		}
+		params.Table, params.PrimaryKey, params.FollowType, params.Active, err = metadata(c.Param("method"), params.ResourceName)
+		if err != nil {
+			return nil, err
+		}
+		if params.MemberID == 0 {
+			return nil, errors.New("Bad Resource ID")
+		}
+		result = params
+
+	case "resource":
+
+		var params = &models.GetFollowedArgs{}
+		if c.Query("resource") == "" && c.Query("ids") == "" {
+			if err = c.ShouldBindJSON(params); err != nil {
+				return nil, err
+			}
+		} else {
+			if err = c.Bind(params); err != nil {
+				return nil, err
+			}
+			if c.Query("ids") != "" {
+				if err = json.Unmarshal([]byte(c.Query("ids")), &params.IDs); err != nil {
+					return nil, errors.New("Bad Resource ID")
+				}
+			}
+		}
+		params.Table, params.PrimaryKey, params.FollowType, _, err = metadata(c.Param("method"), params.ResourceName)
+		if err != nil {
+			return nil, err
+		}
+		if len(params.IDs) == 0 {
+			return nil, errors.New("Bad Resource ID")
+		}
+		result = params
+	case "map":
+		var params = &models.GetFollowMapArgs{}
+		if c.Query("resource") == "" && c.Query("id") == "" {
+			if err = c.ShouldBindJSON(params); err != nil {
+				return nil, err
+			}
+		} else {
+			if err = c.Bind(params); err != nil {
+				return nil, err
+			}
+		}
+		params.Table, params.PrimaryKey, params.FollowType, _, err = metadata(c.Param("method"), params.ResourceName)
+		if err != nil {
+			return nil, err
+		}
+		result = params
+	default:
+		return nil, errors.New("Unsupported Resource")
+	}
+	return result, nil
+}
+
+func (r *followingHandler) Get(c *gin.Context) {
+
+	var (
+		input, result interface{}
+		err           error
+	)
+	if input, err = bind(c); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
+	}
+	result, err = models.FollowingAPI.Get(input)
 	if err != nil {
 		switch err.Error() {
 		case "Not Found":
-			c.JSON(http.StatusOK, make([]string, 0))
+			c.JSON(http.StatusNotFound, gin.H{"Error": err.Error()})
 			return
-		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
-			return
-		}
-	}
-
-	c.JSON(http.StatusOK, result)
-}
-
-func (r *followingHandler) GetByResource(c *gin.Context) {
-	var input models.GetFollowedArgs
-	c.ShouldBindJSON(&input)
-	if len(input.Ids) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Resource ID"})
-		return
-	}
-	for _, v := range input.Ids {
-		_, err := strconv.Atoi(v)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Resource ID"})
-			return
-		}
-	}
-
-	switch input.Resource {
-	case "member", "post", "project":
-		break
-	default:
-		c.JSON(http.StatusBadRequest, gin.H{"Error": "Unsupported Resource"})
-		return
-	}
-
-	result, err := models.FollowingAPI.GetFollowed(input)
-
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
-		return
-	}
-
-	c.JSON(http.StatusOK, result)
-}
-
-func (r *followingHandler) GetFollowMap(c *gin.Context) {
-	var input models.GetFollowMapArgs
-	err := c.ShouldBindJSON(&input)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Parameter Format"})
-		return
-	}
-
-	result, err := models.FollowingAPI.GetFollowMap(input)
-
-	if err != nil {
-		switch err.Error() {
-		case "Resource Not Supported":
+		case "Unsupported Resource":
 			c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 			return
 		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+			fmt.Println(err.Error())
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 			return
 		}
-	}
 
-	c.JSON(http.StatusOK, struct {
-		Map      []models.FollowingMapItem `json:"list"`
-		Resource string                    `json:"resource"`
-	}{result, input.Resource})
+	}
+	c.JSON(http.StatusOK, gin.H{"_items": result})
 }
 
 func (r *followingHandler) SetRoutes(router *gin.Engine) {
-	followRouter := router.Group("following")
-	{
-		followRouter.GET("/byuser", r.GetByUser)
-		followRouter.GET("/byresource", r.GetByResource)
-		followRouter.GET("/map", r.GetFollowMap)
-	}
+	router.GET("/following/:method", r.Get)
 }
 
 var FollowingHandler followingHandler

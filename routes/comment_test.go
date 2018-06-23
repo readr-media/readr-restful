@@ -141,7 +141,7 @@ func TestRouteComments(t *testing.T) {
 		models.FollowArgs{Resource: "post", Subject: 91, Object: 92},
 		models.FollowArgs{Resource: "project", Subject: 91, Object: 920},
 	} {
-		err := models.FollowingAPI.AddFollowing(params)
+		err := models.FollowingAPI.Insert(params)
 		if err != nil {
 			log.Printf("Init test case fail. Error: %v", err)
 		}
@@ -347,7 +347,7 @@ func TestPubsubComments(t *testing.T) {
 		models.FollowArgs{Resource: "post", Subject: 91, Object: 92},
 		models.FollowArgs{Resource: "project", Subject: 91, Object: 920},
 	} {
-		err := models.FollowingAPI.AddFollowing(params)
+		err := models.FollowingAPI.Insert(params)
 		if err != nil {
 			log.Printf("Init test case fail. Error: %v", err)
 		}
@@ -394,7 +394,7 @@ func TestPubsubComments(t *testing.T) {
 		models.FollowArgs{Resource: "post", Subject: 91, Object: 92},
 		models.FollowArgs{Resource: "project", Subject: 91, Object: 920},
 	} {
-		err := models.FollowingAPI.DeleteFollowing(params)
+		err := models.FollowingAPI.Delete(params)
 		if err != nil {
 			log.Printf("Init test case fail. Error: %v", err)
 		}

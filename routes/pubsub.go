@@ -67,18 +67,18 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"Error": "Bad Request"})
 			return
 		}
-		params := models.FollowArgs{Resource: body.Resource, Subject: int64(body.Subject), Object: int64(body.Object)}
 
+		params := models.FollowArgs{Resource: body.Resource, Subject: int64(body.Subject), Object: int64(body.Object)}
 		switch actionType {
 		case "follow":
-			if err = models.FollowingAPI.AddFollowing(params); err != nil {
+			if err = models.FollowingAPI.Insert(params); err != nil {
 				log.Printf("%s fail: %v \n", actionType, err.Error())
 				c.JSON(http.StatusOK, gin.H{"Error": err.Error()})
 				return
 			}
 			c.Status(http.StatusOK)
 		case "unfollow":
-			if err = models.FollowingAPI.DeleteFollowing(params); err != nil {
+			if err = models.FollowingAPI.Delete(params); err != nil {
 				log.Printf("%s fail: %v \n", actionType, err.Error())
 				c.JSON(http.StatusOK, gin.H{"Error": err.Error()})
 				return
@@ -257,6 +257,7 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 
 	default:
 		log.Println("Pubsub Message Type Not Support", actionType)
+		fmt.Println(msgType)
 		c.Status(http.StatusOK)
 		return
 	}
