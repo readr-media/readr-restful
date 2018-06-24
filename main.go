@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/routes"
 	"github.com/robfig/cron"
@@ -26,6 +27,10 @@ func init() {
 }
 
 func main() {
+
+	if err := config.LoadConfig("./config"); err != nil {
+		panic(fmt.Errorf("Invalid application configuration: %s", err))
+	}
 
 	sqlHost := viper.Get("sql.host")
 	sqlPort := viper.GetInt("sql.port")
