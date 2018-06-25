@@ -349,7 +349,7 @@ func (f *followingAPI) Get(params interface{}) (result interface{}, err error) {
 
 func (f *followingAPI) Insert(params FollowArgs) (err error) {
 
-	query := `INSERT INTO following_posts (member_id, target_id, type, emotion) VALUES ( ? , ?, ?, ?);`
+	query := `INSERT INTO following (member_id, target_id, type, emotion) VALUES ( ? , ?, ?, ?);`
 
 	result, err := DB.Exec(query, params.Subject, params.Object, params.Type, params.Emotion)
 	if err != nil {
