@@ -13,6 +13,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -27,7 +28,8 @@ func (r *projectHandler) bindQuery(c *gin.Context, args *models.GetProjectArgs) 
 			log.Println(err.Error())
 			return err
 		} else if err == nil {
-			if err = models.ValidateActive(args.Active, models.ProjectActive); err != nil {
+			// if err = models.ValidateActive(args.Active, models.ProjectActive); err != nil {
+			if err = models.ValidateActive(args.Active, config.Config.Models.ProjectsActive); err != nil {
 				return err
 			}
 		}
@@ -37,7 +39,8 @@ func (r *projectHandler) bindQuery(c *gin.Context, args *models.GetProjectArgs) 
 			log.Println(err.Error())
 			return err
 		} else if err == nil {
-			if err = models.ValidateActive(args.Status, models.ProjectStatus); err != nil {
+			// if err = models.ValidateActive(args.Status, models.ProjectStatus); err != nil {
+			if err = models.ValidateActive(args.Status, config.Config.Models.ProjectsStatus); err != nil {
 				return err
 			}
 		}
@@ -47,7 +50,8 @@ func (r *projectHandler) bindQuery(c *gin.Context, args *models.GetProjectArgs) 
 			log.Println(err.Error())
 			return err
 		} else if err == nil {
-			if err = models.ValidateActive(args.PublishStatus, models.ProjectPublishStatus); err != nil {
+			// if err = models.ValidateActive(args.PublishStatus, models.ProjectPublishStatus); err != nil {
+			if err = models.ValidateActive(args.PublishStatus, config.Config.Models.ProjectsPublishStatus); err != nil {
 				return err
 			}
 		}
@@ -162,7 +166,8 @@ func (r *projectHandler) Post(c *gin.Context) {
 		return
 	}
 
-	if project.Status.Valid == true && project.Status.Int == int64(models.ProjectStatus["done"].(float64)) && project.Slug.Valid == false {
+	// if project.Status.Valid == true && project.Status.Int == int64(models.ProjectStatus["done"].(float64)) && project.Slug.Valid == false {
+	if project.Status.Valid == true && project.Status.Int == int64(config.Config.Models.ProjectsStatus["done"]) && project.Slug.Valid == false {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Must Have Slug Before Publish"})
 		return
 	}
@@ -205,7 +210,8 @@ func (r *projectHandler) Put(c *gin.Context) {
 		return
 	}
 
-	if project.Status.Valid == true && project.Status.Int == int64(models.ProjectStatus["done"].(float64)) {
+	// if project.Status.Valid == true && project.Status.Int == int64(models.ProjectStatus["done"].(float64)) {
+	if project.Status.Valid == true && project.Status.Int == int64(config.Config.Models.ProjectsStatus["done"]) {
 		p, err := models.ProjectAPI.GetProject(project)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"Error": "Project Not Found"})
@@ -276,8 +282,10 @@ func (r *projectHandler) SetRoutes(router *gin.Engine) {
 }
 
 func (r *projectHandler) validateProjectStatus(i int64) bool {
-	for _, v := range models.ProjectStatus {
-		if i == int64(v.(float64)) {
+	// for _, v := range models.ProjectStatus {
+	for _, v := range config.Config.Models.ProjectsStatus {
+		// if i == int64(v.(float64)) {
+		if i == int64(v) {
 			return true
 		}
 	}

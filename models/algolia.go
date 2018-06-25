@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/algolia/algoliasearch-client-go/algoliasearch"
-	"github.com/spf13/viper"
+	"github.com/readr-media/readr-restful/config"
 )
 
 type algolia struct {
@@ -26,9 +26,12 @@ var Algolia algolia = algolia{objectTypes: map[string]string{
 }}
 
 func (a *algolia) Init() {
-	app_id := viper.Get("search_feed.app_id").(string)
-	app_key := viper.Get("search_feed.app_key").(string)
-	index_name := viper.Get("search_feed.index_name").(string)
+	// app_id := viper.Get("search_feed.app_id").(string)
+	// app_key := viper.Get("search_feed.app_key").(string)
+	// index_name := viper.Get("search_feed.index_name").(string)
+	app_id := config.Config.SearchFeed.AppID
+	app_key := config.Config.SearchFeed.AppKey
+	index_name := config.Config.SearchFeed.IndexName
 
 	a.client = algoliasearch.NewClient(app_id, app_key)
 	a.index = a.client.InitIndex(index_name)
@@ -40,8 +43,9 @@ func (a *algolia) insert(objects []algoliasearch.Object) error {
 	}
 	var (
 		retry     int   = 0
-		max_retry int   = int(viper.Get("search_feed.max_retry").(float64))
+		max_retry int   = config.Config.SearchFeed.MaxRetry
 		err       error = nil
+		// max_retry int = int(viper.Get("search_feed.max_retry").(float64))
 	)
 	for retry < max_retry {
 		_, err = a.index.AddObjects(objects)
@@ -52,7 +56,7 @@ func (a *algolia) insert(objects []algoliasearch.Object) error {
 			return nil
 		}
 	}
-	err = fmt.Errorf("Search feed insert fail: %s, retry limit exceeded.", err.Error())
+	err = fmt.Errorf("Search feed insert fail: %s, retry limit exceeded", err.Error())
 	return err
 }
 
@@ -62,19 +66,20 @@ func (a *algolia) delete(ids []string) error {
 	}
 	var (
 		retry     int   = 0
-		max_retry int   = int(viper.Get("search_feed.max_retry").(float64))
+		max_retry int   = config.Config.SearchFeed.MaxRetry
 		err       error = nil
+		// max_retry int   = int(viper.Get("search_feed.max_retry").(float64))
 	)
 	for retry < max_retry {
 		_, err = a.index.DeleteObjects(ids)
 		if err != nil {
-			retry += 1
+			retry++
 			time.Sleep(time.Second * 10 * time.Duration(retry))
 		} else {
 			return nil
 		}
 	}
-	err = fmt.Errorf("Search feed delete fail: %s, retry limit exceeded.", err.Error())
+	err = fmt.Errorf("Search feed delete fail: %s, retry limit exceeded", err.Error())
 	return err
 }
 

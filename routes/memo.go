@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -19,7 +20,8 @@ func (r *memoHandler) bindQuery(c *gin.Context, args *models.MemoGetArgs) (err e
 		if err = json.Unmarshal([]byte(c.Query("active")), &args.Active); err != nil {
 			return err
 		} else if err == nil {
-			if err = models.ValidateActive(args.Active, models.MemoStatus); err != nil {
+			// if err = models.ValidateActive(args.Active, models.MemoStatus); err != nil {
+			if err = models.ValidateActive(args.Active, config.Config.Models.Memos); err != nil {
 				return err
 			}
 		}
@@ -28,7 +30,8 @@ func (r *memoHandler) bindQuery(c *gin.Context, args *models.MemoGetArgs) (err e
 		if err = json.Unmarshal([]byte(c.Query("memo_publish_status")), &args.MemoPublishStatus); err != nil {
 			return err
 		} else if err == nil {
-			if err = models.ValidateActive(args.MemoPublishStatus, models.MemoPublishStatus); err != nil {
+			// if err = models.ValidateActive(args.MemoPublishStatus, models.MemoPublishStatus); err != nil {
+			if err = models.ValidateActive(args.MemoPublishStatus, config.Config.Models.MemosPublishStatus); err != nil {
 				return err
 			}
 		}
@@ -37,7 +40,8 @@ func (r *memoHandler) bindQuery(c *gin.Context, args *models.MemoGetArgs) (err e
 		if err = json.Unmarshal([]byte(c.Query("project_publish_status")), &args.ProjectPublishStatus); err != nil {
 			return err
 		} else if err == nil {
-			if err = models.ValidateActive(args.ProjectPublishStatus, models.ProjectPublishStatus); err != nil {
+			// if err = models.ValidateActive(args.ProjectPublishStatus, models.ProjectPublishStatus); err != nil {
+			if err = models.ValidateActive(args.ProjectPublishStatus, config.Config.Models.ProjectsPublishStatus); err != nil {
 				return err
 			}
 		}
@@ -138,11 +142,13 @@ func (r *memoHandler) Post(c *gin.Context) {
 	memo.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
 
 	if !memo.Active.Valid {
-		memo.Active.Int = int64(models.MemoStatus["active"].(float64))
+		// memo.Active.Int = int64(models.MemoStatus["active"].(float64))
+		memo.Active.Int = int64(config.Config.Models.Memos["active"])
 		memo.Active.Valid = true
 	}
 	if !memo.PublishStatus.Valid {
-		memo.PublishStatus.Int = int64(models.MemoPublishStatus["draft"].(float64))
+		// memo.PublishStatus.Int = int64(models.MemoPublishStatus["draft"].(float64))
+		memo.PublishStatus.Int = int64(config.Config.Models.MemosPublishStatus["draft"])
 		memo.PublishStatus.Valid = true
 	}
 	if !memo.UpdatedBy.Valid {
@@ -190,13 +196,15 @@ func (r *memoHandler) Put(c *gin.Context) {
 		}
 
 		switch memo.PublishStatus.Int {
-		case int64(models.MemoPublishStatus["schedule"].(float64)):
+		// case int64(models.MemoPublishStatus["schedule"].(float64)):
+		case int64(config.Config.Models.MemosPublishStatus["schedule"]):
 			if !memo.PublishedAt.Valid && !result.PublishedAt.Valid {
 				c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Publish Time"})
 				return
 			}
 			fallthrough
-		case int64(models.MemoPublishStatus["publish"].(float64)):
+		// case int64(models.MemoPublishStatus["publish"].(float64)):
+		case int64(config.Config.Models.MemosPublishStatus["publish"]):
 			if !memo.Title.Valid && !result.Title.Valid {
 				c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Memo Title"})
 				return
@@ -280,7 +288,8 @@ func (r *memoHandler) DeleteMany(c *gin.Context) {
 	}
 
 	params.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
-	params.Active = models.NullInt{Int: int64(models.PostStatus["deactive"].(float64)), Valid: true}
+	// params.Active = models.NullInt{Int: int64(models.PostStatus["deactive"].(float64)), Valid: true}
+	params.Active = models.NullInt{Int: int64(config.Config.Models.Posts["deactive"]), Valid: true}
 
 	err = models.MemoAPI.UpdateMemos(params)
 	if err != nil {

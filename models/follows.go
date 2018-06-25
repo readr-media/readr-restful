@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	"github.com/readr-media/readr-restful/config"
 )
 
 /* ================================================ Follower API ================================================ */
@@ -133,9 +134,11 @@ func (g *GetFollowedArgs) get() (*sqlx.Rows, error) {
 	if g.ResourceName == "post" {
 		osql.join = append(osql.join, "posts AS p ON f.target_id = p.post_id")
 
-		if t := PostType[g.ResourceType]; t != nil {
+		// if t := PostType[g.ResourceType]; t != nil {
+		if t := config.Config.Models.PostType[g.ResourceType]; t >= 0 {
 			osql.condition = append(osql.condition, "p.type = ?")
-			osql.args = append(osql.args, int(t.(float64)))
+			// osql.args = append(osql.args, int(t.(float64)))
+			osql.args = append(osql.args, t)
 		}
 	}
 
@@ -205,20 +208,24 @@ func (g *GetFollowMapArgs) get() (*sqlx.Rows, error) {
 			GROUP BY member_resource.resource_ids;`,
 		join:      []string{"members AS m ON f.member_id = m.id", fmt.Sprintf("%s AS t ON f.target_id = t.%s", g.Table, g.PrimaryKey)},
 		condition: []string{"m.active = ?", "m.post_push = ?", "f.type = ?"},
-		args:      []interface{}{int(MemberStatus["active"].(float64)), 1, g.FollowType},
+		args:      []interface{}{config.Config.Models.Members["active"], 1, g.FollowType},
+		// args:      []interface{}{int(MemberStatus["active"].(float64)), 1, g.FollowType},
 	}
 
 	switch g.ResourceName {
 	case "member":
 		osql.join = append(osql.join, "posts AS p ON f.target_id = p.author")
 		osql.condition = append(osql.condition, "t.active = ?", "p.active = ?", "p.publish_status = ?", "p.updated_at > ?")
-		osql.args = append(osql.args, int(MemberStatus["active"].(float64)), int(PostStatus["active"].(float64)), int(PostPublishStatus["publish"].(float64)), g.UpdateAfter)
+		osql.args = append(osql.args, config.Config.Models.Members["active"], config.Config.Models.Posts["active"], config.Config.Models.PostPublishStatus["publish"], g.UpdateAfter)
+		// osql.args = append(osql.args, int(MemberStatus["active"].(float64)), int(PostStatus["active"].(float64)), int(PostPublishStatus["publish"].(float64)), g.UpdateAfter)
 	case "post":
 		osql.condition = append(osql.condition, "t.active = ?", "t.publish_status = ?", "t.updated_at > ?")
-		osql.args = append(osql.args, int(PostStatus["active"].(float64)), int(PostPublishStatus["publish"].(float64)), g.UpdateAfter)
+		osql.args = append(osql.args, config.Config.Models.Posts["active"], config.Config.Models.PostPublishStatus["publish"], g.UpdateAfter)
+		// osql.args = append(osql.args, int(PostStatus["active"].(float64)), int(PostPublishStatus["publish"].(float64)), g.UpdateAfter)
 	case "project":
 		osql.condition = append(osql.condition, "t.active = ?", "t.publish_status = ?", "t.updated_at > ?")
-		osql.args = append(osql.args, int(ProjectActive["active"].(float64)), int(ProjectPublishStatus["publish"].(float64)), g.UpdateAfter)
+		osql.args = append(osql.args, config.Config.Models.ProjectsActive["active"], config.Config.Models.ProjectsPublishStatus["publish"], g.UpdateAfter)
+		// osql.args = append(osql.args, int(ProjectActive["active"].(float64)), int(ProjectPublishStatus["publish"].(float64)), g.UpdateAfter)
 	}
 
 	rows, err := DB.Queryx(fmt.Sprintf(osql.base, strings.Join(osql.join, " LEFT JOIN "), strings.Join(osql.condition, " AND ")), osql.args...)
@@ -330,6 +337,7 @@ func (f *followingAPI) Get(params interface{}) (result interface{}, err error) {
 	case *GetFollowMapArgs:
 		rows, err = params.get()
 		result, err = params.scan(rows)
+
 	case *GetFollowerMemberIDsArgs:
 		rows, err = params.get()
 		result, err = params.scan(rows)

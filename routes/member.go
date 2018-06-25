@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/utils"
 )
@@ -28,7 +29,8 @@ func (r *memberHandler) bindQuery(c *gin.Context, args *models.MemberArgs) (err 
 		if err := json.Unmarshal([]byte(c.Query("active")), &args.Active); err != nil {
 			return err
 		} else if err == nil {
-			if err = models.ValidateActive(args.Active, models.MemberStatus); err != nil {
+			// if err = models.ValidateActive(args.Active, models.MemberStatus); err != nil {
+			if err = models.ValidateActive(args.Active, config.Config.Models.Members); err != nil {
 				return err
 			}
 		}
@@ -185,7 +187,8 @@ func (r *memberHandler) DeleteAll(c *gin.Context) {
 		return
 	}
 
-	err = models.MemberAPI.UpdateAll(ids, int(models.MemberStatus["delete"].(float64)))
+	// err = models.MemberAPI.UpdateAll(ids, int(models.MemberStatus["delete"].(float64)))
+	err = models.MemberAPI.UpdateAll(ids, config.Config.Models.Members["delete"])
 	if err != nil {
 		switch err.Error() {
 		case "Members Not Found":
@@ -229,7 +232,8 @@ func (r *memberHandler) ActivateAll(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Request Body"})
 		return
 	}
-	err = models.MemberAPI.UpdateAll(payload.IDs, int(models.MemberStatus["active"].(float64)))
+	// err = models.MemberAPI.UpdateAll(payload.IDs, int(models.MemberStatus["active"].(float64)))
+	err = models.MemberAPI.UpdateAll(payload.IDs, config.Config.Models.Members["active"])
 	if err != nil {
 		switch err.Error() {
 		case "Members Not Found":

@@ -23,15 +23,11 @@ type appConfig struct {
 		Channels struct {
 			TalkComment string `mapstructure:"talk_comments"`
 		} `mapstructure:"channels"`
-	} `mapstructure:""`
+	} `mapstructure:"redis"`
 
 	Crawler struct {
-		Header struct {
-			Accept    string `mapstructure:"Accept"`
-			UserAgent string `mapstructure:"User-Agent"`
-			Cookie    string `mapstructure:"Cookie"`
-		} `mapstructure:"headers"`
-	} `mapstructure:"cralwer"`
+		Headers map[string]string `mapstructure:"headers"`
+	} `mapstructure:"crawler"`
 
 	Mail struct {
 		Host     string `mapstructure:"host"`
@@ -55,123 +51,51 @@ type appConfig struct {
 	} `mapstructure:"straats"`
 
 	Models struct {
-		Members struct {
-			Active   int `mapstructure:"active"`
-			Deactive int `mapstructure:"deactive"`
-			Delete   int `mapstructure:"delete"`
-		} `mapstructure:"members"`
-
-		Posts struct {
-			Deactive int `mapstructure:"deactive"`
-			Active   int `mapstructure:"active"`
-		} `mapstructure:"posts"`
-
-		PostType struct {
-			Review int `mapstructure:"review"`
-			News   int `mapstructure:"news"`
-			Video  int `mapstructure:"video"`
-			Live   int `mapstructure:"live"`
-		} `mapstructure:"post_type"`
-
-		PostPublishStatus struct {
-			Unpublish int `mapstructure:"unpublish"`
-			Draft     int `mapstructure:"draft"`
-			Publish   int `mapstructure:"publish"`
-			Schedule  int `mapstructure:"schedule"`
-			Pending   int `mapstructure:"pending"`
-		} `mapstructure:"post_publish_status"`
-
-		Tags struct {
-			Deactive int `mapstructure:"deactive"`
-			Active   int `mapstructure:"active"`
-		} `mapstructure:"tags"`
-
-		ProjectsActive struct {
-			Active   int `mapstructure:"active"`
-			Deactive int `mapstructure:"deactive"`
-		} `mapstructure:"projects_active"`
-
-		ProjectsStatus struct {
-			Candidate int `mapstructure:"candidate"`
-			Wip       int `mapstructure:"wip"`
-			Done      int `mapstructure:"done"`
-		} `mapstructure:"projects_status"`
-
-		ProjectsPublishStatus struct {
-			Unpublish int `mapstructure:"unpublish"`
-			Draft     int `mapstructure:"draft"`
-			Publish   int `mapstructure:"publish"`
-			Schedule  int `mapstructure:"schedule"`
-		} `mapstructure:"projects_publish_status"`
-
-		Memos struct {
-			Active   int `mapstructure:"active"`
-			Deactive int `mapstructure:"deactive"`
-			Pending  int `mapstructure:"pending"`
-		} `mapstructure:"memos"`
-
-		MemosPublishStatus struct {
-			Unpublish int `mapstructure:"unpublish"`
-			Draft     int `mapstructure:"draft"`
-			Publish   int `mapstructure:"publish"`
-			Schedule  int `mapstructure:"schedule"`
-		} `mapstructure:"memos_publish_status"`
-
-		Comment struct {
-			Active   int `mapstructure:"active"`
-			Deactive int `mapstructure:"deactive"`
-		} `mapstructure:"comment"`
-
-		CommentStatus struct {
-			Hide int `mapstructure:"hide"`
-			Show int `mapstructure:"show"`
-		} `mapstructure:"comment_status"`
-
-		ReportedCommentStatus struct {
-			Pending  int `mapstructure:"pending"`
-			Resolved int `mapstructure:"resolved"`
-		} `mapstructure:"reported_comment_status"`
-
-		Reports struct {
-			Deactive int `mapstructure:"deactive"`
-			Active   int `mapstructure:"active"`
-		} `mapstructure:"reports"`
-
-		ReportsPublishStatus struct {
-			Unpublish int `mapstructure:"unpublish"`
-			Draft     int `mapstructure:"draft"`
-			Publish   int `mapstructure:"publish"`
-			Schedule  int `mapstructure:"schedule"`
-		} `mapstructure:"reports_publish_status"`
-
-		FollowingType struct {
-			Member  int `mapstructure:"member"`
-			Post    int `mapstructure:"post"`
-			Project int `mapstructure:"project"`
-			Memo    int `mapstructure:"memo"`
-			Report  int `mapstructure:"report"`
-		} `mapstructure:"following_type"`
+		Members               map[string]int `mapstructure:"members"`
+		Posts                 map[string]int `mapstructure:"posts"`
+		PostType              map[string]int `mapstructure:"post_type"`
+		PostPublishStatus     map[string]int `mapstructure:"post_publish_status"`
+		Tags                  map[string]int `mapstructure:"tags"`
+		ProjectsActive        map[string]int `mapstructure:"projects_active"`
+		ProjectsStatus        map[string]int `mapstructure:"projects_status"`
+		ProjectsPublishStatus map[string]int `mapstructure:"projects_publish_status"`
+		Memos                 map[string]int `mapstructure:"memos"`
+		MemosPublishStatus    map[string]int `mapstructure:"memos_publish_status"`
+		Comment               map[string]int `mapstructure:"comment"`
+		CommentStatus         map[string]int `mapstructure:"comment_status"`
+		ReportedCommentStatus map[string]int `mapstructure:"reported_comment_status"`
+		Reports               map[string]int `mapstructure:"reports"`
+		ReportsPublishStatus  map[string]int `mapstructure:"reports_publish_status"`
+		FollowingType         map[string]int `mapstructure:"following_type"`
 	} `mapstructure:"models"`
 }
 
-func LoadConfig(configPaths ...string) error {
-	// v := viper.New()
+func LoadConfig(configPath string, configName string) error {
 
-	// fmt.Printf("Using config: %s\n", viper.ConfigFileUsed())
-	// for _, path := range configPaths {
-	// 	// v.AddConfigPath(path)
-	// 	fmt.Println(path)
-	// }
+	v := viper.New()
+	v.SetConfigType("json")
 
-	// v.AddConfigPath("./config")
-	// v.SetConfigName("main")
-	// v.SetConfigType("json")
+	if configPath != "" {
+		v.AddConfigPath(configPath)
+	} else {
+		// Default path
+		v.AddConfigPath("./config")
+	}
 
-	// if err := v.ReadInConfig(); err != nil {
-	// 	log.Fatalf("Error reading config file, %s", err)
-	// }
+	if configName != "" {
+		v.SetConfigName(configName)
+	} else {
+		v.SetConfigName("main")
+	}
 
-	if err := viper.Unmarshal(&Config); err != nil {
+	// If a config file is found, read it in.
+	if err := v.ReadInConfig(); err != nil {
+		log.Fatalf("Error reading config file, %s", err)
+		return err
+	}
+	log.Println("Using config file:", v.ConfigFileUsed())
+
+	if err := v.Unmarshal(&Config); err != nil {
 		log.Fatalf("Error unmarshal config file, %s", err)
 		return err
 	}

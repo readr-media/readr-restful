@@ -9,9 +9,10 @@ import (
 	"time"
 
 	"encoding/json"
-	"github.com/spf13/viper"
 	"io/ioutil"
 	"net/http"
+
+	"github.com/readr-media/readr-restful/config"
 )
 
 type httpReqArgs struct {
@@ -49,9 +50,13 @@ type straatsVod struct {
 
 func (s *straatsHelper) Init() (err error) {
 	if !s.inited {
-		s.apiUrl = fmt.Sprintf("%s%s", viper.Get("straats.api_server"), "/v1")
-		s.appID = viper.Get("straats.app_id").(string)
-		s.appKey = viper.Get("straats.app_key").(string)
+		// s.apiUrl = fmt.Sprintf("%s%s", viper.Get("straats.api_server"), "/v1")
+		// s.appID = viper.Get("straats.app_id").(string)
+		// s.appKey = viper.Get("straats.app_key").(string)
+		s.apiUrl = fmt.Sprintf("%s%s", config.Config.Straats.APIServer, "/v1")
+		s.appID = config.Config.Straats.AppID
+		s.appKey = config.Config.Straats.AppKey
+
 		key, err := s.getAPIKey()
 		if err != nil {
 			log.Printf("Init Straats API Error: %s", err.Error())

@@ -9,6 +9,7 @@ import (
 
 	"github.com/garyburd/redigo/redis"
 	"github.com/jmoiron/sqlx"
+	"github.com/readr-media/readr-restful/config"
 )
 
 type postCacheType interface {
@@ -28,10 +29,12 @@ func (p *postCache) Register(cahceType postCacheType) {
 
 func (p *postCache) Insert(post Post) {
 
-	if fmt.Sprint(post.Active.Int) != fmt.Sprint(PostStatus["active"]) {
+	// if fmt.Sprint(post.Active.Int) != fmt.Sprint(PostStatus["active"]) {
+	if fmt.Sprint(post.Active.Int) != fmt.Sprint(config.Config.Models.Posts["active"]) {
 		return
 	}
-	if fmt.Sprint(post.PublishStatus.Int) != fmt.Sprint(PostPublishStatus["publish"]) {
+	// if fmt.Sprint(post.PublishStatus.Int) != fmt.Sprint(PostPublishStatus["publish"]) {
+	if fmt.Sprint(post.PublishStatus.Int) != fmt.Sprint(config.Config.Models.PostPublishStatus["publish"]) {
 		return
 	}
 	for _, cache := range p.caches {
@@ -100,6 +103,7 @@ func (p *postCache) Update(post Post) {
 		return
 	}
 }
+
 func (p *postCache) Delete(post_id uint32) {
 	for _, cache := range p.caches {
 		keys, err := RedisHelper.GetRedisKeys(fmt.Sprint(cache.Key(), fmt.Sprint(post_id)))
@@ -112,6 +116,7 @@ func (p *postCache) Delete(post_id uint32) {
 		}
 	}
 }
+
 func (p *postCache) UpdateAll(params PostUpdateArgs) {
 	if params.Active.Valid || params.PublishStatus.Valid {
 		p.SyncFromDataStorage()
@@ -151,6 +156,7 @@ func (p *postCache) UpdateAll(params PostUpdateArgs) {
 		return
 	}
 }
+
 func (p *postCache) UpdateFollowing(action string, user_id int64, post_id int64) {
 	conn := RedisHelper.Conn()
 	defer conn.Close()
@@ -249,13 +255,15 @@ func (c latestPostCache) Insert(post Post) {
 	}
 
 }
+
 func (c latestPostCache) SyncFromDataStorage() {
 
 	conn := RedisHelper.Conn()
 	defer conn.Close()
 
 	//rows, err := DB.Queryx("SELECT p.*, f.follower FROM posts as p LEFT JOIN (SELECT post_id, GROUP_CONCAT(id) as follower FROM following_posts GROUP BY post_id) as f ON p.post_id = f.post_id WHERE active=" + fmt.Sprint(PostStatus["active"]) + " ORDER BY updated_at DESC LIMIT 20;")
-	rows, err := DB.Queryx(fmt.Sprint("SELECT p.*, f.follower, m.nickname AS m_name, m.profile_image AS m_image FROM posts as p LEFT JOIN (SELECT post_id, GROUP_CONCAT(id SEPARATOR ',') as follower FROM following_posts GROUP BY post_id) as f ON p.post_id = f.post_id LEFT JOIN members AS m ON m.id = p.author WHERE p.active=", fmt.Sprint(PostStatus["active"]), " AND p.publish_status=", fmt.Sprint(PostPublishStatus["publish"]), " ORDER BY updated_at DESC LIMIT 20;"))
+	// rows, err := DB.Queryx(fmt.Sprint("SELECT p.*, f.follower, m.nickname AS m_name, m.profile_image AS m_image FROM posts as p LEFT JOIN (SELECT post_id, GROUP_CONCAT(id SEPARATOR ',') as follower FROM following_posts GROUP BY post_id) as f ON p.post_id = f.post_id LEFT JOIN members AS m ON m.id = p.author WHERE p.active=", fmt.Sprint(PostStatus["active"]), " AND p.publish_status=", fmt.Sprint(PostPublishStatus["publish"]), " ORDER BY updated_at DESC LIMIT 20;"))
+	rows, err := DB.Queryx(fmt.Sprint("SELECT p.*, f.follower, m.nickname AS m_name, m.profile_image AS m_image FROM posts as p LEFT JOIN (SELECT post_id, GROUP_CONCAT(id SEPARATOR ',') as follower FROM following_posts GROUP BY post_id) as f ON p.post_id = f.post_id LEFT JOIN members AS m ON m.id = p.author WHERE p.active=", fmt.Sprint(config.Config.Models.Posts["active"]), " AND p.publish_status=", fmt.Sprint(config.Config.Models.PostPublishStatus["publish"]), " ORDER BY updated_at DESC LIMIT 20;"))
 	if err != nil {
 		log.Println(err.Error())
 		return
@@ -299,6 +307,7 @@ type followCount struct {
 	FollowCount  int `db:"follow_count"`
 	CommentCount int `db:"comment_count"`
 }
+
 type postScore struct {
 	ID    int
 	Index int
@@ -315,16 +324,19 @@ func (p postScores) Less(i, j int) bool { return p[i].Score > p[j].Score }
 func (c hottestPostCache) Key() string {
 	return c.key
 }
+
 func (c hottestPostCache) Insert(post Post) {
 	return
 }
+
 func (c hottestPostCache) SyncFromDataStorage() {
 
 	PostScores := postScores{}
 	PostScoreIndex := postScoreIndex{}
 
 	// Read follow count from Mysql
-	rows, err := DB.Queryx(fmt.Sprint("SELECT p.post_id, p.comment_amount AS comment_count, IFNULL(f.count,0) as follow_count FROM posts AS p LEFT JOIN (SELECT post_id, count(*) as count FROM post_tags GROUP BY post_id) AS f ON f.post_id = p.post_id WHERE p.active =", fmt.Sprint(PostStatus["active"], " AND p.publish_status=", fmt.Sprint(PostPublishStatus["publish"]))))
+	// rows, err := DB.Queryx(fmt.Sprint("SELECT p.post_id, p.comment_amount AS comment_count, IFNULL(f.count,0) as follow_count FROM posts AS p LEFT JOIN (SELECT post_id, count(*) as count FROM post_tags GROUP BY post_id) AS f ON f.post_id = p.post_id WHERE p.active =", fmt.Sprint(PostStatus["active"], " AND p.publish_status=", fmt.Sprint(PostPublishStatus["publish"]))))
+	rows, err := DB.Queryx(fmt.Sprint("SELECT p.post_id, p.comment_amount AS comment_count, IFNULL(f.count,0) as follow_count FROM posts AS p LEFT JOIN (SELECT post_id, count(*) as count FROM post_tags GROUP BY post_id) AS f ON f.post_id = p.post_id WHERE p.active =", fmt.Sprint(config.Config.Models.Posts["active"], " AND p.publish_status=", fmt.Sprint(config.Config.Models.PostPublishStatus["publish"]))))
 	if err != nil {
 		log.Println(err.Error())
 		return
@@ -360,16 +372,17 @@ func (c hottestPostCache) SyncFromDataStorage() {
 	if len(hotPosts) <= 0 {
 		return
 	}
-	query, args, err := sqlx.In(fmt.Sprint("SELECT p.*, f.follower, m.nickname AS m_name, m.profile_image AS m_image FROM posts as p LEFT JOIN (SELECT post_id, GROUP_CONCAT(id SEPARATOR ',') as follower FROM following_posts GROUP BY post_id) as f ON p.post_id = f.post_id LEFT JOIN members AS m ON m.id = p.author WHERE p.active=", fmt.Sprint(PostStatus["active"]), " AND p.publish_status=", fmt.Sprint(PostPublishStatus["publish"]), " AND p.post_id IN (?);"), hotPosts)
+	// query, args, err := sqlx.In(fmt.Sprint("SELECT p.*, f.follower, m.nickname AS m_name, m.profile_image AS m_image FROM posts as p LEFT JOIN (SELECT post_id, GROUP_CONCAT(id SEPARATOR ',') as follower FROM following_posts GROUP BY post_id) as f ON p.post_id = f.post_id LEFT JOIN members AS m ON m.id = p.author WHERE p.active=", fmt.Sprint(PostStatus["active"]), " AND p.publish_status=", fmt.Sprint(PostPublishStatus["publish"]), " AND p.post_id IN (?);"), hotPosts)
+	query, args, err := sqlx.In(fmt.Sprint("SELECT p.*, f.follower, m.nickname AS m_name, m.profile_image AS m_image FROM posts as p LEFT JOIN (SELECT post_id, GROUP_CONCAT(id SEPARATOR ',') as follower FROM following_posts GROUP BY post_id) as f ON p.post_id = f.post_id LEFT JOIN members AS m ON m.id = p.author WHERE p.active=", fmt.Sprint(config.Config.Models.Posts["active"]), " AND p.publish_status=", fmt.Sprint(config.Config.Models.PostPublishStatus["publish"]), " AND p.post_id IN (?);"), hotPosts)
 	if err != nil {
-		log.Printf("error to build `in` query when fetching post cache data", err)
+		log.Println("error to build `in` query when fetching post cache data ", err)
 		return
 	}
 	query = DB.Rebind(query)
 
 	rows, err = DB.Queryx(query, args...)
 	if err != nil {
-		log.Printf("error to query post when fetching post cache data", err)
+		log.Println("error to query post when fetching post cache data ", err)
 		return
 	}
 
@@ -398,7 +411,6 @@ func (c hottestPostCache) SyncFromDataStorage() {
 		log.Printf("Error insert cache to redis: %v", err)
 		return
 	}
-
 }
 
 var PostCache postCache = postCache{}

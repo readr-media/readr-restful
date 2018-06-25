@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -27,7 +28,8 @@ func (r *postHandler) bindQuery(c *gin.Context, args *models.PostArgs) (err erro
 		if err = json.Unmarshal([]byte(c.Query("active")), &args.Active); err != nil {
 			return err
 		} else if err == nil {
-			if err = models.ValidateActive(args.Active, models.PostStatus); err != nil {
+			// if err = models.ValidateActive(args.Active, models.PostStatus); err != nil {
+			if err = models.ValidateActive(args.Active, config.Config.Models.Posts); err != nil {
 				return err
 			}
 		}
@@ -36,7 +38,8 @@ func (r *postHandler) bindQuery(c *gin.Context, args *models.PostArgs) (err erro
 		if err = json.Unmarshal([]byte(c.Query("publish_status")), &args.PublishStatus); err != nil {
 			return err
 		} else if err == nil {
-			if err = models.ValidateActive(args.PublishStatus, models.PostPublishStatus); err != nil {
+			// if err = models.ValidateActive(args.PublishStatus, models.PostPublishStatus); err != nil {
+			if err = models.ValidateActive(args.PublishStatus, config.Config.Models.PostPublishStatus); err != nil {
 				return err
 			}
 		}
@@ -75,7 +78,8 @@ func (r *postHandler) GetActivePosts(c *gin.Context) {
 		return
 	}
 
-	args.Active = map[string][]int{"$in": []int{int(models.PostStatus["active"].(float64))}}
+	// args.Active = map[string][]int{"$in": []int{int(models.PostStatus["active"].(float64))}}
+	args.Active = map[string][]int{"$in": []int{config.Config.Models.Posts["active"]}}
 	result, err := models.PostAPI.GetPosts(args)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
@@ -127,10 +131,12 @@ func (r *postHandler) Post(c *gin.Context) {
 	post.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
 
 	if !post.Active.Valid {
-		post.Active = models.NullInt{int64(models.PostStatus["active"].(float64)), true}
+		// post.Active = models.NullInt{int64(models.PostStatus["active"].(float64)), true}
+		post.Active = models.NullInt{int64(config.Config.Models.Posts["active"]), true}
 	}
 	if !post.PublishStatus.Valid {
-		post.PublishStatus = models.NullInt{int64(models.PostPublishStatus["draft"].(float64)), true}
+		// post.PublishStatus = models.NullInt{int64(models.PostPublishStatus["draft"].(float64)), true}
+		post.PublishStatus = models.NullInt{int64(config.Config.Models.PostPublishStatus["draft"]), true}
 	}
 	if !post.UpdatedBy.Valid {
 		if post.Author.Valid {
@@ -244,7 +250,8 @@ func (r *postHandler) DeleteAll(c *gin.Context) {
 		params.UpdatedBy = strings.TrimSuffix(params.UpdatedBy, `"`)
 	}
 	params.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
-	params.Active = models.NullInt{Int: int64(models.PostStatus["deactive"].(float64)), Valid: true}
+	// params.Active = models.NullInt{Int: int64(models.PostStatus["deactive"].(float64)), Valid: true}
+	params.Active = models.NullInt{Int: int64(config.Config.Models.Posts["deactive"]), Valid: true}
 	err = models.PostAPI.UpdateAll(params)
 	if err != nil {
 		switch err.Error() {
@@ -290,7 +297,8 @@ func (r *postHandler) PublishAll(c *gin.Context) {
 		return
 	}
 	payload.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
-	payload.PublishStatus = models.NullInt{Int: int64(models.PostPublishStatus["publish"].(float64)), Valid: true}
+	// payload.PublishStatus = models.NullInt{Int: int64(models.PostPublishStatus["publish"].(float64)), Valid: true}
+	payload.PublishStatus = models.NullInt{Int: int64(config.Config.Models.PostPublishStatus["publish"]), Valid: true}
 	err = models.PostAPI.UpdateAll(payload)
 	if err != nil {
 		switch err.Error() {

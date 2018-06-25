@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -183,6 +184,7 @@ func (a *mockPostAPI) UpdatePost(p models.Post) (err error) {
 	}
 	return err
 }
+
 func (a *mockPostAPI) UpdateAll(req models.PostUpdateArgs) (err error) {
 
 	err = errors.New("Posts Not Found")
@@ -202,7 +204,8 @@ func (a *mockPostAPI) DeletePost(id uint32) (err error) {
 	err = errors.New("Post Not Found")
 	for index, value := range a.mockPostDS {
 		if value.ID == id {
-			mockPostDS[index].Active = models.NullInt{Int: int64(models.PostStatus["deactive"].(float64)), Valid: true}
+			// mockPostDS[index].Active = models.NullInt{Int: int64(models.PostStatus["deactive"].(float64)), Valid: true}
+			mockPostDS[index].Active = models.NullInt{Int: int64(config.Config.Models.Posts["deactive"]), Valid: true}
 			return nil
 		}
 	}

@@ -22,35 +22,35 @@ func bindFollow(c *gin.Context) (result interface{}, err error) {
 		case "member":
 			table = "members"
 			key = "id"
-			followtype = config.Config.Models.FollowingType.Member
+			followtype = config.Config.Models.FollowingType["member"]
 			if method == "user" {
 				active = map[string][]int{"$in": []int{1}}
 			}
 		case "post":
 			table = "posts"
 			key = "post_id"
-			followtype = config.Config.Models.FollowingType.Post
+			followtype = config.Config.Models.FollowingType["post"]
 			if method == "user" {
 				active = map[string][]int{"$in": []int{1}}
 			}
 		case "project":
 			table = "projects"
 			key = "project_id"
-			followtype = config.Config.Models.FollowingType.Project
+			followtype = config.Config.Models.FollowingType["project"]
 			if method == "user" {
 				active = map[string][]int{"$in": []int{1}}
 			}
 		case "memo":
 			table = "memos"
 			key = "memo_id"
-			followtype = config.Config.Models.FollowingType.Memo
+			followtype = config.Config.Models.FollowingType["memo"]
 			if method == "user" {
 				active = map[string][]int{"$in": []int{1}}
 			}
 		case "report":
 			table = "reports"
 			key = "id"
-			followtype = config.Config.Models.FollowingType.Report
+			followtype = config.Config.Models.FollowingType["report"]
 			if method == "user" {
 				active = map[string][]int{"$in": []int{1}}
 			}

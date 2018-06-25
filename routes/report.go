@@ -13,6 +13,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -27,7 +28,8 @@ func (r *reportHandler) bindQuery(c *gin.Context, args *models.GetReportArgs) (e
 			log.Println(err.Error())
 			return err
 		} else if err == nil {
-			if err = models.ValidateActive(args.Active, models.ReportActive); err != nil {
+			// if err = models.ValidateActive(args.Active, models.ReportActive); err != nil {
+			if err = models.ValidateActive(args.Active, config.Config.Models.Reports); err != nil {
 				return err
 			}
 		}
@@ -37,7 +39,8 @@ func (r *reportHandler) bindQuery(c *gin.Context, args *models.GetReportArgs) (e
 			log.Println(err.Error())
 			return err
 		} else if err == nil {
-			if err = models.ValidateActive(args.PublishStatus, models.ReportPublishStatus); err != nil {
+			// if err = models.ValidateActive(args.PublishStatus, models.ReportPublishStatus); err != nil {
+			if err = models.ValidateActive(args.PublishStatus, config.Config.Models.ReportsPublishStatus); err != nil {
 				return err
 			}
 		}
@@ -160,7 +163,8 @@ func (r *reportHandler) Post(c *gin.Context) {
 		return
 	}
 
-	if report.PublishStatus.Valid == true && report.PublishStatus.Int == int64(models.ReportPublishStatus["publish"].(float64)) && report.Slug.Valid == false {
+	// if report.PublishStatus.Valid == true && report.PublishStatus.Int == int64(models.ReportPublishStatus["publish"].(float64)) && report.Slug.Valid == false {
+	if report.PublishStatus.Valid == true && report.PublishStatus.Int == int64(config.Config.Models.ReportsPublishStatus["publish"]) && report.Slug.Valid == false {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Must Have Slug Before Publish"})
 		return
 	}
@@ -169,7 +173,8 @@ func (r *reportHandler) Post(c *gin.Context) {
 		report.CreatedAt = models.NullTime{time.Now(), true}
 	}
 	report.UpdatedAt = models.NullTime{time.Now(), true}
-	report.Active = models.NullInt{int64(models.ReportActive["active"].(float64)), true}
+	// report.Active = models.NullInt{int64(models.ReportActive["active"].(float64)), true}
+	report.Active = models.NullInt{int64(config.Config.Models.Reports["active"]), true}
 
 	lastID, err := models.ReportAPI.InsertReport(report)
 	if err != nil {
@@ -205,7 +210,8 @@ func (r *reportHandler) Put(c *gin.Context) {
 		return
 	}
 
-	if report.PublishStatus.Valid == true && (report.PublishStatus.Int == int64(models.ReportPublishStatus["publish"].(float64)) || report.PublishStatus.Int == int64(models.ReportPublishStatus["schedule"].(float64))) {
+	// if report.PublishStatus.Valid == true && (report.PublishStatus.Int == int64(models.ReportPublishStatus["publish"].(float64)) || report.PublishStatus.Int == int64(models.ReportPublishStatus["schedule"].(float64))) {
+	if report.PublishStatus.Valid == true && (report.PublishStatus.Int == int64(config.Config.Models.ReportsPublishStatus["publish"]) || report.PublishStatus.Int == int64(config.Config.Models.ReportsPublishStatus["schedule"])) {
 		p, err := models.ReportAPI.GetReport(report)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"Error": "Report Not Found"})
@@ -216,13 +222,15 @@ func (r *reportHandler) Put(c *gin.Context) {
 		}
 
 		switch p.PublishStatus.Int {
-		case int64(models.ReportPublishStatus["schedule"].(float64)):
+		// case int64(models.ReportPublishStatus["schedule"].(float64)):
+		case int64(config.Config.Models.ReportsPublishStatus["schedule"]):
 			if !report.PublishedAt.Valid && !p.PublishedAt.Valid {
 				c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Publish Time"})
 				return
 			}
 			fallthrough
-		case int64(models.ReportPublishStatus["publish"].(float64)):
+		// case int64(models.ReportPublishStatus["publish"].(float64)):
+		case int64(config.Config.Models.ReportsPublishStatus["publish"]):
 			if !report.Title.Valid && !p.Title.Valid {
 				c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Report Title"})
 				return
@@ -362,8 +370,10 @@ func (r *reportHandler) SetRoutes(router *gin.Engine) {
 }
 
 func (r *reportHandler) validateReportStatus(i int64) bool {
-	for _, v := range models.ReportActive {
-		if i == int64(v.(float64)) {
+	// for _, v := range models.ReportActive {
+	for _, v := range config.Config.Models.Reports {
+		// if i == int64(v.(float64)) {
+		if i == int64(v) {
 			return true
 		}
 	}

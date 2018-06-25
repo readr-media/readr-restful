@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/readr-media/readr-restful/config"
 )
 
 type Comment struct {
@@ -202,7 +203,7 @@ type CommentInterface interface {
 
 type commentAPI struct{}
 
-func (a *commentAPI) GetComment(id int) (CommentAuthor, error) {
+func (c *commentAPI) GetComment(id int) (CommentAuthor, error) {
 	comment := CommentAuthor{}
 	err := DB.QueryRowx("SELECT comments.*, INET_NTOA(comments.ip) AS ip, members.nickname AS author_nickname, members.profile_image AS author_image, members.role AS author_role, IFNULL(count.count, 0) AS comment_amount FROM comments LEFT JOIN members ON comments.author = members.id LEFT JOIN (SELECT count(*) AS count, parent_id FROM comments GROUP BY parent_id) AS count ON comments.id = count.parent_id WHERE comments.id = ?", id).StructScan(&comment)
 	switch {
@@ -248,6 +249,7 @@ func (c *commentAPI) GetComments(args *GetCommentArgs) (result []CommentAuthor, 
 
 	return result, err
 }
+
 func (c *commentAPI) InsertComment(comment InsertCommentArgs) (id int64, err error) {
 	tags := getStructDBTags("full", Comment{})
 	query := fmt.Sprintf(`INSERT INTO comments (%s) VALUES (:%s)`,
@@ -302,6 +304,7 @@ func (c *commentAPI) UpdateComment(comment Comment) (err error) {
 
 	return err
 }
+
 func (c *commentAPI) UpdateComments(args CommentUpdateArgs) (err error) {
 	updateQuery, updateArgs := args.parse()
 	updateQuery = fmt.Sprintf("UPDATE comments SET %s ", updateQuery)
@@ -364,6 +367,7 @@ func (c *commentAPI) GetReportedComments(args *GetReportedCommentArgs) (result [
 
 	return result, err
 }
+
 func (c *commentAPI) InsertReportedComments(report ReportedComment) (id int64, err error) {
 	tags := getStructDBTags("full", ReportedComment{})
 	query := fmt.Sprintf(`INSERT INTO comments_reported (%s) VALUES (:%s)`,
@@ -393,6 +397,7 @@ func (c *commentAPI) InsertReportedComments(report ReportedComment) (id int64, e
 	}
 	return id, err
 }
+
 func (c *commentAPI) UpdateReportedComments(report ReportedComment) (err error) {
 	tags := getStructDBTags("partial", report)
 	fields := makeFieldString("update", `%s = :%s`, tags)
@@ -612,7 +617,9 @@ func (c *commentAPI) generateCommentNotifications(comment InsertCommentArgs) (er
 		log.Println(authorFollowers)
 
 		var commentors []int
-		rows, err := DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, int(CommentStatus["show"].(float64)), int(CommentActive["active"].(float64))))
+		// rows, err := DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, int(CommentStatus["show"].(float64)), int(CommentActive["active"].(float64))))
+		rows, err := DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, config.Config.Models.CommentStatus["show"], config.Config.Models.Comment["active"]))
+
 		if err != nil {
 			log.Println("Error get commentors", commentDetail.Resource.String, err.Error())
 			return err
@@ -688,7 +695,8 @@ func (c *commentAPI) generateCommentNotifications(comment InsertCommentArgs) (er
 		}
 
 		var commentors []int
-		rows, err := DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, int(CommentStatus["show"].(float64)), int(CommentActive["active"].(float64))))
+		// rows, err := DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, int(CommentStatus["show"].(float64)), int(CommentActive["active"].(float64))))
+		rows, err := DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, config.Config.Models.CommentStatus["show"], config.Config.Models.Comment["active"]))
 		if err != nil {
 			log.Println("Error get commentors", commentDetail.Resource.String, err.Error())
 			return err
@@ -749,7 +757,8 @@ func (c *commentAPI) generateCommentNotifications(comment InsertCommentArgs) (er
 			log.Println("Error assert projectInterface at memo", err.Error())
 		}
 		var commentors []int
-		rows, err := DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, int(CommentStatus["show"].(float64)), int(CommentActive["active"].(float64))))
+		// rows, err := DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, int(CommentStatus["show"].(float64)), int(CommentActive["active"].(float64))))
+		rows, err := DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, config.Config.Models.CommentStatus["show"], config.Config.Models.Comment["active"]))
 		if err != nil {
 			log.Println("Error get commentors", commentDetail.Resource.String, err.Error())
 			return err
@@ -821,6 +830,7 @@ func (c *commentAPI) generateCommentNotifications(comment InsertCommentArgs) (er
 }
 
 var CommentAPI CommentInterface = new(commentAPI)
-var CommentActive map[string]interface{}
-var CommentStatus map[string]interface{}
-var ReportedCommentStatus map[string]interface{}
+
+// var CommentActive map[string]interface{}
+// var CommentStatus map[string]interface{}
+// var ReportedCommentStatus map[string]interface{}

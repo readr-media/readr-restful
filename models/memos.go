@@ -11,10 +11,11 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/jmoiron/sqlx"
+	"github.com/readr-media/readr-restful/config"
 )
 
-var MemoStatus map[string]interface{}
-var MemoPublishStatus map[string]interface{}
+// var MemoStatus map[string]interface{}
+// var MemoPublishStatus map[string]interface{}
 
 type Memo struct {
 	ID            int        `json:"id" db:"memo_id"`
@@ -61,29 +62,31 @@ type MemoGetArgs struct {
 func (p *MemoGetArgs) Default() (result *MemoGetArgs) {
 	return &MemoGetArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at", AbstractLength: 20}
 }
+
 func (p *MemoGetArgs) DefaultActive() {
-	p.Active = map[string][]int{"$nin": []int{int(MemoStatus["deactive"].(float64))}}
+	// p.Active = map[string][]int{"$nin": []int{int(MemoStatus["deactive"].(float64))}}
+	p.Active = map[string][]int{"$nin": []int{config.Config.Models.Memos["deactive"]}}
 }
+
 func (p *MemoGetArgs) Validate() bool {
 	if matched, err := regexp.MatchString("-?(updated_at|created_at|published_at|memo_id|author|project_id|memo_order)", p.Sorting); err != nil || !matched {
 		return false
 	}
 	return true
 }
-func (p *MemoGetArgs) parse() (restricts string, values []interface{}) {
-	where := make([]string, 0)
 
+func (p *MemoGetArgs) parse() (restricts string, values []interface{}) {
+
+	where := make([]string, 0)
 	// if p.MemoPublishStatus == nil && p.ProjectPublishStatus == nil && p.Active == nil && len(p.Author) == 0 && len(p.Project) == 0 {
 	// 	return "", nil
 	// }
-
 	if p.Active != nil {
 		for k, v := range p.Active {
 			where = append(where, fmt.Sprintf("%s %s (?)", "memos.active", operatorHelper(k)))
 			values = append(values, v)
 		}
 	}
-
 	if p.MemoPublishStatus != nil {
 		for k, v := range p.MemoPublishStatus {
 			where = append(where, fmt.Sprintf("%s %s (?)", "memos.publish_status", operatorHelper(k)))
@@ -96,7 +99,6 @@ func (p *MemoGetArgs) parse() (restricts string, values []interface{}) {
 			values = append(values, v)
 		}
 	}
-
 	if len(p.Author) > 0 {
 		where = append(where, fmt.Sprintf("%s IN (?)", "memos.author"))
 		values = append(values, p.Author)
@@ -109,7 +111,6 @@ func (p *MemoGetArgs) parse() (restricts string, values []interface{}) {
 		where = append(where, fmt.Sprintf("%s IN (?)", "project.slug"))
 		values = append(values, p.Slugs)
 	}
-
 	if p.MemoID != 0 {
 		where = append(where, fmt.Sprintf("%s = ?", "memos.memo_id"))
 		values = append(values, p.MemoID)
@@ -124,6 +125,7 @@ func (p *MemoGetArgs) parse() (restricts string, values []interface{}) {
 }
 
 func (p *MemoGetArgs) parseLimit() (limit map[string]string, values []interface{}) {
+
 	restricts := make([]string, 0)
 	limit = make(map[string]string, 2)
 	if p.Sorting != "" {
@@ -153,6 +155,7 @@ type MemoUpdateArgs struct {
 }
 
 func (p *MemoUpdateArgs) parse() (updates string, values []interface{}) {
+
 	setQuery := make([]string, 0)
 
 	if p.Active.Valid {
@@ -213,6 +216,7 @@ func (m *memoAPI) CountMemos(args *MemoGetArgs) (result int, err error) {
 	}
 	return result, err
 }
+
 func (m *memoAPI) GetMemo(id int) (memo Memo, err error) {
 
 	err = DB.Get(&memo, `SELECT * FROM memos WHERE memo_id = ?;`, id)
@@ -233,6 +237,7 @@ func (m *memoAPI) GetMemo(id int) (memo Memo, err error) {
 
 	return memo, err
 }
+
 func (m *memoAPI) GetMemos(args *MemoGetArgs) (memos []MemoDetail, err error) {
 
 	// Implementation of business logic
@@ -352,16 +357,16 @@ func (m *memoAPI) GetMemos(args *MemoGetArgs) (memos []MemoDetail, err error) {
 		// 2. The memo belongs to a finished project
 		// 3. User paid for this project
 		if isAdmin {
-			fmt.Println("first process")
+			// fmt.Println("first process")
 			memo.Content.String = fulltext
 		} else if memo.Project.Status.Valid && memo.Project.Status.Int == 2 {
-			fmt.Println("second process")
+			// fmt.Println("second process")
 			memo.Content.String = fulltext
 		}
 
 		for _, project := range roleResult {
 			if project.ObjectID != nil && memo.Project.ID == *project.ObjectID && project.Points != nil {
-				fmt.Println("paid!")
+				// fmt.Println("paid!")
 				memo.Project.Paid = true
 				memo.Content.String = fulltext
 				break
@@ -371,6 +376,7 @@ func (m *memoAPI) GetMemos(args *MemoGetArgs) (memos []MemoDetail, err error) {
 	}
 	return memos, err
 }
+
 func (m *memoAPI) InsertMemo(memo Memo) (err error) {
 
 	tags := getStructDBTags("full", Memo{})
@@ -396,6 +402,7 @@ func (m *memoAPI) InsertMemo(memo Memo) (err error) {
 
 	return err
 }
+
 func (m *memoAPI) UpdateMemo(memo Memo) (err error) {
 
 	tags := getStructDBTags("partial", memo)
@@ -417,6 +424,7 @@ func (m *memoAPI) UpdateMemo(memo Memo) (err error) {
 
 	return err
 }
+
 func (m *memoAPI) UpdateMemos(args MemoUpdateArgs) (err error) {
 
 	updateQuery, updateArgs := args.parse()
@@ -443,7 +451,7 @@ func (m *memoAPI) UpdateMemos(args MemoUpdateArgs) (err error) {
 	return nil
 }
 
-func (a *memoAPI) SchedulePublish() error {
+func (m *memoAPI) SchedulePublish() error {
 	_, err := DB.Exec("UPDATE memos SET publish_status=2 WHERE publish_status=3 AND published_at <= cast(now() as datetime);")
 	if err != nil {
 		return err

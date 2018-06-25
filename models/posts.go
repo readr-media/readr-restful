@@ -9,11 +9,12 @@ import (
 	"strings"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/readr-media/readr-restful/config"
 )
 
-var PostStatus map[string]interface{}
-var PostType map[string]interface{}
-var PostPublishStatus map[string]interface{}
+// var PostStatus map[string]interface{}
+// var PostType map[string]interface{}
+// var PostPublishStatus map[string]interface{}
 
 // Post could use json:"omitempty" tag to ignore null field
 // However, struct type field like NullTime, NullString must be declared as pointer,
@@ -188,7 +189,8 @@ func (p *PostArgs) Default() (result *PostArgs) {
 }
 
 func (p *PostArgs) DefaultActive() {
-	p.Active = map[string][]int{"$nin": []int{int(PostStatus["deactive"].(float64))}}
+	// p.Active = map[string][]int{"$nin": []int{int(PostStatus["deactive"].(float64))}}
+	p.Active = map[string][]int{"$nin": []int{config.Config.Models.Posts["deactive"]}}
 }
 
 func (p *PostArgs) anyFilter() (result bool) {
@@ -315,7 +317,6 @@ func (a *postAPI) GetPost(id uint32) (TaggedPostMember, error) {
 			err = nil
 		}
 	}
-
 	return post, err
 }
 
@@ -348,8 +349,10 @@ func (a *postAPI) InsertPost(p Post) (int, error) {
 	}
 
 	// Only insert a post when it's published
-	if p.Active.Valid == true && p.Active.Int == int64(PostStatus["active"].(float64)) {
-		if p.PublishStatus.Valid == true && p.PublishStatus.Int == int64(PostPublishStatus["publish"].(float64)) {
+	// if p.Active.Valid == true && p.Active.Int == int64(PostStatus["active"].(float64)) {
+	if p.Active.Valid == true && p.Active.Int == int64(config.Config.Models.Posts["active"]) {
+		// if p.PublishStatus.Valid == true && p.PublishStatus.Int == int64(PostPublishStatus["publish"].(float64)) {
+		if p.PublishStatus.Valid == true && p.PublishStatus.Int == int64(config.Config.Models.PostPublishStatus["publish"]) {
 			if p.ID == 0 {
 				p.ID = uint32(lastID)
 			}
@@ -362,7 +365,6 @@ func (a *postAPI) InsertPost(p Post) (int, error) {
 			go Algolia.InsertPost([]TaggedPostMember{post})
 		}
 	}
-
 	return int(lastID), err
 }
 
@@ -387,7 +389,8 @@ func (a *postAPI) UpdatePost(p Post) error {
 
 	go PostCache.Update(p)
 
-	if (p.PublishStatus.Valid == true && p.PublishStatus.Int != int64(PostPublishStatus["publish"].(float64))) || (p.Active.Valid == true && p.Active.Int != int64(PostStatus["active"].(float64))) {
+	// if (p.PublishStatus.Valid == true && p.PublishStatus.Int != int64(PostPublishStatus["publish"].(float64))) || (p.Active.Valid == true && p.Active.Int != int64(PostStatus["active"].(float64))) {
+	if (p.PublishStatus.Valid == true && p.PublishStatus.Int != int64(config.Config.Models.PostPublishStatus["publish"])) || (p.Active.Valid == true && p.Active.Int != int64(config.Config.Models.Posts["active"])) {
 		// Case: Set a post to unpublished state, Delete the post from cache/searcher
 		go Algolia.DeletePost([]int{int(p.ID)})
 	} else {
@@ -399,17 +402,18 @@ func (a *postAPI) UpdatePost(p Post) error {
 		}
 
 		publishStatus := tpm.PostMember.Post.PublishStatus
-		if publishStatus.Valid == true && publishStatus.Int == int64(PostPublishStatus["publish"].(float64)) {
+		// if publishStatus.Valid == true && publishStatus.Int == int64(PostPublishStatus["publish"].(float64)) {
+		if publishStatus.Valid == true && publishStatus.Int == int64(config.Config.Models.PostPublishStatus["publish"]) {
 			go Algolia.InsertPost([]TaggedPostMember{tpm})
 		}
 	}
-
 	return err
 }
 
 func (a *postAPI) DeletePost(id uint32) error {
 
-	result, err := DB.Exec(fmt.Sprintf("UPDATE posts SET active = %d WHERE post_id = ?", int(PostStatus["deactive"].(float64))), id)
+	// result, err := DB.Exec(fmt.Sprintf("UPDATE posts SET active = %d WHERE post_id = ?", int(PostStatus["deactive"].(float64))), id)
+	result, err := DB.Exec(fmt.Sprintf("UPDATE posts SET active = %d WHERE post_id = ?", config.Config.Models.Posts["deactive"]), id)
 	if err != nil {
 		return err
 	}
@@ -451,7 +455,8 @@ func (a *postAPI) UpdateAll(req PostUpdateArgs) error {
 
 	go PostCache.UpdateAll(req)
 
-	if (req.PublishStatus.Valid == true && req.PublishStatus.Int != int64(PostPublishStatus["publish"].(float64))) || (req.Active.Valid == true && req.Active.Int != int64(PostStatus["active"].(float64))) {
+	// if (req.PublishStatus.Valid == true && req.PublishStatus.Int != int64(PostPublishStatus["publish"].(float64))) || (req.Active.Valid == true && req.Active.Int != int64(PostStatus["active"].(float64))) {
+	if (req.PublishStatus.Valid == true && req.PublishStatus.Int != int64(config.Config.Models.PostPublishStatus["publish"])) || (req.Active.Valid == true && req.Active.Int != int64(config.Config.Models.Posts["active"])) {
 		// Case: Set a post to unpublished state, Delete the post from cache/searcher
 		go Algolia.DeletePost(req.IDs)
 	} else if req.Active.Valid == true {

@@ -29,14 +29,16 @@ func Connect(dbURI string) {
 	DB = database{d}
 }
 
-func ValidateActive(args map[string][]int, status map[string]interface{}) (err error) {
+// func ValidateActive(args map[string][]int, status map[string]interface{}) (err error) {
+func ValidateActive(args map[string][]int, status map[string]int) (err error) {
 	if len(args) > 1 {
 		return errors.New("Too many active lists")
 	}
 	valid := make([]int, 0)
 	result := make([]int, 0)
 	for _, v := range status {
-		valid = append(valid, int(v.(float64)))
+		// valid = append(valid, int(v.(float64)))
+		valid = append(valid, v)
 	}
 	activeCount := 0
 	for _, activeSlice := range args {

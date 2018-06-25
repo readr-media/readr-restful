@@ -8,9 +8,10 @@ import (
 	"strings"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/readr-media/readr-restful/config"
 )
 
-var MemberStatus map[string]interface{}
+// var MemberStatus map[string]interface{}
 
 type Member struct {
 	ID       int64      `json:"id" db:"id"`
@@ -131,7 +132,8 @@ func (m *MemberArgs) SetDefault() {
 }
 
 func (m *MemberArgs) DefaultActive() {
-	m.Active = map[string][]int{"$nin": []int{int(MemberStatus["delete"].(float64))}}
+	// m.Active = map[string][]int{"$nin": []int{int(MemberStatus["delete"].(float64))}}
+	m.Active = map[string][]int{"$nin": []int{config.Config.Models.Members["delete"]}}
 }
 
 func (m *MemberArgs) anyFilter() bool {
@@ -282,7 +284,8 @@ func (a *memberAPI) UpdateMember(m Member) error {
 
 func (a *memberAPI) DeleteMember(idType string, id string) error {
 
-	result, err := DB.Exec(fmt.Sprintf("UPDATE members SET active = %d WHERE %s = ?", int(MemberStatus["delete"].(float64)), idType), id)
+	// result, err := DB.Exec(fmt.Sprintf("UPDATE members SET active = %d WHERE %s = ?", int(MemberStatus["delete"].(float64)), idType), id)
+	result, err := DB.Exec(fmt.Sprintf("UPDATE members SET active = %d WHERE %s = ?", config.Config.Models.Members["delete"], idType), id)
 	if err != nil {
 		return err
 	}
@@ -355,7 +358,8 @@ func (a *memberAPI) Count(req *MemberArgs) (result int, err error) {
 func (a *memberAPI) GetIDsByNickname(key string, roles map[string][]int) (result []NicknameID, err error) {
 	query := `SELECT id, nickname FROM members WHERE active = ? AND nickname LIKE ?`
 	if len(roles) != 0 {
-		values := []interface{}{int(MemberStatus["active"].(float64)), key + "%"}
+		// values := []interface{}{int(MemberStatus["active"].(float64)), key + "%"}
+		values := []interface{}{config.Config.Models.Members["active"], key + "%"}
 		for k, v := range roles {
 			query = fmt.Sprintf("%s %s", query, fmt.Sprintf(" AND %s %s (?)", "members.role", operatorHelper(k)))
 			values = append(values, v)
@@ -374,7 +378,8 @@ func (a *memberAPI) GetIDsByNickname(key string, roles map[string][]int) (result
 			return []NicknameID{}, err
 		}
 	} else {
-		err = DB.Select(&result, query, int(MemberStatus["active"].(float64)), key+"%")
+		// err = DB.Select(&result, query, int(MemberStatus["active"].(float64)), key+"%")
+		err = DB.Select(&result, query, config.Config.Models.Members["active"], key+"%")
 		if err != nil {
 			return []NicknameID{}, err
 		}

@@ -3,7 +3,6 @@ package routes
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"os"
 	"testing"
 	"time"
@@ -14,19 +13,19 @@ import (
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
-	"github.com/spf13/viper"
 )
 
-func init() {
-	viper.AddConfigPath("../config")
-	viper.SetConfigName("main")
+// func init() {
+// 	viper.AddConfigPath("../config")
+// 	viper.SetConfigName("main")
 
-	if err := viper.ReadInConfig(); err != nil {
-		log.Fatalf("Error reading config file, %s", err)
-	}
+// 	if err := viper.ReadInConfig(); err != nil {
+// 		log.Fatalf("Error reading config file, %s", err)
+// 	}
 
-}
+// }
 
 var r *gin.Engine
 
@@ -56,11 +55,20 @@ func TestMain(m *testing.M) {
 		_, _ = models.DB.Exec("truncate table reports;")
 		_, _ = models.DB.Exec("truncate table report_authors;")
 	*/
+
+	if err := config.LoadConfig("../config", ""); err != nil {
+		panic(fmt.Errorf("Invalid application configuration: %s", err))
+	}
+
 	// Init Redis connetions
 	models.RedisConn(map[string]string{
-		"url":      fmt.Sprint(viper.Get("redis.host"), ":", viper.Get("redis.port")),
-		"password": fmt.Sprint(viper.Get("redis.password")),
+		"url":      fmt.Sprint(config.Config.Redis.Host, ":", config.Config.Redis.Port),
+		"password": fmt.Sprint(config.Config.Redis.Password),
 	})
+	// models.RedisConn(map[string]string{
+	// 	"url":      fmt.Sprint(viper.Get("redis.host"), ":", viper.Get("redis.port")),
+	// 	"password": fmt.Sprint(viper.Get("redis.password")),
+	// })
 	models.Algolia.Init()
 
 	gin.SetMode(gin.TestMode)
@@ -81,22 +89,22 @@ func TestMain(m *testing.M) {
 	ReportHandler.SetRoutes(r)
 	TagHandler.SetRoutes(r)
 
-	models.MemberStatus = viper.GetStringMap("models.members")
-	models.MemoStatus = viper.GetStringMap("models.memos")
-	models.MemoPublishStatus = viper.GetStringMap("models.memos_publish_status")
-	models.PostStatus = viper.GetStringMap("models.posts")
-	models.PostType = viper.GetStringMap("models.post_type")
-	models.PostPublishStatus = viper.GetStringMap("models.post_publish_status")
-	models.ProjectActive = viper.GetStringMap("models.projects_active")
-	models.ProjectStatus = viper.GetStringMap("models.projects_status")
-	models.ProjectPublishStatus = viper.GetStringMap("models.projects_publish_status")
-	models.TagStatus = viper.GetStringMap("models.tags")
-	models.CommentActive = viper.GetStringMap("models.comment")
-	models.CommentStatus = viper.GetStringMap("models.comment_status")
-	models.ReportedCommentStatus = viper.GetStringMap("models.reported_comment_status")
-	models.ReportActive = viper.GetStringMap("models.reports")
-	models.ReportPublishStatus = viper.GetStringMap("models.reports_publish_status")
-	OGParserHeaders = viper.GetStringMapString("cralwer.headers")
+	// models.MemberStatus = viper.GetStringMap("models.members")
+	// models.MemoStatus = viper.GetStringMap("models.memos")
+	// models.MemoPublishStatus = viper.GetStringMap("models.memos_publish_status")
+	// models.PostStatus = viper.GetStringMap("models.posts")
+	// models.PostType = viper.GetStringMap("models.post_type")
+	// models.PostPublishStatus = viper.GetStringMap("models.post_publish_status")
+	// models.ProjectActive = viper.GetStringMap("models.projects_active")
+	// models.ProjectStatus = viper.GetStringMap("models.projects_status")
+	// models.ProjectPublishStatus = viper.GetStringMap("models.projects_publish_status")
+	// models.TagStatus = viper.GetStringMap("models.tags")
+	// models.CommentActive = viper.GetStringMap("models.comment")
+	// models.CommentStatus = viper.GetStringMap("models.comment_status")
+	// models.ReportedCommentStatus = viper.GetStringMap("models.reported_comment_status")
+	// models.ReportActive = viper.GetStringMap("models.reports")
+	// models.ReportPublishStatus = viper.GetStringMap("models.reports_publish_status")
+	// OGParserHeaders = viper.GetStringMapString("cralwer.headers")
 
 	models.CommentAPI = new(mockCommentAPI)
 	models.FollowingAPI = new(mockFollowingAPI)

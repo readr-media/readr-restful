@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/readr-media/readr-restful/config"
 	"github.com/robfig/cron"
 )
 
@@ -109,7 +110,8 @@ OuterLoop:
 func (v *straatsSync) GetLatestVideoTime() (t time.Time) {
 	var time NullTime
 	query := "SELECT updated_at FROM posts WHERE type=? ORDER BY updated_at DESC;"
-	_ = DB.Get(&time, query, PostType["video"])
+	// _ = DB.Get(&time, query, PostType["video"])
+	_ = DB.Get(&time, query, config.Config.Models.PostType["video"])
 	return time.Time
 }
 func (v *straatsSync) GetLives(time time.Time) ([]straatsLive, error) {
@@ -128,19 +130,22 @@ func (v *straatsSync) UpdateLives(live straatsLive) (err error) {
 
 	switch live.Status {
 	case "ready":
-		_, err := DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=? WHERE video_id=?;", PostType["live"], live.Link, PostStatus["deactive"], time.Now(), live.ID)
+		// _, err := DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=? WHERE video_id=?;", PostType["live"], live.Link, PostStatus["deactive"], time.Now(), live.ID)
+		_, err := DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=? WHERE video_id=?;", config.Config.Models.PostType["live"], live.Link, config.Config.Models.Posts["deactive"], time.Now(), live.ID)
 		if err != nil {
 			return err
 		}
 	case "started":
 		t, _ := time.Parse(time.RFC3339, live.StartedAt)
-		_, err := DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=?, published_at=? WHERE video_id=?;", PostType["live"], live.Link, PostStatus["active"], time.Now(), t, live.ID)
+		// _, err := DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=?, published_at=? WHERE video_id=?;", PostType["live"], live.Link, PostStatus["active"], time.Now(), t, live.ID)
+		_, err := DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=?, published_at=? WHERE video_id=?;", config.Config.Models.PostType["live"], live.Link, config.Config.Models.Posts["active"], time.Now(), t, live.ID)
 		if err != nil {
 			return err
 		}
 	case "ended":
 		t, _ := time.Parse(time.RFC3339, live.StartedAt)
-		_, err := DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=?, published_at=? WHERE video_id=?;", PostType["live"], live.Link, PostStatus["deactive"], time.Now(), t, live.ID)
+		// _, err := DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=?, published_at=? WHERE video_id=?;", PostType["live"], live.Link, PostStatus["deactive"], time.Now(), t, live.ID)
+		_, err := DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=?, published_at=? WHERE video_id=?;", config.Config.Models.PostType["live"], live.Link, config.Config.Models.Posts["deactive"], time.Now(), t, live.ID)
 		if err != nil {
 			return err
 		}
@@ -149,7 +154,8 @@ func (v *straatsSync) UpdateLives(live straatsLive) (err error) {
 }
 func (v *straatsSync) UpdateLivesVod(live straatsLive, vods []straatsVod) (err error) {
 
-	var vod_active = PostStatus["active"]
+	// var vod_active = PostStatus["active"]
+	var vod_active = config.Config.Models.Posts["active"]
 	var post_id string
 	_ = DB.Get(&post_id, "SELECT post_id FROM posts WHERE video_id=?;", live.ID)
 	if post_id == "" {
@@ -164,10 +170,12 @@ func (v *straatsSync) UpdateLivesVod(live straatsLive, vods []straatsVod) (err e
 		published_at = v.UpdatedAt
 		urls = append(urls, v.Link)
 		if !v.Available {
-			vod_active = PostStatus["draft"]
+			// vod_active = PostStatus["draft"]
+			vod_active = config.Config.Models.Posts["draft"]
 		}
 	}
-	_, err = DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=?, published_at=? WHERE video_id=?;", PostType["video"], strings.Join(urls, ";"), vod_active, time.Now(), published_at, live.ID)
+	// _, err = DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=?, published_at=? WHERE video_id=?;", PostType["video"], strings.Join(urls, ";"), vod_active, time.Now(), published_at, live.ID)
+	_, err = DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=?, published_at=? WHERE video_id=?;", config.Config.Models.PostType["video"], strings.Join(urls, ";"), vod_active, time.Now(), published_at, live.ID)
 
 	return err
 }

@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/utils"
 )
@@ -155,7 +156,8 @@ func (a *mockMemberAPI) DeleteMember(idType string, id string) error {
 	intID, _ := strconv.Atoi(id)
 	for index, value := range mockMemberDS {
 		if int64(intID) == value.ID {
-			mockMemberDS[index].Active = models.NullInt{Int: int64(models.MemberStatus["delete"].(float64)), Valid: true}
+			// mockMemberDS[index].Active = models.NullInt{Int: int64(models.MemberStatus["delete"].(float64)), Valid: true}
+			mockMemberDS[index].Active = models.NullInt{Int: int64(config.Config.Models.Members["delete"]), Valid: true}
 			return nil
 		}
 	}
