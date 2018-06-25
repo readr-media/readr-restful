@@ -3,7 +3,7 @@ package routes
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
+	"log"
 
 	"net/http"
 
@@ -13,7 +13,7 @@ import (
 
 type followingHandler struct{}
 
-func bind(c *gin.Context) (result interface{}, err error) {
+func bindFollow(c *gin.Context) (result interface{}, err error) {
 
 	var metadata = func(method, resource string) (table, key string, followtype int, active map[string][]int, err error) {
 
@@ -124,7 +124,7 @@ func bind(c *gin.Context) (result interface{}, err error) {
 		}
 		result = params
 	default:
-		return nil, errors.New("Unsupported Resource")
+		return nil, errors.New("Unsupported Method")
 	}
 	return result, nil
 }
@@ -135,25 +135,28 @@ func (r *followingHandler) Get(c *gin.Context) {
 		input, result interface{}
 		err           error
 	)
-	if input, err = bind(c); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+	if input, err = bindFollow(c); err != nil {
+		switch err.Error() {
+		case "Unsupported Method":
+			c.JSON(http.StatusNotFound, gin.H{"Error": err.Error()})
+		default:
+			c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		}
 		return
 	}
+
 	result, err = models.FollowingAPI.Get(input)
 	if err != nil {
 		switch err.Error() {
 		case "Not Found":
 			c.JSON(http.StatusNotFound, gin.H{"Error": err.Error()})
-			return
 		case "Unsupported Resource":
 			c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
-			return
 		default:
-			fmt.Println(err.Error())
+			log.Println(err.Error())
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
-			return
 		}
-
+		return
 	}
 	c.JSON(http.StatusOK, gin.H{"_items": result})
 }
