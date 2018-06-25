@@ -108,7 +108,7 @@ func (g *GetFollowingArgs) scan(rows *sqlx.Rows) (interface{}, error) {
 	if len(followings) == 0 {
 		err = errors.New("Not Found")
 	}
-	return followings, nil
+	return followings, err
 }
 
 type GetFollowedArgs struct {
@@ -179,7 +179,7 @@ func (g *GetFollowedArgs) scan(rows *sqlx.Rows) (interface{}, error) {
 			Followers  []int64
 		}{resourceID, count, followers})
 	}
-	return followed, nil
+	return followed, err
 }
 
 type GetFollowMapArgs struct {
@@ -246,7 +246,7 @@ func (g *GetFollowMapArgs) scan(rows *sqlx.Rows) (interface{}, error) {
 			strings.Split(resourceIDs, ","),
 		})
 	}
-	return list, nil
+	return list, err
 }
 
 type GetFollowerMemberIDsArgs struct {
