@@ -106,18 +106,20 @@ func (g *GetFollowingArgs) scan(rows *sqlx.Rows) (interface{}, error) {
 		}
 	}
 
-	if len(followings) == 0 {
-		err = errors.New("Not Found")
-	}
+	// if len(followings) == 0 {
+	// 	err = errors.New("Not Found")
+	// }
 	return followings, err
 }
 
 type GetFollowedArgs struct {
-	IDs []int64 `json:"ids"`
+	IDs     []int64 `json:"ids"`
+	Emotion int
 	Resource
 }
 
 func (g *GetFollowedArgs) get() (*sqlx.Rows, error) {
+
 	var osql = struct {
 		base      string
 		condition []string
@@ -140,6 +142,10 @@ func (g *GetFollowedArgs) get() (*sqlx.Rows, error) {
 			// osql.args = append(osql.args, int(t.(float64)))
 			osql.args = append(osql.args, t)
 		}
+	}
+	if g.Emotion > 0 {
+		osql.condition = append(osql.condition, "f.emotion = ?")
+		osql.args = append(osql.args, g.Emotion)
 	}
 
 	query, args, err := sqlx.In(fmt.Sprintf(osql.base, strings.Join(osql.join, " LEFT JOIN "), strings.Join(osql.condition, " AND ")), osql.args...)
@@ -342,7 +348,7 @@ func (f *followingAPI) Get(params interface{}) (result interface{}, err error) {
 		rows, err = params.get()
 		result, err = params.scan(rows)
 	default:
-		return nil, errors.New("None")
+		return nil, errors.New("Bad Request")
 	}
 	return result, err
 }

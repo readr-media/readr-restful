@@ -107,6 +107,15 @@ func bindFollow(c *gin.Context) (result interface{}, err error) {
 		if len(params.IDs) == 0 {
 			return nil, errors.New("Bad Resource ID")
 		}
+		// If there is valid emotion parameter, return emotion rather than follow
+		if c.Query("emotion") != "" {
+			if val, ok := config.Config.Models.Emotions[c.Query("emotion")]; ok {
+				params.FollowType = 0
+				params.Emotion = val
+			} else {
+				return nil, errors.New("Unsupported Emotion")
+			}
+		}
 		result = params
 	case "map":
 		var params = &models.GetFollowMapArgs{}
