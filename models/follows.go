@@ -395,7 +395,7 @@ func (f *followingAPI) Update(params FollowArgs) (err error) {
 
 func (f *followingAPI) Delete(params FollowArgs) (err error) {
 
-	query := `DELETE FROM following_posts WHERE member_id = ? AND target_id = ? AND type = ? AND emotion = ?;`
+	query := `DELETE FROM following WHERE member_id = ? AND target_id = ? AND type = ? AND emotion = ?;`
 	_, err = DB.Exec(query, params.Subject, params.Object, params.Type, params.Emotion)
 	if err != nil {
 		log.Fatal(err)

@@ -70,6 +70,12 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 		}
 
 		params := models.FollowArgs{Resource: body.Resource, Subject: int64(body.Subject), Object: int64(body.Object)}
+		if val, ok := config.Config.Models.FollowingType[body.Resource]; ok {
+			params.Type = val
+		} else {
+			c.JSON(http.StatusOK, gin.H{"Error": "Unsupported Resource"})
+			return
+		}
 		switch actionType {
 		case "follow":
 			if err = models.FollowingAPI.Insert(params); err != nil {
