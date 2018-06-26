@@ -67,6 +67,7 @@ type appConfig struct {
 		Reports               map[string]int `mapstructure:"reports"`
 		ReportsPublishStatus  map[string]int `mapstructure:"reports_publish_status"`
 		FollowingType         map[string]int `mapstructure:"following_type"`
+		Emotions              map[string]int `mapstructure:"emotions"`
 	} `mapstructure:"models"`
 }
 

@@ -111,10 +111,14 @@
         },
         "following_type": {
             "member": 9,
-            "post": 2,
-            "project": 3,
-            "memo": 4,
-            "report": 5
+            "post": 9,
+            "project": 9,
+            "memo": 9,
+            "report": 9
+        },
+        "emotions":{
+            "like": 9,
+            "dislike": 9
         }
     }
 }

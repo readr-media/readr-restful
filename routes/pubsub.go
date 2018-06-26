@@ -26,6 +26,9 @@ import (
 var supportedAction = map[string]bool{
 	"follow":         true,
 	"unfollow":       true,
+	"insert_emotion": true,
+	"update_emotion": true,
+	"delete_emotion": true,
 	"post_comment":   true,
 	"edit_comment":   true,
 	"delete_comment": true,
@@ -51,49 +54,84 @@ type PubsubFollowMsgBody struct {
 type pubsubHandler struct{}
 
 func (r *pubsubHandler) Push(c *gin.Context) {
-	var input PubsubMessageMeta
+	var (
+		input PubsubMessageMeta
+		err   error
+	)
 	c.ShouldBindJSON(&input)
 
 	msgType := input.Message.Attr["type"]
 	actionType := input.Message.Attr["action"]
 
 	switch msgType {
-	case "follow":
+	case "follow", "emotion":
 
 		var body PubsubFollowMsgBody
 
-		err := json.Unmarshal(input.Message.Body, &body)
+		err = json.Unmarshal(input.Message.Body, &body)
 		if err != nil {
 			log.Printf("Parse msg body fail: %v \n", err.Error())
 			c.JSON(http.StatusOK, gin.H{"Error": "Bad Request"})
 			return
 		}
 
-		params := models.FollowArgs{Resource: body.Resource, Subject: int64(body.Subject), Object: int64(body.Object)}
-		if val, ok := config.Config.Models.FollowingType[body.Resource]; ok {
-			params.Type = val
-		} else {
-			c.JSON(http.StatusOK, gin.H{"Error": "Unsupported Resource"})
-			return
-		}
-		switch actionType {
-		case "follow":
-			if err = models.FollowingAPI.Insert(params); err != nil {
-				log.Printf("%s fail: %v \n", actionType, err.Error())
+		if msgType == "follow" {
+
+			params := models.FollowArgs{Resource: body.Resource, Subject: int64(body.Subject), Object: int64(body.Object)}
+			if val, ok := config.Config.Models.FollowingType[body.Resource]; ok {
+				params.Type = val
+			} else {
+				c.JSON(http.StatusOK, gin.H{"Error": "Unsupported Resource"})
+				return
+			}
+			switch actionType {
+			case "follow":
+				if err = models.FollowingAPI.Insert(params); err != nil {
+					log.Printf("%s fail: %v \n", actionType, err.Error())
+					c.JSON(http.StatusOK, gin.H{"Error": err.Error()})
+					return
+				}
+				c.Status(http.StatusOK)
+			case "unfollow":
+				if err = models.FollowingAPI.Delete(params); err != nil {
+					log.Printf("%s fail: %v \n", actionType, err.Error())
+					c.JSON(http.StatusOK, gin.H{"Error": err.Error()})
+					return
+				}
+			default:
+				log.Println("Action Type Not Support", actionType)
+				c.JSON(http.StatusOK, gin.H{"Error": "Bad Request"})
+			}
+
+		} else if msgType == "emotion" {
+
+			params := models.FollowArgs{Subject: int64(body.Subject), Object: int64(body.Object), Type: 0}
+			if val, ok := config.Config.Models.Emotions[body.Resource]; ok {
+				params.Emotion = val
+			} else {
+				c.JSON(http.StatusOK, gin.H{"Error": "Unsupported Emotion"})
+				return
+			}
+			switch actionType {
+			case "insert":
+				err = models.FollowingAPI.Insert(params)
+			case "update":
+				err = models.FollowingAPI.Update(params)
+			case "delete":
+				err = models.FollowingAPI.Delete(params)
+			default:
+				log.Printf("Action Type %s Not Support", actionType)
+				c.JSON(http.StatusOK, gin.H{"Error": "Bad Request"})
+			}
+
+			if err != nil {
+				log.Printf("%s fail: %v\n", actionType, err.Error())
 				c.JSON(http.StatusOK, gin.H{"Error": err.Error()})
 				return
 			}
 			c.Status(http.StatusOK)
-		case "unfollow":
-			if err = models.FollowingAPI.Delete(params); err != nil {
-				log.Printf("%s fail: %v \n", actionType, err.Error())
-				c.JSON(http.StatusOK, gin.H{"Error": err.Error()})
-				return
-			}
-		default:
-			log.Println("Action Type Not Support", actionType)
-			c.JSON(http.StatusOK, gin.H{"Error": "Bad Request"})
 		}
+
 	case "comment":
 		switch actionType {
 
@@ -239,7 +277,7 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 					IDs:       args.IDs,
 					UpdatedAt: models.NullTime{Time: time.Now(), Valid: true},
 					// Active:    models.NullInt{int64(models.CommentActive["deactive"].(float64)), true},
-					Active: models.NullInt{int64(config.Config.Models.Comment["deactive"]), true},
+					Active: models.NullInt{Int: int64(config.Config.Models.Comment["deactive"]), Valid: true},
 				}
 			} else {
 				args.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
@@ -274,8 +312,8 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 }
 
 func (r *pubsubHandler) parseUrl(body string) []string {
-	match_result := regexp.MustCompile("https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{2,256}\\.[a-z]{2,6}([-a-zA-Z0-9@:%_\\+.~#?&\\/\\/=]*)").FindAllString(body, -1)
-	return match_result
+	matchResult := regexp.MustCompile("https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{2,256}\\.[a-z]{2,6}([-a-zA-Z0-9@:%_\\+.~#?&\\/\\/=]*)").FindAllString(body, -1)
+	return matchResult
 }
 
 func (r *pubsubHandler) SetRoutes(router *gin.Engine) {
