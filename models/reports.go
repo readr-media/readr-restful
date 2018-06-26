@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	"github.com/readr-media/readr-restful/config"
 )
 
 type Report struct {
@@ -73,7 +74,8 @@ func (g *GetReportArgs) Default() {
 }
 
 func (g *GetReportArgs) DefaultActive() {
-	g.Active = map[string][]int{"$nin": []int{int(ReportActive["deactive"].(float64))}}
+	// g.Active = map[string][]int{"$nin": []int{int(ReportActive["deactive"].(float64))}}
+	g.Active = map[string][]int{"$nin": []int{config.Config.Models.Reports["deactive"]}}
 }
 
 func (p *GetReportArgs) parse() (restricts string, values []interface{}) {
@@ -288,7 +290,8 @@ func (a *reportAPI) InsertReport(p Report) (lastID int, err error) {
 	}
 
 	// Only insert a report when it's active
-	if p.Active.Valid == true && p.Active.Int == int64(ReportActive["active"].(float64)) {
+	// if p.Active.Valid == true && p.Active.Int == int64(ReportActive["active"].(float64)) {
+	if p.Active.Valid == true && p.Active.Int == int64(config.Config.Models.Reports["active"]) {
 		if p.ID == 0 {
 			p.ID = int(lastID)
 		}
@@ -324,7 +327,8 @@ func (a *reportAPI) UpdateReport(p Report) error {
 		return errors.New("Report Not Found")
 	}
 
-	if p.Active.Valid == true && p.Active.Int != int64(ReportActive["active"].(float64)) {
+	// if p.Active.Valid == true && p.Active.Int != int64(ReportActive["active"].(float64)) {
+	if p.Active.Valid == true && p.Active.Int != int64(config.Config.Models.Reports["active"]) {
 		// Case: Set a report to unpublished state, Delete the report from cache/searcher
 		go Algolia.DeleteReport([]int{p.ID})
 	} else {
@@ -446,5 +450,6 @@ func (a *reportAPI) UpdateAuthors(reportID int, authorIDs []int) (err error) {
 }
 
 var ReportAPI ReportAPIInterface = new(reportAPI)
-var ReportActive map[string]interface{}
-var ReportPublishStatus map[string]interface{}
+
+// var ReportActive map[string]interface{}
+// var ReportPublishStatus map[string]interface{}

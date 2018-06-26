@@ -13,7 +13,7 @@
             "talk_comments": ""
         }
     },
-    "cralwer": {
+    "crawler": {
         "headers":{}
     },
     "mail":{
@@ -86,6 +86,35 @@
             "draft": 9,
             "publish": 9,
             "schedule": 9
+        },
+        "comment":{
+            "active": 9,
+            "deactive": 9
+        },
+        "comment_status":{
+            "hide": 9,
+            "show": 9
+        },
+        "reported_comment_status":{
+            "pending": 9,
+            "resolved": 9
+        },
+        "reports":{
+            "deactive": 9,
+            "active": 9
+        },
+        "reports_publish_status":{
+            "unpublish": 9,
+            "draft": 9,
+            "publish": 9,
+            "schedule": 9
+        },
+        "following_type": {
+            "member": 9,
+            "post": 2,
+            "project": 3,
+            "memo": 4,
+            "report": 5
         }
     }
 }

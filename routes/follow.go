@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -21,35 +22,35 @@ func bindFollow(c *gin.Context) (result interface{}, err error) {
 		case "member":
 			table = "members"
 			key = "id"
-			followtype = 1
+			followtype = config.Config.Models.FollowingType["member"]
 			if method == "user" {
 				active = map[string][]int{"$in": []int{1}}
 			}
 		case "post":
 			table = "posts"
 			key = "post_id"
-			followtype = 2
+			followtype = config.Config.Models.FollowingType["post"]
 			if method == "user" {
 				active = map[string][]int{"$in": []int{1}}
 			}
 		case "project":
 			table = "projects"
 			key = "project_id"
-			followtype = 3
+			followtype = config.Config.Models.FollowingType["project"]
 			if method == "user" {
 				active = map[string][]int{"$in": []int{1}}
 			}
 		case "memo":
 			table = "memos"
 			key = "memo_id"
-			followtype = 4
+			followtype = config.Config.Models.FollowingType["memo"]
 			if method == "user" {
 				active = map[string][]int{"$in": []int{1}}
 			}
 		case "report":
 			table = "reports"
 			key = "id"
-			followtype = 5
+			followtype = config.Config.Models.FollowingType["report"]
 			if method == "user" {
 				active = map[string][]int{"$in": []int{1}}
 			}

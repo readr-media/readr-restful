@@ -7,19 +7,24 @@ import (
 
 	"net/http"
 
+	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
-	"github.com/spf13/viper"
 	"gopkg.in/gomail.v2"
 )
 
 func initMailDialer() gomail.Dialer {
+	// dialer := gomail.NewDialer(
+	// 	viper.Get("mail.host").(string),
+	// 	int(viper.Get("mail.port").(float64)),
+	// 	viper.Get("mail.user").(string),
+	// 	viper.Get("mail.password").(string),
+	// )
 	dialer := gomail.NewDialer(
-		viper.Get("mail.host").(string),
-		int(viper.Get("mail.port").(float64)),
-		viper.Get("mail.user").(string),
-		viper.Get("mail.password").(string),
+		config.Config.Mail.Host,
+		config.Config.Mail.Port,
+		config.Config.Mail.User,
+		config.Config.Mail.Password,
 	)
-
 	return *dialer
 }
 

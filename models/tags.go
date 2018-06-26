@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	"github.com/readr-media/readr-restful/config"
 )
 
 type Tag struct {
@@ -90,16 +91,25 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []Tag, err error) {
 	var query bytes.Buffer
 
 	if args.ShowStats {
+		// query.WriteString(fmt.Sprintf(`
+		// 	SELECT ta.*, pt.related_reviews, pt.related_news FROM tags as ta
+		// 	LEFT JOIN (SELECT t.tag_id as tag_id,
+		// 		COUNT(CASE WHEN p.type=%d THEN p.post_id END) as related_reviews,
+		// 		COUNT(CASE WHEN p.type=%d THEN p.post_id END) as related_news
+		// 		FROM post_tags as t LEFT JOIN posts as p ON t.post_id=p.post_id GROUP BY t.tag_id ) as pt
+		// 	ON ta.tag_id = pt.tag_id WHERE ta.active=%d
+		// 	`, int(PostType["review"].(float64)), int(PostType["news"].(float64)), int(TagStatus["active"].(float64))))
 		query.WriteString(fmt.Sprintf(`
-			SELECT ta.*, pt.related_reviews, pt.related_news FROM tags as ta 
-			LEFT JOIN (SELECT t.tag_id as tag_id,
-				COUNT(CASE WHEN p.type=%d THEN p.post_id END) as related_reviews,
-				COUNT(CASE WHEN p.type=%d THEN p.post_id END) as related_news 
-				FROM post_tags as t LEFT JOIN posts as p ON t.post_id=p.post_id GROUP BY t.tag_id ) as pt 
-			ON ta.tag_id = pt.tag_id WHERE ta.active=%d
-			`, int(PostType["review"].(float64)), int(PostType["news"].(float64)), int(TagStatus["active"].(float64))))
+				SELECT ta.*, pt.related_reviews, pt.related_news FROM tags as ta 
+				LEFT JOIN (SELECT t.tag_id as tag_id,
+					COUNT(CASE WHEN p.type=%d THEN p.post_id END) as related_reviews,
+					COUNT(CASE WHEN p.type=%d THEN p.post_id END) as related_news 
+					FROM post_tags as t LEFT JOIN posts as p ON t.post_id=p.post_id GROUP BY t.tag_id ) as pt 
+				ON ta.tag_id = pt.tag_id WHERE ta.active=%d
+				`, config.Config.Models.PostType["review"], config.Config.Models.PostType["news"], config.Config.Models.Tags["active"]))
 	} else {
-		query.WriteString(fmt.Sprintf(`SELECT ta.* FROM tags as ta WHERE ta.active=%d `, int(TagStatus["active"].(float64))))
+		// query.WriteString(fmt.Sprintf(`SELECT ta.* FROM tags as ta WHERE ta.active=%d `, int(TagStatus["active"].(float64))))
+		query.WriteString(fmt.Sprintf(`SELECT ta.* FROM tags as ta WHERE ta.active=%d `, config.Config.Models.Tags["active"]))
 	}
 
 	if args.Keyword != "" {
@@ -141,7 +151,8 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []Tag, err error) {
 
 func (t *tagApi) InsertTag(tag Tag) (int, error) {
 	var existTag Tag
-	query := fmt.Sprint("SELECT * FROM tags WHERE active=", TagStatus["active"].(float64), " AND BINARY tag_content=?;")
+	// query := fmt.Sprint("SELECT * FROM tags WHERE active=", TagStatus["active"].(float64), " AND BINARY tag_content=?;")
+	query := fmt.Sprint("SELECT * FROM tags WHERE active=", config.Config.Models.Tags["active"], " AND BINARY tag_content=?;")
 	err := DB.Get(&existTag, query, tag.Text)
 	if err != nil && err != sql.ErrNoRows {
 		return 0, err
@@ -173,7 +184,8 @@ func (t *tagApi) InsertTag(tag Tag) (int, error) {
 func (t *tagApi) UpdateTag(tag Tag) error {
 
 	var existTag Tag
-	query := fmt.Sprint("SELECT * FROM tags WHERE active=", TagStatus["active"].(float64), " AND BINARY tag_content=?;")
+	// query := fmt.Sprint("SELECT * FROM tags WHERE active=", TagStatus["active"].(float64), " AND BINARY tag_content=?;")
+	query := fmt.Sprint("SELECT * FROM tags WHERE active=", config.Config.Models.Tags["active"], " AND BINARY tag_content=?;")
 	err := DB.Get(&existTag, query, tag.Text)
 	if err != nil && err != sql.ErrNoRows {
 		return err
@@ -255,5 +267,5 @@ func (a *tagApi) CountTags() (result int, err error) {
 	return result, err
 }
 
-var TagStatus map[string]interface{}
+// var TagStatus map[string]interface{}
 var TagAPI TagInterface = new(tagApi)

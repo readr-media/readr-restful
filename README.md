@@ -4,11 +4,19 @@ RESTful API for the READr site
 # Start the server 
 
 Use `config/main_sample.json` as template, put your mySQL connection address, username and password in a file `main.json` and save it in `config/` 
+You could also use a customized config file, like `main_dev.json`, put under directory `config/`.
+
 
 ## with go run
 
 ```bash
 go run main.go
+```
+
+when using customized configuration file:
+
+```bash 
+go run main.go -file=main_dev
 ```
 
 ## go run ignoring *_test.go files

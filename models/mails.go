@@ -11,6 +11,7 @@ import (
 	"text/template"
 
 	"github.com/garyburd/redigo/redis"
+	"github.com/readr-media/readr-restful/config"
 	"github.com/spf13/viper"
 	"gopkg.in/gomail.v2"
 )
@@ -298,7 +299,8 @@ OLP:
 }
 
 func (m *mailApi) getDailyReport() (reports []dailyReport, err error) {
-	query := fmt.Sprintf("SELECT id, title, hero_image, description, slug FROM reports WHERE DATE(created_at) = DATE(NOW() - INTERVAL 1 DAY) AND active = %d AND publish_status = %d;", int(ReportActive["active"].(float64)), int(ReportPublishStatus["publish"].(float64)))
+	// query := fmt.Sprintf("SELECT id, title, hero_image, description, slug FROM reports WHERE DATE(created_at) = DATE(NOW() - INTERVAL 1 DAY) AND active = %d AND publish_status = %d;", int(ReportActive["active"].(float64)), int(ReportPublishStatus["publish"].(float64)))
+	query := fmt.Sprintf("SELECT id, title, hero_image, description, slug FROM reports WHERE DATE(created_at) = DATE(NOW() - INTERVAL 1 DAY) AND active = %d AND publish_status = %d;", config.Config.Models.Reports["active"], config.Config.Models.ReportsPublishStatus["publish"])
 	rows, err := DB.Queryx(query)
 	for rows.Next() {
 		var report dailyReport
@@ -313,7 +315,8 @@ func (m *mailApi) getDailyReport() (reports []dailyReport, err error) {
 }
 
 func (m *mailApi) getDailyMemo() (memos []dailyMemo, err error) {
-	query := fmt.Sprintf("SELECT m.memo_id AS id, m.title AS title, m.content AS content, p.slug AS slug, e.id AS author_id, e.nickname AS author, e.profile_image AS image FROM memos AS m LEFT JOIN members AS e ON m.author = e.id LEFT JOIN projects AS p ON p.project_id = m.project_id WHERE DATE(m.updated_at) = DATE(NOW() - INTERVAL 1 DAY) AND m.active = %d AND m.publish_status = %d;", int(MemoStatus["active"].(float64)), int(MemoPublishStatus["publish"].(float64)))
+	// query := fmt.Sprintf("SELECT m.memo_id AS id, m.title AS title, m.content AS content, p.slug AS slug, e.id AS author_id, e.nickname AS author, e.profile_image AS image FROM memos AS m LEFT JOIN members AS e ON m.author = e.id LEFT JOIN projects AS p ON p.project_id = m.project_id WHERE DATE(m.updated_at) = DATE(NOW() - INTERVAL 1 DAY) AND m.active = %d AND m.publish_status = %d;", int(MemoStatus["active"].(float64)), int(MemoPublishStatus["publish"].(float64)))
+	query := fmt.Sprintf("SELECT m.memo_id AS id, m.title AS title, m.content AS content, p.slug AS slug, e.id AS author_id, e.nickname AS author, e.profile_image AS image FROM memos AS m LEFT JOIN members AS e ON m.author = e.id LEFT JOIN projects AS p ON p.project_id = m.project_id WHERE DATE(m.updated_at) = DATE(NOW() - INTERVAL 1 DAY) AND m.active = %d AND m.publish_status = %d;", config.Config.Models.Memos["active"], config.Config.Models.MemosPublishStatus["publish"])
 	rows, err := DB.Queryx(query)
 	for rows.Next() {
 		var memo dailyMemo
@@ -328,7 +331,8 @@ func (m *mailApi) getDailyMemo() (memos []dailyMemo, err error) {
 }
 
 func (m *mailApi) getDailyPost() (posts []dailyPost, err error) {
-	query := fmt.Sprintf(`SELECT p.post_id AS id, p.title AS title, p.content AS content, IFNULL(p.link, "") AS link, IFNULL(p.link_title, "") AS link_title, IFNULL(p.link_image, "") AS link_image, m.id AS author_id, m.nickname AS author, IFNULL(m.profile_image, "") AS image FROM posts AS p LEFT JOIN members AS m ON p.author = m.id WHERE DATE(p.updated_at) = DATE(NOW() - INTERVAL 1 DAY) AND p.active = %d AND p.publish_status = %d;`, int(PostStatus["active"].(float64)), int(PostPublishStatus["publish"].(float64)))
+	// query := fmt.Sprintf(`SELECT p.post_id AS id, p.title AS title, p.content AS content, IFNULL(p.link, "") AS link, IFNULL(p.link_title, "") AS link_title, IFNULL(p.link_image, "") AS link_image, m.id AS author_id, m.nickname AS author, IFNULL(m.profile_image, "") AS image FROM posts AS p LEFT JOIN members AS m ON p.author = m.id WHERE DATE(p.updated_at) = DATE(NOW() - INTERVAL 1 DAY) AND p.active = %d AND p.publish_status = %d;`, int(PostStatus["active"].(float64)), int(PostPublishStatus["publish"].(float64)))
+	query := fmt.Sprintf(`SELECT p.post_id AS id, p.title AS title, p.content AS content, IFNULL(p.link, "") AS link, IFNULL(p.link_title, "") AS link_title, IFNULL(p.link_image, "") AS link_image, m.id AS author_id, m.nickname AS author, IFNULL(m.profile_image, "") AS image FROM posts AS p LEFT JOIN members AS m ON p.author = m.id WHERE DATE(p.updated_at) = DATE(NOW() - INTERVAL 1 DAY) AND p.active = %d AND p.publish_status = %d;`, config.Config.Models.Posts["active"], config.Config.Models.PostPublishStatus["publish"])
 	rows, err := DB.Queryx(query)
 	for rows.Next() {
 		var post dailyPost
@@ -344,7 +348,8 @@ func (m *mailApi) getDailyPost() (posts []dailyPost, err error) {
 }
 
 func (m *mailApi) getMailingList() (list []string, err error) {
-	query := fmt.Sprintf("SELECT mail FROM members WHERE active = %d", int(MemberStatus["active"].(float64)))
+	// query := fmt.Sprintf("SELECT mail FROM members WHERE active = %d", int(MemberStatus["active"].(float64)))
+	query := fmt.Sprintf("SELECT mail FROM members WHERE active = %d", config.Config.Models.Members["active"])
 	rows, err := DB.Queryx(query)
 	for rows.Next() {
 		var mail string

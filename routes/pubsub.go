@@ -19,6 +19,7 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/gin-gonic/gin"
+	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -132,8 +133,10 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 			}
 
 			comment.CreatedAt = models.NullTime{Time: time.Now(), Valid: true}
-			comment.Active = models.NullInt{Int: int64(models.CommentActive["active"].(float64)), Valid: true}
-			comment.Status = models.NullInt{Int: int64(models.CommentStatus["show"].(float64)), Valid: true}
+			// comment.Active = models.NullInt{Int: int64(models.CommentActive["active"].(float64)), Valid: true}
+			// comment.Status = models.NullInt{Int: int64(models.CommentStatus["show"].(float64)), Valid: true}
+			comment.Active = models.NullInt{Int: int64(config.Config.Models.Comment["active"]), Valid: true}
+			comment.Status = models.NullInt{Int: int64(config.Config.Models.CommentStatus["show"]), Valid: true}
 
 			_, err = models.CommentAPI.InsertComment(comment)
 			if err != nil {
@@ -229,7 +232,8 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 				args = models.CommentUpdateArgs{
 					IDs:       args.IDs,
 					UpdatedAt: models.NullTime{Time: time.Now(), Valid: true},
-					Active:    models.NullInt{int64(models.CommentActive["deactive"].(float64)), true},
+					// Active:    models.NullInt{int64(models.CommentActive["deactive"].(float64)), true},
+					Active: models.NullInt{int64(config.Config.Models.Comment["deactive"]), true},
 				}
 			} else {
 				args.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
@@ -288,7 +292,8 @@ func (o *ogParser) GetOGInfoFromUrl(urlStr string) (*OGInfo, error) {
 	client := &http.Client{}
 
 	req, err := http.NewRequest("GET", urlStr, nil)
-	for k, v := range OGParserHeaders {
+	// for k, v := range OGParserHeaders {
+	for k, v := range config.Config.Crawler.Headers {
 		req.Header.Add(k, v)
 	}
 	if !regexp.MustCompile("\\.readr\\.tw\\/").MatchString(urlStr) {
@@ -475,4 +480,5 @@ func (o *ogParser) getPageData(doc *goquery.Document, data interface{}) error {
 }
 
 var OGParser ogParser
-var OGParserHeaders map[string]string
+
+// var OGParserHeaders map[string]string

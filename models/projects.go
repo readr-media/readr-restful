@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	"github.com/readr-media/readr-restful/config"
 )
 
 type Project struct {
@@ -75,7 +76,8 @@ func (g *GetProjectArgs) Default() {
 }
 
 func (g *GetProjectArgs) DefaultActive() {
-	g.Active = map[string][]int{"$nin": []int{int(ProjectActive["deactive"].(float64))}}
+	// g.Active = map[string][]int{"$nin": []int{int(ProjectActive["deactive"].(float64))}}
+	g.Active = map[string][]int{"$nin": []int{config.Config.Models.ProjectsActive["deactive"]}}
 }
 
 func (p *GetProjectArgs) parse() (restricts string, values []interface{}) {
@@ -468,6 +470,7 @@ func (a *projectAPI) UpdateAuthors(projectID int, authorIDs []int) (err error) {
 }
 
 var ProjectAPI ProjectAPIInterface = new(projectAPI)
-var ProjectActive map[string]interface{}
-var ProjectStatus map[string]interface{}
-var ProjectPublishStatus map[string]interface{}
+
+// var ProjectActive map[string]interface{}
+// var ProjectStatus map[string]interface{}
+// var ProjectPublishStatus map[string]interface{}

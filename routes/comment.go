@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -36,7 +37,8 @@ func (r *commentsHandler) bindCommentQuery(c *gin.Context, args *models.GetComme
 		if err = json.Unmarshal([]byte(c.Query("status")), &args.Status); err != nil {
 			return err
 		} else if err == nil {
-			if err = models.ValidateActive(args.Status, models.CommentStatus); err != nil {
+			// if err = models.ValidateActive(args.Status, models.CommentStatus); err != nil {
+			if err = models.ValidateActive(args.Status, config.Config.Models.CommentStatus); err != nil {
 				return err
 			}
 		}
@@ -58,7 +60,8 @@ func (r *commentsHandler) bindReportQuery(c *gin.Context, args *models.GetReport
 		if err = json.Unmarshal([]byte(c.Query("solved")), &args.Solved); err != nil {
 			return err
 		} else if err == nil {
-			if err = models.ValidateActive(args.Solved, models.ReportedCommentStatus); err != nil {
+			// if err = models.ValidateActive(args.Solved, models.ReportedCommentStatus); err != nil {
+			if err = models.ValidateActive(args.Solved, config.Config.Models.ReportedCommentStatus); err != nil {
 				return err
 			}
 		}
@@ -132,7 +135,8 @@ func (r *commentsHandler) PostRC(c *gin.Context) {
 	}
 
 	report.CreatedAt = models.NullTime{Time: time.Now(), Valid: true}
-	report.Solved = models.NullInt{Int: int64(models.ReportedCommentStatus["pending"].(float64)), Valid: true}
+	// report.Solved = models.NullInt{Int: int64(models.ReportedCommentStatus["pending"].(float64)), Valid: true}
+	report.Solved = models.NullInt{Int: int64(config.Config.Models.ReportedCommentStatus["pending"]), Valid: true}
 
 	_, err = models.CommentAPI.InsertReportedComments(report)
 	if err != nil {
