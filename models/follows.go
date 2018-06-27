@@ -54,6 +54,12 @@ func (g *GetFollowingArgs) get() (*sqlx.Rows, error) {
 			osql.args = append(osql.args, v)
 		}
 	}
+	if g.ResourceName == "post" {
+		if val, ok := config.Config.Models.PostType[g.ResourceType]; ok {
+			osql.condition = append(osql.condition, "t.type = ?")
+			osql.args = append(osql.args, val)
+		}
+	}
 	osql.printargs = append(osql.printargs, strings.Join(osql.condition, " AND "))
 
 	query, args, err := sqlx.In(fmt.Sprintf(osql.base, osql.printargs...), osql.args...)
@@ -105,10 +111,6 @@ func (g *GetFollowingArgs) scan(rows *sqlx.Rows) (interface{}, error) {
 			return followings, err
 		}
 	}
-
-	// if len(followings) == 0 {
-	// 	err = errors.New("Not Found")
-	// }
 	return followings, err
 }
 
@@ -307,12 +309,6 @@ type followedCount struct {
 	Follower   []int64
 }
 
-// type FollowerInfo struct {
-// 	MemberId string `json:"member_ids" db:"member_ids"`
-// 	Name     string `json:"resource_ids" db:"resource_ids"`
-// 	Mail     string
-// }
-
 type FollowingMapItem struct {
 	Followers   []string `json:"member_ids" db:"member_ids"`
 	ResourceIDs []string `json:"resource_ids" db:"resource_ids"`
@@ -410,7 +406,6 @@ func (f *followingAPI) Delete(params FollowArgs) (err error) {
 	if params.Resource == "post" {
 		go PostCache.UpdateFollowing("unfollow", params.Subject, params.Object)
 	}
-
 	return err
 }
 
