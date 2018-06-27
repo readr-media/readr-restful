@@ -12,7 +12,6 @@ import (
 
 	"github.com/garyburd/redigo/redis"
 	"github.com/readr-media/readr-restful/config"
-	"github.com/spf13/viper"
 	"gopkg.in/gomail.v2"
 )
 
@@ -44,7 +43,8 @@ func (m *mailApi) SetDialer(dialer gomail.Dialer) {
 func (m *mailApi) Send(args MailArgs) (err error) {
 
 	msg := gomail.NewMessage()
-	msg.SetHeader("From", msg.FormatAddress(viper.Get("mail.user").(string), viper.Get("mail.user_name").(string)))
+	//msg.SetHeader("From", msg.FormatAddress(viper.Get("mail.user").(string), viper.Get("mail.user_name").(string)))
+	msg.SetHeader("From", msg.FormatAddress(config.Config.Mail.User, config.Config.Mail.UserName))
 	msg.SetHeader("To", args.Receiver...)
 	msg.SetHeader("Cc", args.CC...)
 	msg.SetHeader("Bcc", args.BCC...)
@@ -349,7 +349,7 @@ func (m *mailApi) getDailyPost() (posts []dailyPost, err error) {
 
 func (m *mailApi) getMailingList() (list []string, err error) {
 	// query := fmt.Sprintf("SELECT mail FROM members WHERE active = %d", int(MemberStatus["active"].(float64)))
-	query := fmt.Sprintf("SELECT mail FROM members WHERE active = %d", config.Config.Models.Members["active"])
+	query := fmt.Sprintf("SELECT mail FROM members WHERE active = %d AND daily_push = %d", config.Config.Models.Members["active"], config.Config.Models.MemberDailyPush["active"])
 	rows, err := DB.Queryx(query)
 	for rows.Next() {
 		var mail string

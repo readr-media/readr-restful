@@ -315,6 +315,7 @@ func TestRouteMembers(t *testing.T) {
 	t.Run("PutMember", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
 			genericTestcase{"New", "PUT", "/member", `{"id":1, "name":"Clark Kent"}`, http.StatusOK, ``},
+			genericTestcase{"UpdateDailyPush", "PUT", "/member", `{"id":1, "daily_push":0}`, http.StatusOK, ``},
 			genericTestcase{"NotExisted", "PUT", "/member", `{"id":24601, "name":"spaceoddity"}`, http.StatusBadRequest, `{"Error":"User Not Found"}`},
 		} {
 			genericDoTest(testcase, t, asserter)

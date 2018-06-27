@@ -48,6 +48,7 @@ type Member struct {
 	HideProfile  NullBool `json:"hide_profile" db:"hide_profile"`
 	ProfilePush  NullBool `json:"profile_push" db:"profile_push"`
 	PostPush     NullBool `json:"post_push" db:"post_push"`
+	DailyPush    NullBool `json:"daily_push" db:"daily_push"`
 	CommentPush  NullBool `json:"comment_push" db:"comment_push"`
 }
 
@@ -89,6 +90,7 @@ type Stunt struct {
 	HideProfile  *NullBool `json:"hide_profile,omitempty" db:"hide_profile"`
 	ProfilePush  *NullBool `json:"profile_push,omitempty" db:"profile_push"`
 	PostPush     *NullBool `json:"post_push,omitempty" db:"post_push"`
+	DailyPush    *NullBool `json:"daily_push,omitempty" db:"daily_push"`
 	CommentPush  *NullBool `json:"comment_push,omitempty" db:"comment_push"`
 }
 

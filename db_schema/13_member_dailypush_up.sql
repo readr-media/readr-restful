@@ -1,0 +1,1 @@
+ALTER TABLE members ADD COLUMN daily_push tinyint(1) DEFAULT 1 AFTER post_push;

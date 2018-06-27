@@ -304,7 +304,6 @@ func TestFollowing(t *testing.T) {
 			genericTestcase{"FollowedPostNotExist", "GET", `/following/resource?resource=post&ids=[1000,1001]`, ``, http.StatusOK, nil},
 			genericTestcase{"FollowedPostStringID", "GET", `/following/resource?resourcea=post&ids=[unintegerable]`, ``, http.StatusBadRequest, `{"Error":"Bad Resource ID"}`},
 			genericTestcase{"FollowedProjectStringID", "GET", `/following/resource?resource=project&ids=[unintegerable]`, ``, http.StatusBadRequest, `{"Error":"Bad Resource ID"}`},
-
 			genericTestcase{"FollowMapPostOK", "GET", `/following/map?resource=post`, ``, http.StatusOK, nil},
 			genericTestcase{"FollowMapPostReviewOK", "GET", `/following/map?resource=post&resource_type=review`, ``, http.StatusOK, nil},
 			genericTestcase{"GetFollowMapPostNewsOK", "GET", `/following/map?resource=post&resource_type=news`, ``, http.StatusOK, nil},
@@ -323,7 +322,7 @@ func TestFollowing(t *testing.T) {
 			genericTestcase{"FollowingMemberOK", "follow", `/restful/pubsub`, `{"resource":"member","subject":70,"object":72}`, http.StatusOK, nil},
 			genericTestcase{"FollowingProjectOK", "follow", `/restful/pubsub`, `{"resource":"project","subject":70,"object":840}`, http.StatusOK, nil},
 			genericTestcase{"FollowingMissingResource", "follow", `/restful/pubsub`, `{"resource":"","subject":70,"object":72}`, http.StatusOK, `{"Error":"Unsupported Resource"}`},
-			genericTestcase{"FollowingMissingAction", "", `/restful/pubsub`, `{"resource":"post","subject":70,"object":72}`, http.StatusOK, `{"Error":"Bad Request"}`},
+			genericTestcase{"FollowingMissingAction", "", `/restful/pubsub`, `{"resource":"post","subject":70,"object":72}`, http.StatusOK, `{"Error":"Unsupported Resource"}`},
 		} {
 			genericDoTest(transformPubsub(testcase), t, nil)
 		}
