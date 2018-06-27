@@ -322,7 +322,7 @@ func TestFollowing(t *testing.T) {
 			genericTestcase{"FollowingMemberOK", "follow", `/restful/pubsub`, `{"resource":"member","subject":70,"object":72}`, http.StatusOK, nil},
 			genericTestcase{"FollowingProjectOK", "follow", `/restful/pubsub`, `{"resource":"project","subject":70,"object":840}`, http.StatusOK, nil},
 			genericTestcase{"FollowingMissingResource", "follow", `/restful/pubsub`, `{"resource":"","subject":70,"object":72}`, http.StatusOK, `{"Error":"Unsupported Resource"}`},
-			genericTestcase{"FollowingMissingAction", "", `/restful/pubsub`, `{"resource":"post","subject":70,"object":72}`, http.StatusOK, `{"Error":"Unsupported Resource"}`},
+			genericTestcase{"FollowingMissingAction", "", `/restful/pubsub`, `{"resource":"post","subject":70,"object":72}`, http.StatusOK, `{"Error":"Bad Request"}`},
 		} {
 			genericDoTest(transformPubsub(testcase), t, nil)
 		}
