@@ -3,7 +3,7 @@ package routes
 import (
 	//"log"
 	"testing"
-	"time"
+	//"time"
 
 	"net/http"
 
@@ -62,9 +62,11 @@ func TestRouteEmail(t *testing.T) {
 	})
 	t.Run("SendUpdateNoteMail", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
+		/*
 			genericTestcase{"SendUNMailOK", "POST", "/mail/updatenote", `{"resource":"post","updated_after":"` + time.Now().AddDate(-1, 0, 0).Format(time.RFC3339) + `"}`, http.StatusOK, ``},
 			genericTestcase{"SendUNMailJSTimeFormat", "POST", "/mail/updatenote", `{"resource":"blah","updated_after":"2015-03-06T03:01:39.385Z"}`, http.StatusBadRequest, `{"Error":"Invalid Resource"}`},
 			genericTestcase{"SendUNMailAll", "POST", "/mail/updatenote", `{"updated_after":"` + time.Now().AddDate(-1, 0, 0).Format(time.RFC3339) + `"}`, http.StatusOK, ``},
+		*/
 		} {
 			genericDoTest(testcase, t, asserter)
 		}
