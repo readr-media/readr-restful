@@ -47,6 +47,7 @@ type PubsubMessageMeta struct {
 
 type PubsubFollowMsgBody struct {
 	Resource string `json:"resource"`
+	Emotion  string `json:"emotion"`
 	Subject  int    `json:"subject"`
 	Object   int    `json:"object"`
 }
@@ -74,44 +75,46 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"Error": "Bad Request"})
 			return
 		}
+		params := models.FollowArgs{Resource: body.Resource, Subject: int64(body.Subject), Object: int64(body.Object)}
+		if val, ok := config.Config.Models.FollowingType[body.Resource]; ok {
+			params.Type = val
+		} else {
+			c.JSON(http.StatusOK, gin.H{"Error": "Unsupported Resource"})
+			return
+		}
 
 		if msgType == "follow" {
 
-			params := models.FollowArgs{Resource: body.Resource, Subject: int64(body.Subject), Object: int64(body.Object)}
-			if val, ok := config.Config.Models.FollowingType[body.Resource]; ok {
-				params.Type = val
-			} else {
-				c.JSON(http.StatusOK, gin.H{"Error": "Unsupported Resource"})
-				return
+			// Follow situation set Emotion to none.
+			if params.Emotion != 0 {
+				params.Emotion = 0
 			}
+
 			switch actionType {
 			case "follow":
-				if err = models.FollowingAPI.Insert(params); err != nil {
-					log.Printf("%s fail: %v \n", actionType, err.Error())
-					c.JSON(http.StatusOK, gin.H{"Error": err.Error()})
-					return
-				}
-				c.Status(http.StatusOK)
+				err = models.FollowingAPI.Insert(params)
 			case "unfollow":
-				if err = models.FollowingAPI.Delete(params); err != nil {
-					log.Printf("%s fail: %v \n", actionType, err.Error())
-					c.JSON(http.StatusOK, gin.H{"Error": err.Error()})
-					return
-				}
+				err = models.FollowingAPI.Delete(params)
 			default:
-				log.Println("Action Type Not Support", actionType)
+				log.Println("Follow action Type Not Support", actionType)
 				c.JSON(http.StatusOK, gin.H{"Error": "Bad Request"})
+				return
 			}
 
 		} else if msgType == "emotion" {
 
-			params := models.FollowArgs{Subject: int64(body.Subject), Object: int64(body.Object), Type: 0}
-			if val, ok := config.Config.Models.Emotions[body.Resource]; ok {
+			// Rule out member
+			if params.Resource == "member" {
+				c.JSON(http.StatusOK, gin.H{"Error": "Emotion Not Available For Member"})
+				return
+			}
+			if val, ok := config.Config.Models.Emotions[body.Emotion]; ok {
 				params.Emotion = val
 			} else {
 				c.JSON(http.StatusOK, gin.H{"Error": "Unsupported Emotion"})
 				return
 			}
+
 			switch actionType {
 			case "insert":
 				err = models.FollowingAPI.Insert(params)
@@ -120,17 +123,18 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 			case "delete":
 				err = models.FollowingAPI.Delete(params)
 			default:
-				log.Printf("Action Type %s Not Support", actionType)
+				log.Printf("Emotion action Type %s Not Support", actionType)
 				c.JSON(http.StatusOK, gin.H{"Error": "Bad Request"})
-			}
-
-			if err != nil {
-				log.Printf("%s fail: %v\n", actionType, err.Error())
-				c.JSON(http.StatusOK, gin.H{"Error": err.Error()})
 				return
 			}
-			c.Status(http.StatusOK)
 		}
+
+		if err != nil {
+			log.Printf("%s fail: %v\n", actionType, err.Error())
+			c.JSON(http.StatusOK, gin.H{"Error": err.Error()})
+			return
+		}
+		c.Status(http.StatusOK)
 
 	case "comment":
 		switch actionType {

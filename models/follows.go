@@ -35,6 +35,7 @@ type GetFollowingArgs struct {
 }
 
 func (g *GetFollowingArgs) get() (*sqlx.Rows, error) {
+
 	var osql = struct {
 		base      string
 		condition []string
@@ -45,8 +46,8 @@ func (g *GetFollowingArgs) get() (*sqlx.Rows, error) {
 		INNER JOIN following AS f ON t.%s = f.target_id
 		WHERE %s ORDER BY f.created_at DESC;`,
 		printargs: []interface{}{g.Table, g.PrimaryKey},
-		condition: []string{"f.type = ?", "f.member_id = ?"},
-		args:      []interface{}{g.FollowType, g.MemberID},
+		condition: []string{"f.type = ?", "f.member_id = ?", "f.emotion = ?"},
+		args:      []interface{}{g.FollowType, g.MemberID, 0},
 	}
 	if g.Active != nil {
 		for k, v := range g.Active {
@@ -58,6 +59,8 @@ func (g *GetFollowingArgs) get() (*sqlx.Rows, error) {
 		if val, ok := config.Config.Models.PostType[g.ResourceType]; ok {
 			osql.condition = append(osql.condition, "t.type = ?")
 			osql.args = append(osql.args, val)
+		} else {
+			return nil, errors.New("Invalid Post Type")
 		}
 	}
 	osql.printargs = append(osql.printargs, strings.Join(osql.condition, " AND "))
@@ -115,8 +118,7 @@ func (g *GetFollowingArgs) scan(rows *sqlx.Rows) (interface{}, error) {
 }
 
 type GetFollowedArgs struct {
-	IDs     []int64 `json:"ids"`
-	Emotion int
+	IDs []int64 `json:"ids"`
 	Resource
 }
 
@@ -131,23 +133,21 @@ func (g *GetFollowedArgs) get() (*sqlx.Rows, error) {
 		base: `SELECT f.target_id, COUNT(m.id) as count, 
 		GROUP_CONCAT(m.id SEPARATOR ',') as follower FROM following as f 
 		LEFT JOIN %s WHERE %s GROUP BY f.target_id;`,
-		condition: []string{"f.target_id IN (?)", "f.type = ?"},
+		condition: []string{"f.target_id IN (?)", "f.type = ?", "f.emotion = ?"},
 		join:      []string{"members AS m ON f.member_id = m.id"},
-		args:      []interface{}{g.IDs, g.FollowType},
+		args:      []interface{}{g.IDs, g.FollowType, g.Emotion},
 	}
 	if g.ResourceName == "post" {
 		osql.join = append(osql.join, "posts AS p ON f.target_id = p.post_id")
 
 		// if t := PostType[g.ResourceType]; t != nil {
-		if t := config.Config.Models.PostType[g.ResourceType]; t >= 0 {
+		if val, ok := config.Config.Models.PostType[g.ResourceType]; ok {
 			osql.condition = append(osql.condition, "p.type = ?")
 			// osql.args = append(osql.args, int(t.(float64)))
-			osql.args = append(osql.args, t)
+			osql.args = append(osql.args, val)
+		} else {
+			return nil, errors.New("Invalid Post Type")
 		}
-	}
-	if g.Emotion > 0 {
-		osql.condition = append(osql.condition, "f.emotion = ?")
-		osql.args = append(osql.args, g.Emotion)
 	}
 
 	query, args, err := sqlx.In(fmt.Sprintf(osql.base, strings.Join(osql.join, " LEFT JOIN "), strings.Join(osql.condition, " AND ")), osql.args...)
@@ -289,6 +289,7 @@ func (g *GetFollowerMemberIDsArgs) scan(rows *sqlx.Rows) (interface{}, error) {
 		err = rows.Scan(&follower)
 		if err != nil {
 			log.Printf("Error: %v scan for id:%d, type:%d\n", err.Error(), g.ID, g.FollowType)
+			return nil, err
 		}
 		result = append(result, follower)
 	}
@@ -298,9 +299,10 @@ func (g *GetFollowerMemberIDsArgs) scan(rows *sqlx.Rows) (interface{}, error) {
 type Resource struct {
 	ResourceName string `form:"resource" json:"resource"`
 	ResourceType string `form:"resource_type" json:"resource_type, omitempty"`
-	FollowType   int
 	Table        string
 	PrimaryKey   string
+	FollowType   int
+	Emotion      int
 }
 
 type followedCount struct {
@@ -317,41 +319,27 @@ type FollowingMapItem struct {
 type followingAPI struct{}
 
 type FollowingAPIInterface interface {
-	Get(params interface{}) (interface{}, error)
+	Get(params GetFollowInterface) (interface{}, error)
 	Insert(params FollowArgs) error
 	Update(params FollowArgs) error
 	Delete(params FollowArgs) error
 }
 
-func (f *followingAPI) Get(params interface{}) (result interface{}, err error) {
+func (f *followingAPI) Get(params GetFollowInterface) (result interface{}, err error) {
 
 	var rows *sqlx.Rows
 
-	switch params := params.(type) {
-	case *GetFollowingArgs:
-		rows, err = params.get()
-		result, err = params.scan(rows)
-
-	case *GetFollowedArgs:
-		rows, err = params.get()
-		result, err = params.scan(rows)
-
-	case *GetFollowMapArgs:
-		rows, err = params.get()
-		result, err = params.scan(rows)
-
-	case *GetFollowerMemberIDsArgs:
-		rows, err = params.get()
-		result, err = params.scan(rows)
-	default:
-		return nil, errors.New("Bad Request")
+	rows, err = params.get()
+	if err != nil {
+		log.Println("Error Get Follow with params.get()")
+		return nil, err
 	}
-	return result, err
+	return params.scan(rows)
 }
 
 func (f *followingAPI) Insert(params FollowArgs) (err error) {
 
-	query := `INSERT INTO following (member_id, target_id, type, emotion) VALUES ( ? , ?, ?, ?);`
+	query := `INSERT INTO following (member_id, target_id, type, emotion) VALUES ( ?, ?, ?, ?);`
 
 	result, err := DB.Exec(query, params.Subject, params.Object, params.Type, params.Emotion)
 	if err != nil {
@@ -379,7 +367,7 @@ func (f *followingAPI) Insert(params FollowArgs) (err error) {
 
 func (f *followingAPI) Update(params FollowArgs) (err error) {
 
-	result, err := DB.Exec(`UPDATE following SET emotion = ? WHERE member_id = ? AND target_id = ? AND type = ?`, params.Emotion, params.Subject, params.Object, params.Type)
+	result, err := DB.Exec(`UPDATE following SET emotion = ? WHERE member_id = ? AND target_id = ? AND type = ? AND emotion != 0;`, params.Emotion, params.Subject, params.Object, params.Type)
 	if err != nil {
 		log.Println(err.Error())
 		return InternalServerError
