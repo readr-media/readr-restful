@@ -16,8 +16,9 @@ type followingHandler struct{}
 
 func bindFollow(c *gin.Context) (result interface{}, err error) {
 
-	var metadata = func(method, resource string) (table, key string, followtype int, active map[string][]int, err error) {
+	var metadata = func(resource string) (table, key string, followtype int, active map[string][]int, err error) {
 
+		method := c.Param("method")
 		switch resource {
 		case "member":
 			table = "members"
@@ -74,7 +75,7 @@ func bindFollow(c *gin.Context) (result interface{}, err error) {
 				return nil, err
 			}
 		}
-		params.Table, params.PrimaryKey, params.FollowType, params.Active, err = metadata(c.Param("method"), params.ResourceName)
+		params.Table, params.PrimaryKey, params.FollowType, params.Active, err = metadata(params.ResourceName)
 		if err != nil {
 			return nil, err
 		}
@@ -100,20 +101,24 @@ func bindFollow(c *gin.Context) (result interface{}, err error) {
 				}
 			}
 		}
-		params.Table, params.PrimaryKey, params.FollowType, _, err = metadata(c.Param("method"), params.ResourceName)
+		params.Table, params.PrimaryKey, params.FollowType, _, err = metadata(params.ResourceName)
 		if err != nil {
 			return nil, err
 		}
 		if len(params.IDs) == 0 {
 			return nil, errors.New("Bad Resource ID")
 		}
-		// If there is valid emotion parameter, return emotion rather than follow
+		// Only parse emotion parameter in resource
 		if c.Query("emotion") != "" {
-			if val, ok := config.Config.Models.Emotions[c.Query("emotion")]; ok {
-				params.FollowType = 0
-				params.Emotion = val
+
+			if c.Query("resource") != "member" {
+				if val, ok := config.Config.Models.Emotions[c.Query("emotion")]; ok {
+					params.Emotion = val
+				} else {
+					return nil, errors.New("Unsupported Emotion")
+				}
 			} else {
-				return nil, errors.New("Unsupported Emotion")
+				return nil, errors.New("Emotion Not Available For Member")
 			}
 		}
 		result = params
@@ -128,7 +133,7 @@ func bindFollow(c *gin.Context) (result interface{}, err error) {
 				return nil, err
 			}
 		}
-		params.Table, params.PrimaryKey, params.FollowType, _, err = metadata(c.Param("method"), params.ResourceName)
+		params.Table, params.PrimaryKey, params.FollowType, _, err = metadata(params.ResourceName)
 		if err != nil {
 			return nil, err
 		}
@@ -155,12 +160,21 @@ func (r *followingHandler) Get(c *gin.Context) {
 		return
 	}
 
-	result, err = models.FollowingAPI.Get(input)
+	switch input := input.(type) {
+	case *models.GetFollowingArgs:
+		result, err = models.FollowingAPI.Get(input)
+	case *models.GetFollowedArgs:
+		result, err = models.FollowingAPI.Get(input)
+	case *models.GetFollowMapArgs:
+		result, err = models.FollowingAPI.Get(input)
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": "Cannot Found Proper API"})
+		return
+	}
+
 	if err != nil {
 		switch err.Error() {
-		case "Not Found":
-			c.JSON(http.StatusNotFound, gin.H{"Error": err.Error()})
-		case "Unsupported Resource":
+		case "Unsupported Resource", "Invalid Post Type":
 			c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		default:
 			log.Println(err.Error())

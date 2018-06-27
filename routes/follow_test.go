@@ -23,7 +23,7 @@ var mockFollowingDS = map[string][]followDS{
 	"project": []followDS{},
 }
 
-func (a *mockFollowingAPI) Get(params interface{}) (result interface{}, err error) {
+func (a *mockFollowingAPI) Get(params models.GetFollowInterface) (result interface{}, err error) {
 
 	switch params := params.(type) {
 	case *models.GetFollowingArgs:
@@ -120,10 +120,11 @@ func getFollowed(args *models.GetFollowedArgs) (interface{}, error) {
 	case args.ResourceName == "post":
 		switch args.ResourceType {
 		case "":
-			return []followedCount{
-				followedCount{42, 2, []int{71, 72}},
-				followedCount{84, 1, []int{71}},
-			}, nil
+			// return []followedCount{
+			// 	followedCount{42, 2, []int{71, 72}},
+			// 	followedCount{84, 1, []int{71}},
+			// }, nil
+			return nil, errors.New("Invalid Post Type")
 		case "review":
 			return []followedCount{
 				followedCount{42, 2, []int{71, 72}},
@@ -293,7 +294,7 @@ func TestFollowing(t *testing.T) {
 			genericTestcase{"FollowingPostNewsOK", "GET", `/following/user?resource=post&resource_type=news&id=71`, ``, http.StatusOK, nil},
 			genericTestcase{"FollowingProjectOK", "GET", `/following/user?resource=project&id=71`, ``, http.StatusOK, nil},
 
-			genericTestcase{"FollowedPostOK", "GET", `/following/resource?resource=post&ids=[42,84]`, ``, http.StatusOK, nil},
+			genericTestcase{"FollowedPostOK", "GET", `/following/resource?resource=post&ids=[42,84]&resource_type=news`, ``, http.StatusOK, nil},
 			genericTestcase{"FollowedPostReviewOK", "GET", `/following/resource?resource=post&ids=[42,84]&resource_type=review`, ``, http.StatusOK, nil},
 			genericTestcase{"FollowedPostNewsOK", "GET", `/following/resource?resource=post&resource_type=news&ids=[42,84]`, ``, http.StatusOK, nil},
 			genericTestcase{"FollowedMemberOK", "GET", `/following/resource?resource=member&ids=[42,84]`, ``, http.StatusOK, nil},
@@ -301,9 +302,12 @@ func TestFollowing(t *testing.T) {
 			genericTestcase{"FollowedProjectOK", "GET", `/following/resource?resource=project&ids=[420,840]`, ``, http.StatusOK, nil},
 			genericTestcase{"FollowedMissingResource", "GET", `/following/resource?ids=[420,840]`, ``, http.StatusBadRequest, `{"Error":"Unsupported Resource"}`},
 			genericTestcase{"FollowedMissingID", "GET", `/following/resource?resource=post&ids=[]`, ``, http.StatusBadRequest, `{"Error":"Bad Resource ID"}`},
-			genericTestcase{"FollowedPostNotExist", "GET", `/following/resource?resource=post&ids=[1000,1001]`, ``, http.StatusOK, nil},
+			genericTestcase{"FollowedPostNotExist", "GET", `/following/resource?resource=post&ids=[1000,1001]&resource_type=news`, ``, http.StatusOK, nil},
 			genericTestcase{"FollowedPostStringID", "GET", `/following/resource?resourcea=post&ids=[unintegerable]`, ``, http.StatusBadRequest, `{"Error":"Bad Resource ID"}`},
 			genericTestcase{"FollowedProjectStringID", "GET", `/following/resource?resource=project&ids=[unintegerable]`, ``, http.StatusBadRequest, `{"Error":"Bad Resource ID"}`},
+			genericTestcase{"FollowedPostInvalidPostType", "GET", `/following/resource?resource=post&ids=[42,84]`, ``, http.StatusBadRequest, `{"Error":"Invalid Post Type"}`},
+			genericTestcase{"FollowedProjectInvalidEmotion", "GET", `/following/resource?resource=project&ids=[42,84]&resource_type=review&emotion=angry`, ``, http.StatusBadRequest, `{"Error":"Unsupported Emotion"}`},
+
 			genericTestcase{"FollowMapPostOK", "GET", `/following/map?resource=post`, ``, http.StatusOK, nil},
 			genericTestcase{"FollowMapPostReviewOK", "GET", `/following/map?resource=post&resource_type=review`, ``, http.StatusOK, nil},
 			genericTestcase{"GetFollowMapPostNewsOK", "GET", `/following/map?resource=post&resource_type=news`, ``, http.StatusOK, nil},
