@@ -338,8 +338,8 @@ func TestPubsubComments(t *testing.T) {
 	}
 
 	for _, params := range []models.Project{
-		models.Project{ID: 920, PostID: 91, Active: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Date(2015, time.November, 10, 23, 0, 0, 0, time.UTC), true}, PublishStatus: models.NullInt{2, true}},
-		models.Project{ID: 921, PostID: 92, Active: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Date(2016, time.November, 10, 23, 0, 0, 0, time.UTC), true}, PublishStatus: models.NullInt{2, true}},
+		models.Project{ID: 920, PostID: 91, Active: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Date(2015, time.November, 10, 23, 0, 0, 0, time.UTC), true}, PublishStatus: models.NullInt{2, true}, Slug: models.NullString{"slug920", true}},
+		models.Project{ID: 921, PostID: 92, Active: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Date(2016, time.November, 10, 23, 0, 0, 0, time.UTC), true}, PublishStatus: models.NullInt{2, true}, Slug: models.NullString{"slug921", true}},
 	} {
 		err := models.ProjectAPI.InsertProject(params)
 		if err != nil {
@@ -357,9 +357,9 @@ func TestPubsubComments(t *testing.T) {
 	}
 
 	for _, params := range []models.FollowArgs{
-		models.FollowArgs{Resource: "member", Subject: 91, Object: 90},
-		models.FollowArgs{Resource: "post", Subject: 91, Object: 92},
-		models.FollowArgs{Resource: "project", Subject: 91, Object: 920},
+		models.FollowArgs{Resource: "member", Subject: 91, Object: 90, Type: 1},
+		models.FollowArgs{Resource: "post", Subject: 91, Object: 92, Type: 2},
+		models.FollowArgs{Resource: "project", Subject: 91, Object: 920, Type: 3},
 	} {
 		err := models.FollowingAPI.Insert(params)
 		if err != nil {
@@ -395,8 +395,8 @@ func TestPubsubComments(t *testing.T) {
 				genericTestcase{"comment_comment", "post", "/comment", `{"body":"comment_reply","resource":"http://test.readr.tw/post/90","author":92,"status":"NONE","vidible":true,"resource_name":"post","resource_id":90}`, http.StatusOK, ``},
 				genericTestcase{"follow_member_reply", "post", "/comment", `{"body":"follow_member_reply","resource":"http://test.readr.tw/post/90","author":92,"status":"NONE","vidible":true,"resource_name":"post","resource_id":90}`, http.StatusOK, ``},
 				genericTestcase{"follow_post_reply", "post", "/comment", `{"body":"follow_post_reply","resource":"http://test.readr.tw/post/92","author":90,"status":"NONE","vidible":true,"resource_name":"post","resource_id":92}`, http.StatusOK, ``},
-				genericTestcase{"follow_project_reply", "post", "/comment", `{"body":"follow_project_reply","resource":"http://test.readr.tw/series/asdffffff","author":90,"status":"NONE","vidible":true,"resource_name":"project","resource_id":1}`, http.StatusOK, ``},
-				genericTestcase{"follow_memo_reply", "post", "/comment", `{"body":"follow_memo_reply","resource":"http://test.readr.tw/series/projestslug/1","author":90,"status":"NONE","vidible":true,"resource_name":"memo","resource_id":1}`, http.StatusOK, ``},
+				genericTestcase{"follow_project_reply", "post", "/comment", `{"body":"follow_project_reply","resource":"http://test.readr.tw/series/asdffffff","author":90,"status":"NONE","vidible":true,"resource_name":"project","resource_id":920}`, http.StatusOK, ``},
+				genericTestcase{"follow_memo_reply", "post", "/comment", `{"body":"follow_memo_reply","resource":"http://test.readr.tw/series/projestslug/1","author":90,"status":"NONE","vidible":true,"resource_name":"memo","resource_id":92}`, http.StatusOK, ``},
 			} {
 				genericDoTest(transformPubsub(testcase), t, asserter)
 			}
@@ -404,9 +404,9 @@ func TestPubsubComments(t *testing.T) {
 	}
 
 	for _, params := range []models.FollowArgs{
-		models.FollowArgs{Resource: "member", Subject: 91, Object: 90},
-		models.FollowArgs{Resource: "post", Subject: 91, Object: 92},
-		models.FollowArgs{Resource: "project", Subject: 91, Object: 920},
+		models.FollowArgs{Resource: "member", Subject: 91, Object: 90, Type: 1},
+		models.FollowArgs{Resource: "post", Subject: 91, Object: 92, Type: 2},
+		models.FollowArgs{Resource: "project", Subject: 91, Object: 920, Type: 3},
 	} {
 		err := models.FollowingAPI.Delete(params)
 		if err != nil {
