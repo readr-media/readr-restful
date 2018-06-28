@@ -23,10 +23,11 @@ type Notification struct {
 	SubjectID    string `redis:"subject_id" json:"subject_id"`
 	Nickname     string `redis:"nickname" json:"nickname"`
 	ProfileImage string `redis:"profile_image" json:"profile_image"`
-	ObjectName   string `redis:"object_name" json:"object_name"`
-	ObjectType   string `redis:"object_type" json:"object_type"`
-	ObjectID     string `redis:"object_id" json:"object_id"`
-	PostType     string `redis:"post_type" json:"post_type"`
+	ObjectName   string `redis:"object_name" json:"object_name,omitempty"`
+	ObjectType   string `redis:"object_type" json:"object_type,omitempty"`
+	ObjectID     string `redis:"object_id" json:"object_id,omitempty"`
+	ObjectSlug   string `redis:"object_slug" json:"object_slug,omitempty"`
+	PostType     string `redis:"post_type" json:"post_type,omitempty"`
 	EventType    string `redis:"event_type" json:"event_type"`
 	Timestamp    string `redis:"timestamp" json:"timestamp"`
 	Read         bool   `redis:"read" json:"read"`
