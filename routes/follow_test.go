@@ -120,11 +120,10 @@ func getFollowed(args *models.GetFollowedArgs) (interface{}, error) {
 	case args.ResourceName == "post":
 		switch args.ResourceType {
 		case "":
-			// return []followedCount{
-			// 	followedCount{42, 2, []int{71, 72}},
-			// 	followedCount{84, 1, []int{71}},
-			// }, nil
-			return nil, errors.New("Invalid Post Type")
+			return []followedCount{
+				followedCount{42, 2, []int{71, 72}},
+				followedCount{84, 1, []int{71}},
+			}, nil
 		case "review":
 			return []followedCount{
 				followedCount{42, 2, []int{71, 72}},
@@ -305,7 +304,6 @@ func TestFollowing(t *testing.T) {
 			genericTestcase{"FollowedPostNotExist", "GET", `/following/resource?resource=post&ids=[1000,1001]&resource_type=news`, ``, http.StatusOK, nil},
 			genericTestcase{"FollowedPostStringID", "GET", `/following/resource?resourcea=post&ids=[unintegerable]`, ``, http.StatusBadRequest, `{"Error":"Bad Resource ID"}`},
 			genericTestcase{"FollowedProjectStringID", "GET", `/following/resource?resource=project&ids=[unintegerable]`, ``, http.StatusBadRequest, `{"Error":"Bad Resource ID"}`},
-			genericTestcase{"FollowedPostInvalidPostType", "GET", `/following/resource?resource=post&ids=[42,84]`, ``, http.StatusBadRequest, `{"Error":"Invalid Post Type"}`},
 			genericTestcase{"FollowedProjectInvalidEmotion", "GET", `/following/resource?resource=project&ids=[42,84]&resource_type=review&emotion=angry`, ``, http.StatusBadRequest, `{"Error":"Unsupported Emotion"}`},
 
 			genericTestcase{"FollowMapPostOK", "GET", `/following/map?resource=post`, ``, http.StatusOK, nil},
