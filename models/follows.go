@@ -137,18 +137,6 @@ func (g *GetFollowedArgs) get() (*sqlx.Rows, error) {
 		join:      []string{"members AS m ON f.member_id = m.id"},
 		args:      []interface{}{g.IDs, g.FollowType, g.Emotion},
 	}
-	if g.ResourceName == "post" {
-		osql.join = append(osql.join, "posts AS p ON f.target_id = p.post_id")
-
-		// if t := PostType[g.ResourceType]; t != nil {
-		if val, ok := config.Config.Models.PostType[g.ResourceType]; ok {
-			osql.condition = append(osql.condition, "p.type = ?")
-			// osql.args = append(osql.args, int(t.(float64)))
-			osql.args = append(osql.args, val)
-		} else {
-			return nil, errors.New("Invalid Post Type")
-		}
-	}
 
 	query, args, err := sqlx.In(fmt.Sprintf(osql.base, strings.Join(osql.join, " LEFT JOIN "), strings.Join(osql.condition, " AND ")), osql.args...)
 	if err != nil {
