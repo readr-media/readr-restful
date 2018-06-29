@@ -159,7 +159,6 @@ func getStructDBTags(mode string, input interface{}) []string {
 
 // Use ... operator to encompass the potential for variadic input in the future
 func generateSQLStmt(mode string, tableName string, input ...interface{}) (query string, err error) {
-
 	columns := make([]string, 0)
 	// u := reflect.ValueOf(input).Elem()
 
@@ -213,7 +212,6 @@ func generateSQLStmt(mode string, tableName string, input ...interface{}) (query
 		err = nil
 
 	case "partial_update":
-
 		var idName string
 		u := reflect.ValueOf(input[0])
 		for i := 0; i < u.NumField(); i++ {
@@ -221,7 +219,7 @@ func generateSQLStmt(mode string, tableName string, input ...interface{}) (query
 			field := u.Field(i).Interface()
 			// Get table id and set it to idName
 			if tag.Get("json") == "id" {
-				fmt.Printf("%s field = %s\n", u.Field(i).Type(), field)
+				fmt.Printf("%s field = %v\n", u.Field(i).Type(), field)
 				idName = tag.Get("db")
 			}
 

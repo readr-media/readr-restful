@@ -68,6 +68,10 @@ func (r *memoHandler) bindQuery(c *gin.Context, args *models.MemoGetArgs) (err e
 		args.Sorting = c.Query("sort")
 	}
 
+	if c.Query("keyword") != "" {
+		args.Keyword = c.Query("keyword")
+	}
+
 	if c.Query("abstract_length") != "" {
 		if args.AbstractLength, err = strconv.ParseInt(c.Query("abstract_length"), 10, 64); err != nil {
 			return err

@@ -107,9 +107,14 @@ func (a *mockReportAPI) GetReports(args models.GetReportArgs) (result []models.R
 	} else if len(args.IDs) == 1 {
 		return []models.ReportAuthors{}, nil
 	}
-	if len(args.PublishStatus) == 1 {
+	if len(args.ReportPublishStatus) == 1 {
 		return []models.ReportAuthors{
 			{Report: models.Report{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}}},
+		}, nil
+	}
+	if len(args.ProjectPublishStatus) == 1 {
+		return []models.ReportAuthors{
+			{Report: models.Report{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0001", true}, PublishStatus: models.NullInt{2, true}}},
 		}, nil
 	}
 	if args.MaxResult == 1 && args.Page == 2 {
@@ -212,6 +217,7 @@ func TestRouteReports(t *testing.T) {
 
 	for _, params := range []models.Project{
 		models.Project{ID: 420, Active: models.NullInt{1, true}, Title: models.NullString{"Test project for memo", true}, Slug: models.NullString{"testproject", true}},
+		models.Project{ID: 421, Active: models.NullInt{1, true}, Title: models.NullString{"Test project2 for memo", true}, Slug: models.NullString{"testproject2", true}, PublishStatus: models.NullInt{1, true}},
 	} {
 		err := models.ProjectAPI.InsertProject(params)
 		if err != nil {
@@ -261,10 +267,9 @@ func TestRouteReports(t *testing.T) {
 			}
 		}
 	}
-
 	t.Run("PostReport", func(t *testing.T) {
 		testcases := []genericTestcase{
-			genericTestcase{"PostReportOK", "POST", "/report", `{"id":32768,"title":"OK","post_id":188,"like_amount":0,"comment_amount":0,"active":1,"slug":"sampleslug0001"}`, http.StatusOK, `{"_items":{"last_id":32768}}`},
+			genericTestcase{"PostReportOK", "POST", "/report", `{"id":32768,"title":"OK","post_id":188,"like_amount":0,"comment_amount":0,"active":1,"slug":"sampleslug0001", "project_id":421}`, http.StatusOK, `{"_items":{"last_id":32768}}`},
 			genericTestcase{"PostReportSlug", "POST", "/report", `{"id":32233,"title":"OK","post_id":188,"active":1,"slug":"sampleslug0002", "project_id":420}`, http.StatusOK, `{"_items":{"last_id":32233}}`},
 			genericTestcase{"PostReportNonActive", "POST", "/report", `{"id":32234,"title":"nonActive","post_id":188}`, http.StatusOK, `{"_items":{"last_id":32234}}`},
 			genericTestcase{"PostReportNoID", "POST", "/report", `{"title":"OK","post_id":188,"description":"id not provided", "like_amount":0,"comment_amount":0,"active":1}`, http.StatusOK, `{"_items":{"last_id":32769}}`},
@@ -325,8 +330,11 @@ func TestRouteReports(t *testing.T) {
 			genericTestcase{"GetReportWithProjectSlugs", "GET", `/report/list?project_slugs=["testproject"]`, ``, http.StatusOK, []models.ReportAuthors{
 				models.ReportAuthors{Report: models.Report{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0002", true}}},
 			}},
-			genericTestcase{"GetReportWithPublishStatus", "GET", `/report/list?publish_status={"$in":[1]}`, ``, http.StatusOK, []models.ReportAuthors{
+			genericTestcase{"GetReportWithReportPublishStatus", "GET", `/report/list?report_publish_status={"$in":[1]}`, ``, http.StatusOK, []models.ReportAuthors{
 				models.ReportAuthors{Report: models.Report{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}}},
+			}},
+			genericTestcase{"GetReportWithProjectPublishStatus", "GET", `/report/list?project_publish_status={"$in":[1]}`, ``, http.StatusOK, []models.ReportAuthors{
+				models.ReportAuthors{Report: models.Report{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0001", true}, PublishStatus: models.NullInt{2, true}}},
 			}},
 			genericTestcase{"GetReportWithMultipleSorting", "GET", `/report/list?sort=-slug,id`, ``, http.StatusOK, []models.ReportAuthors{
 				models.ReportAuthors{Report: models.Report{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0002", true}}},
@@ -407,4 +415,5 @@ func TestRouteReports(t *testing.T) {
 	} else {
 		mockProjectDS = []models.Project{}
 	}
+
 }
