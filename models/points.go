@@ -1,7 +1,6 @@
 package models
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"strings"
@@ -24,7 +23,7 @@ type pointsAPI struct{}
 var PointsAPI PointsInterface = new(pointsAPI)
 
 type PointsInterface interface {
-	Get(args *PointsArgs) (result []Points, err error)
+	Get(args *PointsArgs) (result []PointsProject, err error)
 	Insert(pts Points) (result int, err error)
 }
 
@@ -37,48 +36,65 @@ type PointsArgs struct {
 	Page      uint16 `form:"page"`
 	OrderBy   string `form:"sort"`
 
-	query bytes.Buffer
-	where []interface{}
+	OSQL
 }
 
-func (a *PointsArgs) parseWhere() {
-	restricts := make([]string, 0)
+type OSQL struct {
+	query      string
+	conditions []string
+	joinstr    []string
+	limits     []string
+	args       []interface{}
+	printargs  []interface{}
+}
+
+func (a *PointsArgs) get(query string) (result *PointsArgs) {
+	a.OSQL.query = query
+	return a
+}
+
+func (a *PointsArgs) join(jointype, table, on string) (query string, args []interface{}, err error) {
+	a.query = fmt.Sprintf("%s %s JOIN %s ON %s", a.query, jointype, table, on)
+	a.build()
+	return a.query, a.args, nil
+}
+
+func (a *PointsArgs) build() {
+	// Parse WHERE conditions
 	if a.ID != 0 {
-		restricts = append(restricts, "member_id = ?")
-		a.where = append(a.where, a.ID)
+		a.conditions = append(a.conditions, "pts.member_id = ?")
+		a.args = append(a.args, a.ID)
 	}
 	if a.ObjectType != nil {
-		restricts = append(restricts, "object_type = ?")
-		a.where = append(a.where, int(*a.ObjectType))
+		a.conditions = append(a.conditions, "pts.object_type = ?")
+		a.args = append(a.args, int(*a.ObjectType))
 	}
 	if a.ObjectIDs != nil {
 		ph := make([]string, len(a.ObjectIDs))
 		for i := range a.ObjectIDs {
 			ph[i] = "?"
-			a.where = append(a.where, a.ObjectIDs[i])
+			a.args = append(a.args, a.ObjectIDs[i])
 		}
-		restricts = append(restricts, fmt.Sprintf("object_id IN (%s)", strings.Join(ph, ",")))
+		a.conditions = append(a.conditions, fmt.Sprintf("pts.object_id IN (%s)", strings.Join(ph, ",")))
 	}
-	if len(restricts) > 0 {
-		a.query.WriteString(fmt.Sprintf(" WHERE %s", strings.Join(restricts, " AND ")))
+	if len(a.conditions) > 0 {
+		a.query = fmt.Sprintf("%s WHERE %s", a.query, strings.Join(a.conditions, " AND "))
 	}
-}
 
-func (a *PointsArgs) parseLimit() {
-	restricts := make([]string, 0)
+	// Parse ORDER BY, LIMIT, OFFSET conditions
 	if a.OrderBy != "" {
-		restricts = append(restricts, fmt.Sprintf("ORDER BY %s", orderByHelper(a.OrderBy)))
+		a.limits = append(a.limits, fmt.Sprintf("ORDER BY %s", orderByHelper(a.OrderBy)))
 	}
 	if a.MaxResult != 0 {
-		restricts = append(restricts, "LIMIT ?")
-		a.where = append(a.where, a.MaxResult)
+		a.limits = append(a.limits, "LIMIT ?")
+		a.args = append(a.args, a.MaxResult)
 	}
 	if a.Page != 0 {
-		restricts = append(restricts, "OFFSET ?")
-		a.where = append(a.where, (a.Page-1)*uint16(a.MaxResult))
+		a.limits = append(a.limits, "OFFSET ?")
+		a.args = append(a.args, (a.Page-1)*uint16(a.MaxResult))
 	}
-	if len(restricts) > 0 {
-		a.query.WriteString(fmt.Sprintf(" %s", strings.Join(restricts, " ")))
+	if len(a.limits) > 0 {
+		a.query = fmt.Sprintf("%s %s;", a.query, strings.Join(a.limits, " "))
 	}
 }
 
@@ -94,20 +110,21 @@ func (a *PointsArgs) Set(in map[string]interface{}) {
 		}
 	}
 }
-func (a *PointsArgs) selectQuery(initial string) {
 
-	a.query.WriteString(initial)
-	a.parseWhere()
-	a.parseLimit()
-	a.query.WriteString(";")
+type PointsProject struct {
+	Points
+	Title NullString `db:"title" json:"object_name"`
 }
 
-func (p *pointsAPI) Get(args *PointsArgs) (result []Points, err error) {
+func (p *pointsAPI) Get(args *PointsArgs) (result []PointsProject, err error) {
 
 	// GET should return point history of certain member_id rather than points id
-	args.selectQuery(`SELECT * FROM points`)
-	if err = DB.Select(&result, args.query.String(), args.where...); err != nil {
-		return []Points{}, err
+	query, params, err := args.get("SELECT pts.*, pj.title FROM points AS pts").join("LEFT", "projects AS pj", "pts.object_id = pj.project_id")
+	if err != nil {
+		return nil, err
+	}
+	if err = DB.Select(&result, query, params...); err != nil {
+		return nil, err
 	}
 	return result, err
 }
