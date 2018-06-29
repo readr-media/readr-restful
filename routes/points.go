@@ -98,7 +98,6 @@ func (r *pointsHandler) Post(c *gin.Context) {
 func (r *pointsHandler) SetRoutes(router *gin.Engine) {
 	pointsRouter := router.Group("/points")
 	{
-		// pointsRouter.GET("", r.Get)
 		// Redirect path ended without / to use r.Get as well
 		pointsRouter.GET("/:id", r.Get)
 		pointsRouter.GET("/:id/*type", r.Get)

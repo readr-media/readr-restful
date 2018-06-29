@@ -114,6 +114,7 @@ func TestMain(m *testing.M) {
 	models.MemoAPI = new(mockMemoAPI)
 	models.MailAPI = new(mockMailAPI)
 	models.ReportAPI = new(mockReportAPI)
+	models.PointsAPI = new(mockPointsAPI)
 
 	os.Exit(m.Run())
 }
