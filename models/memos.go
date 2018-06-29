@@ -48,6 +48,7 @@ type MemoGetArgs struct {
 	MaxResult            int              `form:"max_result"`
 	Page                 int              `form:"page"`
 	Sorting              string           `form:"sort"`
+	Keyword              string           `form:"keyword"`
 	Author               []int64          `form:"author"`
 	Project              []int64          `form:"project_id"`
 	Slugs                []string         `form:"slugs"`
@@ -114,6 +115,11 @@ func (p *MemoGetArgs) parse() (restricts string, values []interface{}) {
 	if p.MemoID != 0 {
 		where = append(where, fmt.Sprintf("%s = ?", "memos.memo_id"))
 		values = append(values, p.MemoID)
+	}
+	if p.Keyword != "" {
+		p.Keyword = fmt.Sprintf("%s%s%s", "%", p.Keyword, "%")
+		where = append(where, "(memos.title LIKE ? OR memos.memo_id LIKE ?)")
+		values = append(values, p.Keyword, p.Keyword)
 	}
 
 	if len(where) > 1 {

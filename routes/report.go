@@ -34,13 +34,24 @@ func (r *reportHandler) bindQuery(c *gin.Context, args *models.GetReportArgs) (e
 			}
 		}
 	}
-	if c.Query("publish_status") != "" {
-		if err = json.Unmarshal([]byte(c.Query("publish_status")), &args.PublishStatus); err != nil {
+	if c.Query("report_publish_status") != "" {
+		if err = json.Unmarshal([]byte(c.Query("report_publish_status")), &args.ReportPublishStatus); err != nil {
 			log.Println(err.Error())
 			return err
 		} else if err == nil {
-			// if err = models.ValidateActive(args.PublishStatus, models.ReportPublishStatus); err != nil {
-			if err = models.ValidateActive(args.PublishStatus, config.Config.Models.ReportsPublishStatus); err != nil {
+			// if err = models.ValidateActive(args.PublishStatus, models.ProjectPublishStatus); err != nil {
+			if err = models.ValidateActive(args.ReportPublishStatus, config.Config.Models.ReportsPublishStatus); err != nil {
+				return err
+			}
+		}
+	}
+	if c.Query("project_publish_status") != "" {
+		if err = json.Unmarshal([]byte(c.Query("project_publish_status")), &args.ProjectPublishStatus); err != nil {
+			log.Println(err.Error())
+			return err
+		} else if err == nil {
+			// if err = models.ValidateActive(args.PublishStatus, models.ProjectPublishStatus); err != nil {
+			if err = models.ValidateActive(args.ProjectPublishStatus, config.Config.Models.ProjectsPublishStatus); err != nil {
 				return err
 			}
 		}
@@ -381,7 +392,7 @@ func (r *reportHandler) validateReportStatus(i int64) bool {
 }
 func (r *reportHandler) validateReportSorting(sort string) bool {
 	for _, v := range strings.Split(sort, ",") {
-		if matched, err := regexp.MatchString("-?(updated_at|published_at|id|slug)", v); err != nil || !matched {
+		if matched, err := regexp.MatchString("-?(updated_at|published_at|id|slug|views|comment_amount)", v); err != nil || !matched {
 			return false
 		}
 	}

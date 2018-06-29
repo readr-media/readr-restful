@@ -58,13 +58,13 @@ func (m *mockMemoAPI) GetMemos(args *models.MemoGetArgs) (memos []models.MemoDet
 			models.MemoDetail{Memo: models.Memo{ID: 3, Title: models.NullString{"MemoTestDefault3", true}, Author: models.NullInt{131, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}}},
 			models.MemoDetail{Memo: models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullInt{135, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}}},
 		}, nil
-	case args.Sorting == "memo_id":
+	case args.Sorting == "-author,memo_id":
 		return []models.MemoDetail{
-			models.MemoDetail{Memo: models.Memo{ID: 1, Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
 			models.MemoDetail{Memo: models.Memo{ID: 2, Title: models.NullString{"MemoTestDefault2", true}, Author: models.NullInt{135, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
-			models.MemoDetail{Memo: models.Memo{ID: 3, Title: models.NullString{"MemoTestDefault3", true}, Author: models.NullInt{131, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}}},
 			models.MemoDetail{Memo: models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullInt{135, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}}},
 			models.MemoDetail{Memo: models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullInt{132, true}, Project: models.NullInt{421, true}, Active: models.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 1, Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 3, Title: models.NullString{"MemoTestDefault3", true}, Author: models.NullInt{131, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}}},
 			models.MemoDetail{Memo: models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
 		}, nil
 	case len(args.Slugs) == 1:
@@ -85,6 +85,10 @@ func (m *mockMemoAPI) GetMemos(args *models.MemoGetArgs) (memos []models.MemoDet
 	case len(args.ProjectPublishStatus) > 0:
 		return []models.MemoDetail{
 			models.MemoDetail{Memo: models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullInt{132, true}, Project: models.NullInt{421, true}, Active: models.NullInt{1, true}}},
+		}, nil
+	case args.Keyword == "中文":
+		return []models.MemoDetail{
+			models.MemoDetail{Memo: models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
 		}, nil
 	default:
 		return []models.MemoDetail{
@@ -245,12 +249,12 @@ func TestRouteMemos(t *testing.T) {
 			genericTestcase{"GetMemoMaxresultOK", "GET", "/memos?max_result=1&page=2", ``, http.StatusOK, []models.Memo{
 				models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}},
 			}},
-			genericTestcase{"GetMemoSortOK", "GET", "/memos?sort=memo_id", ``, http.StatusOK, []models.Memo{
-				models.Memo{ID: 1, Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}},
+			genericTestcase{"GetMemoSortMultipleOK", "GET", "/memos?sort=-author,memo_id", ``, http.StatusOK, []models.Memo{
 				models.Memo{ID: 2, Title: models.NullString{"MemoTestDefault2", true}, Author: models.NullInt{135, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}},
-				models.Memo{ID: 3, Title: models.NullString{"MemoTestDefault3", true}, Author: models.NullInt{131, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}},
 				models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullInt{135, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}},
 				models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullInt{132, true}, Project: models.NullInt{421, true}, Active: models.NullInt{1, true}},
+				models.Memo{ID: 1, Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}},
+				models.Memo{ID: 3, Title: models.NullString{"MemoTestDefault3", true}, Author: models.NullInt{131, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}},
 				models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}},
 			}},
 			genericTestcase{"GetMemoSortInvalidOption", "GET", "/memos?sort=meow", ``, http.StatusBadRequest, `{"Error":"Invalid Parameters"}`},
@@ -273,6 +277,9 @@ func TestRouteMemos(t *testing.T) {
 			}},
 			genericTestcase{"GetMemoWithMemoStatusAndProjectStatus", "GET", `/memos?project_publish_status={"$in":[3]}`, ``, http.StatusOK, []models.Memo{
 				models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullInt{132, true}, Project: models.NullInt{421, true}, Active: models.NullInt{1, true}},
+			}},
+			genericTestcase{"GetMemoWithKeyword", "GET", `/memos?keyword=中文`, ``, http.StatusOK, []models.Memo{
+				models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}},
 			}},
 		} {
 			genericDoTest(testcase, t, asserter)

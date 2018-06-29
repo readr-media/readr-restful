@@ -141,6 +141,7 @@ func TestRouteTags(t *testing.T) {
 	}
 
 	for _, params := range []models.Post{
+		models.Post{ID: 42, Active: models.NullInt{1, true}, Type: models.NullInt{0, true}, Author: models.NullInt{931, true}, UpdatedBy: models.NullInt{931, true}},
 		models.Post{ID: 43, Active: models.NullInt{1, true}, Type: models.NullInt{1, true}, Author: models.NullInt{931, true}, UpdatedBy: models.NullInt{931, true}},
 		models.Post{ID: 44, Active: models.NullInt{1, true}, Type: models.NullInt{0, true}, Author: models.NullInt{931, true}, UpdatedBy: models.NullInt{931, true}},
 	} {

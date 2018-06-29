@@ -3,7 +3,9 @@ package routes
 import (
 	"encoding/json"
 	"net/http"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -61,6 +63,15 @@ func (r *memoHandler) bindQuery(c *gin.Context, args *models.MemoGetArgs) (err e
 			return err
 		}
 	}
+
+	if c.Query("sort") != "" && r.validateMemoSorting(c.Query("sort")) {
+		args.Sorting = c.Query("sort")
+	}
+
+	if c.Query("keyword") != "" {
+		args.Keyword = c.Query("keyword")
+	}
+
 	if c.Query("abstract_length") != "" {
 		if args.AbstractLength, err = strconv.ParseInt(c.Query("abstract_length"), 10, 64); err != nil {
 			return err
@@ -327,6 +338,15 @@ func (r *memoHandler) Count(c *gin.Context) {
 	}
 	resp := map[string]int{"total": count}
 	c.JSON(http.StatusOK, gin.H{"_meta": resp})
+}
+
+func (r *memoHandler) validateMemoSorting(sort string) bool {
+	for _, v := range strings.Split(sort, ",") {
+		if matched, err := regexp.MatchString("-?(created_at|updated_at|published_at|memo_id|comment_amount|author|project_id|memo_order)", v); err != nil || !matched {
+			return false
+		}
+	}
+	return true
 }
 
 func (r *memoHandler) SetRoutes(router *gin.Engine) {

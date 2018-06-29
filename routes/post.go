@@ -3,6 +3,7 @@ package routes
 import (
 	"encoding/json"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -49,6 +50,11 @@ func (r *postHandler) bindQuery(c *gin.Context, args *models.PostArgs) (err erro
 			return err
 		}
 	}
+
+	if c.Query("sort") != "" && r.validatePostSorting(c.Query("sort")) {
+		args.Sorting = c.Query("sort")
+	}
+
 	return nil
 }
 
@@ -344,6 +350,15 @@ func (r *postHandler) Hot(c *gin.Context) {
 func (r *postHandler) SchedulePublish(c *gin.Context) {
 	models.PostAPI.SchedulePublish()
 	c.Status(http.StatusOK)
+}
+
+func (r *postHandler) validatePostSorting(sort string) bool {
+	for _, v := range strings.Split(sort, ",") {
+		if matched, err := regexp.MatchString("-?(updated_at|created_at|published_at|post_id|author|comment_amount)", v); err != nil || !matched {
+			return false
+		}
+	}
+	return true
 }
 
 func (r *postHandler) SetRoutes(router *gin.Engine) {

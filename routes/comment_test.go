@@ -93,7 +93,6 @@ func (c *mockCommentAPI) UpdateCommentAmountByResource(resourceName string, reso
 func (c *mockCommentAPI) UpdateAllCommentAmount() (err error) { return err }
 
 func TestRouteComments(t *testing.T) {
-	log.Println("test start")
 
 	var mockComments = []models.InsertCommentArgs{
 		// models.InsertCommentArgs{ID: 1, Body: models.NullString{"Comment No.1", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{91, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, ResourceName: models.NullString{"post", true}, ResourceID: models.NullInt{90, true}},
@@ -308,8 +307,6 @@ func TestRouteComments(t *testing.T) {
 			genericDoTest(testcase, t, asserter)
 		}
 	})
-
-	log.Println("init finished")
 
 }
 

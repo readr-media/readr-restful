@@ -55,8 +55,9 @@ type GetReportArgs struct {
 	ProjectSlugs []string `form:"project_slugs" json:"project_slugs"`
 	Project      []int64  `form:"project_id" json:"project_id"`
 	// IN/NOT IN
-	Active        map[string][]int `form:"active" json:"active"`
-	PublishStatus map[string][]int `form:"publish_status" json:"publish_status"`
+	Active               map[string][]int `form:"active" json:"active"`
+	ReportPublishStatus  map[string][]int `form:"report_publish_status"`
+	ProjectPublishStatus map[string][]int `form:"project_publish_status"`
 	// Where
 	Keyword string `form:"keyword" json:"keyword"`
 	// Result Shaper
@@ -87,9 +88,15 @@ func (p *GetReportArgs) parse() (restricts string, values []interface{}) {
 			values = append(values, v)
 		}
 	}
-	if p.PublishStatus != nil {
-		for k, v := range p.PublishStatus {
+	if p.ReportPublishStatus != nil {
+		for k, v := range p.ReportPublishStatus {
 			where = append(where, fmt.Sprintf("%s %s (?)", "reports.publish_status", operatorHelper(k)))
+			values = append(values, v)
+		}
+	}
+	if p.ProjectPublishStatus != nil {
+		for k, v := range p.ProjectPublishStatus {
+			where = append(where, fmt.Sprintf("%s %s (?)", "projects.publish_status", operatorHelper(k)))
 			values = append(values, v)
 		}
 	}
@@ -313,8 +320,15 @@ func (a *reportAPI) InsertReport(p Report) (lastID int, err error) {
 }
 
 func (a *reportAPI) UpdateReport(p Report) error {
-
-	query, _ := generateSQLStmt("partial_update", "reports", p)
+	tags := getStructDBTags("partial", p)
+	for k, v := range tags {
+		if v == "project_id" {
+			tags = append(tags[:k], tags[k+1:]...)
+			break
+		}
+	}
+	fields := makeFieldString("update", `%s = :%s`, tags)
+	query := fmt.Sprintf(`UPDATE reports SET %s WHERE id = :id`, strings.Join(fields, ", "))
 	result, err := DB.NamedExec(query, p)
 
 	if err != nil {
