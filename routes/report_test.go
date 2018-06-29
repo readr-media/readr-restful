@@ -46,13 +46,14 @@ func (a *mockReportAPI) GetReports(args models.GetReportArgs) (result []models.R
 			{Report: models.Report{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}}},
 		}, nil
 	}
-	if args.Sorting == "id" {
+	if args.Sorting == "-slug,id" {
 		return []models.ReportAuthors{
-			{Report: models.Report{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}}},
+
 			{Report: models.Report{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0002", true}}},
+			{Report: models.Report{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0001", true}, PublishStatus: models.NullInt{2, true}}},
+			{Report: models.Report{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}}},
 			{Report: models.Report{ID: 32234, Title: models.NullString{"nonActive", true}, Active: models.NullInt{1, true}}},
 			{Report: models.Report{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}}},
-			{Report: models.Report{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0001", true}, PublishStatus: models.NullInt{2, true}}},
 			{Report: models.Report{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Description: models.NullString{"id not provided", true}}},
 		}, nil
 	}
@@ -327,12 +328,12 @@ func TestRouteReports(t *testing.T) {
 			genericTestcase{"GetReportWithPublishStatus", "GET", `/report/list?publish_status={"$in":[1]}`, ``, http.StatusOK, []models.ReportAuthors{
 				models.ReportAuthors{Report: models.Report{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}}},
 			}},
-			genericTestcase{"GetReportWithSorting", "GET", `/report/list?sort=id`, ``, http.StatusOK, []models.ReportAuthors{
-				models.ReportAuthors{Report: models.Report{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}}},
+			genericTestcase{"GetReportWithMultipleSorting", "GET", `/report/list?sort=-slug,id`, ``, http.StatusOK, []models.ReportAuthors{
 				models.ReportAuthors{Report: models.Report{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0002", true}}},
+				models.ReportAuthors{Report: models.Report{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0001", true}, PublishStatus: models.NullInt{2, true}}},
+				models.ReportAuthors{Report: models.Report{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}}},
 				models.ReportAuthors{Report: models.Report{ID: 32234, Title: models.NullString{"nonActive", true}, Active: models.NullInt{1, true}}},
 				models.ReportAuthors{Report: models.Report{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}}},
-				models.ReportAuthors{Report: models.Report{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0001", true}, PublishStatus: models.NullInt{2, true}}},
 				models.ReportAuthors{Report: models.Report{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Description: models.NullString{"id not provided", true}}},
 			}},
 			genericTestcase{"GetReportKeywordMatchTitle", "GET", `/report/list?keyword=no&active={"$in":[0,1]}`, ``, http.StatusOK, []models.ReportAuthors{

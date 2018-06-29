@@ -13,19 +13,23 @@ import (
 
 type mockPostAPI struct {
 	mockPostDS []models.TaggedPostMember
+	apiBackup  models.PostInterface
 }
 
 func (a *mockPostAPI) setup(in interface{}) {
 	a.mockPostDS = make([]models.TaggedPostMember, len(in.([]models.TaggedPostMember)))
 	copy(a.mockPostDS, in.([]models.TaggedPostMember))
+	a.apiBackup = models.PostAPI
 	models.PostAPI = a
 }
 
 func (a *mockPostAPI) teardown() {
 	a.mockPostDS = nil
+	models.PostAPI = a.apiBackup
 }
 
 func (a *mockPostAPI) GetPosts(args *models.PostArgs) (result []models.TaggedPostMember, err error) {
+
 	result = []models.TaggedPostMember{
 		a.mockPostDS[3],
 		a.mockPostDS[1],
@@ -146,6 +150,7 @@ func (a *mockPostAPI) GetPost(id uint32) (models.TaggedPostMember, error) {
 	var (
 		result models.TaggedPostMember
 	)
+
 	err := errors.New("Post Not Found")
 	for _, value := range a.mockPostDS {
 		if value.PostMember.Post.ID == id {

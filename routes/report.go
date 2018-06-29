@@ -381,7 +381,7 @@ func (r *reportHandler) validateReportStatus(i int64) bool {
 }
 func (r *reportHandler) validateReportSorting(sort string) bool {
 	for _, v := range strings.Split(sort, ",") {
-		if matched, err := regexp.MatchString("-?(updated_at|published_at|id|slug)", v); err != nil || !matched {
+		if matched, err := regexp.MatchString("-?(updated_at|published_at|id|slug|views|comment_amount)", v); err != nil || !matched {
 			return false
 		}
 	}
