@@ -9,6 +9,10 @@ import (
 	"strings"
 
 	// For NewDB() usage
+	_ "github.com/go-sql-driver/mysql"
+	"github.com/golang-migrate/migrate"
+	"github.com/golang-migrate/migrate/database/mysql"
+	_ "github.com/golang-migrate/migrate/source/file"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -26,6 +30,25 @@ func Connect(dbURI string) {
 	if err = d.Ping(); err != nil {
 		log.Panic(err)
 	}
+
+	// Migrate database with identical database instance
+	driver, err := mysql.WithInstance(d.DB, &mysql.Config{})
+	if err != nil {
+		log.Fatalf("migrate fail to use db instance:%v\n", err)
+	}
+	m, err := migrate.NewWithDatabaseInstance(
+		"file://db_schema",
+		"mysql",
+		driver,
+	)
+	if err != nil {
+		log.Fatalf("migrate fail to init new migration instance with db:%v\n", err)
+	}
+	err = m.Up()
+	if err != nil && err != migrate.ErrNoChange {
+		log.Fatalf("Fail to migrate:%v\n", err)
+	}
+
 	DB = database{d}
 }
 
