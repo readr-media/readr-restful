@@ -34,11 +34,10 @@ func main() {
 	flag.StringVar(&configFile, "path", "", "Configuration file path.")
 	flag.StringVar(&configName, "file", "", "Configuration file name.")
 	flag.Parse()
-	fmt.Println("path:%s, file:%s\n", configFile, configName)
+
 	if err := config.LoadConfig(configFile, configName); err != nil {
 		panic(fmt.Errorf("Invalid application configuration: %s", err))
 	}
-	fmt.Println(config.Config.Redis)
 	// sqlHost := viper.Get("sql.host")
 	// sqlPort := viper.GetInt("sql.port")
 	// sqlUser := viper.Get("sql.user")
@@ -61,8 +60,8 @@ func main() {
 	// models.TagStatus = viper.GetStringMap("models.tags")
 	// routes.OGParserHeaders = viper.GetStringMapString("cralwer.headers")
 
-	// waiting: allow full utf8 support by incorporating `?charset=utf8mb4` in connection
-	dbURI := fmt.Sprintf("%s:%s@tcp(%s)/memberdb?parseTime=true&charset=utf8mb4", config.Config.SQL.User, config.Config.SQL.Password, fmt.Sprintf("%s:%v", config.Config.SQL.Host, config.Config.SQL.Port))
+	// Include multiStatements=True for migration usage
+	dbURI := fmt.Sprintf("%s:%s@tcp(%s)/memberdb?parseTime=true&charset=utf8mb4&multiStatements=true", config.Config.SQL.User, config.Config.SQL.Password, fmt.Sprintf("%s:%v", config.Config.SQL.Host, config.Config.SQL.Port))
 	// dbURI := fmt.Sprintf("%s:%s@tcp(%s)/memberdb?parseTime=true&charset=utf8mb4", sqlUser, sqlPass, fmt.Sprintf("%s:%v", sqlHost, sqlPort))
 
 	// Start with default middleware

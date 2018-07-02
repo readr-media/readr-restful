@@ -1,4 +1,4 @@
-ALTER TABLE report_authors ADD UNIQUE unique_author(author_id, report_id);
+-- ALTER TABLE report_authors ADD UNIQUE unique_author(author_id, report_id);
 
 CREATE TABLE `following` (
     `id` BIGINT UNSIGNED PRIMARY KEY AUTO_INCREMENT,
