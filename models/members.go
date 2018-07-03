@@ -107,12 +107,7 @@ type MemberInterface interface {
 	UpdateAll(ids []int64, active int) error
 	UpdateMember(m Member) error
 	Count(req *MemberArgs) (result int, err error)
-	GetIDsByNickname(key string, roles map[string][]int) (result []NicknameID, err error)
-}
-
-type NicknameID struct {
-	ID       int64      `json:"id"`
-	Nickname NullString `json:"nickname"`
+	GetIDsByNickname(params GetMembersKeywordsArgs) (result []Stunt, err error)
 }
 
 // type MemberArgs map[string]interface{}
@@ -185,6 +180,46 @@ func (m *MemberArgs) parse() (restricts string, values []interface{}) {
 		restricts = where[0]
 	}
 	return restricts, values
+}
+
+type GetMembersKeywordsArgs struct {
+	Keywords string `form:"keyword"`
+	Roles    map[string][]int
+	Fields   sqlfields
+}
+
+func (a *GetMembersKeywordsArgs) Validate() (err error) {
+	// Validate keyword
+	if a.Keywords == "" {
+		return errors.New("Invalid keyword")
+	}
+	// Validate field
+	validFields := getStructDBTags("full", Stunt{})
+
+CheckEachFieldLoop:
+	for _, f := range a.Fields {
+		for _, F := range validFields {
+			if f == F {
+				continue CheckEachFieldLoop
+			}
+		}
+		return fmt.Errorf("Invalid fields: %s", f)
+	}
+	var containfield = func(field string) bool {
+		for _, f := range a.Fields {
+			if f == field {
+				return true
+			}
+		}
+		return false
+	}
+	// Set default fields id & nickname
+	for _, fs := range []string{"id", "nickname"} {
+		if !containfield(fs) {
+			a.Fields = append(a.Fields, fs)
+		}
+	}
+	return err
 }
 
 func (a *memberAPI) GetMembers(req *MemberArgs) (result []Member, err error) {
@@ -357,34 +392,22 @@ func (a *memberAPI) Count(req *MemberArgs) (result int, err error) {
 
 // GetMembersByNickname select nickname and uuid from active members only
 // when their nickname fits certain keyword
-func (a *memberAPI) GetIDsByNickname(key string, roles map[string][]int) (result []NicknameID, err error) {
-	query := `SELECT id, nickname FROM members WHERE active = ? AND nickname LIKE ?`
-	if len(roles) != 0 {
-		// values := []interface{}{int(MemberStatus["active"].(float64)), key + "%"}
-		values := []interface{}{config.Config.Models.Members["active"], key + "%"}
-		for k, v := range roles {
-			query = fmt.Sprintf("%s %s", query, fmt.Sprintf(" AND %s %s (?)", "members.role", operatorHelper(k)))
+func (a *memberAPI) GetIDsByNickname(params GetMembersKeywordsArgs) (result []Stunt, err error) {
+
+	query := fmt.Sprintf(`SELECT %s FROM members WHERE active = ? AND nickname LIKE ?`, strings.Join(params.Fields, ", "))
+	values := []interface{}{}
+	values = append(values, config.Config.Models.Members["active"], params.Keywords+"%")
+
+	if len(params.Roles) != 0 {
+		for k, v := range params.Roles {
+			query = fmt.Sprintf("%s AND %s %s (?)", query, "members.role", operatorHelper(k))
 			values = append(values, v)
 		}
-
-		query, values, err := sqlx.In(query, values...)
-		if err != nil {
-			log.Println(err)
-			return []NicknameID{}, err
-		}
-
-		query = DB.Rebind(query)
-
-		err = DB.Select(&result, query, values...)
-		if err != nil {
-			return []NicknameID{}, err
-		}
-	} else {
-		// err = DB.Select(&result, query, int(MemberStatus["active"].(float64)), key+"%")
-		err = DB.Select(&result, query, config.Config.Models.Members["active"], key+"%")
-		if err != nil {
-			return []NicknameID{}, err
-		}
+	}
+	query, values, err = sqlx.In(query, values...)
+	query = DB.Rebind(query)
+	if err = DB.Select(&result, query, values...); err != nil {
+		return []Stunt{}, err
 	}
 	return result, err
 }
