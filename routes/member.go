@@ -2,6 +2,7 @@ package routes
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -50,6 +51,26 @@ func (r *memberHandler) bindQuery(c *gin.Context, args *models.MemberArgs) (err 
 	return nil
 }
 
+func bindKeywordsArgs(c *gin.Context, params *models.GetMembersKeywordsArgs) (err error) {
+	if err = c.ShouldBindQuery(params); err != nil {
+		log.Printf("Bind Keyword args error:%s\n", err.Error())
+		return errors.New("Invalid keyword")
+	}
+	if c.Query("fields") != "" {
+		if err = json.Unmarshal([]byte(c.Query("fields")), &params.Fields); err != nil {
+			return errors.New("Invalid fields")
+		}
+	}
+	if c.Query("roles") != "" {
+		if err = json.Unmarshal([]byte(c.Query("roles")), &params.Roles); err != nil {
+			return errors.New("Invalid roles")
+		}
+	}
+	if err = params.Validate(); err != nil {
+		return err
+	}
+	return err
+}
 func (r *memberHandler) GetAll(c *gin.Context) {
 
 	var args = &models.MemberArgs{}
@@ -339,22 +360,14 @@ func (r *memberHandler) Count(c *gin.Context) {
 }
 
 func (r *memberHandler) SearchKeyNickname(c *gin.Context) {
-	keyword := c.Query("keyword")
-	if keyword == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid keyword"})
+
+	args := models.GetMembersKeywordsArgs{}
+
+	if err := bindKeywordsArgs(c, &args); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
-	var roles map[string][]int
-
-	if c.Query("roles") != "" {
-		err := json.Unmarshal([]byte(c.Query("roles")), &roles)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid roles"})
-			return
-		}
-	}
-
-	members, err := models.MemberAPI.GetIDsByNickname(keyword, roles)
+	members, err := models.MemberAPI.GetIDsByNickname(args)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 		return

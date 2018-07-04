@@ -14,7 +14,7 @@ import (
 
 type pointsHandler struct{}
 
-func (r *pointsHandler) bindQuery(c *gin.Context, args *models.PointsArgs) (err error) {
+func (r *pointsHandler) bindPointsQuery(c *gin.Context, args *models.PointsArgs) (err error) {
 
 	// Fill in MaxResult, Page, OrderBy first to avoid custom parsing result overwritten
 	if err = c.ShouldBindQuery(args); err != nil {
@@ -63,7 +63,7 @@ func (r *pointsHandler) Get(c *gin.Context) {
 		"page":       1,
 		"sort":       "-created_at",
 	})
-	if err := r.bindQuery(c, args); err != nil {
+	if err := r.bindPointsQuery(c, args); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}

@@ -35,6 +35,7 @@ type PointsArgs struct {
 	MaxResult uint8  `form:"max_result"`
 	Page      uint16 `form:"page"`
 	OrderBy   string `form:"sort"`
+	PayType   string `form:"pay_type"`
 
 	OSQL
 }
@@ -76,6 +77,13 @@ func (a *PointsArgs) build() {
 			a.args = append(a.args, a.ObjectIDs[i])
 		}
 		a.conditions = append(a.conditions, fmt.Sprintf("pts.object_id IN (%s)", strings.Join(ph, ",")))
+	}
+	if a.PayType != "" {
+		if a.PayType == "topup" {
+			a.conditions = append(a.conditions, "pts.points < 0")
+		} else if a.PayType == "consumption" {
+			a.conditions = append(a.conditions, "pts.points > 0")
+		}
 	}
 	if len(a.conditions) > 0 {
 		a.query = fmt.Sprintf("%s WHERE %s", a.query, strings.Join(a.conditions, " AND "))
