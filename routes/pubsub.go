@@ -1,23 +1,17 @@
 package routes
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
 	"html"
 	"log"
-	"reflect"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 
-	"github.com/PuerkitoBio/goquery"
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
@@ -162,7 +156,7 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 			if len(commentUrls) > 0 {
 				for _, v := range commentUrls {
 					if !comment.OgTitle.Valid {
-						ogInfo, err := OGParser.GetOGInfoFromUrl(v)
+						ogInfo, err := models.OGParser.GetOGInfoFromUrl(v)
 						if err != nil {
 							log.Printf("%s %s parse embeded url fail: %v \n", msgType, actionType, err.Error())
 							return
@@ -226,7 +220,7 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 				if len(commentUrls) > 0 {
 					for _, v := range commentUrls {
 						if !comment.OgTitle.Valid {
-							ogInfo, err := OGParser.GetOGInfoFromUrl(v)
+							ogInfo, err := models.OGParser.GetOGInfoFromUrl(v)
 							if err != nil {
 								log.Printf("%s %s parse embeded url fail: %v \n", msgType, actionType, err.Error())
 								return
@@ -325,208 +319,3 @@ func (r *pubsubHandler) SetRoutes(router *gin.Engine) {
 }
 
 var PubsubHandler pubsubHandler
-
-//** OG PArser **//
-
-type OGInfo struct {
-	Title       string `meta:"og:title"`
-	Description string `meta:"og:description"`
-	Image       string `meta:"og:image,og:image:url"`
-}
-
-type ogParser struct{}
-
-func (o *ogParser) GetOGInfoFromUrl(urlStr string) (*OGInfo, error) {
-	client := &http.Client{}
-
-	req, err := http.NewRequest("GET", urlStr, nil)
-	// for k, v := range OGParserHeaders {
-	for k, v := range config.Config.Crawler.Headers {
-		req.Header.Add(k, v)
-	}
-	if !regexp.MustCompile("\\.readr\\.tw\\/").MatchString(urlStr) {
-		req.Header.Del("Cookie")
-	}
-	resp, err := client.Do(req)
-
-	if err != nil {
-		return nil, err
-	}
-	return o.GetPageInfoFromResponse(resp)
-}
-
-func (o *ogParser) GetPageInfoFromResponse(response *http.Response) (*OGInfo, error) {
-	info := OGInfo{}
-	html, err := ioutil.ReadAll(response.Body)
-
-	if err != nil {
-		return nil, err
-	}
-
-	err = o.GetPageDataFromHtml(html, &info)
-
-	if err != nil {
-		return nil, err
-	}
-
-	return &info, nil
-}
-
-func (o *ogParser) GetPageDataFromHtml(html []byte, data interface{}) error {
-	buf := bytes.NewBuffer(html)
-	doc, err := goquery.NewDocumentFromReader(buf)
-
-	if err != nil {
-		return err
-	}
-
-	return o.getPageData(doc, data)
-}
-
-func (o *ogParser) getPageData(doc *goquery.Document, data interface{}) error {
-	var rv reflect.Value
-	var ok bool
-	if rv, ok = data.(reflect.Value); !ok {
-		rv = reflect.ValueOf(data)
-	}
-
-	if rv.Kind() != reflect.Ptr || rv.IsNil() {
-		return errors.New("Should not be non-ptr or nil")
-	}
-
-	rt := rv.Type()
-
-	for i := 0; i < rv.Elem().NumField(); i++ {
-		fv := rv.Elem().Field(i)
-		field := rt.Elem().Field(i)
-
-		switch fv.Type().Kind() {
-		case reflect.Ptr:
-			if fv.IsNil() {
-				fv.Set(reflect.New(fv.Type().Elem()))
-			}
-			e := o.getPageData(doc, fv)
-
-			if e != nil {
-				return e
-			}
-		case reflect.Struct:
-			e := o.getPageData(doc, fv.Addr())
-
-			if e != nil {
-				return e
-			}
-		case reflect.Slice:
-			if fv.IsNil() {
-				fv.Set(reflect.MakeSlice(fv.Type(), 0, 0))
-			}
-
-			switch field.Type.Elem().Kind() {
-			case reflect.Struct:
-				last := reflect.New(field.Type.Elem())
-				for {
-					data := reflect.New(field.Type.Elem())
-					e := o.getPageData(doc, data.Interface())
-
-					if e != nil {
-						return e
-					}
-
-					//Ugly solution (I can't remove nodes. Why?)
-					if !reflect.DeepEqual(last.Elem().Interface(), data.Elem().Interface()) {
-						fv.Set(reflect.Append(fv, data.Elem()))
-						last.Elem().Set(data.Elem())
-
-					} else {
-						break
-					}
-				}
-			case reflect.Ptr:
-				last := reflect.New(field.Type.Elem().Elem())
-				for {
-					data := reflect.New(field.Type.Elem().Elem())
-					e := o.getPageData(doc, data.Interface())
-
-					if e != nil {
-						return e
-					}
-
-					//Ugly solution (I can't remove nodes. Why?)
-					if !reflect.DeepEqual(last.Elem().Interface(), data.Elem().Interface()) {
-						fv.Set(reflect.Append(fv, data))
-						last.Elem().Set(data.Elem())
-
-					} else {
-						break
-					}
-				}
-			default:
-				if tag, ok := field.Tag.Lookup("meta"); ok {
-					tags := strings.Split(tag, ",")
-
-					for _, t := range tags {
-						contents := []reflect.Value{}
-
-						processMeta := func(idx int, sel *goquery.Selection) {
-							if c, existed := sel.Attr("content"); existed {
-								if field.Type.Elem().Kind() == reflect.String {
-									contents = append(contents, reflect.ValueOf(c))
-								} else {
-									i, e := strconv.Atoi(c)
-
-									if e == nil {
-										contents = append(contents, reflect.ValueOf(i))
-									}
-								}
-
-								fv.Set(reflect.Append(fv, contents...))
-							}
-						}
-
-						doc.Find(fmt.Sprintf("meta[property=\"%s\"]", t)).Each(processMeta)
-
-						doc.Find(fmt.Sprintf("meta[name=\"%s\"]", t)).Each(processMeta)
-
-						fv = reflect.Append(fv, contents...)
-					}
-				}
-			}
-		default:
-			if tag, ok := field.Tag.Lookup("meta"); ok {
-
-				tags := strings.Split(tag, ",")
-
-				content := ""
-				existed := false
-				sel := (*goquery.Selection)(nil)
-				for _, t := range tags {
-					if sel = doc.Find(fmt.Sprintf("meta[property=\"%s\"]", t)).First(); sel.Size() > 0 {
-						content, existed = sel.Attr("content")
-					}
-
-					if !existed {
-						if sel = doc.Find(fmt.Sprintf("meta[name=\"%s\"]", t)).First(); sel.Size() > 0 {
-							content, existed = sel.Attr("content")
-						}
-					}
-
-					if existed {
-						if fv.Type().Kind() == reflect.String {
-							fv.Set(reflect.ValueOf(content))
-						} else if fv.Type().Kind() == reflect.Int {
-							if i, e := strconv.Atoi(content); e == nil {
-								fv.Set(reflect.ValueOf(i))
-							}
-						}
-						break
-					}
-				}
-			}
-		}
-	}
-	return nil
-}
-
-var OGParser ogParser
-
-// var OGParserHeaders map[string]string
