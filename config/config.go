@@ -70,6 +70,8 @@ type appConfig struct {
 		FollowingType         map[string]int `mapstructure:"following_type"`
 		Emotions              map[string]int `mapstructure:"emotions"`
 	} `mapstructure:"models"`
+
+	StripeKey string `mapstructure:"stripe_Key"`
 }
 
 func LoadConfig(configPath string, configName string) error {

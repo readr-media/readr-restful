@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"log"
 	"strings"
+
+	"github.com/readr-media/readr-restful/config"
+	stripe "github.com/stripe/stripe-go"
+	"github.com/stripe/stripe-go/charge"
 )
 
 type Points struct {
@@ -18,13 +22,23 @@ type Points struct {
 	UpdatedAt  NullTime `json:"updated_at" db:"updated_at"`
 }
 
+// PointsToken is made to solve problem if Token is added to Points struct
+// Since in Insert method getStructDBTags is used,
+// and *string seems going to be asserted as string and get an empty database field,
+// resulting in insert NamedExec fail.
+// I have to use embedded struct here. Might have to reform getStructDBTags
+type PointsToken struct {
+	Points
+	Token *string `json:"token,omitempty"`
+}
+
 type pointsAPI struct{}
 
 var PointsAPI PointsInterface = new(pointsAPI)
 
 type PointsInterface interface {
 	Get(args *PointsArgs) (result []PointsProject, err error)
-	Insert(pts Points) (result int, err error)
+	Insert(pts PointsToken) (result int, err error)
 }
 
 type PointsArgs struct {
@@ -137,8 +151,36 @@ func (p *pointsAPI) Get(args *PointsArgs) (result []PointsProject, err error) {
 	return result, err
 }
 
-func (p *pointsAPI) Insert(pts Points) (result int, err error) {
-	tags := getStructDBTags("full", pts)
+func (p *pointsAPI) Insert(pts PointsToken) (result int, err error) {
+	tags := getStructDBTags("full", pts.Points)
+
+	if pts.Points.Points < 0 {
+		if pts.Token != nil {
+			// Set your secret key: remember to change this to your live secret key in production
+			// See your keys here: https://dashboard.stripe.com/account/apikeys
+			stripe.Key = config.Config.StripeKey
+
+			// Real amount for stripe should be positive
+			// 100 would become 1 TWD in Stripe
+			amount := int64((0 - pts.Points.Points) * 100)
+			// Token is created using Checkout or Elements!
+			// Get the payment token ID submitted by the form:
+			// token := r.FormValue("stripeToken")
+			token := *pts.Token
+
+			params := &stripe.ChargeParams{
+				Amount:      stripe.Int64(amount),
+				Currency:    stripe.String(string(stripe.CurrencyTWD)),
+				Description: stripe.String("REARr points"),
+			}
+			params.SetSource(token)
+			_, err := charge.New(params)
+			if err != nil {
+				log.Printf("Charge error:%v\n", err)
+				return 0, err
+			}
+		}
+	}
 
 	tx, err := DB.Beginx()
 	if err != nil {
@@ -158,8 +200,9 @@ func (p *pointsAPI) Insert(pts Points) (result int, err error) {
 		return 0, err
 	}
 	// New Balance
-	result = result - pts.Points
+	result = result - pts.Points.Points
 	pts.Balance = result
+
 	pointsU := fmt.Sprintf(`INSERT INTO points (%s) VALUES (:%s)`,
 		strings.Join(tags, ","), strings.Join(tags, ",:"))
 
