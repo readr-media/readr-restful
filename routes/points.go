@@ -76,7 +76,7 @@ func (r *pointsHandler) Get(c *gin.Context) {
 }
 
 func (r *pointsHandler) Post(c *gin.Context) {
-	pts := models.Points{}
+	pts := models.PointsToken{}
 	if err := c.ShouldBindJSON(&pts); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
@@ -86,6 +86,10 @@ func (r *pointsHandler) Post(c *gin.Context) {
 	}
 	if !pts.UpdatedAt.Valid {
 		pts.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
+	}
+	if pts.Points.Points < 0 && pts.Token == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Token"})
+		return
 	}
 	p, err := models.PointsAPI.Insert(pts)
 	if err != nil {

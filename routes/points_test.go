@@ -92,7 +92,7 @@ func (a *mockPointsAPI) Get(args *models.PointsArgs) (result []models.PointsProj
 	return result, err
 }
 
-func (a *mockPointsAPI) Insert(pts models.Points) (result int, err error) {
+func (a *mockPointsAPI) Insert(pts models.PointsToken) (result int, err error) {
 
 	args := models.PointsArgs{ID: pts.MemberID}
 	if total, err := a.Get(&args); err == nil {
@@ -100,7 +100,7 @@ func (a *mockPointsAPI) Insert(pts models.Points) (result int, err error) {
 			result += int(v.Points.Points)
 		}
 		// mockPointsDS = append(a.mockPointsDS, models.PointsProject{Points: pts, Title: models.NullString{"", false}})
-		result += pts.Points
+		result += pts.Points.Points
 	}
 	return result, err
 }
@@ -177,6 +177,7 @@ func TestRoutePoints(t *testing.T) {
 	t.Run("Insert", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
 			genericTestcase{"BasicPoints", "POST", `/points`, `{"member_id":1,"object_type": 2,"object_id": 1,"points": 100}`, http.StatusOK, `{"points":1000}`},
+			genericTestcase{"InvalidToken", "POST", `/points`, `{"member_id":1,"object_type": 2,"object_id": 1,"points": -100}`, http.StatusBadRequest, `{"Error":"Invalid Token"}`},
 		} {
 			genericDoTest(testcase, t, asserter)
 		}
