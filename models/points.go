@@ -14,7 +14,7 @@ type Points struct {
 	PointsID   int64    `json:"id" db:"id"`
 	MemberID   int64    `json:"member_id" db:"member_id" binding:"required"`
 	ObjectType int      `json:"object_type" db:"object_type" binding:"required"`
-	ObjectID   int      `json:"object_id" db:"object_id" binding:"required"`
+	ObjectID   int      `json:"object_id" db:"object_id"`
 	Points     int      `json:"points" db:"points"`
 	Balance    int      `json:"balance" db:"balance"`
 	CreatedAt  NullTime `json:"created_at" db:"created_at"`
