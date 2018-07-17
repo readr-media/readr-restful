@@ -91,6 +91,10 @@ func (r *pointsHandler) Post(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Token"})
 		return
 	}
+	if pts.Points.ObjectID == 0 && (pts.Points.Points > 0 || pts.Points.ObjectType != 2) {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Object ID"})
+		return
+	}
 	p, err := models.PointsAPI.Insert(pts)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})

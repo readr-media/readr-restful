@@ -114,7 +114,7 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []Tag, err error) {
 
 	if args.Keyword != "" {
 		query.WriteString(` AND ta.tag_content LIKE :keyword`)
-		args.Keyword = args.Keyword + "%"
+		args.Keyword = "%" + args.Keyword + "%"
 	}
 
 	args.Page = (args.Page - 1) * uint16(args.MaxResult)
