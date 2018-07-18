@@ -12,7 +12,7 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
-func initMailDialer() gomail.Dialer {
+func InitMailDialer() gomail.Dialer {
 	// dialer := gomail.NewDialer(
 	// 	viper.Get("mail.host").(string),
 	// 	int(viper.Get("mail.port").(float64)),
