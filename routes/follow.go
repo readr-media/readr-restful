@@ -165,6 +165,9 @@ func (r *followingHandler) Get(c *gin.Context) {
 		result, err = models.FollowingAPI.Get(input)
 	case *models.GetFollowedArgs:
 		result, err = models.FollowingAPI.Get(input)
+		if err == nil {
+			models.FollowCache.Update(*input, result.([]models.FollowedCount))
+		}
 	case *models.GetFollowMapArgs:
 		result, err = models.FollowingAPI.Get(input)
 	default:

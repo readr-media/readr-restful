@@ -20,6 +20,7 @@ type OGInfo struct {
 	Title       string `meta:"og:title" json:"og_title"`
 	Description string `meta:"og:description" json:"og_description"`
 	Image       string `meta:"og:image,og:image:url" json:"og_image"`
+	SiteName    string `meta:"og:site_name" json:"og_site_name"`
 }
 
 type ogParser struct{}

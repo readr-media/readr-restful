@@ -116,6 +116,9 @@ func TestMain(m *testing.M) {
 	models.ReportAPI = new(mockReportAPI)
 	models.PointsAPI = new(mockPointsAPI)
 
+	models.FollowCache = new(mockFollowCache)
+	//models.CommentCache = new(mockCommentCache)
+
 	os.Exit(m.Run())
 }
 
