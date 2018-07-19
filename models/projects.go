@@ -17,8 +17,8 @@ type Project struct {
 	ID            int        `json:"id" db:"project_id"`
 	CreatedAt     NullTime   `json:"created_at" db:"created_at"`
 	UpdatedAt     NullTime   `json:"updated_at" db:"updated_at"`
-	UpdatedBy     NullString `json:"updated_by" db:"updated_by"`
-	PublishedAt   NullString `json:"published_at" db:"published_at"`
+	UpdatedBy     NullInt    `json:"updated_by" db:"updated_by"`
+	PublishedAt   NullTime   `json:"published_at" db:"published_at"`
 	PostID        int        `json:"post_id" db:"post_id"`
 	LikeAmount    NullInt    `json:"like_amount" db:"like_amount"`
 	CommentAmount NullInt    `json:"comment_amount" db:"comment_amount"`

@@ -150,7 +150,7 @@ func (g *GetFollowedArgs) get() (*sqlx.Rows, error) {
 func (g *GetFollowedArgs) scan(rows *sqlx.Rows) (interface{}, error) {
 
 	var (
-		followed []interface{}
+		followed []FollowedCount
 		err      error
 	)
 	for rows.Next() {
@@ -172,11 +172,7 @@ func (g *GetFollowedArgs) scan(rows *sqlx.Rows) (interface{}, error) {
 			}
 			followers = append(followers, int64(i))
 		}
-		followed = append(followed, struct {
-			ResourceID int64
-			Count      int
-			Followers  []int64
-		}{resourceID, count, followers})
+		followed = append(followed, FollowedCount{resourceID, count, followers})
 	}
 	return followed, err
 }
@@ -293,7 +289,7 @@ type Resource struct {
 	Emotion      int
 }
 
-type followedCount struct {
+type FollowedCount struct {
 	Resourceid int64
 	Count      int
 	Follower   []int64

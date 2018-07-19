@@ -326,7 +326,7 @@ func TestRoutePost(t *testing.T) {
 				genericTestcase{"NotExisted", "PUT", `/post`, `{"id":12345, "author":1}`, http.StatusBadRequest, `{"Error":"Post Not Found"}`},
 				genericTestcase{"UpdateTags", "PUT", `/post`, `{"id":1, "tags":[5,3], "updated_by":1}`, http.StatusOK, ``},
 				// UpdateSchedule the same with UpdateTags, need to be changed or confirmed
-				genericTestcase{"UpdateSchedule", "PUT", `/post`, `{"id":1, "tags":[5,3], "updated_by":1}`, http.StatusOK, ``},
+				genericTestcase{"DeleteTags", "PUT", `/post`, `{"id":1, "tags":[], "updated_by":1}`, http.StatusOK, ``},
 			},
 		},
 		TestStep{

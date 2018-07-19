@@ -128,6 +128,9 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 			c.JSON(http.StatusOK, gin.H{"Error": err.Error()})
 			return
 		}
+
+		models.FollowCache.Revoke(actionType, params.Resource, params.Emotion, params.Object)
+
 		c.Status(http.StatusOK)
 
 	case "comment":

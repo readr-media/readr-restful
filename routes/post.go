@@ -164,8 +164,9 @@ func (r *postHandler) Post(c *gin.Context) {
 			return
 		}
 	}
-	if len(post.Tags) > 0 {
-		err = models.TagAPI.UpdatePostTags(post_id, post.Tags)
+
+	if post.Tags.Valid {
+		err = models.TagAPI.UpdatePostTags(post_id, post.Tags.Slice)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 			return
@@ -218,8 +219,8 @@ func (r *postHandler) Put(c *gin.Context) {
 		}
 	}
 
-	if len(post.Tags) > 0 {
-		err = models.TagAPI.UpdatePostTags(int(post.ID), post.Tags)
+	if post.Tags.Valid {
+		err = models.TagAPI.UpdatePostTags(int(post.ID), post.Tags.Slice)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 			return

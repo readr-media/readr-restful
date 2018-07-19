@@ -104,46 +104,42 @@ func getFollowing(params *models.GetFollowingArgs) (followings []interface{}, er
 }
 
 func getFollowed(args *models.GetFollowedArgs) (interface{}, error) {
-	type followedCount struct {
-		Resourceid int
-		Count      int
-		Follower   []int
-	}
+
 	switch {
 	case args.IDs[0] == 1001:
-		return []followedCount{}, nil
+		return []models.FollowedCount{}, nil
 	case args.ResourceName == "member":
-		return []followedCount{
-			followedCount{71, 1, []int{72}},
-			followedCount{72, 1, []int{71}},
+		return []models.FollowedCount{
+			models.FollowedCount{71, 1, []int64{72}},
+			models.FollowedCount{72, 1, []int64{71}},
 		}, nil
 	case args.ResourceName == "post":
 		switch args.ResourceType {
 		case "":
-			return []followedCount{
-				followedCount{42, 2, []int{71, 72}},
-				followedCount{84, 1, []int{71}},
+			return []models.FollowedCount{
+				models.FollowedCount{42, 2, []int64{71, 72}},
+				models.FollowedCount{84, 1, []int64{71}},
 			}, nil
 		case "review":
-			return []followedCount{
-				followedCount{42, 2, []int{71, 72}},
+			return []models.FollowedCount{
+				models.FollowedCount{42, 2, []int64{71, 72}},
 			}, nil
 		case "news":
-			return []followedCount{
-				followedCount{84, 1, []int{71}},
+			return []models.FollowedCount{
+				models.FollowedCount{84, 1, []int64{71}},
 			}, nil
 		}
 		return nil, nil
 	case args.ResourceName == "project":
 		switch len(args.IDs) {
 		case 1:
-			return []followedCount{
-				followedCount{840, 1, []int{72}},
+			return []models.FollowedCount{
+				models.FollowedCount{840, 1, []int64{72}},
 			}, nil
 		case 2:
-			return []followedCount{
-				followedCount{420, 2, []int{71, 72}},
-				followedCount{840, 1, []int{72}},
+			return []models.FollowedCount{
+				models.FollowedCount{420, 2, []int64{71, 72}},
+				models.FollowedCount{840, 1, []int64{72}},
 			}, nil
 		}
 		return nil, nil
@@ -190,6 +186,11 @@ func getFollowMap(args *models.GetFollowMapArgs) (list []models.FollowingMapItem
 		return []models.FollowingMapItem{}, errors.New("Resource Not Supported")
 	}
 }
+
+type mockFollowCache struct{}
+
+func (m mockFollowCache) Update(i models.GetFollowedArgs, f []models.FollowedCount)            {}
+func (m mockFollowCache) Revoke(actionType string, resource string, emotion int, object int64) {}
 
 // func initFollowTest() {
 // 	mockPostDSBack = mockPostDS

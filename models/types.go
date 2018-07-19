@@ -285,4 +285,34 @@ func (ns *NullFloat) UnmarshalJSON(text []byte) error {
 	return nil
 }
 
+type NullIntSlice struct {
+	Slice []int
+	Valid bool // Valid is true if Int is not NULL
+}
+
+func (ns NullIntSlice) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return ns.Slice, nil
+}
+
+func (ns NullIntSlice) MarshalJSON() ([]byte, error) {
+	if ns.Valid {
+		return json.Marshal(ns.Slice)
+	}
+	return json.Marshal(nil)
+}
+
+func (ns *NullIntSlice) UnmarshalJSON(text []byte) error {
+	ns.Valid = false
+	if string(text) == "null" {
+		return nil
+	}
+	if err := json.Unmarshal(text, &ns.Slice); err == nil {
+		ns.Valid = true
+	}
+	return nil
+}
+
 // ----------------------------- END OF NULLABLE TYPE DEFINITION -----------------------------

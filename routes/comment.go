@@ -103,9 +103,7 @@ func (r *commentsHandler) GetComments(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"_items": result})
 }
-func (r *commentsHandler) GetThread(c *gin.Context) {
-	c.Status(http.StatusOK)
-}
+
 func (r *commentsHandler) GetRC(c *gin.Context) {
 	var args = &models.GetReportedCommentArgs{}
 	args = args.Default()
@@ -122,6 +120,7 @@ func (r *commentsHandler) GetRC(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"_items": result})
 }
+
 func (r *commentsHandler) PostRC(c *gin.Context) {
 	report := models.ReportedComment{}
 	err := c.Bind(&report)
@@ -146,6 +145,7 @@ func (r *commentsHandler) PostRC(c *gin.Context) {
 
 	c.Status(http.StatusOK)
 }
+
 func (r *commentsHandler) PutRC(c *gin.Context) {
 	report := models.ReportedComment{}
 	err := c.Bind(&report)

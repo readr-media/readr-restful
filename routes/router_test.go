@@ -75,7 +75,7 @@ func TestMain(m *testing.M) {
 	AuthHandler.SetRoutes(r)
 	CommentsHandler.SetRoutes(r)
 	FollowingHandler.SetRoutes(r)
-	MailHandler.SetRoutes(r, initMailDialer())
+	MailHandler.SetRoutes(r, InitMailDialer())
 	MemberHandler.SetRoutes(r)
 	MemoHandler.SetRoutes(r)
 	MiscHandler.SetRoutes(r)
@@ -115,6 +115,9 @@ func TestMain(m *testing.M) {
 	models.MailAPI = new(mockMailAPI)
 	models.ReportAPI = new(mockReportAPI)
 	models.PointsAPI = new(mockPointsAPI)
+
+	models.FollowCache = new(mockFollowCache)
+	//models.CommentCache = new(mockCommentCache)
 
 	os.Exit(m.Run())
 }
