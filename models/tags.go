@@ -231,20 +231,21 @@ func (t *tagApi) UpdatePostTags(post_id int, tag_ids []int) error {
 
 	_ = tx.MustExec(fmt.Sprintf("DELETE FROM post_tags WHERE post_id=%d;", post_id))
 
-	var insqueryBuffer bytes.Buffer
-	var insargs []interface{}
-	insqueryBuffer.WriteString("INSERT IGNORE INTO post_tags (post_id, tag_id) VALUES ")
-	for index, tag_id := range tag_ids {
-		insqueryBuffer.WriteString("( ? ,? )")
-		insargs = append(insargs, post_id, tag_id)
-		if index < len(tag_ids)-1 {
-			insqueryBuffer.WriteString(",")
-		} else {
-			insqueryBuffer.WriteString(";")
+	if len(tag_ids) > 0 {
+		var insqueryBuffer bytes.Buffer
+		var insargs []interface{}
+		insqueryBuffer.WriteString("INSERT IGNORE INTO post_tags (post_id, tag_id) VALUES ")
+		for index, tag_id := range tag_ids {
+			insqueryBuffer.WriteString("( ? ,? )")
+			insargs = append(insargs, post_id, tag_id)
+			if index < len(tag_ids)-1 {
+				insqueryBuffer.WriteString(",")
+			} else {
+				insqueryBuffer.WriteString(";")
+			}
 		}
+		_ = tx.MustExec(insqueryBuffer.String(), insargs...)
 	}
-	_ = tx.MustExec(insqueryBuffer.String(), insargs...)
-
 	tx.Commit()
 
 	// Write to new post data to search feed
