@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/routes"
@@ -123,6 +124,13 @@ func main() {
 	routes.PubsubHandler.SetRoutes(router)
 	routes.ReportHandler.SetRoutes(router)
 	routes.TagHandler.SetRoutes(router)
+
+	// Implemented Prometheus metrics
+	router.GET("/metrics", func() gin.HandlerFunc {
+		return func(c *gin.Context) {
+			promhttp.Handler().ServeHTTP(c.Writer, c.Request)
+		}
+	}())
 
 	router.Run()
 }
