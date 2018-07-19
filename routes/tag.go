@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -26,8 +27,9 @@ func (r *tagHandler) Get(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Sorting Option"})
 		return
 	}
-	if args.Sorting == "text" {
-		args.Sorting = "tag_content"
+
+	if matched, err := regexp.MatchString("-?text", args.Sorting); err == nil && matched {
+		args.Sorting = strings.Replace(args.Sorting, "text", "tag_content", 1)
 	}
 
 	result, err := models.TagAPI.GetTags(args)
