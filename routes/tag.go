@@ -26,6 +26,9 @@ func (r *tagHandler) Get(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Sorting Option"})
 		return
 	}
+	if args.Sorting == "text" {
+		args.Sorting = "tag_content"
+	}
 
 	result, err := models.TagAPI.GetTags(args)
 	if err != nil {
