@@ -112,7 +112,7 @@ func (t *mockTagAPI) UpdatePostTags(postId int, tag_ids []int) error {
 	return nil
 }
 
-func (t *mockTagAPI) CountTags() (int, error) {
+func (t *mockTagAPI) CountTags(args models.GetTagsArgs) (int, error) {
 	var result []models.Tag
 
 	for _, t := range mockTagDS {
@@ -233,6 +233,15 @@ func TestRouteTags(t *testing.T) {
 			genericDoTest(testcase, t, asserter)
 		}
 	})
+
+	t.Run("CountTags", func(t *testing.T) {
+		for _, testcase := range []genericTestcase{
+			genericTestcase{"CountTagsOK", "GET", "/tags/count", ``, http.StatusOK, `{"_meta":{"total":4}}`},
+			genericTestcase{"CountTagsOK", "GET", "/tags/count?keyowrd=tag", ``, http.StatusOK, `{"_meta":{"total":4}}`},
+		} {
+			genericDoTest(testcase, t, asserter)
+		}
+	})
 	t.Run("InsertTag", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
 			genericTestcase{"PostTagOK", "POST", "/tags", `{"text":"insert1", "updated_by":931}`, http.StatusOK, `{"tag_id":5}`},
@@ -255,13 +264,6 @@ func TestRouteTags(t *testing.T) {
 			genericTestcase{"DeleteTagOK", "DELETE", "/tags?ids=[1, 2, 3, 4]&updated_by=AMI@mirrormedia.mg", ``, http.StatusOK, ``},
 			genericTestcase{"DeleteTagWithoutUpdater", "DELETE", "/tags?ids=[1, 2, 3, 4]", ``, http.StatusBadRequest, `{"Error":"Bad Updater"}`},
 			genericTestcase{"DeleteTagNoIds", "DELETE", "/tags?", ``, http.StatusBadRequest, `{"Error":"Bad Tag IDs"}`},
-		} {
-			genericDoTest(testcase, t, asserter)
-		}
-	})
-	t.Run("CountTags", func(t *testing.T) {
-		for _, testcase := range []genericTestcase{
-			genericTestcase{"CountTagsOK", "GET", "/tags/count", ``, http.StatusOK, `{"_meta":{"total":1}}`},
 		} {
 			genericDoTest(testcase, t, asserter)
 		}
