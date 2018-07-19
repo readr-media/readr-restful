@@ -20,15 +20,6 @@ type followCache struct {
 	redisFieldKey string
 }
 
-func (f *followCache) followTypeMap(ftypeI int) (ftypeS string) {
-	for k, v := range config.Config.Models.Emotions {
-		if v == ftypeI {
-			return k
-		}
-	}
-	return "follow"
-}
-
 func (f followCache) Update(input GetFollowedArgs, followeds []FollowedCount) {
 	conn := RedisHelper.Conn()
 	defer conn.Close()

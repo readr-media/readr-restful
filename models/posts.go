@@ -63,7 +63,7 @@ type PostInterface interface {
 
 type TaggedPost struct {
 	Post
-	Tags []int `json:"tags" db:"tags"`
+	Tags NullIntSlice `json:"tags" db:"tags"`
 }
 
 type TaggedPostMember struct {
