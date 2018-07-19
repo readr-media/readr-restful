@@ -137,7 +137,14 @@ func (r *tagHandler) Delete(c *gin.Context) {
 }
 
 func (r *tagHandler) Count(c *gin.Context) {
-	count, err := models.TagAPI.CountTags()
+	args := models.DefaultGetTagsArgs()
+	err := c.Bind(&args)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
+	}
+
+	count, err := models.TagAPI.CountTags(args)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 		return

@@ -30,7 +30,7 @@ type TagInterface interface {
 	InsertTag(tag Tag) (int, error)
 	UpdateTag(tag Tag) error
 	UpdatePostTags(postId int, tag_ids []int) error
-	CountTags() (int, error)
+	CountTags(args GetTagsArgs) (int, error)
 }
 
 type GetTagsArgs struct {
@@ -257,9 +257,18 @@ func (t *tagApi) UpdatePostTags(post_id int, tag_ids []int) error {
 	return nil
 }
 
-func (a *tagApi) CountTags() (result int, err error) {
+func (a *tagApi) CountTags(args GetTagsArgs) (result int, err error) {
+	var query bytes.Buffer
+	query.WriteString(fmt.Sprintf(`SELECT COUNT(*) FROM tags WHERE active=%d `, config.Config.Models.Tags["active"]))
 
-	err = DB.Get(&result, `SELECT COUNT(*) FROM tags WHERE active = 1`)
+	if args.Keyword != "" {
+		query.WriteString(` AND tag_content LIKE ?`)
+		args.Keyword = "%" + args.Keyword + "%"
+		err = DB.Get(&result, query.String(), args.Keyword)
+	} else {
+		err = DB.Get(&result, query.String())
+	}
+
 	if err != nil {
 		return 0, err
 	}
