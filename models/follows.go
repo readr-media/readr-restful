@@ -290,7 +290,7 @@ type Resource struct {
 }
 
 type FollowedCount struct {
-	Resourceid int64
+	ResourceID int64
 	Count      int
 	Follower   []int64
 }

@@ -30,7 +30,7 @@ func (f followCache) Update(input GetFollowedArgs, followeds []FollowedCount) {
 		s, _ := json.Marshal(followed.Follower)
 		conn.Send("HSET", redis.Args{}.
 			Add(fmt.Sprintf(f.redisIndexKey, input.Emotion)).
-			Add(fmt.Sprintf(f.redisFieldKey, input.ResourceName, followed.Resourceid)).
+			Add(fmt.Sprintf(f.redisFieldKey, input.ResourceName, followed.ResourceID)).
 			Add(s)...)
 	}
 
