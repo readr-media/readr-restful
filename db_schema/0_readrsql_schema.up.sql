@@ -181,6 +181,17 @@ CREATE TABLE `permissions` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Dumping data for table `permissions`
+--
+
+LOCK TABLES `permissions` WRITE;
+/*!40000 ALTER TABLE `permissions` DISABLE KEYS */;
+INSERT INTO `permissions` VALUES (1,'AddComment',1),(1,'ChangeName',1),(1,'ChangePW',1),(1,'DeleteComment',1),(1,'EditComment',1),(1,'FollowEditor',1),(1,'FollowPost',1),(1,'FollowProject',1),(2,'AddComment',1),(2,'ChangeName',1),(2,'ChangePW',1),(2,'CreatePost',1),(2,'DeleteComment',1),(2,'DeletePost',1),(2,'EditComment',1),(2,'EditPost',1),(2,'FollowEditor',1),(2,'FollowPost',1),(2,'FollowProject',1),(3,'AddComment',1),(3,'ChangeName',1),(3,'ChangePW',1),(3,'CreatePost',1),(3,'CreateTag',1),(3,'CreateVideo',1),(3,'DeleteComment',1),(3,'DeleteOtherComment',1),(3,'DeleteOtherPost',1),(3,'DeletePost',1),(3,'DeleteTag',1),(3,'DeleteVideo',1),(3,'EditComment',1),(3,'EditOtherPost',1),(3,'EditPost',1),(3,'EditRole',1),(3,'EditTag',1),(3,'EditVideo',1),(3,'FollowEditor',1),(3,'FollowPost',1),(3,'FollowProject',1),(3,'PublishPost',1),(3,'PublishVideo',1),(9,'AddComment',1),(9,'AddRole',1),(9,'ChangeName',1),(9,'ChangePW',1),(9,'CreateAccount',1),(9,'CreatePost',1),(9,'CreateTag',1),(9,'CreateVideo',1),(9,'DeleteComment',1),(9,'DeleteOtherComment',1),(9,'DeleteOtherPost',1),(9,'DeletePost',1),(9,'DeleteRole',1),(9,'DeleteTag',1),(9,'DeleteVideo',1),(9,'EditComment',1),(9,'EditOtherPost',1),(9,'EditPost',1),(9,'EditRole',1),(9,'EditTag',1),(9,'EditVideo',1),(9,'FollowEditor',1),(9,'FollowPost',1),(9,'FollowProject',1),(9,'PublishPost',1),(9,'PublishVideo',1);
+/*!40000 ALTER TABLE `permissions` ENABLE KEYS */;
+UNLOCK TABLES;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+--
 -- Table structure for table `points`
 --
 
