@@ -125,6 +125,7 @@
       height: 75px;
       object-fit: cover;
     }
+    
     @media screen and (max-width: 425px) {
       .source-figure__link-title {
         font-size: 14px;
@@ -198,6 +199,18 @@
     /* READr section only styles */
     .readr-article {
       margin: 18.5px 0 0 0;
+    }
+
+    /* newsletter footer */
+    .newsletter-footer {
+      margin-top: 20px;
+      text-align: center;
+    }
+    .newsletter-footer__unsubscribe {
+      color: #aaa9a1;
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-decoration: none;
     }
   </style>
 </head>
@@ -316,6 +329,9 @@
       {{end}}
     </section>
     {{end}}
+    <footer class='newsletter-footer'>
+      <a href="{{.SubLink}}" class="newsletter-footer__unsubscribe">取消訂閱 Unsubscribe</a>
+    </footer>
   </div>
 </body>
 </html>

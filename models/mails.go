@@ -11,6 +11,7 @@ import (
 	"text/template"
 
 	"github.com/garyburd/redigo/redis"
+	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/config"
 	"gopkg.in/gomail.v2"
 )
@@ -188,6 +189,7 @@ type dailyDigest struct {
 	HasMemo      bool
 	HasPost      bool
 	HasReadrPost bool
+	SubLink      string
 }
 type dailyReport struct {
 	ID          int    `db:"id"`
@@ -229,8 +231,22 @@ type dailyPost struct {
 	Image      string `db:"image"`
 	Order      int
 }
+type mailReceiver struct {
+	Mail string `db:"mail"`
+	Role int    `db:"role"`
+}
+
+func (m *mailApi) GetSubLink() map[int]string {
+	return map[int]string{
+		9: "https://www.readr.tw/admin",
+		3: "https://www.readr.tw/editor",
+		2: "https://www.readr.tw/guesteditor",
+		1: "https://www.readr.tw/member",
+	}
+}
 
 func (m *mailApi) GenDailyDigest() (err error) {
+	subLink := m.GetSubLink()
 	date := time.Now() //.AddDate(0, 0, -1)
 	reports, err := m.getDailyReport()
 	if err != nil {
@@ -287,13 +303,16 @@ OLP:
 	data.HasPost = len(data.Posts) > 0
 	data.HasReadrPost = len(data.ReadrPosts) > 0
 
-	buf := new(bytes.Buffer)
-	err = t.Execute(buf, data)
-	s := buf.String()
+	for k, v := range subLink {
+		data.SubLink = v
+		buf := new(bytes.Buffer)
+		err = t.Execute(buf, data)
+		s := buf.String()
 
-	conn := RedisHelper.Conn()
-	defer conn.Close()
-	conn.Send("SET", "dailydigest", s)
+		conn := RedisHelper.Conn()
+		defer conn.Close()
+		conn.Send("SET", fmt.Sprintf("dailydigest_%d", k), s)
+	}
 
 	return err
 }
@@ -347,18 +366,30 @@ func (m *mailApi) getDailyPost() (posts []dailyPost, err error) {
 	return posts, err
 }
 
-func (m *mailApi) getMailingList() (list []string, err error) {
+func (m *mailApi) getMailingList(receiverList []string) (list []mailReceiver, err error) {
 	// query := fmt.Sprintf("SELECT mail FROM members WHERE active = %d", int(MemberStatus["active"].(float64)))
-	query := fmt.Sprintf("SELECT mail FROM members WHERE active = %d AND daily_push = %d", config.Config.Models.Members["active"], config.Config.Models.MemberDailyPush["active"])
-	rows, err := DB.Queryx(query)
-	for rows.Next() {
-		var mail string
-		if err = rows.Scan(&mail); err != nil {
+	var rows *sqlx.Rows
+	if len(receiverList) > 0 {
+		query, args, err := sqlx.In(fmt.Sprintf("SELECT mail, role FROM members WHERE active = %d AND mail IN (?);", config.Config.Models.Members["active"]), receiverList)
+		if err != nil {
 			return list, err
 		}
-		list = append(list, mail)
+
+		query = DB.Rebind(query)
+		log.Println(query, args)
+		rows, err = DB.Queryx(query, args...)
+	} else {
+		query := fmt.Sprintf("SELECT mail, role FROM members WHERE active = %d AND daily_push = %d", config.Config.Models.Members["active"], config.Config.Models.MemberDailyPush["active"])
+		rows, err = DB.Queryx(query)
 	}
-	return list, err
+	for rows.Next() {
+		var receiver mailReceiver
+		if err = rows.StructScan(&receiver); err != nil {
+			return list, err
+		}
+		list = append(list, receiver)
+	}
+	return list, nil
 }
 
 func (m *mailApi) htmlEscape(s string, length int) string {
@@ -371,28 +402,9 @@ func (m *mailApi) htmlEscape(s string, length int) string {
 		return string(r)
 	}
 }
-func (m *mailApi) SendDailyDigest(mailList []string) (err error) {
+
+func (m *mailApi) sendDailyDigestToAll(s string, mailList []string) (err error) {
 	date := time.Now()
-
-	conn := RedisHelper.Conn()
-	defer conn.Close()
-	s, err := redis.Bytes(conn.Do("GET", "dailydigest"))
-	if err != nil {
-		log.Println("Send mail error: ", err.Error())
-		if err.Error() == "redigo: nil returned" {
-			return errors.New("Not Found")
-		} else {
-			return err
-		}
-	}
-
-	if len(mailList) == 0 {
-		mailList, err = m.getMailingList()
-		if err != nil {
-			log.Println("Get mailing list error:", err.Error())
-		}
-	}
-
 	for len(mailList) > 0 {
 		receiver := mailList
 		if len(mailList) > 100 {
@@ -404,16 +416,53 @@ func (m *mailApi) SendDailyDigest(mailList []string) (err error) {
 
 		args := MailArgs{
 			Subject: fmt.Sprintf("Readr %d/%d 選文", int(date.Month()), date.Day()),
-			Payload: string(s),
+			Payload: s,
 			BCC:     receiver,
 		}
 
 		err = m.Send(args)
 		if err != nil {
 			log.Println("Send mail error:", err.Error())
+			return err
 		}
 	}
 
+	return err
+
+}
+
+func (m *mailApi) SendDailyDigest(mailList []string) (err error) {
+	conn := RedisHelper.Conn()
+	defer conn.Close()
+
+	subLink := m.GetSubLink()
+
+	mailReceiverList, err := m.getMailingList(mailList)
+	if err != nil {
+		log.Println("Get mailing list error:", err.Error())
+	}
+
+	for k, _ := range subLink {
+		var mails []string
+
+		s, err := redis.Bytes(conn.Do("GET", fmt.Sprintf("dailydigest_%d", k)))
+		if err != nil {
+			log.Println("Redis commend error: ", err.Error())
+			if err.Error() == "redigo: nil returned" {
+				return errors.New("Not Found")
+			} else {
+				return err
+			}
+		}
+
+		for _, receiver := range mailReceiverList {
+			if receiver.Role == k {
+				mails = append(mails, receiver.Mail)
+			}
+		}
+
+		err = m.sendDailyDigestToAll(string(s), mails)
+	}
 	return err
 }
 
