@@ -406,6 +406,11 @@ func (m *memoAPI) InsertMemo(memo Memo) (err error) {
 		return errors.New("Post Not Found")
 	}
 
+	if memo.PublishStatus.Valid && memo.PublishStatus.Int == int64(config.Config.Models.MemosPublishStatus["publish"]) &&
+		memo.Active.Valid && memo.Active.Int == int64(config.Config.Models.Memos["active"]) {
+		go NotificationGen.GenerateProjectNotifications(memo, "memo")
+	}
+
 	return err
 }
 
@@ -426,6 +431,18 @@ func (m *memoAPI) UpdateMemo(memo Memo) (err error) {
 		return errors.New("More Than One Rows Affected")
 	} else if rowCnt == 0 {
 		return errors.New("Not Found")
+	}
+
+	if memo.PublishStatus.Valid || memo.Active.Valid {
+		m, err := m.GetMemo(memo.ID)
+		if err != nil {
+			return errors.New(fmt.Sprintf("Fail get memo: %d", memo.ID))
+		}
+
+		if m.PublishStatus.Int == int64(config.Config.Models.MemosPublishStatus["publish"]) &&
+			m.Active.Int == int64(config.Config.Models.Memos["active"]) {
+			go NotificationGen.GenerateProjectNotifications(m, "memo")
+		}
 	}
 
 	return err
