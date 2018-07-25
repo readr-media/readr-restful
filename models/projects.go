@@ -319,10 +319,11 @@ func (a *projectAPI) UpdateProjects(p Project) error {
 		return errors.New("Project Not Found")
 	}
 
-	if p.Active.Valid == true && p.Active.Int != 1 {
+	if (p.PublishStatus.Valid && p.PublishStatus.Int != int64(config.Config.Models.ProjectsPublishStatus["publish"])) ||
+		(p.Active.Valid == true && p.Active.Int != int64(config.Config.Models.ProjectsActive["active"])) {
 		// Case: Set a project to unpublished state, Delete the project from cache/searcher
 		go Algolia.DeleteProject([]int{p.ID})
-	} else {
+	} else if p.PublishStatus.Valid || p.Active.Valid {
 		// Case: Publish a project or update a project.
 		// Read whole project from database, then store to cache/searcher.
 		arg := GetProjectArgs{}
@@ -336,7 +337,23 @@ func (a *projectAPI) UpdateProjects(p Project) error {
 			log.Printf("Error When Getting Project to Insert to Algolia: %v", err.Error())
 			return nil
 		}
-		go Algolia.InsertProject(projects)
+
+		if projects[0].PublishStatus.Int == int64(config.Config.Models.ProjectsPublishStatus["publish"]) &&
+			projects[0].Active.Int == int64(config.Config.Models.ProjectsActive["active"]) {
+			go Algolia.InsertProject(projects)
+		}
+	}
+
+	if (p.Status.Valid && p.Status.Int == int64(config.Config.Models.ProjectsStatus["done"])) ||
+		p.Progress.Valid {
+		project, err := a.GetProject(p)
+		if err != nil {
+			return errors.New(fmt.Sprintf("Fail get project: %d", p.ID))
+		}
+		if project.PublishStatus.Int == int64(config.Config.Models.ProjectsPublishStatus["publish"]) &&
+			project.Active.Int == int64(config.Config.Models.ProjectsActive["active"]) {
+			go NotificationGen.GenerateProjectNotifications(p, "project")
+		}
 	}
 	return nil
 }

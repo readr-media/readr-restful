@@ -20,14 +20,14 @@ type UpdateNotificationArgs struct {
 
 type Notification struct {
 	ID           string `redis:"id" json:"id"`
-	SubjectID    string `redis:"subject_id" json:"subject_id"`
+	SubjectID    int    `redis:"subject_id" json:"subject_id"`
 	Nickname     string `redis:"nickname" json:"nickname"`
 	ProfileImage string `redis:"profile_image" json:"profile_image"`
 	ObjectName   string `redis:"object_name" json:"object_name,omitempty"`
 	ObjectType   string `redis:"object_type" json:"object_type,omitempty"`
-	ObjectID     string `redis:"object_id" json:"object_id,omitempty"`
+	ObjectID     int    `redis:"object_id" json:"object_id,omitempty"`
 	ObjectSlug   string `redis:"object_slug" json:"object_slug,omitempty"`
-	PostType     string `redis:"post_type" json:"post_type,omitempty"`
+	PostType     int    `redis:"post_type" json:"post_type,omitempty"`
 	EventType    string `redis:"event_type" json:"event_type"`
 	Timestamp    string `redis:"timestamp" json:"timestamp"`
 	Read         bool   `redis:"read" json:"read"`
@@ -46,10 +46,10 @@ func NewNotification(event string) Notification {
 	}
 }
 
-type Notifications map[string]Notification
+type Notifications map[int]Notification
 
 func (n Notifications) Send() {
-	ids := make([]string, 0, len(n))
+	ids := make([]int, 0, len(n))
 	for k, _ := range n {
 		ids = append(ids, k)
 	}
@@ -112,12 +112,12 @@ func (n Notifications) Send() {
 	}
 }
 
-func (n Notifications) getMemberMail(ids []string) (result map[string]string, err error) {
+func (n Notifications) getMemberMail(ids []int) (result map[int]string, err error) {
 	type memberMail struct {
-		ID   string `db:"id"`
+		ID   int    `db:"id"`
 		Mail string `db:"mail"`
 	}
-	result = make(map[string]string)
+	result = make(map[int]string)
 	query := "SELECT id, mail FROM members WHERE id IN (?);"
 	query, args, err := sqlx.In(query, ids)
 	if err != nil {

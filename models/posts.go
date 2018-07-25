@@ -349,10 +349,8 @@ func (a *postAPI) InsertPost(p Post) (int, error) {
 	}
 
 	// Only insert a post when it's published
-	// if p.Active.Valid == true && p.Active.Int == int64(PostStatus["active"].(float64)) {
-	if p.Active.Valid == true && p.Active.Int == int64(config.Config.Models.Posts["active"]) {
-		// if p.PublishStatus.Valid == true && p.PublishStatus.Int == int64(PostPublishStatus["publish"].(float64)) {
-		if p.PublishStatus.Valid == true && p.PublishStatus.Int == int64(config.Config.Models.PostPublishStatus["publish"]) {
+	if !p.Active.Valid || p.Active.Int != int64(config.Config.Models.Posts["deactive"]) {
+		if p.PublishStatus.Valid && p.PublishStatus.Int == int64(config.Config.Models.PostPublishStatus["publish"]) {
 			if p.ID == 0 {
 				p.ID = uint32(lastID)
 			}
@@ -363,6 +361,7 @@ func (a *postAPI) InsertPost(p Post) (int, error) {
 				return 0, err
 			}
 			go Algolia.InsertPost([]TaggedPostMember{post})
+			go NotificationGen.GeneratePostNotifications(post)
 		}
 	}
 	return int(lastID), err
@@ -390,21 +389,23 @@ func (a *postAPI) UpdatePost(p Post) error {
 	go PostCache.Update(p)
 
 	// if (p.PublishStatus.Valid == true && p.PublishStatus.Int != int64(PostPublishStatus["publish"].(float64))) || (p.Active.Valid == true && p.Active.Int != int64(PostStatus["active"].(float64))) {
-	if (p.PublishStatus.Valid == true && p.PublishStatus.Int != int64(config.Config.Models.PostPublishStatus["publish"])) || (p.Active.Valid == true && p.Active.Int != int64(config.Config.Models.Posts["active"])) {
+	if (p.PublishStatus.Valid && p.PublishStatus.Int != int64(config.Config.Models.PostPublishStatus["publish"])) ||
+		(p.Active.Valid && p.Active.Int != int64(config.Config.Models.Posts["active"])) {
 		// Case: Set a post to unpublished state, Delete the post from cache/searcher
 		go Algolia.DeletePost([]int{int(p.ID)})
-	} else {
+	} else if p.PublishStatus.Valid || p.Active.Valid {
 		// Case: Publish a post. Read whole post from database, then store to cache/searcher
 		// Case: Update a post.
 		tpm, err := a.GetPost(p.ID)
 		if err != nil {
 			return err
 		}
-
+		activeStatus := tpm.PostMember.Post.Active
 		publishStatus := tpm.PostMember.Post.PublishStatus
-		// if publishStatus.Valid == true && publishStatus.Int == int64(PostPublishStatus["publish"].(float64)) {
-		if publishStatus.Valid == true && publishStatus.Int == int64(config.Config.Models.PostPublishStatus["publish"]) {
+		if publishStatus.Int == int64(config.Config.Models.PostPublishStatus["publish"]) &&
+			activeStatus.Int == int64(config.Config.Models.Posts["active"]) {
 			go Algolia.InsertPost([]TaggedPostMember{tpm})
+			go NotificationGen.GeneratePostNotifications(tpm)
 		}
 	}
 	return err
@@ -456,10 +457,11 @@ func (a *postAPI) UpdateAll(req PostUpdateArgs) error {
 	go PostCache.UpdateAll(req)
 
 	// if (req.PublishStatus.Valid == true && req.PublishStatus.Int != int64(PostPublishStatus["publish"].(float64))) || (req.Active.Valid == true && req.Active.Int != int64(PostStatus["active"].(float64))) {
-	if (req.PublishStatus.Valid == true && req.PublishStatus.Int != int64(config.Config.Models.PostPublishStatus["publish"])) || (req.Active.Valid == true && req.Active.Int != int64(config.Config.Models.Posts["active"])) {
+	if (req.PublishStatus.Valid && req.PublishStatus.Int != int64(config.Config.Models.PostPublishStatus["publish"])) ||
+		(req.Active.Valid && req.Active.Int != int64(config.Config.Models.Posts["active"])) {
 		// Case: Set a post to unpublished state, Delete the post from cache/searcher
 		go Algolia.DeletePost(req.IDs)
-	} else if req.Active.Valid == true {
+	} else if req.Active.Valid || req.PublishStatus.Valid {
 		// Case: Publish posts. Read those post from database, then store to cache/searcher
 		tpms := []TaggedPostMember{}
 		for _, id := range req.IDs {
@@ -468,6 +470,11 @@ func (a *postAPI) UpdateAll(req PostUpdateArgs) error {
 				return err
 			}
 			tpms = append(tpms, tpm)
+
+			if tpm.PublishStatus.Int == int64(config.Config.Models.PostPublishStatus["publish"]) &&
+				tpm.Active.Int == int64(config.Config.Models.Posts["active"]) {
+				go NotificationGen.GeneratePostNotifications(tpm)
+			}
 		}
 		go Algolia.InsertPost(tpms)
 	}
@@ -498,7 +505,6 @@ func (a *postAPI) Count(req *PostArgs) (result int, err error) {
 		}
 		query = DB.Rebind(query)
 		count, err := DB.Queryx(query, args...)
-		fmt.Println(query, args)
 		if err != nil {
 			return 0, err
 		}

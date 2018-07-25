@@ -295,28 +295,34 @@ func (a *reportAPI) InsertReport(p Report) (lastID int, err error) {
 		log.Printf("Fail to get last insert ID when insert a report: %v", err)
 		return lastID, err
 	}
+	lastID = int(lastid)
 
 	// Only insert a report when it's active
 	// if p.Active.Valid == true && p.Active.Int == int64(ReportActive["active"].(float64)) {
-	if p.Active.Valid == true && p.Active.Int == int64(config.Config.Models.Reports["active"]) {
-		if p.ID == 0 {
-			p.ID = int(lastID)
+	if !p.Active.Valid || p.Active.Int != int64(config.Config.Models.Reports["deactive"]) {
+		if p.PublishStatus.Valid && p.PublishStatus.Int == int64(config.Config.Models.ReportsPublishStatus["publish"]) {
+			if p.ID == 0 {
+				p.ID = int(lastID)
+			}
+			arg := GetReportArgs{}
+			arg.Default()
+			arg.IDs = []int{p.ID}
+			arg.Fields = arg.FullAuthorTags()
+			arg.MaxResult = 1
+			arg.Page = 1
+			reports, err := ReportAPI.GetReports(arg)
+			if err != nil {
+				log.Printf("Error When Getting Report to Insert to Algolia: %v", err.Error())
+				return lastID, nil
+			}
+			go Algolia.InsertReport(reports)
+			if len(reports) > 0 {
+				go NotificationGen.GenerateProjectNotifications(reports[0], "report")
+			}
 		}
-		arg := GetReportArgs{}
-		arg.Default()
-		arg.IDs = []int{p.ID}
-		arg.Fields = arg.FullAuthorTags()
-		arg.MaxResult = 1
-		arg.Page = 1
-		reports, err := ReportAPI.GetReports(arg)
-		if err != nil {
-			log.Printf("Error When Getting Report to Insert to Algolia: %v", err.Error())
-			return lastID, nil
-		}
-		go Algolia.InsertReport(reports)
 	}
 
-	return int(lastid), nil
+	return int(lastID), nil
 }
 
 func (a *reportAPI) UpdateReport(p Report) error {
@@ -342,10 +348,11 @@ func (a *reportAPI) UpdateReport(p Report) error {
 	}
 
 	// if p.Active.Valid == true && p.Active.Int != int64(ReportActive["active"].(float64)) {
-	if p.Active.Valid == true && p.Active.Int != int64(config.Config.Models.Reports["active"]) {
+	if (p.PublishStatus.Valid && p.PublishStatus.Int != int64(config.Config.Models.ReportsPublishStatus["publish"])) ||
+		(p.Active.Valid && p.Active.Int != int64(config.Config.Models.Reports["active"])) {
 		// Case: Set a report to unpublished state, Delete the report from cache/searcher
 		go Algolia.DeleteReport([]int{p.ID})
-	} else {
+	} else if p.PublishStatus.Valid || p.Active.Valid {
 		// Case: Publish a report or update a report.
 		// Read whole report from database, then store to cache/searcher.
 		arg := GetReportArgs{}
@@ -359,7 +366,13 @@ func (a *reportAPI) UpdateReport(p Report) error {
 			log.Printf("Error When Getting Report to Insert to Algolia: %v", err.Error())
 			return nil
 		}
-		go Algolia.InsertReport(reports)
+
+		if reports[0].PublishStatus.Int == int64(config.Config.Models.ReportsPublishStatus["publish"]) &&
+			reports[0].Active.Int == int64(config.Config.Models.Reports["active"]) {
+			go Algolia.InsertReport(reports)
+			go NotificationGen.GenerateProjectNotifications(reports[0], "report")
+		}
+
 	}
 	return nil
 }
