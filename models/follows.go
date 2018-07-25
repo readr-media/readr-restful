@@ -292,7 +292,7 @@ type Resource struct {
 type FollowedCount struct {
 	ResourceID int64
 	Count      int
-	Follower   []int64
+	Followers  []int64
 }
 
 type FollowingMapItem struct {
