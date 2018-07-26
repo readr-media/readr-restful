@@ -290,9 +290,9 @@ type Resource struct {
 }
 
 type FollowedCount struct {
-	ResourceID int64
-	Count      int
-	Followers  []int64
+	ResourceID int64   `json:"ResourceID"`
+	Count      int     `json:"Count"`
+	Followers  []int64 `json:"Followers"`
 }
 
 type FollowingMapItem struct {
