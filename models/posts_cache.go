@@ -3,7 +3,6 @@ package models
 import (
 	"fmt"
 	"log"
-	"reflect"
 	"sort"
 	"time"
 
@@ -53,8 +52,29 @@ func (p *postCache) Update(post Post) {
 	conn := RedisHelper.Conn()
 	defer conn.Close()
 
-	conn.Send("MULTI")
 	for _, cache := range p.caches {
+		var postIDs []int
+		res, err := redis.Values(conn.Do("smembers", fmt.Sprint(cache.Key(), "ids")))
+		if err != nil {
+			log.Println("Fail to scan redis set: ", err)
+			return
+		}
+
+		if err := redis.ScanSlice(res, &postIDs); err != nil {
+			log.Printf("Error scan redis keys: %v", err)
+			return
+		}
+
+		for _, id := range postIDs {
+			if id == int(post.ID) {
+				cache.SyncFromDataStorage()
+				break
+			}
+		}
+	}
+
+	/*
+		conn.Send("MULTI")
 		keys, err := RedisHelper.GetRedisKeys(fmt.Sprint(cache.Key(), "[^follower]*"))
 		if err != nil {
 			log.Println(err)
@@ -96,23 +116,34 @@ func (p *postCache) Update(post Post) {
 				break
 			}
 		}
-	}
-
-	if _, err := redis.Values(conn.Do("EXEC")); err != nil {
-		log.Printf("Error insert cache change to redis: %v", err)
-		return
-	}
+		if _, err := redis.Values(conn.Do("EXEC")); err != nil {
+			log.Printf("Error insert cache change to redis: %v", err)
+			return
+		}
+	*/
 }
 
 func (p *postCache) Delete(post_id uint32) {
+
+	conn := RedisHelper.Conn()
+	defer conn.Close()
+
 	for _, cache := range p.caches {
-		keys, err := RedisHelper.GetRedisKeys(fmt.Sprint(cache.Key(), fmt.Sprint(post_id)))
+		res, err := redis.Values(conn.Do("smembers", fmt.Sprint(cache.Key(), "ids")))
 		if err != nil {
-			log.Println(err)
+			log.Println("Fail to scan redis set: ", err)
 			return
 		}
-		if len(keys) > 0 {
-			cache.SyncFromDataStorage()
+		var postIDs []int
+		if err := redis.ScanSlice(res, &postIDs); err != nil {
+			log.Printf("Error scan redis keys: %v", err)
+			return
+		}
+		for _, id := range postIDs {
+			if id == int(post_id) {
+				cache.SyncFromDataStorage()
+				break
+			}
 		}
 	}
 }
@@ -126,35 +157,58 @@ func (p *postCache) UpdateAll(params PostUpdateArgs) {
 	conn := RedisHelper.Conn()
 	defer conn.Close()
 
-	conn.Send("MULTI")
 	for _, cache := range p.caches {
-		keys, err := RedisHelper.GetRedisKeys(fmt.Sprint(cache.Key(), "[^follower]*"))
+		res, err := redis.Values(conn.Do("smembers", fmt.Sprint(cache.Key(), "ids")))
 		if err != nil {
-			log.Println(err)
+			log.Println("Fail to scan redis set: ", err)
 			return
 		}
-		for _, key := range keys {
-			for _, id := range params.IDs {
-				if key == fmt.Sprint(cache.Key, fmt.Sprint(id)) {
-					if params.UpdatedBy != "" {
-						conn.Send("HSET", key, "updated_by", params.UpdatedBy)
-					}
-					if params.UpdatedAt.Valid == true {
-						conn.Send("HSET", key, "updated_at", params.UpdatedAt)
-					}
-					if params.PublishedAt.Valid == true {
-						conn.Send("HSET", key, "published_at", params.PublishedAt)
-					}
-					break
+		var postIDs []int
+		if err := redis.ScanSlice(res, &postIDs); err != nil {
+			log.Printf("Error scan redis keys: %v", err)
+			return
+		}
+
+		for _, id := range postIDs {
+			for _, pid := range params.IDs {
+				if id == pid {
+					cache.SyncFromDataStorage()
+					return
 				}
 			}
 		}
 	}
+	/*
+		conn.Send("MULTI")
+		for _, cache := range p.caches {
+			keys, err := RedisHelper.GetRedisKeys(fmt.Sprint(cache.Key(), "[^follower]*"))
+			if err != nil {
+				log.Println(err)
+				return
+			}
+			for _, key := range keys {
+				for _, id := range params.IDs {
+					if key == fmt.Sprint(cache.Key, fmt.Sprint(id)) {
+						if params.UpdatedBy != "" {
+							conn.Send("HSET", key, "updated_by", params.UpdatedBy)
+						}
+						if params.UpdatedAt.Valid == true {
+							conn.Send("HSET", key, "updated_at", params.UpdatedAt)
+						}
+						if params.PublishedAt.Valid == true {
+							conn.Send("HSET", key, "published_at", params.PublishedAt)
+						}
+						break
+					}
+				}
+			}
+		}
 
-	if _, err := redis.Values(conn.Do("EXEC")); err != nil {
-		log.Printf("Error insert cache change to redis: %v", err)
-		return
-	}
+		if _, err := redis.Values(conn.Do("EXEC")); err != nil {
+			log.Printf("Error insert cache change to redis: %v", err)
+			return
+		}
+	*/
 }
 
 func (p *postCache) UpdateFollowing(action string, user_id int64, post_id int64) {
@@ -271,6 +325,8 @@ func (c latestPostCache) SyncFromDataStorage() {
 	}
 
 	conn.Send("MULTI")
+
+	var postIDs []int
 	rows_index := 0
 	for rows.Next() {
 		var postF struct {
@@ -284,11 +340,17 @@ func (c latestPostCache) SyncFromDataStorage() {
 			log.Printf("Error scan posts from db: %v", err)
 			return
 		}
+		postIDs = append(postIDs, int(postF.Post.ID))
 		rows_index += 1
+		conn.Send("DEL", fmt.Sprint(c.key, rows_index), fmt.Sprint(c.key, "follower_", rows_index))
 		conn.Send("HMSET", redis.Args{}.Add(fmt.Sprint(c.key, rows_index)).Add("author_nickname").Add(postF.AuthorNickname).Add("author_profileImage").Add(postF.AuthorProfileImage).AddFlat(&postF.Post)...)
 		conn.Send("SADD", redis.Args{}.Add(fmt.Sprint(c.key, "follower_", rows_index)).AddFlat(postF.PostFollower.String)...)
 
 	}
+
+	conn.Send("DEL", fmt.Sprint(c.key, "ids"))
+	conn.Send("SADD", redis.Args{}.Add(fmt.Sprint(c.key, "ids")).AddFlat(postIDs)...)
+
 	if _, err := redis.Values(conn.Do("EXEC")); err != nil {
 		log.Printf("Error insert cache to redis: %v", err)
 		return
@@ -392,6 +454,8 @@ func (c hottestPostCache) SyncFromDataStorage() {
 	conn := RedisHelper.Conn()
 	defer conn.Close()
 	conn.Send("MULTI")
+
+	var postIDs []int
 	for rows.Next() {
 		var postF struct {
 			Post
@@ -404,10 +468,15 @@ func (c hottestPostCache) SyncFromDataStorage() {
 			log.Printf("Error scan posts from db: %v", err)
 			return
 		}
+		postIDs = append(postIDs, int(postF.Post.ID))
 		postI := PostScoreIndex[int(postF.ID)].Index
+		conn.Send("DEL", fmt.Sprint(c.key, postI), fmt.Sprint(c.key, "follower_", postI))
 		conn.Send("HMSET", redis.Args{}.Add(fmt.Sprint(c.key, postI)).Add("author_nickname").Add(postF.AuthorNickname).Add("author_profileImage").Add(postF.AuthorProfileImage).AddFlat(&postF.Post)...)
 		conn.Send("SADD", redis.Args{}.Add(fmt.Sprint(c.key, "follower_", postI)).AddFlat(postF.PostFollower.String)...)
 	}
+
+	conn.Send("DEL", fmt.Sprint(c.key, "ids"))
+	conn.Send("SADD", redis.Args{}.Add(fmt.Sprint(c.key, "ids")).AddFlat(postIDs)...)
 
 	if _, err := redis.Values(conn.Do("EXEC")); err != nil {
 		log.Printf("Error insert cache to redis: %v", err)

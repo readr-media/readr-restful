@@ -42,6 +42,18 @@ func (r *redisHelper) GetRedisKeys(key string) ([]string, error) {
 	return keys, nil
 }
 
+func (r *redisHelper) GetRedisListLength(key string) (int, error) {
+	conn := r.Conn()
+	defer conn.Close()
+
+	l, err := redis.Int(conn.Do("LLEN", key))
+	if err != nil {
+		log.Println("Error getting length of redis list: %s, %v", key, err)
+		return 0, err
+	}
+	return l, err
+}
+
 func convertRedisAssign(dest, src interface{}) error {
 	var err error
 	b, ok := src.([]byte)

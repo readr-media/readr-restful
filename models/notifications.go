@@ -10,6 +10,7 @@ import (
 
 	"github.com/garyburd/redigo/redis"
 	"github.com/jmoiron/sqlx"
+	"github.com/readr-media/readr-restful/utils"
 )
 
 type UpdateNotificationArgs struct {
@@ -19,6 +20,7 @@ type UpdateNotificationArgs struct {
 }
 
 type Notification struct {
+	Member       int    `redis:"-" json:"-"`
 	ID           string `redis:"id" json:"id"`
 	SubjectID    int    `redis:"subject_id" json:"subject_id"`
 	Nickname     string `redis:"nickname" json:"nickname"`
@@ -33,25 +35,25 @@ type Notification struct {
 	Read         bool   `redis:"read" json:"read"`
 }
 
-func NewNotification(event string) Notification {
+func NewNotification(event string, member_id int) Notification {
 	tz, err := time.LoadLocation("Asia/Taipei")
 	if err != nil {
 		log.Println("Load timezone location error")
 	}
 	return Notification{
-		ID:        time.Now().In(tz).Format("20060102150405"),
 		Timestamp: time.Now().In(tz).Format("20060102150405"),
 		EventType: event,
+		Member:    member_id,
 		Read:      false,
 	}
 }
 
-type Notifications map[int]Notification
+type Notifications []Notification
 
 func (n Notifications) Send() {
 	ids := make([]int, 0, len(n))
-	for k, _ := range n {
-		ids = append(ids, k)
+	for _, v := range n {
+		ids = append(ids, v.Member)
 	}
 
 	if len(ids) == 0 {
@@ -68,43 +70,35 @@ func (n Notifications) Send() {
 	defer conn.Close()
 
 	conn.Send("MULTI")
-	for k, v := range n {
+	nsm := groupNotifications(n)
+	for memberID, ns := range nsm {
+		key := fmt.Sprint("notify_", mailMapping[memberID])
 
-		ns := [][]byte{}
-		key := fmt.Sprint("notify_", mailMapping[k])
-
-		res, err := redis.Values(conn.Do("LRANGE", key, "0", "49"))
+		redisNs, err := getNotificationsFromRedis(key)
 		if err != nil {
+			return
+		}
+		for _, v := range ns {
+			for _, redisV := range redisNs {
+				if redisV.ObjectType == v.ObjectType && redisV.ObjectID == v.ObjectID && redisV.EventType == v.EventType {
+					msg, _ := json.Marshal(redisV)
+					conn.Send("LREM", redis.Args{}.Add(key).Add("1").Add(msg)...)
+					break
+				}
+			}
+
+			UUID, _ := utils.NewUUIDv4()
+			v.ID = UUID.String()
 			msg, err := json.Marshal(v)
 			if err != nil {
 				log.Printf("Error marshaling notification comment event: %v", err)
 			}
-			conn.Send("LPUSH", redis.Args{}.Add(fmt.Sprint(key)).Add(msg)...)
-			conn.Send("LTRIM", redis.Args{}.Add(fmt.Sprint(key)).Add(0).Add(49)...)
-		} else {
-			if err = redis.ScanSlice(res, &ns); err != nil {
-				log.Printf("Error scan redis key: %s , %v", key, err)
-				return
-			}
-
-			for _, kv := range ns {
-				var n Notification
-				if err := json.Unmarshal(kv, &n); err != nil {
-					log.Printf("Error scan redis comment notification: %s , %v", kv, err)
-					break
-				}
-				if n.SubjectID == v.SubjectID && n.ObjectID == v.ObjectID && n.EventType == v.EventType {
-					break
-				}
-
-				msg, err := json.Marshal(v)
-				if err != nil {
-					log.Printf("Error marshaling notification comment event: %v", err)
-				}
-				conn.Send("LPUSH", redis.Args{}.Add(fmt.Sprint(key)).Add(msg)...)
-				conn.Send("LTRIM", redis.Args{}.Add(fmt.Sprint(key)).Add(0).Add(49)...)
-			}
+			conn.Send("LPUSH", redis.Args{}.Add(key).Add(msg)...)
 		}
+		conn.Send("LTRIM", redis.Args{}.Add(key).Add(0).Add(49)...)
+		/*
+			}
+		*/
 	}
 	if _, err := redis.Values(conn.Do("EXEC")); err != nil {
 		log.Printf("Error insert cache to redis: %v", err)
@@ -206,7 +200,59 @@ func (c *commentHandler) ReadNotifications(arg UpdateNotificationArgs) error {
 	}
 
 	return nil
-
 }
 
 var CommentHandler = commentHandler{}
+
+func groupNotifications(ns Notifications) map[int][]Notification {
+	nsm := make(map[int][]Notification)
+OuterLoop:
+	for _, v := range ns {
+		for k, u := range nsm[v.Member] {
+			if v.ObjectType == u.ObjectType && v.ObjectID == u.ObjectID && v.EventType == u.EventType {
+				nsm[v.Member][k] = v
+				break OuterLoop
+			}
+		}
+		nsm[v.Member] = append(nsm[v.Member], v)
+	}
+
+	return nsm
+}
+
+func getNotificationsFromRedis(key string) (redisNs []Notification, err error) {
+
+	conn := RedisHelper.Conn()
+	defer conn.Close()
+
+	llen, err := RedisHelper.GetRedisListLength(key)
+	if err != nil {
+		return redisNs, err
+	}
+	if llen > 50 {
+		llen = 49
+	} else {
+		llen -= 1
+	}
+	res, err := redis.Values(conn.Do("LRANGE", key, 0, llen))
+	if err != nil {
+		log.Printf("Error getting redis key: %s , %v", key, err)
+		return redisNs, err
+	}
+
+	redisNsByte := [][]byte{}
+	if err = redis.ScanSlice(res, &redisNsByte); err != nil {
+		log.Printf("Error scan redis key: %s , %v", key, err)
+		return redisNs, err
+	}
+
+	for _, redisNByte := range redisNsByte {
+		var redisN Notification
+		if err := json.Unmarshal(redisNByte, &redisN); err != nil {
+			log.Printf("Error scan redis comment notification: %s , %v", string(redisNByte), err)
+			break
+		}
+		redisNs = append(redisNs, redisN)
+	}
+	return redisNs, nil
+}
