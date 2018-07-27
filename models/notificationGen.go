@@ -95,33 +95,33 @@ func (c *notificationGenerator) GenerateCommentNotifications(comment InsertComme
 
 		for _, v := range postFollowers {
 			if v != int(commentDetail.Author.Int) {
-				ns[v] = NewNotification("follow_post_reply")
+				ns = append(ns, NewNotification("follow_post_reply", v))
 			}
 		}
 
 		for _, v := range authorFollowers {
 			if v != int(commentDetail.Author.Int) {
-				ns[v] = NewNotification("follow_member_reply")
+				ns = append(ns, NewNotification("follow_member_reply", v))
 			}
 		}
 
 		if commentDetail.Author.Int != post.Author.Int {
-			ns[int(post.Author.Int)] = NewNotification("post_reply")
+			ns = append(ns, NewNotification("post_reply", int(post.Author.Int)))
 		}
 
 		if len(commentors) > 0 {
-			for _, id := range commentors {
-				if id != int(commentDetail.Author.Int) {
-					ns[id] = NewNotification("comment_comment")
+			for _, v := range commentors {
+				if v != int(commentDetail.Author.Int) {
+					ns = append(ns, NewNotification("comment_comment", v))
 				}
 			}
 		}
 
 		if parentCommentDetail.Author.Valid && parentCommentDetail.Author.Int != commentDetail.Author.Int {
 			if commentDetail.Author.Int == post.Author.Int {
-				ns[int(parentCommentDetail.Author.Int)] = NewNotification("comment_reply_author")
+				ns = append(ns, NewNotification("comment_reply_author", int(parentCommentDetail.Author.Int)))
 			} else {
-				ns[int(parentCommentDetail.Author.Int)] = NewNotification("comment_reply")
+				ns = append(ns, NewNotification("comment_reply", int(parentCommentDetail.Author.Int)))
 			}
 		}
 
@@ -169,20 +169,20 @@ func (c *notificationGenerator) GenerateCommentNotifications(comment InsertComme
 
 		for _, v := range projectFollowers {
 			if v != int(commentDetail.Author.Int) {
-				ns[v] = NewNotification("follow_project_reply")
+				ns = append(ns, NewNotification("follow_project_reply", v))
 			}
 		}
 
 		if len(commentors) > 0 {
-			for _, id := range commentors {
-				if id != int(commentDetail.Author.Int) {
-					ns[id] = NewNotification("comment_comment")
+			for _, v := range commentors {
+				if v != int(commentDetail.Author.Int) {
+					ns = append(ns, NewNotification("comment_comment", v))
 				}
 			}
 		}
 
 		if parentCommentDetail.Author.Valid && parentCommentDetail.Author.Int != commentDetail.Author.Int {
-			ns[int(parentCommentDetail.Author.Int)] = NewNotification("comment_reply")
+			ns = append(ns, NewNotification("comment_reply", int(parentCommentDetail.Author.Int)))
 		}
 
 		for k, v := range ns {
@@ -239,20 +239,20 @@ func (c *notificationGenerator) GenerateCommentNotifications(comment InsertComme
 
 		for _, v := range followers {
 			if v != int(commentDetail.Author.Int) {
-				ns[v] = NewNotification("follow_memo_reply")
+				ns = append(ns, NewNotification("follow_memo_reply", v))
 			}
 		}
 
 		if len(commentors) > 0 {
-			for _, id := range commentors {
-				if id != int(commentDetail.Author.Int) {
-					ns[id] = NewNotification("comment_comment")
+			for _, v := range commentors {
+				if v != int(commentDetail.Author.Int) {
+					ns = append(ns, NewNotification("comment_comment", v))
 				}
 			}
 		}
 
 		if parentCommentDetail.Author.Valid && parentCommentDetail.Author.Int != commentDetail.Author.Int {
-			ns[int(parentCommentDetail.Author.Int)] = NewNotification("comment_reply")
+			ns = append(ns, NewNotification("comment_reply", int(parentCommentDetail.Author.Int)))
 		}
 
 		for k, v := range ns {
@@ -302,20 +302,20 @@ func (c *notificationGenerator) GenerateCommentNotifications(comment InsertComme
 
 		for _, v := range followers {
 			if v != int(commentDetail.Author.Int) {
-				ns[v] = NewNotification("follow_report_reply")
+				ns = append(ns, NewNotification("follow_report_reply", v))
 			}
 		}
 
 		if len(commentors) > 0 {
-			for _, id := range commentors {
-				if id != int(commentDetail.Author.Int) {
-					ns[id] = NewNotification("comment_comment")
+			for _, v := range commentors {
+				if v != int(commentDetail.Author.Int) {
+					ns = append(ns, NewNotification("comment_comment", v))
 				}
 			}
 		}
 
 		if parentCommentDetail.Author.Valid && parentCommentDetail.Author.Int != commentDetail.Author.Int {
-			ns[int(parentCommentDetail.Author.Int)] = NewNotification("comment_reply")
+			ns = append(ns, NewNotification("comment_reply", int(parentCommentDetail.Author.Int)))
 		}
 
 		for k, v := range ns {
@@ -332,7 +332,7 @@ func (c *notificationGenerator) GenerateCommentNotifications(comment InsertComme
 	default:
 
 		if parentCommentDetail.Author.Valid && parentCommentDetail.Author.Int != commentDetail.Author.Int {
-			ns[int(parentCommentDetail.Author.Int)] = NewNotification("comment_reply")
+			ns = append(ns, NewNotification("comment_reply", int(parentCommentDetail.Author.Int)))
 		}
 
 		for k, v := range ns {
@@ -369,7 +369,7 @@ func (c *notificationGenerator) GenerateProjectNotifications(resource interface{
 		}
 
 		for _, v := range projectFollowers {
-			ns[v] = NewNotification(eventType)
+			ns = append(ns, NewNotification(eventType, v))
 		}
 
 		for k, v := range ns {
@@ -400,17 +400,17 @@ func (c *notificationGenerator) GenerateProjectNotifications(resource interface{
 		}
 
 		for _, v := range projectFollowers {
-			ns[v] = NewNotification(eventType)
+			ns = append(ns, NewNotification(eventType, v))
 		}
 
 		for k, v := range ns {
-			v.SubjectID = project.ID
-			v.Nickname = project.Title.String
+			v.SubjectID = r.ID
+			v.Nickname = r.Title.String
 			v.ProfileImage = project.HeroImage.String
-			v.ObjectName = r.Title.String
-			v.ObjectType = "report"
-			v.ObjectID = r.ID
-			v.ObjectSlug = r.Slug.String
+			v.ObjectName = project.Title.String
+			v.ObjectType = "project"
+			v.ObjectID = project.ID
+			v.ObjectSlug = project.Slug.String
 			ns[k] = v
 		}
 	case "memo":
@@ -428,16 +428,16 @@ func (c *notificationGenerator) GenerateProjectNotifications(resource interface{
 		}
 
 		for _, v := range projectFollowers {
-			ns[v] = NewNotification(eventType)
+			ns = append(ns, NewNotification(eventType, v))
 		}
 
 		for k, v := range ns {
-			v.SubjectID = project.ID
-			v.Nickname = project.Title.String
+			v.SubjectID = m.ID
+			v.Nickname = m.Title.String
 			v.ProfileImage = project.HeroImage.String
-			v.ObjectName = m.Title.String
-			v.ObjectType = "memo"
-			v.ObjectID = m.ID
+			v.ObjectName = project.Title.String
+			v.ObjectType = "project"
+			v.ObjectID = project.ID
 			v.ObjectSlug = project.Slug.String
 			ns[k] = v
 		}
@@ -457,7 +457,7 @@ func (c *notificationGenerator) GeneratePostNotifications(p TaggedPostMember) (e
 	}
 	for _, v := range authorFollowers {
 		if v != int(p.Author.Int) {
-			ns[v] = NewNotification("follow_member_post")
+			ns = append(ns, NewNotification("follow_member_post", v))
 		}
 	}
 
@@ -467,12 +467,12 @@ func (c *notificationGenerator) GeneratePostNotifications(p TaggedPostMember) (e
 	}
 
 	for k, v := range ns {
-		v.SubjectID = int(p.Author.Int)
-		v.Nickname = authorInfo.Nickname.String
+		v.SubjectID = int(p.ID)
+		v.Nickname = p.Title.String
 		v.ProfileImage = authorInfo.ProfileImage.String
-		v.ObjectName = p.Title.String
-		v.ObjectType = "post"
-		v.ObjectID = int(p.ID)
+		v.ObjectName = authorInfo.Nickname.String
+		v.ObjectType = "member"
+		v.ObjectID = int(p.Author.Int)
 		v.PostType = int(p.Type.Int)
 		ns[k] = v
 	}
