@@ -321,9 +321,10 @@ func TestFollowing(t *testing.T) {
 	t.Run("Insert", func(t *testing.T) {
 
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"FollowingPostOK", "follow", `/restful/pubsub`, `{"resource":"member","subject":70,"object":84}`, http.StatusOK, nil},
+			genericTestcase{"FollowingPostOK", "follow", `/restful/pubsub`, `{"resource":"post","subject":70,"object":84}`, http.StatusOK, nil},
 			genericTestcase{"FollowingMemberOK", "follow", `/restful/pubsub`, `{"resource":"member","subject":70,"object":72}`, http.StatusOK, nil},
 			genericTestcase{"FollowingProjectOK", "follow", `/restful/pubsub`, `{"resource":"project","subject":70,"object":840}`, http.StatusOK, nil},
+			genericTestcase{"FollowingTagOK", "follow", `/restful/pubsub`, `{"resource":"tag","subject":70,"object":1}`, http.StatusOK, nil},
 			genericTestcase{"FollowingMissingResource", "follow", `/restful/pubsub`, `{"resource":"","subject":70,"object":72}`, http.StatusOK, `{"Error":"Unsupported Resource"}`},
 			genericTestcase{"FollowingMissingAction", "", `/restful/pubsub`, `{"resource":"post","subject":70,"object":72}`, http.StatusOK, `{"Error":"Bad Request"}`},
 		} {

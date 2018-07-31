@@ -114,7 +114,8 @@
             "post": 9,
             "project": 9,
             "memo": 9,
-            "report": 9
+            "report": 9,
+            "tag": 9
         },
         "emotions":{
             "like": 9,

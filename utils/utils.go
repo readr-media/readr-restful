@@ -19,6 +19,9 @@ func GetResourceTableInfo(resource string) (tableName string, idName string) {
 	case "report":
 		tableName = "memos"
 		idName = "id"
+	case "tag":
+		tableName = "tags"
+		idName = "tag_id"
 	default:
 		tableName = ""
 		idName = ""

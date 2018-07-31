@@ -96,9 +96,6 @@ func (n Notifications) Send() {
 			conn.Send("LPUSH", redis.Args{}.Add(key).Add(msg)...)
 		}
 		conn.Send("LTRIM", redis.Args{}.Add(key).Add(0).Add(49)...)
-		/*
-			}
-		*/
 	}
 	if _, err := redis.Values(conn.Do("EXEC")); err != nil {
 		log.Printf("Error insert cache to redis: %v", err)

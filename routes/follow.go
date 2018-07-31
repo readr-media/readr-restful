@@ -55,6 +55,13 @@ func bindFollow(c *gin.Context) (result interface{}, err error) {
 			if method == "user" {
 				active = map[string][]int{"$in": []int{1}}
 			}
+		case "tag":
+			table = "tags"
+			key = "tag_id"
+			followtype = config.Config.Models.FollowingType["tag"]
+			if method == "user" {
+				active = map[string][]int{"$in": []int{1}}
+			}
 		default:
 			return "", "", 0, nil, errors.New("Unsupported Resource")
 		}
