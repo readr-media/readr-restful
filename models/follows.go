@@ -59,7 +59,7 @@ func (g *GetFollowingArgs) get() (*sqlx.Rows, error) {
 		if val, ok := config.Config.Models.PostType[g.ResourceType]; ok {
 			osql.condition = append(osql.condition, "t.type = ?")
 			osql.args = append(osql.args, val)
-		} else {
+		} else if g.ResourceType != "" {
 			return nil, errors.New("Invalid Post Type")
 		}
 	}
