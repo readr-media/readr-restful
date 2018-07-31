@@ -204,8 +204,7 @@ func (a *mockMemberAPI) Count(req *models.MemberArgs) (result int, err error) {
 func (a *mockMemberAPI) GetIDsByNickname(params models.GetMembersKeywordsArgs) (result []models.Stunt, err error) {
 	if params.Keywords == "readr" {
 		if params.Roles != nil {
-			result = append(result, models.Stunt{ID: &(mockMemberDS[0].ID), Nickname: &(mockMemberDS[0].Nickname)},
-				models.Stunt{ID: &(mockMemberDS[1].ID), Nickname: &(mockMemberDS[1].Nickname)})
+			result = append(result, models.Stunt{ID: &(mockMemberDS[0].ID), Nickname: &(mockMemberDS[0].Nickname)})
 			return result, err
 		}
 		result = append(result, models.Stunt{ID: &(mockMemberDS[0].ID), Nickname: &(mockMemberDS[0].Nickname)})
@@ -308,7 +307,7 @@ func TestRouteMembers(t *testing.T) {
 	t.Run("KeyNickname", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
 			genericTestcase{"Keyword", "GET", `/members/nickname?keyword=readr`, ``, http.StatusOK, `{"_items":[{"id":1,"nickname":"readr"}]}`},
-			genericTestcase{"KeywordAndRoles", "GET", `/members/nickname?keyword=readr&roles={"$in":[3,9]}`, ``, http.StatusOK, `{"_items":[{"id":1,"nickname":"readr"},{"id":2,"nickname":"yeahyeahyeah"}]}`},
+			genericTestcase{"KeywordAndRoles", "GET", `/members/nickname?keyword=readr&roles={"$in":[3,9]}`, ``, http.StatusOK, `{"_items":[{"id":1,"nickname":"readr"}]}`},
 			genericTestcase{"InvalidKeyword", "GET", `/members/nickname`, ``, http.StatusBadRequest, `{"Error":"Invalid keyword"}`},
 			genericTestcase{"InvalidFields", "GET", `/members/nickname?keyword=readr&fields=["line"]`, ``, http.StatusBadRequest, `{"Error":"Invalid fields: line"}`},
 		} {

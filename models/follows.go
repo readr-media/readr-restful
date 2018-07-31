@@ -59,7 +59,7 @@ func (g *GetFollowingArgs) get() (*sqlx.Rows, error) {
 		if val, ok := config.Config.Models.PostType[g.ResourceType]; ok {
 			osql.condition = append(osql.condition, "t.type = ?")
 			osql.args = append(osql.args, val)
-		} else {
+		} else if g.ResourceType != "" {
 			return nil, errors.New("Invalid Post Type")
 		}
 	}
@@ -105,6 +105,10 @@ func (g *GetFollowingArgs) scan(rows *sqlx.Rows) (interface{}, error) {
 			var report Report
 			err = rows.StructScan(&report)
 			followings = append(followings, report)
+		case "tag":
+			var tag Tag
+			err = rows.StructScan(&tag)
+			followings = append(followings, tag)
 		default:
 			return nil, errors.New("Unsupported Resource")
 		}
