@@ -255,12 +255,12 @@ func (r *postHandler) DeleteAll(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "ID List Empty"})
 		return
 	}
-	if strings.HasPrefix(params.UpdatedBy, `"`) {
-		params.UpdatedBy = strings.TrimPrefix(params.UpdatedBy, `"`)
-	}
-	if strings.HasSuffix(params.UpdatedBy, `"`) {
-		params.UpdatedBy = strings.TrimSuffix(params.UpdatedBy, `"`)
-	}
+	// if strings.HasPrefix(params.UpdatedBy, `"`) {
+	// 	params.UpdatedBy = strings.TrimPrefix(params.UpdatedBy, `"`)
+	// }
+	// if strings.HasSuffix(params.UpdatedBy, `"`) {
+	// 	params.UpdatedBy = strings.TrimSuffix(params.UpdatedBy, `"`)
+	// }
 	params.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
 	// params.Active = models.NullInt{Int: int64(models.PostStatus["deactive"].(float64)), Valid: true}
 	params.Active = models.NullInt{Int: int64(config.Config.Models.Posts["deactive"]), Valid: true}

@@ -132,7 +132,7 @@ type PostMember struct {
 
 type PostUpdateArgs struct {
 	IDs           []int    `json:"ids"`
-	UpdatedBy     string   `form:"updated_by" json:"updated_by" db:"updated_by"`
+	UpdatedBy     int64    `form:"updated_by" json:"updated_by" db:"updated_by"`
 	UpdatedAt     NullTime `json:"-" db:"updated_at"`
 	PublishedAt   NullTime `json:"-" db:"published_at"`
 	Active        NullInt  `json:"-" db:"active"`
@@ -158,7 +158,7 @@ func (p *PostUpdateArgs) parse() (updates string, values []interface{}) {
 		setQuery = append(setQuery, "updated_at = ?")
 		values = append(values, p.UpdatedAt.Time)
 	}
-	if p.UpdatedBy != "" {
+	if p.UpdatedBy != 0 {
 		setQuery = append(setQuery, "updated_by = ?")
 		values = append(values, p.UpdatedBy)
 	}
