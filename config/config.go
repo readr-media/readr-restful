@@ -57,6 +57,7 @@ type appConfig struct {
 		PostType              map[string]int `mapstructure:"post_type"`
 		PostPublishStatus     map[string]int `mapstructure:"post_publish_status"`
 		Tags                  map[string]int `mapstructure:"tags"`
+		TaggingType           map[string]int `mapstructure:"tagging_type"`
 		ProjectsActive        map[string]int `mapstructure:"projects_active"`
 		ProjectsStatus        map[string]int `mapstructure:"projects_status"`
 		ProjectsPublishStatus map[string]int `mapstructure:"projects_publish_status"`

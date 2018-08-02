@@ -4,9 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 
 	"database/sql"
+	"encoding/json"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
@@ -148,14 +150,41 @@ func (g *GetProjectArgs) FullAuthorTags() (result []string) {
 	return getStructDBTags("full", Member{})
 }
 
-type ProjectAuthors struct {
-	Project
-	Authors []Stunt `json:"authors"`
-}
-
 type ProjectAuthor struct {
 	Project
-	Author Stunt `json:"author" db:"author"`
+	Tags   NullString `json:"-" db:"tags"`
+	Author Stunt      `json:"author" db:"author"`
+}
+
+type ProjectAuthors struct {
+	Project
+	Tags    NullString `json:"-" db:"tags"`
+	Authors []Stunt    `json:"authors"`
+}
+
+func (t *ProjectAuthors) MarshalJSON() ([]byte, error) {
+	type PA ProjectAuthors
+	type tag struct {
+		ID      int    `json:"id"`
+		Content string `json:"text"`
+	}
+	var Tags []tag
+
+	if t.Tags.Valid != false {
+		tas := strings.Split(t.Tags.String, ",")
+		for _, value := range tas {
+			t := strings.Split(value, ":")
+			id, _ := strconv.Atoi(t[0])
+			Tags = append(Tags, tag{ID: id, Content: t[1]})
+		}
+	}
+	return json.Marshal(&struct {
+		LastSeen []tag `json:"tags"`
+		*PA
+	}{
+		LastSeen: Tags,
+		PA:       (*PA)(t),
+	})
 }
 
 func (a *projectAPI) CountProjects(arg GetProjectArgs) (result int, err error) {
@@ -207,8 +236,27 @@ func (a *projectAPI) GetProjects(args GetProjectArgs) (result []ProjectAuthors, 
 	// select *, a.nickname "a.nickname", a.member_id "a.member_id", a.points "a.points" from projects left join project_authors pa on projects.project_id = pa.project_id left join members a on pa.author_id = a.id where projects.project_id in (1000010, 1000013);
 	values = append(values, largs...)
 
-	query := fmt.Sprintf("SELECT projects.*, %s FROM (SELECT * FROM projects %s %s) AS projects LEFT JOIN ( SELECT memos.author AS author_id, memos.project_id AS project_id FROM memos UNION SELECT author_id, reports.project_id FROM report_authors LEFT JOIN reports ON reports.id = report_authors.report_id ) AS pa ON projects.project_id = pa.project_id LEFT JOIN members author ON pa.author_id = author.id %s;",
-		args.Fields.GetFields(`author.%s "author.%s"`), restricts, limit["full"], limit["order"])
+	query := fmt.Sprintf(`
+		SELECT projects.*, t.tags, %s FROM (SELECT * FROM projects %s %s) AS projects 
+		LEFT JOIN (
+			SELECT pt.target_id as project_id, GROUP_CONCAT(CONCAT(t.tag_id, ":", t.tag_content) SEPARATOR ',') as tags
+			FROM tagging as pt LEFT JOIN tags as t ON t.tag_id = pt.tag_id WHERE pt.type=%d 
+			GROUP BY pt.target_id
+			) AS t ON t.project_id = projects.project_id
+		LEFT JOIN ( 
+			SELECT memos.author AS author_id, memos.project_id AS project_id 
+			FROM memos 
+			UNION 
+			SELECT author_id, reports.project_id 
+			FROM report_authors 
+			LEFT JOIN reports ON reports.id = report_authors.report_id 
+			) AS pa ON projects.project_id = pa.project_id 
+		LEFT JOIN members author ON pa.author_id = author.id %s;`,
+		args.Fields.GetFields(`author.%s "author.%s"`),
+		restricts,
+		limit["full"],
+		config.Config.Models.TaggingType["project"],
+		limit["order"])
 
 	query, values, err = sqlx.In(query, values...)
 	if err != nil {
@@ -229,7 +277,7 @@ func (a *projectAPI) GetProjects(args GetProjectArgs) (result []ProjectAuthors, 
 	for _, project := range pa {
 
 		var notNullAuthor = func(in ProjectAuthor) ProjectAuthors {
-			pas := ProjectAuthors{Project: in.Project}
+			pas := ProjectAuthors{Project: in.Project, Tags: in.Tags}
 			if project.Author != (Stunt{}) {
 				pas.Authors = append(pas.Authors, in.Author)
 			}

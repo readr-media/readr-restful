@@ -109,6 +109,10 @@
             "publish": 9,
             "schedule": 9
         },
+        "tagging_type": {
+            "post": 1,
+            "project": 2
+        },
         "following_type": {
             "member": 9,
             "post": 9,

@@ -97,14 +97,16 @@ func (t *mockTagAPI) UpdateTag(tag models.Tag) error {
 	return nil
 }
 
-func (t *mockTagAPI) UpdatePostTags(postId int, tag_ids []int) error {
-	for _, tag_id := range tag_ids {
-		for i, t := range mockTagDS {
-			if t.ID == tag_id {
-				if postId%2 == 0 {
-					mockTagDS[i].RelatedReviews = models.NullInt{t.RelatedReviews.Int + 1, true}
-				} else {
-					mockTagDS[i].RelatedNews = models.NullInt{t.RelatedNews.Int + 1, true}
+func (t *mockTagAPI) UpdateTagging(resourceType int, targetID int, tagIDs []int) error {
+	for _, tagID := range tagIDs {
+		if resourceType == 1 {
+			for i, t := range mockTagDS {
+				if t.ID == tagID {
+					if targetID%2 == 0 {
+						mockTagDS[i].RelatedReviews = models.NullInt{t.RelatedReviews.Int + 1, true}
+					} else {
+						mockTagDS[i].RelatedNews = models.NullInt{t.RelatedNews.Int + 1, true}
+					}
 				}
 			}
 		}
@@ -167,7 +169,7 @@ func TestRouteTags(t *testing.T) {
 		{42, []int{1, 2}},
 		{44, []int{1, 3}},
 	} {
-		if err := models.TagAPI.UpdatePostTags(params.post_id, params.tag_ids); err != nil {
+		if err := models.TagAPI.UpdateTagging(1, params.post_id, params.tag_ids); err != nil {
 			log.Printf("Insert post tag fail when init test case. Error: %v", err)
 		}
 	}
