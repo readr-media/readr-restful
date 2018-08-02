@@ -1,6 +1,8 @@
 package utils
 
-import ()
+import (
+	"github.com/readr-media/readr-restful/config"
+)
 
 func ValidateUserID(id string) bool {
 	result := true
@@ -16,4 +18,13 @@ func ValidatePassword(id string) bool {
 		return false
 	}
 	return true
+}
+
+func ValidateTaggingType(id int) bool {
+	for _, v := range config.Config.Models.TaggingType {
+		if id == v {
+			return true
+		}
+	}
+	return false
 }

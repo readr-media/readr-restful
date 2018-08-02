@@ -17,6 +17,11 @@ import (
 	"github.com/readr-media/readr-restful/models"
 )
 
+type taggedProject struct {
+	models.Project
+	Tags models.NullIntSlice `json:"tags" db:"tags"`
+}
+
 type projectHandler struct {
 }
 
@@ -149,7 +154,7 @@ func (r *projectHandler) Get(c *gin.Context) {
 
 func (r *projectHandler) Post(c *gin.Context) {
 
-	project := models.Project{}
+	project := taggedProject{}
 	err := c.ShouldBind(&project)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Project"})
@@ -177,7 +182,7 @@ func (r *projectHandler) Post(c *gin.Context) {
 	}
 	project.UpdatedAt = models.NullTime{time.Now(), true}
 
-	err = models.ProjectAPI.InsertProject(project)
+	err = models.ProjectAPI.InsertProject(project.Project)
 	if err != nil {
 		switch err.Error() {
 		case "Duplicate entry":
@@ -188,12 +193,21 @@ func (r *projectHandler) Post(c *gin.Context) {
 			return
 		}
 	}
+
+	if project.Tags.Valid {
+		err = models.TagAPI.UpdateTagging(config.Config.Models.TaggingType["project"], int(project.ID), project.Tags.Slice)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+			return
+		}
+	}
+
 	c.Status(http.StatusOK)
 }
 
 func (r *projectHandler) Put(c *gin.Context) {
 
-	project := models.Project{}
+	project := taggedProject{}
 	err := c.ShouldBind(&project)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
@@ -212,7 +226,7 @@ func (r *projectHandler) Put(c *gin.Context) {
 
 	// if project.Status.Valid == true && project.Status.Int == int64(models.ProjectStatus["done"].(float64)) {
 	if project.Status.Valid == true && project.Status.Int == int64(config.Config.Models.ProjectsStatus["done"]) {
-		p, err := models.ProjectAPI.GetProject(project)
+		p, err := models.ProjectAPI.GetProject(project.Project)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"Error": "Project Not Found"})
 			return
@@ -227,7 +241,7 @@ func (r *projectHandler) Put(c *gin.Context) {
 	}
 	project.UpdatedAt = models.NullTime{time.Now(), true}
 
-	err = models.ProjectAPI.UpdateProjects(project)
+	err = models.ProjectAPI.UpdateProjects(project.Project)
 	if err != nil {
 		switch err.Error() {
 		case "Project Not Found":
@@ -238,6 +252,15 @@ func (r *projectHandler) Put(c *gin.Context) {
 			return
 		}
 	}
+
+	if project.Tags.Valid {
+		err = models.TagAPI.UpdateTagging(config.Config.Models.TaggingType["project"], int(project.ID), project.Tags.Slice)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+			return
+		}
+	}
+
 	c.Status(http.StatusOK)
 }
 

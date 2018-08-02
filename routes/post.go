@@ -13,6 +13,11 @@ import (
 	"github.com/readr-media/readr-restful/models"
 )
 
+type taggedPost struct {
+	models.Post
+	Tags models.NullIntSlice `json:"tags" db:"tags"`
+}
+
 type postHandler struct{}
 
 func (r *postHandler) bindQuery(c *gin.Context, args *models.PostArgs) (err error) {
@@ -115,7 +120,7 @@ func (r *postHandler) Get(c *gin.Context) {
 
 func (r *postHandler) Post(c *gin.Context) {
 
-	post := models.TaggedPost{}
+	post := taggedPost{}
 
 	err := c.Bind(&post)
 	if err != nil {
@@ -166,7 +171,7 @@ func (r *postHandler) Post(c *gin.Context) {
 	}
 
 	if post.Tags.Valid {
-		err = models.TagAPI.UpdatePostTags(post_id, post.Tags.Slice)
+		err = models.TagAPI.UpdateTagging(config.Config.Models.TaggingType["post"], post_id, post.Tags.Slice)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 			return
@@ -178,7 +183,7 @@ func (r *postHandler) Post(c *gin.Context) {
 
 func (r *postHandler) Put(c *gin.Context) {
 
-	post := models.TaggedPost{}
+	post := taggedPost{}
 
 	err := c.ShouldBindJSON(&post)
 	// Check if post struct was binded successfully
@@ -220,7 +225,7 @@ func (r *postHandler) Put(c *gin.Context) {
 	}
 
 	if post.Tags.Valid {
-		err = models.TagAPI.UpdatePostTags(int(post.ID), post.Tags.Slice)
+		err = models.TagAPI.UpdateTagging(config.Config.Models.TaggingType["post"], int(post.ID), post.Tags.Slice)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 			return

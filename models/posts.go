@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 
 	"github.com/jmoiron/sqlx"
@@ -42,7 +43,7 @@ type Post struct {
 	LinkName        NullString `json:"link_name" db:"link_name" redis:"link_name"`
 	VideoID         NullString `json:"video_id" db:"video_id" redis:"video_id"`
 	VideoViews      NullInt    `json:"video_views" db:"video_views" redis:"video_views"`
-	PublishStatus   NullInt    `json:"publish_status" db:"publish_status"`
+	PublishStatus   NullInt    `json:"publish_status" db:"publish_status" redis:"publish_status"`
 }
 
 type postAPI struct{}
@@ -61,11 +62,6 @@ type PostInterface interface {
 	SchedulePublish() error
 }
 
-type TaggedPost struct {
-	Post
-	Tags NullIntSlice `json:"tags" db:"tags"`
-}
-
 type TaggedPostMember struct {
 	PostMember
 	Tags NullString `json:"-" db:"tags"`
@@ -79,20 +75,22 @@ type HotPost struct {
 
 func (t *TaggedPostMember) MarshalJSON() ([]byte, error) {
 	type TPM TaggedPostMember
-	var Tags []map[string]string
+	type tag struct {
+		ID      int    `json:"id"`
+		Content string `json:"text"`
+	}
+	var Tags []tag
 
 	if t.Tags.Valid != false {
-		tags := strings.Split(t.Tags.String, ",")
-		for _, value := range tags {
-			tag := strings.Split(value, ":")
-			Tags = append(Tags, map[string]string{
-				"id":   tag[0],
-				"text": tag[1],
-			})
+		tas := strings.Split(t.Tags.String, ",")
+		for _, value := range tas {
+			t := strings.Split(value, ":")
+			id, _ := strconv.Atoi(t[0])
+			Tags = append(Tags, tag{ID: id, Content: t[1]})
 		}
 	}
 	return json.Marshal(&struct {
-		LastSeen []map[string]string `json:"tags"`
+		LastSeen []tag `json:"tags"`
 		*TPM
 	}{
 		LastSeen: Tags,
@@ -247,12 +245,12 @@ func (a *postAPI) GetPosts(req *PostArgs) (result []TaggedPostMember, err error)
 		LEFT JOIN members AS author ON posts.author = author.id
 		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.id
 		LEFT JOIN (
-			SELECT pt.post_id as post_id, GROUP_CONCAT(CONCAT(t.tag_id, ":", t.tag_content) SEPARATOR ',') as tags
-			FROM post_tags as pt LEFT JOIN tags as t ON t.tag_id = pt.tag_id
-			GROUP BY pt.post_id
+			SELECT pt.target_id as post_id, GROUP_CONCAT(CONCAT(t.tag_id, ":", t.tag_content) SEPARATOR ',') as tags
+			FROM tagging as pt LEFT JOIN tags as t ON t.tag_id = pt.tag_id WHERE pt.type=%d 
+			GROUP BY pt.target_id
 		) AS t ON t.post_id = posts.post_id
 		WHERE %s `,
-		strings.Join(authorField, ","), strings.Join(updatedByField, ","), restricts)
+		strings.Join(authorField, ","), strings.Join(updatedByField, ","), config.Config.Models.TaggingType["post"], restricts)
 
 	// To give adaptability to where clauses, have to use ... operator here
 	// Therefore split query into two parts, assembling them after sqlx.Rebind
@@ -297,9 +295,9 @@ func (a *postAPI) GetPost(id uint32) (TaggedPostMember, error) {
 		LEFT JOIN members AS author ON posts.author = author.id 
 		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.id 
 		LEFT JOIN (
-			SELECT pt.post_id as post_id, GROUP_CONCAT(CONCAT(t.tag_id, ":", t.tag_content) SEPARATOR ',') as tags 
-			FROM post_tags as pt LEFT JOIN tags as t ON t.tag_id = pt.tag_id 
-			GROUP BY pt.post_id
+			SELECT pt.target_id as post_id, GROUP_CONCAT(CONCAT(t.tag_id, ":", t.tag_content) SEPARATOR ',') as tags 
+			FROM tagging as pt LEFT JOIN tags as t ON t.tag_id = pt.tag_id 
+			GROUP BY pt.target_id
 		) AS t ON t.post_id = posts.post_id WHERE posts.post_id = ?`,
 		strings.Join(author, ","), strings.Join(updatedBy, ","))
 

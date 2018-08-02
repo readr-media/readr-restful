@@ -398,8 +398,14 @@ func (c hottestPostCache) SyncFromDataStorage() {
 	PostScoreIndex := postScoreIndex{}
 
 	// Read follow count from Mysql
-	// rows, err := DB.Queryx(fmt.Sprint("SELECT p.post_id, p.comment_amount AS comment_count, IFNULL(f.count,0) as follow_count FROM posts AS p LEFT JOIN (SELECT post_id, count(*) as count FROM post_tags GROUP BY post_id) AS f ON f.post_id = p.post_id WHERE p.active =", fmt.Sprint(PostStatus["active"], " AND p.publish_status=", fmt.Sprint(PostPublishStatus["publish"]))))
-	rows, err := DB.Queryx(fmt.Sprint("SELECT p.post_id, IFNULL(p.comment_amount,0) AS comment_count, IFNULL(f.count,0) as follow_count FROM posts AS p LEFT JOIN (SELECT post_id, count(*) as count FROM post_tags GROUP BY post_id) AS f ON f.post_id = p.post_id WHERE p.active =", fmt.Sprint(config.Config.Models.Posts["active"], " AND p.publish_status=", fmt.Sprint(config.Config.Models.PostPublishStatus["publish"]))))
+	query := fmt.Sprintf(`
+		SELECT p.post_id, IFNULL(p.comment_amount,0) AS comment_count, IFNULL(f.count,0) as follow_count 
+		FROM posts AS p 
+		LEFT JOIN (SELECT target_id, count(*) as count FROM following WHERE type = %d GROUP BY target_id) AS f 
+			ON f.target_id = p.post_id 
+		WHERE p.active =%d AND p.publish_status=%d
+		`, config.Config.Models.FollowingType["post"], config.Config.Models.Posts["active"], config.Config.Models.PostPublishStatus["publish"])
+	rows, err := DB.Queryx(query)
 	if err != nil {
 		log.Println(err.Error())
 		return

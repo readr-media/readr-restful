@@ -2,6 +2,7 @@ package models
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -11,17 +12,19 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/utils"
 )
 
 type Tag struct {
-	ID             int      `json:"id" db:"tag_id"`
-	Text           string   `json:"text" db:"tag_content"`
-	CreatedAt      NullTime `json:"created_at" db:"created_at"`
-	UpdatedAt      NullTime `json:"updated_at" db:"updated_at"`
-	UpdatedBy      NullInt  `json:"updated_by" db:"updated_by"`
-	Active         NullInt  `json:"active" db:"active"`
-	RelatedReviews NullInt  `json:"related_reviews" db:"related_reviews"`
-	RelatedNews    NullInt  `json:"related_news" db:"related_news"`
+	ID              int      `json:"id" db:"tag_id"`
+	Text            string   `json:"text" db:"tag_content"`
+	CreatedAt       NullTime `json:"created_at" db:"created_at"`
+	UpdatedAt       NullTime `json:"updated_at" db:"updated_at"`
+	UpdatedBy       NullInt  `json:"updated_by" db:"updated_by"`
+	Active          NullInt  `json:"active" db:"active"`
+	RelatedReviews  NullInt  `json:"related_reviews" db:"related_reviews"`
+	RelatedNews     NullInt  `json:"related_news" db:"related_news"`
+	RelatedProjects NullInt  `json:"related_projects" db:"related_projects"`
 }
 
 type TagInterface interface {
@@ -29,7 +32,7 @@ type TagInterface interface {
 	GetTags(args GetTagsArgs) ([]Tag, error)
 	InsertTag(tag Tag) (int, error)
 	UpdateTag(tag Tag) error
-	UpdatePostTags(postId int, tag_ids []int) error
+	UpdateTagging(resourceType int, targetID int, tagIDs []int) error
 	CountTags(args GetTagsArgs) (int, error)
 }
 
@@ -91,22 +94,24 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []Tag, err error) {
 	var query bytes.Buffer
 
 	if args.ShowStats {
-		// query.WriteString(fmt.Sprintf(`
-		// 	SELECT ta.*, pt.related_reviews, pt.related_news FROM tags as ta
-		// 	LEFT JOIN (SELECT t.tag_id as tag_id,
-		// 		COUNT(CASE WHEN p.type=%d THEN p.post_id END) as related_reviews,
-		// 		COUNT(CASE WHEN p.type=%d THEN p.post_id END) as related_news
-		// 		FROM post_tags as t LEFT JOIN posts as p ON t.post_id=p.post_id GROUP BY t.tag_id ) as pt
-		// 	ON ta.tag_id = pt.tag_id WHERE ta.active=%d
-		// 	`, int(PostType["review"].(float64)), int(PostType["news"].(float64)), int(TagStatus["active"].(float64))))
 		query.WriteString(fmt.Sprintf(`
-				SELECT ta.*, pt.related_reviews, pt.related_news FROM tags as ta 
-				LEFT JOIN (SELECT t.tag_id as tag_id,
-					COUNT(CASE WHEN p.type=%d THEN p.post_id END) as related_reviews,
-					COUNT(CASE WHEN p.type=%d THEN p.post_id END) as related_news 
-					FROM post_tags as t LEFT JOIN posts as p ON t.post_id=p.post_id GROUP BY t.tag_id ) as pt 
-				ON ta.tag_id = pt.tag_id WHERE ta.active=%d
-				`, config.Config.Models.PostType["review"], config.Config.Models.PostType["news"], config.Config.Models.Tags["active"]))
+			SELECT ta.*, pt.related_reviews, pt.related_news, jt.related_projects FROM tags as ta 
+			LEFT JOIN (SELECT t.tag_id as tag_id,
+				COUNT(CASE WHEN p.type=%d THEN p.post_id END) as related_reviews,
+				COUNT(CASE WHEN p.type=%d THEN p.post_id END) as related_news 
+				FROM tagging as t LEFT JOIN posts as p ON t.target_id=p.post_id 
+				WHERE t.type=%d GROUP BY t.tag_id ) as pt ON ta.tag_id = pt.tag_id 
+			LEFT JOIN (SELECT t.tag_id as tag_id,
+				COUNT(p.project_id) as related_projects 
+				FROM tagging as t LEFT JOIN projects as p ON t.target_id=p.project_id 
+				WHERE t.type=%d GROUP BY t.tag_id ) as jt ON ta.tag_id = jt.tag_id 
+			WHERE ta.active=%d 
+			`,
+			config.Config.Models.PostType["review"],
+			config.Config.Models.PostType["news"],
+			config.Config.Models.TaggingType["post"],
+			config.Config.Models.TaggingType["project"],
+			config.Config.Models.Tags["active"]))
 	} else {
 		// query.WriteString(fmt.Sprintf(`SELECT ta.* FROM tags as ta WHERE ta.active=%d `, int(TagStatus["active"].(float64))))
 		query.WriteString(fmt.Sprintf(`SELECT ta.* FROM tags as ta WHERE ta.active=%d `, config.Config.Models.Tags["active"]))
@@ -219,9 +224,13 @@ func (t *tagApi) UpdateTag(tag Tag) error {
 	return nil
 }
 
-func (t *tagApi) UpdatePostTags(post_id int, tag_ids []int) error {
+func (t *tagApi) UpdateTagging(resourceType int, targetID int, tagIDs []int) error {
 	//To add new tags and eliminate unwanted tags, we need to perfom two sql queries
 	//The update is success only if all query succeed, to make sure this, we use transaction.
+
+	if !utils.ValidateTaggingType(resourceType) {
+		return errors.New("Invalid Resource Type")
+	}
 
 	tx, err := DB.Beginx()
 	if err != nil {
@@ -229,16 +238,16 @@ func (t *tagApi) UpdatePostTags(post_id int, tag_ids []int) error {
 		return err
 	}
 
-	_ = tx.MustExec(fmt.Sprintf("DELETE FROM post_tags WHERE post_id=%d;", post_id))
+	_ = tx.MustExec(fmt.Sprintf("DELETE FROM tagging WHERE target_id=%d;", targetID))
 
-	if len(tag_ids) > 0 {
+	if len(tagIDs) > 0 {
 		var insqueryBuffer bytes.Buffer
 		var insargs []interface{}
-		insqueryBuffer.WriteString("INSERT IGNORE INTO post_tags (post_id, tag_id) VALUES ")
-		for index, tag_id := range tag_ids {
-			insqueryBuffer.WriteString("( ? ,? )")
-			insargs = append(insargs, post_id, tag_id)
-			if index < len(tag_ids)-1 {
+		insqueryBuffer.WriteString("INSERT IGNORE INTO tagging (type, tag_id, target_id) VALUES ")
+		for index, tagID := range tagIDs {
+			insqueryBuffer.WriteString("( ?, ?, ? )")
+			insargs = append(insargs, resourceType, tagID, targetID)
+			if index < len(tagIDs)-1 {
 				insqueryBuffer.WriteString(",")
 			} else {
 				insqueryBuffer.WriteString(";")
@@ -248,12 +257,15 @@ func (t *tagApi) UpdatePostTags(post_id int, tag_ids []int) error {
 	}
 	tx.Commit()
 
-	// Write to new post data to search feed
-	post, err := PostAPI.GetPost(uint32(post_id))
-	if err != nil {
-		return err
+	//If post tag updated, Write to new post data to search feed
+
+	if resourceType == config.Config.Models.TaggingType["post"] {
+		post, err := PostAPI.GetPost(uint32(targetID))
+		if err != nil {
+			return err
+		}
+		go Algolia.InsertPost([]TaggedPostMember{post})
 	}
-	go Algolia.InsertPost([]TaggedPostMember{post})
 
 	return nil
 }
