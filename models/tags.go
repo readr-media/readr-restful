@@ -37,11 +37,12 @@ type TagInterface interface {
 }
 
 type GetTagsArgs struct {
-	MaxResult uint8  `form:"max_result" json:"max_result"`
-	Page      uint16 `form:"page" json:"page"`
-	Sorting   string `form:"sort" json:"sort"`
-	Keyword   string `form:"keyword" json:"keyword"`
-	ShowStats bool   `form:"stats" json:"stats"`
+	MaxResult   uint8  `form:"max_result" json:"max_result"`
+	Page        uint16 `form:"page" json:"page"`
+	Sorting     string `form:"sort" json:"sort"`
+	Keyword     string `form:"keyword" json:"keyword"`
+	ShowStats   bool   `form:"stats" json:"stats"`
+	TaggingType int    `form:"tagging_type" json:"tagging_type" db:"tagging_type"`
 }
 
 func DefaultGetTagsArgs() GetTagsArgs {
@@ -51,6 +52,17 @@ func DefaultGetTagsArgs() GetTagsArgs {
 		Sorting:   "-updated_at",
 		ShowStats: false,
 	}
+}
+
+func (a *GetTagsArgs) ValidateGet() error {
+
+	if !utils.ValidateStringArgs(a.Sorting, "-?(text|updated_at|created_at|related_reviews|related_news)") {
+		return errors.New("Bad Sorting Option")
+	}
+	if a.TaggingType != 0 && !utils.ValidateTaggingType(a.TaggingType) {
+		return errors.New("Invalid Tagging Type")
+	}
+	return nil
 }
 
 type UpdateMultipleTagsArgs struct {
@@ -94,27 +106,39 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []Tag, err error) {
 	var query bytes.Buffer
 
 	if args.ShowStats {
-		query.WriteString(fmt.Sprintf(`
-			SELECT ta.*, pt.related_reviews, pt.related_news, jt.related_projects FROM tags as ta 
-			LEFT JOIN (SELECT t.tag_id as tag_id,
-				COUNT(CASE WHEN p.type=%d THEN p.post_id END) as related_reviews,
-				COUNT(CASE WHEN p.type=%d THEN p.post_id END) as related_news 
-				FROM tagging as t LEFT JOIN posts as p ON t.target_id=p.post_id 
-				WHERE t.type=%d GROUP BY t.tag_id ) as pt ON ta.tag_id = pt.tag_id 
-			LEFT JOIN (SELECT t.tag_id as tag_id,
-				COUNT(p.project_id) as related_projects 
-				FROM tagging as t LEFT JOIN projects as p ON t.target_id=p.project_id 
-				WHERE t.type=%d GROUP BY t.tag_id ) as jt ON ta.tag_id = jt.tag_id 
-			WHERE ta.active=%d 
-			`,
+		base := `
+		SELECT ta.*, pt.related_reviews, pt.related_news, jt.related_projects FROM tags as ta 
+		LEFT JOIN (SELECT t.tag_id as tag_id,
+			COUNT(CASE WHEN p.type=%d THEN p.post_id END) as related_reviews,
+			COUNT(CASE WHEN p.type=%d THEN p.post_id END) as related_news 
+			FROM tagging as t LEFT JOIN posts as p ON t.target_id=p.post_id 
+			WHERE t.type=%d GROUP BY t.tag_id ) as pt ON ta.tag_id = pt.tag_id 
+		LEFT JOIN (SELECT t.tag_id as tag_id,
+			COUNT(p.project_id) as related_projects 
+			FROM tagging as t LEFT JOIN projects as p ON t.target_id=p.project_id 
+			WHERE t.type=%d GROUP BY t.tag_id ) as jt ON ta.tag_id = jt.tag_id 
+		`
+
+		query.WriteString(fmt.Sprintf(base,
 			config.Config.Models.PostType["review"],
 			config.Config.Models.PostType["news"],
 			config.Config.Models.TaggingType["post"],
 			config.Config.Models.TaggingType["project"],
-			config.Config.Models.Tags["active"]))
+		))
+
+		if args.TaggingType == 0 {
+			query.WriteString(fmt.Sprintf(` WHERE ta.active=%d `, config.Config.Models.Tags["active"]))
+		} else {
+			query.WriteString(fmt.Sprintf(` LEFT JOIN tagging AS tg ON ta.tag_id = tg.tag_id WHERE ta.active=%d AND tg.type = :tagging_type`, config.Config.Models.Tags["active"]))
+		}
 	} else {
 		// query.WriteString(fmt.Sprintf(`SELECT ta.* FROM tags as ta WHERE ta.active=%d `, int(TagStatus["active"].(float64))))
-		query.WriteString(fmt.Sprintf(`SELECT ta.* FROM tags as ta WHERE ta.active=%d `, config.Config.Models.Tags["active"]))
+		if args.TaggingType == 0 {
+			//Avoid unnecessary join
+			query.WriteString(fmt.Sprintf(`SELECT ta.* FROM tags as ta WHERE ta.active=%d `, config.Config.Models.Tags["active"]))
+		} else {
+			query.WriteString(fmt.Sprintf(`SELECT ta.* FROM tags as ta LEFT JOIN tagging AS tg ON ta.tag_id = tg.tag_id WHERE ta.active=%d AND tg.type = :tagging_type`, config.Config.Models.Tags["active"]))
+		}
 	}
 
 	if args.Keyword != "" {
