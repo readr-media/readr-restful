@@ -23,11 +23,10 @@ func (r *tagHandler) Get(c *gin.Context) {
 		return
 	}
 
-	if !validateSorting(args.Sorting) {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Sorting Option"})
+	if err = args.ValidateGet(); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
-
 	if matched, err := regexp.MatchString("-?text", args.Sorting); err == nil && matched {
 		args.Sorting = strings.Replace(args.Sorting, "text", "tag_content", 1)
 	}

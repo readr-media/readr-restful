@@ -1,6 +1,9 @@
 package utils
 
 import (
+	"fmt"
+	"regexp"
+
 	"github.com/readr-media/readr-restful/config"
 )
 
@@ -27,4 +30,12 @@ func ValidateTaggingType(id int) bool {
 		}
 	}
 	return false
+}
+
+func ValidateStringArgs(target, pattern string) bool {
+	if matched, err := regexp.MatchString(pattern, target); err != nil || !matched {
+		fmt.Println(matched)
+		return false
+	}
+	return true
 }
