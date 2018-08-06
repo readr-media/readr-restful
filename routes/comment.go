@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -14,8 +15,13 @@ import (
 type commentsHandler struct{}
 
 func (r *commentsHandler) bindCommentQuery(c *gin.Context, args *models.GetCommentArgs) (err error) {
-	if err = c.ShouldBindQuery(args); err == nil {
-		return nil
+	if err = c.ShouldBindQuery(args); err != nil {
+		// Return if error is other than Unknown type
+		// Because binding status (map[string][]int) would give "Unknown Type" error.
+		// We want to process the rest binding even if an error of Unknown Type is given
+		if !strings.Contains(err.Error(), "Unknown type") && !strings.Contains(err.Error(), "strconv.ParseInt") {
+			return err
+		}
 	}
 	// Start parsing rest of request arguments
 	if c.Query("author") != "" && args.Author == nil {
@@ -23,7 +29,7 @@ func (r *commentsHandler) bindCommentQuery(c *gin.Context, args *models.GetComme
 			return err
 		}
 	}
-	if c.Query("resource") != "" && args.Resource == nil {
+	if c.Query("resource") != "" {
 		if err = json.Unmarshal([]byte(c.Query("resource")), &args.Resource); err != nil {
 			return err
 		}
@@ -37,7 +43,6 @@ func (r *commentsHandler) bindCommentQuery(c *gin.Context, args *models.GetComme
 		if err = json.Unmarshal([]byte(c.Query("status")), &args.Status); err != nil {
 			return err
 		} else if err == nil {
-			// if err = models.ValidateActive(args.Status, models.CommentStatus); err != nil {
 			if err = models.ValidateActive(args.Status, config.Config.Models.CommentStatus); err != nil {
 				return err
 			}
@@ -60,7 +65,6 @@ func (r *commentsHandler) bindReportQuery(c *gin.Context, args *models.GetReport
 		if err = json.Unmarshal([]byte(c.Query("solved")), &args.Solved); err != nil {
 			return err
 		} else if err == nil {
-			// if err = models.ValidateActive(args.Solved, models.ReportedCommentStatus); err != nil {
 			if err = models.ValidateActive(args.Solved, config.Config.Models.ReportedCommentStatus); err != nil {
 				return err
 			}
@@ -94,7 +98,6 @@ func (r *commentsHandler) GetComments(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
-
 	result, err := models.CommentAPI.GetComments(args)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
@@ -134,7 +137,6 @@ func (r *commentsHandler) PostRC(c *gin.Context) {
 	}
 
 	report.CreatedAt = models.NullTime{Time: time.Now(), Valid: true}
-	// report.Solved = models.NullInt{Int: int64(models.ReportedCommentStatus["pending"].(float64)), Valid: true}
 	report.Solved = models.NullInt{Int: int64(config.Config.Models.ReportedCommentStatus["pending"]), Valid: true}
 
 	_, err = models.CommentAPI.InsertReportedComments(report)
