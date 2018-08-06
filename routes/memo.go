@@ -316,11 +316,6 @@ func (r *memoHandler) DeleteMany(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-func (r *memoHandler) SchedulePublish(c *gin.Context) {
-	models.MemoAPI.SchedulePublish()
-	c.Status(http.StatusOK)
-}
-
 func (r *memoHandler) Count(c *gin.Context) {
 	var args = &models.MemoGetArgs{}
 	args = args.Default()
@@ -362,7 +357,6 @@ func (r *memoHandler) SetRoutes(router *gin.Engine) {
 	{
 		memosRouter.GET("", r.GetMany)
 		memosRouter.GET("/count", r.Count)
-		memosRouter.PUT("/schedule/publish", r.SchedulePublish)
 		memosRouter.DELETE("", r.DeleteMany)
 	}
 }

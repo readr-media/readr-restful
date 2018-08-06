@@ -36,8 +36,25 @@ func (r *miscHandler) GetUrlMeta(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"_items": result})
 }
 
+func (r *miscHandler) PublishResources(c *gin.Context) {
+	models.PostAPI.SchedulePublish()
+	models.ProjectAPI.SchedulePublish()
+	models.MemoAPI.SchedulePublish()
+	models.ReportAPI.SchedulePublish()
+	c.Status(http.StatusOK)
+}
+
+func (r *miscHandler) StraatsSync(c *gin.Context) {
+	models.StraatsSync.Cron()
+	c.Status(http.StatusOK)
+}
+
 func (r *miscHandler) SetRoutes(router *gin.Engine) {
 	router.GET("/url/meta", r.GetUrlMeta)
+
+	router.PUT("/schedule/publish", r.PublishResources)
+	router.PUT("/schedule/straats", r.StraatsSync)
+
 	router.GET("/healthz", func(c *gin.Context) {
 		c.String(http.StatusOK, "")
 	})

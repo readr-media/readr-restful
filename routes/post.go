@@ -353,8 +353,8 @@ func (r *postHandler) Hot(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"_items": result})
 }
 
-func (r *postHandler) SchedulePublish(c *gin.Context) {
-	models.PostAPI.SchedulePublish()
+func (r *postHandler) PutCache(c *gin.Context) {
+	models.PostCache.SyncFromDataStorage()
 	c.Status(http.StatusOK)
 }
 
@@ -385,7 +385,7 @@ func (r *postHandler) SetRoutes(router *gin.Engine) {
 
 		postsRouter.GET("/count", r.Count)
 		postsRouter.GET("/hot", r.Hot)
-		postsRouter.PUT("/schedule/publish", r.SchedulePublish)
+		postsRouter.PUT("/cache", r.PutCache)
 	}
 }
 
