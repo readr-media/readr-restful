@@ -50,15 +50,16 @@ func ParseResourceInfo(resourceString string) (resourceType string, resourceID s
 }
 
 func GenerateResourceInfo(resourceType string, resourceID int, slug string) (resourceString string) {
+	resStringPrefix := "https://www.readr.tw"
 	switch resourceType {
 	case "post":
-		return fmt.Sprintf("/post/%d", resourceID)
+		return fmt.Sprintf("%s/post/%d", resStringPrefix, resourceID)
 	case "project":
-		return fmt.Sprintf("/series/%s", slug)
+		return fmt.Sprintf("%s/series/%s", resStringPrefix, slug)
 	case "report":
-		return fmt.Sprintf("/project/%s", slug)
+		return fmt.Sprintf("%s/project/%s", resStringPrefix, slug)
 	case "memo":
-		return fmt.Sprintf("/series/%s/%d", slug, resourceID)
+		return fmt.Sprintf("%s/series/%s/%d", resStringPrefix, slug, resourceID)
 	default:
 		return resourceString
 	}

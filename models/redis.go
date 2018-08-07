@@ -123,23 +123,73 @@ func convertRedisAssign(dest, src interface{}) error {
 	return nil
 }
 
-func (r *redisHelper) GetHotPosts(keysTemplate string, quantity int) (result []HotPost, err error) {
+func (r *redisHelper) getOrderedHashes(keysTemplate string, quantity int) (result [][]interface{}, err error) {
 	conn := r.Conn()
 	defer conn.Close()
+	conn.Send("MULTI")
 
 	for i := 1; i <= quantity; i++ {
-		var p HotPost
 		key := fmt.Sprintf(keysTemplate, i)
-		res, err := redis.Values(conn.Do("HGETALL", key))
+		conn.Send("HGETALL", key)
+	}
+
+	res, err := redis.Values(conn.Do("EXEC"))
+	if err != nil {
+		log.Printf("Error getting redis key: %v", err)
+		return result, err
+	}
+
+	for _, v := range res {
+		r, err := redis.Values(v, nil)
 		if err != nil {
-			log.Printf("Error getting redis key: %v", err)
-			return result, err
+			log.Printf("Error parsing redis result: %v", err)
+			continue
 		}
-		if err = redis.ScanStruct(res, &p); err != nil {
+		result = append(result, r)
+	}
+
+	return result, err
+}
+
+func (r *redisHelper) GetHotPosts(keysTemplate string, quantity int) (result []HotPost, err error) {
+	res, err := r.getOrderedHashes(keysTemplate, quantity)
+	if err != nil {
+		log.Printf("Error getting redis key: %v", err)
+		return result, err
+	}
+
+	for _, v := range res {
+		var p HotPost
+		if err = redis.ScanStruct(v, &p); err != nil {
 			log.Printf("Error scan redis key: %v", err)
 			return result, err
 		}
+		if p.ID == 0 {
+			break
+		}
 		result = append(result, p)
+	}
+
+	return result, err
+}
+
+func (r *redisHelper) GetHotTags(keysTemplate string, quantity int) (result []Tag, err error) {
+	res, err := r.getOrderedHashes(keysTemplate, quantity)
+	if err != nil {
+		log.Printf("Error getting redis key: %v", err)
+		return result, err
+	}
+
+	for _, v := range res {
+		var t Tag
+		if err = redis.ScanStruct(v, &t); err != nil {
+			log.Printf("Error scan redis key: %v", err)
+			return result, err
+		}
+		if t.ID == 0 {
+			break
+		}
+		result = append(result, t)
 	}
 
 	return result, err

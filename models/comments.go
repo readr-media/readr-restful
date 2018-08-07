@@ -417,36 +417,34 @@ func (c *commentAPI) UpdateReportedComments(report ReportedComment) (err error) 
 	return err
 }
 
-/*
-func (c *commentAPI) UpdateCommentAmountByIDs(ids []int) (err error) {
-	query, values, err := sqlx.In("SELECT DISTINCT resource FROM comments WHERE id IN (?);", ids)
+type CommentCount struct {
+	Count    int    `db:"count"`
+	Resource string `db:"resource"`
+}
+
+func (c *commentAPI) GetCommentCountByResources(resources []string) (commentCounts []CommentCount, err error) {
+	var values []interface{}
+	var query string = "SELECT count(id) AS count, resource FROM comments GROUP BY resource"
+
+	if len(resources) > 0 {
+		query = query + " WHERE resource in (?)"
+		query, values, err = sqlx.In(query, resources)
+	} else {
+		query, values, err = sqlx.In(query)
+	}
 	if err != nil {
 		log.Println(err.Error())
-		return err
+		return commentCounts, err
 	}
 	query = DB.Rebind(query)
 
-	var resources []string
-	err = DB.Select(&resources, query, values...)
+	err = DB.Select(&commentCounts, query, values...)
 	if err != nil {
 		log.Println(err.Error())
-		return err
+		return commentCounts, err
 	}
-
-	for _, res := range resources {
-		id, name, idname := utils.GetResourceTableInfo(res)
-		if name != "" {
-			_, err := DB.Exec(fmt.Sprintf(`UPDATE %s SET comment_amount=(SELECT count(id) FROM comments WHERE resource="%s" AND status=%d AND active=%d) WHERE %s="%s";`, name, res, int(CommentStatus["show"].(float64)), int(CommentActive["active"].(float64)), idname, id))
-			if err != nil {
-				log.Println(err.Error())
-				return err
-			}
-		}
-	}
-
-	return err
+	return commentCounts, err
 }
-*/
 
 func (c *commentAPI) UpdateCommentAmountByResource(resourceName string, resourceID int, action string) (err error) {
 	tableName, idName := utils.GetResourceTableInfo(resourceName)
@@ -472,21 +470,9 @@ func (c *commentAPI) UpdateCommentAmountByResource(resourceName string, resource
 }
 
 func (c *commentAPI) UpdateAllCommentAmount() (err error) {
-	query, values, err := sqlx.In("SELECT count(id) AS count, resource FROM comments GROUP BY resource;")
+	resources, err := c.GetCommentCountByResources(make([]string, 0))
 	if err != nil {
-		log.Println(err.Error())
-		return err
-	}
-	query = DB.Rebind(query)
-
-	var resources []struct {
-		Count    int    `db:"count"`
-		Resource string `db:"resource"`
-	}
-
-	err = DB.Select(&resources, query, values...)
-	if err != nil {
-		log.Println(err.Error())
+		log.Println("Error when getting comment count by resources, %v")
 		return err
 	}
 
