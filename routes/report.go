@@ -276,11 +276,6 @@ func (r *reportHandler) Put(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-func (r *reportHandler) SchedulePublish(c *gin.Context) {
-	models.ReportAPI.SchedulePublish()
-	c.Status(http.StatusOK)
-}
-
 func (r *reportHandler) Delete(c *gin.Context) {
 
 	id, err := strconv.Atoi(c.Param("id"))
@@ -369,7 +364,6 @@ func (r *reportHandler) SetRoutes(router *gin.Engine) {
 		reportRouter.GET("/list", r.Get)
 		reportRouter.POST("", r.Post)
 		reportRouter.PUT("", r.Put)
-		reportRouter.PUT("/schedule/publish", r.SchedulePublish)
 		reportRouter.DELETE("/:id", r.Delete)
 
 		authorRouter := reportRouter.Group("/author")

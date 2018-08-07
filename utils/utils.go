@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"regexp"
 )
 
@@ -42,8 +43,24 @@ func ParseResourceInfo(resourceString string) (resourceType string, resourceID s
 		return "report", slug[1]
 	} else if matched, _ := regexp.MatchString(`\/series\/.*/([0-9]*)$`, resourceString); matched {
 		id := regexp.MustCompile(`\/series\/.*/([0-9]*)$`).FindStringSubmatch(resourceString)
-		return "report", id[1]
+		return "memo", id[1]
 	} else {
 		return resourceType, resourceID
+	}
+}
+
+func GenerateResourceInfo(resourceType string, resourceID int, slug string) (resourceString string) {
+	resStringPrefix := "https://www.readr.tw"
+	switch resourceType {
+	case "post":
+		return fmt.Sprintf("%s/post/%d", resStringPrefix, resourceID)
+	case "project":
+		return fmt.Sprintf("%s/series/%s", resStringPrefix, slug)
+	case "report":
+		return fmt.Sprintf("%s/project/%s", resStringPrefix, slug)
+	case "memo":
+		return fmt.Sprintf("%s/series/%s/%d", resStringPrefix, slug, resourceID)
+	default:
+		return resourceString
 	}
 }

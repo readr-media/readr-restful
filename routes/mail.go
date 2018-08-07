@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
 	"gopkg.in/gomail.v2"
 )
@@ -92,13 +93,20 @@ func (r *mailHandler) SendDailyDigest(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-func (r *mailHandler) SetRoutes(router *gin.Engine, dialer gomail.Dialer) {
+func (r *mailHandler) SetRoutes(router *gin.Engine) {
 	router.POST("/mail", r.sendMail)
 	router.POST("/mail/updatenote", r.updateNote)
 	router.POST("/mail/gendailydigest", r.GenDailyDigest)
 	router.POST("/mail/senddailydigest", r.SendDailyDigest)
 
-	models.MailAPI.SetDialer(dialer)
+	// init mail sender
+	dialer := gomail.NewDialer(
+		config.Config.Mail.Host,
+		config.Config.Mail.Port,
+		config.Config.Mail.User,
+		config.Config.Mail.Password,
+	)
+	models.MailAPI.SetDialer(*dialer)
 }
 
 var MailHandler mailHandler

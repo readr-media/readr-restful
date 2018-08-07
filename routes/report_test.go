@@ -287,7 +287,6 @@ func TestRouteReports(t *testing.T) {
 			genericTestcase{"UpdateReportInvalidActive", "PUT", "/report", `{"id":32767,"active":3}`, http.StatusBadRequest, `{"Error":"Invalid Parameter"}`},
 			genericTestcase{"UpdatePublishReportWithNoSlug", "PUT", "/report", `{"id":32769,"publish_status":2}`, http.StatusBadRequest, `{"Error":"Must Have Slug Before Publish"}`},
 			genericTestcase{"UpdateReportStatusOK", "PUT", "/report", `{"id":32768,"publish_status":2}`, http.StatusOK, ``},
-			genericTestcase{"UpdateMemoSchedule", "PUT", "/report/schedule/publish", `{"id":32768,"publish_status":3,"published_at":"2046-01-05T00:42:42+00:00"}`, http.StatusOK, ``}, //published_at is time string in RFC3339 format
 		}
 		for _, tc := range testcases {
 			genericDoTest(tc, t, asserter)

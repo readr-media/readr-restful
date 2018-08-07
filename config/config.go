@@ -25,6 +25,10 @@ type appConfig struct {
 		} `mapstructure:"channels"`
 	} `mapstructure:"redis"`
 
+	ES struct {
+		Url string `mapstructure:"url"`
+	} `mapstructure:"es"`
+
 	Crawler struct {
 		Headers map[string]string `mapstructure:"headers"`
 	} `mapstructure:"crawler"`

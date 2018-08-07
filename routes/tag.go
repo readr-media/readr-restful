@@ -154,6 +154,24 @@ func (r *tagHandler) Count(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"_meta": resp})
 }
 
+func (r *tagHandler) Hot(c *gin.Context) {
+	tags, err := models.TagAPI.GetHotTags()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"_items": tags})
+}
+
+func (r *tagHandler) PutHot(c *gin.Context) {
+	err := models.TagAPI.UpdateHotTags()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		return
+	}
+	c.Status(http.StatusOK)
+}
+
 func (r *tagHandler) SetRoutes(router *gin.Engine) {
 
 	tagRouter := router.Group("/tags")
@@ -164,6 +182,8 @@ func (r *tagHandler) SetRoutes(router *gin.Engine) {
 		tagRouter.DELETE("", r.Delete)
 
 		tagRouter.GET("/count", r.Count)
+		tagRouter.GET("/hot", r.Hot)
+		tagRouter.PUT("/hot", r.PutHot)
 	}
 }
 

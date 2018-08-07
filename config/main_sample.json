@@ -13,6 +13,9 @@
             "talk_comments": ""
         }
     },
+    "es":{
+        "url": ""
+    },
     "crawler": {
         "headers":{}
     },

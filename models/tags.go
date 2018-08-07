@@ -2,25 +2,30 @@ package models
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"log"
+	"sort"
+	"strconv"
 	"strings"
 
 	"database/sql"
 
+	"github.com/garyburd/redigo/redis"
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
+	"github.com/olivere/elastic"
 	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/utils"
 )
 
 type Tag struct {
-	ID              int      `json:"id" db:"tag_id"`
-	Text            string   `json:"text" db:"tag_content"`
-	CreatedAt       NullTime `json:"created_at" db:"created_at"`
-	UpdatedAt       NullTime `json:"updated_at" db:"updated_at"`
-	UpdatedBy       NullInt  `json:"updated_by" db:"updated_by"`
+	ID              int      `json:"id" db:"tag_id" redis:"id"`
+	Text            string   `json:"text" db:"tag_content" redis:"tag_content"`
+	CreatedAt       NullTime `json:"created_at" db:"created_at" redis:"created_at"`
+	UpdatedAt       NullTime `json:"updated_at" db:"updated_at" redis:"updated_at"`
+	UpdatedBy       NullInt  `json:"updated_by" db:"updated_by" redis:"updated_by"`
 	Active          NullInt  `json:"active" db:"active"`
 	RelatedReviews  NullInt  `json:"related_reviews" db:"related_reviews"`
 	RelatedNews     NullInt  `json:"related_news" db:"related_news"`
@@ -34,6 +39,8 @@ type TagInterface interface {
 	UpdateTag(tag Tag) error
 	UpdateTagging(resourceType int, targetID int, tagIDs []int) error
 	CountTags(args GetTagsArgs) (int, error)
+	GetHotTags() ([]Tag, error)
+	UpdateHotTags() error
 }
 
 type GetTagsArgs struct {
@@ -311,6 +318,433 @@ func (a *tagApi) CountTags(args GetTagsArgs) (result int, err error) {
 	}
 
 	return result, err
+}
+
+func (a *tagApi) GetHotTags() (tags []Tag, error error) {
+	result, err := RedisHelper.GetHotTags("tag_hot_%d", 20)
+	if err != nil {
+		log.Printf("Error getting popular list: %v", err)
+		return result, err
+	}
+	return result, err
+}
+
+type tagRes struct {
+	TagFollows int
+	TagScore   int
+	PostIDs    []int
+	ProjectIDs []int
+}
+
+type sortableItem struct {
+	ID  int
+	Key int
+}
+
+type sortableList []sortableItem
+
+func (s sortableList) Len() int           { return len(s) }
+func (s sortableList) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s sortableList) Less(i, j int) bool { return s[i].Key > s[j].Key }
+
+type resStats struct {
+	Clicks   int
+	Emotions int
+	Comments int
+	Score    int
+}
+
+func (a *tagApi) UpdateHotTags() error {
+	var tagResources = make(map[int]tagRes, 0)
+	var tagResourcesStats = map[string]map[int]resStats{
+		"post":    map[int]resStats{},
+		"project": map[int]resStats{},
+	}
+
+	// Get Tag and Reources
+	query := "SELECT tag_id, type, GROUP_CONCAT(target_id) FROM tagging GROUP BY tag_id, type;"
+	rows, err := DB.Queryx(query)
+	if err != nil {
+		return err
+	}
+	for rows.Next() {
+		var resIDs string
+		var tagID, resType int
+		err = rows.Scan(&tagID, &resType, &resIDs)
+		if err != nil {
+			log.Fatalln("Scan tag info error when updating hot tags", err)
+			return err
+		}
+
+		if _, ok := tagResources[tagID]; ok {
+			if resType == config.Config.Models.TaggingType["post"] {
+				res := tagResources[tagID]
+				res.PostIDs = parseIntSlice(resIDs)
+				tagResources[tagID] = res
+				for _, u := range tagResources[tagID].PostIDs {
+					tagResourcesStats["post"][u] = resStats{}
+				}
+			} else if resType == config.Config.Models.TaggingType["project"] {
+				res := tagResources[tagID]
+				res.ProjectIDs = parseIntSlice(resIDs)
+				tagResources[tagID] = res
+				for _, u := range tagResources[tagID].ProjectIDs {
+					tagResourcesStats["project"][u] = resStats{}
+				}
+			}
+		} else {
+			if resType == config.Config.Models.TaggingType["post"] {
+				t := tagRes{PostIDs: parseIntSlice(resIDs)}
+				tagResources[tagID] = t
+				for _, u := range t.PostIDs {
+					tagResourcesStats["post"][u] = resStats{}
+				}
+			} else if resType == config.Config.Models.TaggingType["project"] {
+				t := tagRes{ProjectIDs: parseIntSlice(resIDs)}
+				tagResources[tagID] = t
+				for _, u := range t.ProjectIDs {
+					tagResourcesStats["project"][u] = resStats{}
+				}
+			}
+		}
+	}
+
+	// Generate Tag-Related Resource List
+	postResourceIDs := getMapKeySlice(tagResourcesStats["post"])
+	projectResourceIDs := getMapKeySlice(tagResourcesStats["project"])
+
+	postResourceIDs64 := mapResourceIDint64(postResourceIDs)
+	projectResourceIDs64 := mapResourceIDint64(projectResourceIDs)
+
+	_, postResourceStrings := mapResourceString("post", postResourceIDs)
+	orderedProjectIDs, projectResourceStrings := mapResourceString("project", projectResourceIDs)
+
+	projectSlugIDMap := map[string]int{}
+	for i := 0; i < len(projectResourceStrings); i++ {
+		projectSlugIDMap[projectResourceStrings[i]] = orderedProjectIDs[i]
+	}
+
+	// ES
+	esClient, err := ESConn(map[string]string{
+		"url": config.Config.ES.Url,
+	})
+	if err != nil {
+		return err
+	}
+
+	esFilterQuery := elastic.NewBoolQuery()
+	queryParams := []interface{}{}
+	for _, v := range postResourceStrings {
+		queryParams = append(queryParams, v)
+	}
+	for _, v := range projectResourceStrings {
+		queryParams = append(queryParams, v)
+	}
+	esFilterQuery = esFilterQuery.Must([]elastic.Query{
+		elastic.NewTermsQuery("jsonPayload.curr-url.keyword", queryParams...),
+		elastic.NewTermQuery("jsonPayload.event-type.keyword", "click")}...)
+	esCnstScoreQuery := elastic.NewConstantScoreQuery(esFilterQuery)
+
+	esTermAggsQuery := elastic.NewTermsAggregation()
+	esTermAggsQuery = esTermAggsQuery.CollectionMode("breadth_first")
+	esTermAggsQuery = esTermAggsQuery.Field("jsonPayload.curr-url.keyword")
+	esTermAggsQuery = esTermAggsQuery.Size(10000)
+
+	searchResult, err := esClient.Search().Query(esCnstScoreQuery).Aggregation("counts", esTermAggsQuery).Do(context.Background())
+	if err != nil {
+		panic(err)
+	}
+
+	agg, found := searchResult.Aggregations.Terms("counts")
+	if !found {
+		log.Fatalf("we should have a terms aggregation called %q", "counts")
+	}
+	for _, bucket := range agg.Buckets {
+		t, ID := utils.ParseResourceInfo(bucket.Key.(string))
+		if t == "post" {
+			iID, _ := strconv.Atoi(ID)
+			trs := tagResourcesStats[t][iID]
+			trs.Clicks = int(bucket.DocCount)
+			tagResourcesStats[t][iID] = trs
+		} else if t == "project" {
+			iID := projectSlugIDMap[bucket.Key.(string)]
+			trs := tagResourcesStats[t][iID]
+			trs.Clicks = int(bucket.DocCount)
+			tagResourcesStats[t][iID] = trs
+		}
+	}
+
+	// Resource Following
+	postFollowResult, err := FollowingAPI.Get(
+		&GetFollowedArgs{
+			IDs: postResourceIDs64,
+			Resource: Resource{
+				FollowType: config.Config.Models.FollowingType["post"],
+				Emotion:    0,
+			},
+		})
+	if err != nil {
+		log.Println("Fail getting followed members when updating hot tags:", err)
+		return err
+	}
+
+	projectFollowResult, err := FollowingAPI.Get(
+		&GetFollowedArgs{
+			IDs: projectResourceIDs64,
+			Resource: Resource{
+				FollowType: config.Config.Models.FollowingType["project"],
+				Emotion:    0,
+			},
+		})
+	if err != nil {
+		log.Println("Fail getting followed members when updating hot tags:", err)
+		return err
+	}
+
+	for _, v := range postFollowResult.([]FollowedCount) {
+		ResourceID := int(v.ResourceID)
+		res := tagResourcesStats["post"][ResourceID]
+		res.Emotions = v.Count
+		tagResourcesStats["post"][ResourceID] = res
+	}
+
+	for _, v := range projectFollowResult.([]FollowedCount) {
+		ResourceID := int(v.ResourceID)
+		res := tagResourcesStats["project"][ResourceID]
+		res.Emotions = v.Count
+		tagResourcesStats["project"][ResourceID] = res
+	}
+
+	tagIDs64 := make([]int64, 0)
+	for k, _ := range tagResources {
+		tagIDs64 = append(tagIDs64, int64(k))
+	}
+
+	tagFollowResult, err := FollowingAPI.Get(
+		&GetFollowedArgs{
+			IDs: tagIDs64,
+			Resource: Resource{
+				FollowType: config.Config.Models.FollowingType["tag"],
+				Emotion:    0,
+			},
+		})
+	if err != nil {
+		log.Println("Fail getting followed members when updating hot tags:", err)
+		return err
+	}
+
+	for _, v := range tagFollowResult.([]FollowedCount) {
+		ResourceID := int(v.ResourceID)
+		res := tagResources[ResourceID]
+		res.TagFollows = v.Count
+		tagResources[ResourceID] = res
+	}
+
+	// Comment Count
+	postCCQuery := "SELECT post_id, IFNULL(comment_amount, 0) AS comment_amount FROM posts WHERE post_id IN (?);"
+	postCCQuery, args, err := sqlx.In(postCCQuery, postResourceIDs)
+	if err != nil {
+		log.Println("Error parsing IN query when get post Commentcount when updating hottags:", err)
+		return err
+	}
+	postCCQuery = DB.Rebind(postCCQuery)
+	rows, err = DB.Queryx(postCCQuery, args...)
+	if err != nil {
+		log.Println("Error get post Commentcount when updating hottags:", err)
+		return err
+	}
+
+	for rows.Next() {
+		var postID, commentCount int
+		if err = rows.Scan(&postID, &commentCount); err != nil {
+			log.Println("Error scaning query result when updating hottags:", err)
+			return err
+		}
+		res := tagResourcesStats["post"][postID]
+		res.Comments = commentCount
+		tagResourcesStats["post"][postID] = res
+	}
+
+	projectCCQuery := "SELECT project_id, IFNULL(comment_amount, 0) AS comment_amount FROM projects WHERE project_id IN (?);"
+	projectCCQuery, args, err = sqlx.In(projectCCQuery, projectResourceIDs)
+	if err != nil {
+		log.Println("Error parsing IN query when get post Commentcount when updating hottags:", err)
+		return err
+	}
+	projectCCQuery = DB.Rebind(projectCCQuery)
+	rows, err = DB.Queryx(projectCCQuery, args...)
+	if err != nil {
+		log.Println("Error get post Commentcount when updating hottags:", err)
+		return err
+	}
+
+	for rows.Next() {
+		var projectID, commentCount int
+		if err = rows.Scan(&projectID, &commentCount); err != nil {
+			log.Println("Error scaning query result when updating hottags:", err)
+			return err
+		}
+		res := tagResourcesStats["project"][projectID]
+		res.Comments = commentCount
+		tagResourcesStats["project"][projectID] = res
+	}
+
+	// Calculate tag score
+	for k, v := range tagResourcesStats["post"] {
+		v.Score = v.Clicks + v.Emotions + v.Comments
+		tagResourcesStats["post"][k] = v
+	}
+	for k, v := range tagResourcesStats["project"] {
+		v.Score = v.Clicks + v.Emotions + v.Comments
+		tagResourcesStats["project"][k] = v
+	}
+
+	for k, v := range tagResources {
+		v.TagScore += v.TagFollows
+		for _, postID := range v.PostIDs {
+			v.TagScore += tagResourcesStats["post"][postID].Score
+		}
+		for _, projectID := range v.ProjectIDs {
+			v.TagScore += tagResourcesStats["project"][projectID].Score
+		}
+		tagResources[k] = v
+	}
+
+	// Sort Score
+	var sl sortableList
+	for k, v := range tagResources {
+		sl = append(sl, sortableItem{k, v.TagScore})
+	}
+	sort.Sort(sl)
+	limit := func(a, b int) int {
+		if a < b {
+			return a
+		}
+		return b
+	}(len(sl), 20)
+
+	var tagIDs []int
+	for _, v := range sl[:limit] {
+		tagIDs = append(tagIDs, v.ID)
+	}
+	log.Println(tagIDs)
+
+	// Get Tag Info
+	tagQuery := "SELECT * FROM tags WHERE tag_id IN (?);"
+	tagQuery, args, err = sqlx.In(tagQuery, tagIDs)
+	if err != nil {
+		log.Println("Error parsing IN query when get tag info when updating hottags:", err)
+		return err
+	}
+	tagQuery = DB.Rebind(tagQuery)
+	rows, err = DB.Queryx(tagQuery, args...)
+	if err != nil {
+		log.Println("Error get post Commentcount when updating hottags:", err)
+		return err
+	}
+
+	tags := make([]Tag, len(tagIDs))
+	for rows.Next() {
+		var t Tag
+		if err = rows.StructScan(&t); err != nil {
+			log.Println("Error scaning query result when updating hottags:", err)
+			return err
+		}
+		for k, v := range tagIDs {
+			if t.ID == v {
+				tags[k] = t
+			}
+		}
+	}
+
+	// Store to Redis
+	// Write post data, post followers, post score to Redis
+	conn := RedisHelper.Conn()
+	defer conn.Close()
+
+	keys, err := RedisHelper.GetRedisKeys("tag_hot_*")
+	if err != nil {
+		log.Println(err)
+		return err
+	}
+	if len(keys) > 0 {
+		if _, err := conn.Do("DEL", redis.Args{}.AddFlat(keys)...); err != nil {
+			log.Printf("Error delete cache from redis: %v", err)
+			return err
+		}
+	}
+
+	conn.Send("MULTI")
+	for k, v := range tags {
+		conn.Send("HMSET", redis.Args{}.Add(fmt.Sprint("tag_hot_", k+1)).AddFlat(&v)...)
+	}
+	if _, err := redis.Values(conn.Do("EXEC")); err != nil {
+		log.Printf("Error insert cache to redis: %v", err)
+		return err
+	}
+
+	return nil
+}
+
+func parseIntSlice(ids string) []int {
+	ss := strings.Split(ids, ",")
+	is := make([]int, len(ss))
+	for i, v := range ss {
+		id, _ := strconv.Atoi(v)
+		is[i] = id
+	}
+	return is
+}
+
+func getMapKeySlice(m map[int]resStats) []int {
+	ks := make([]int, len(m))
+	i := 0
+	for k := range m {
+		ks[i] = k
+		i++
+	}
+	return ks
+}
+
+func mapResourceString(resType string, resIDs []int) (orderedResIDs []int, resStrings []string) {
+	if resType == "post" {
+		for _, resID := range resIDs {
+			resStrings = append(resStrings, utils.GenerateResourceInfo(resType, resID, ""))
+		}
+	} else if resType == "project" {
+		query := fmt.Sprintf("SELECT project_id, slug FROM projects WHERE project_id IN (?) AND active = %d", config.Config.Models.Tags["active"])
+		query, args, err := sqlx.In(query, resIDs)
+		if err != nil {
+			log.Println("Error parsing IN query when mapResourceString:", err)
+			return orderedResIDs, resStrings
+		}
+		query = DB.Rebind(query)
+		rows, err := DB.Queryx(query, args...)
+		if err != nil {
+			log.Println("Error querying project slugs when mapResourceString:", err)
+			return orderedResIDs, resStrings
+		}
+
+		for rows.Next() {
+			var id int
+			var slug string
+			if err = rows.Scan(&id, &slug); err != nil {
+				log.Println("Error scaning query result when mapResourceString:", err)
+				return []int{}, []string{}
+			}
+			resStrings = append(resStrings, utils.GenerateResourceInfo(resType, id, slug))
+			orderedResIDs = append(orderedResIDs, id)
+		}
+	}
+	return orderedResIDs, resStrings
+}
+
+func mapResourceIDint64(res []int) (res64 []int64) {
+	res64 = make([]int64, len(res))
+	for i := 0; i < len(res); i++ {
+		res64[i] = int64(res[i])
+	}
+	return res64
 }
 
 // var TagStatus map[string]interface{}
