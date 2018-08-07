@@ -22,7 +22,7 @@ type UpdateNotificationArgs struct {
 type Notification struct {
 	Member       int    `redis:"-" json:"-"`
 	ID           string `redis:"id" json:"id"`
-	SubjectID    int    `redis:"subject_id" json:"subject_id"`
+	SubjectID    string `redis:"subject_id" json:"subject_id"`
 	Nickname     string `redis:"nickname" json:"nickname"`
 	ProfileImage string `redis:"profile_image" json:"profile_image"`
 	ObjectName   string `redis:"object_name" json:"object_name,omitempty"`

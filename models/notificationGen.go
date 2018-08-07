@@ -126,7 +126,7 @@ func (c *notificationGenerator) GenerateCommentNotifications(comment InsertComme
 		}
 
 		for k, v := range ns {
-			v.SubjectID = int(commentDetail.Author.Int)
+			v.SubjectID = strconv.Itoa(int(commentDetail.Author.Int))
 			v.Nickname = commentDetail.AuthorNickname.String
 			v.ProfileImage = commentDetail.AuthorImage.String
 			v.ObjectName = post.Member.Nickname.String
@@ -186,7 +186,7 @@ func (c *notificationGenerator) GenerateCommentNotifications(comment InsertComme
 		}
 
 		for k, v := range ns {
-			v.SubjectID = int(commentDetail.Author.Int)
+			v.SubjectID = strconv.Itoa(int(commentDetail.Author.Int))
 			v.Nickname = commentDetail.AuthorNickname.String
 			v.ProfileImage = commentDetail.AuthorImage.String
 			v.ObjectName = project.Title.String
@@ -256,7 +256,7 @@ func (c *notificationGenerator) GenerateCommentNotifications(comment InsertComme
 		}
 
 		for k, v := range ns {
-			v.SubjectID = int(commentDetail.Author.Int)
+			v.SubjectID = strconv.Itoa(int(commentDetail.Author.Int))
 			v.Nickname = commentDetail.AuthorNickname.String
 			v.ProfileImage = commentDetail.AuthorImage.String
 			v.ObjectName = memo.Title.String
@@ -319,7 +319,7 @@ func (c *notificationGenerator) GenerateCommentNotifications(comment InsertComme
 		}
 
 		for k, v := range ns {
-			v.SubjectID = int(commentDetail.Author.Int)
+			v.SubjectID = strconv.Itoa(int(commentDetail.Author.Int))
 			v.Nickname = commentDetail.AuthorNickname.String
 			v.ProfileImage = commentDetail.AuthorImage.String
 			v.ObjectName = report.Title.String
@@ -336,7 +336,7 @@ func (c *notificationGenerator) GenerateCommentNotifications(comment InsertComme
 		}
 
 		for k, v := range ns {
-			v.SubjectID = int(commentDetail.Author.Int)
+			v.SubjectID = strconv.Itoa(int(commentDetail.Author.Int))
 			v.Nickname = commentDetail.AuthorNickname.String
 			v.ProfileImage = commentDetail.AuthorImage.String
 			v.ObjectName = commentDetail.Resource.String
@@ -373,7 +373,7 @@ func (c *notificationGenerator) GenerateProjectNotifications(resource interface{
 		}
 
 		for k, v := range ns {
-			v.SubjectID = p.ID
+			v.SubjectID = strconv.Itoa(p.ID)
 			v.Nickname = p.Title.String
 			v.ProfileImage = p.HeroImage.String
 			v.ObjectName = p.Title.String
@@ -404,7 +404,7 @@ func (c *notificationGenerator) GenerateProjectNotifications(resource interface{
 		}
 
 		for k, v := range ns {
-			v.SubjectID = r.ID
+			v.SubjectID = strconv.Itoa(r.ID)
 			v.Nickname = r.Title.String
 			v.ProfileImage = project.HeroImage.String
 			v.ObjectName = project.Title.String
@@ -432,7 +432,7 @@ func (c *notificationGenerator) GenerateProjectNotifications(resource interface{
 		}
 
 		for k, v := range ns {
-			v.SubjectID = m.ID
+			v.SubjectID = strconv.Itoa(m.ID)
 			v.Nickname = m.Title.String
 			v.ProfileImage = project.HeroImage.String
 			v.ObjectName = project.Title.String
@@ -467,7 +467,7 @@ func (c *notificationGenerator) GeneratePostNotifications(p TaggedPostMember) (e
 	}
 
 	for k, v := range ns {
-		v.SubjectID = int(p.ID)
+		v.SubjectID = strconv.Itoa(int(p.ID))
 		v.Nickname = p.Title.String
 		v.ProfileImage = authorInfo.ProfileImage.String
 		v.ObjectName = authorInfo.Nickname.String
