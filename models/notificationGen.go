@@ -132,7 +132,7 @@ func (c *notificationGenerator) GenerateCommentNotifications(comment InsertComme
 			v.ObjectName = post.Member.Nickname.String
 			v.ObjectType = resourceName
 			v.ObjectID = strconv.Itoa(resourceID)
-			v.PostType = int(post.Type.Int)
+			v.PostType = strconv.Itoa(int(post.Type.Int))
 			ns[k] = v
 		}
 
@@ -193,7 +193,6 @@ func (c *notificationGenerator) GenerateCommentNotifications(comment InsertComme
 			v.ObjectType = resourceName
 			v.ObjectID = strconv.Itoa(resourceID)
 			v.ObjectSlug = project.Slug.String
-			v.PostType = 0
 			ns[k] = v
 		}
 
@@ -473,7 +472,7 @@ func (c *notificationGenerator) GeneratePostNotifications(p TaggedPostMember) (e
 		v.ObjectName = authorInfo.Nickname.String
 		v.ObjectType = "member"
 		v.ObjectID = strconv.Itoa(int(p.Author.Int))
-		v.PostType = int(p.Type.Int)
+		v.PostType = strconv.Itoa(int(p.Type.Int))
 		ns[k] = v
 	}
 	ns.Send()
