@@ -131,7 +131,7 @@ func (c *notificationGenerator) GenerateCommentNotifications(comment InsertComme
 			v.ProfileImage = commentDetail.AuthorImage.String
 			v.ObjectName = post.Member.Nickname.String
 			v.ObjectType = resourceName
-			v.ObjectID = resourceID
+			v.ObjectID = strconv.Itoa(resourceID)
 			v.PostType = int(post.Type.Int)
 			ns[k] = v
 		}
@@ -191,7 +191,7 @@ func (c *notificationGenerator) GenerateCommentNotifications(comment InsertComme
 			v.ProfileImage = commentDetail.AuthorImage.String
 			v.ObjectName = project.Title.String
 			v.ObjectType = resourceName
-			v.ObjectID = resourceID
+			v.ObjectID = strconv.Itoa(resourceID)
 			v.ObjectSlug = project.Slug.String
 			v.PostType = 0
 			ns[k] = v
@@ -261,7 +261,7 @@ func (c *notificationGenerator) GenerateCommentNotifications(comment InsertComme
 			v.ProfileImage = commentDetail.AuthorImage.String
 			v.ObjectName = memo.Title.String
 			v.ObjectType = resourceName
-			v.ObjectID = resourceID
+			v.ObjectID = strconv.Itoa(resourceID)
 			v.ObjectSlug = project.Slug.String
 			ns[k] = v
 		}
@@ -324,7 +324,7 @@ func (c *notificationGenerator) GenerateCommentNotifications(comment InsertComme
 			v.ProfileImage = commentDetail.AuthorImage.String
 			v.ObjectName = report.Title.String
 			v.ObjectType = resourceName
-			v.ObjectID = resourceID
+			v.ObjectID = strconv.Itoa(resourceID)
 			v.ObjectSlug = report.Slug.String
 			ns[k] = v
 		}
@@ -378,7 +378,7 @@ func (c *notificationGenerator) GenerateProjectNotifications(resource interface{
 			v.ProfileImage = p.HeroImage.String
 			v.ObjectName = p.Title.String
 			v.ObjectType = "project"
-			v.ObjectID = p.ID
+			v.ObjectID = strconv.Itoa(p.ID)
 			v.ObjectSlug = p.Slug.String
 			ns[k] = v
 		}
@@ -409,7 +409,7 @@ func (c *notificationGenerator) GenerateProjectNotifications(resource interface{
 			v.ProfileImage = project.HeroImage.String
 			v.ObjectName = project.Title.String
 			v.ObjectType = "project"
-			v.ObjectID = project.ID
+			v.ObjectID = strconv.Itoa(project.ID)
 			v.ObjectSlug = project.Slug.String
 			ns[k] = v
 		}
@@ -437,7 +437,7 @@ func (c *notificationGenerator) GenerateProjectNotifications(resource interface{
 			v.ProfileImage = project.HeroImage.String
 			v.ObjectName = project.Title.String
 			v.ObjectType = "project"
-			v.ObjectID = project.ID
+			v.ObjectID = strconv.Itoa(project.ID)
 			v.ObjectSlug = project.Slug.String
 			ns[k] = v
 		}
@@ -472,7 +472,7 @@ func (c *notificationGenerator) GeneratePostNotifications(p TaggedPostMember) (e
 		v.ProfileImage = authorInfo.ProfileImage.String
 		v.ObjectName = authorInfo.Nickname.String
 		v.ObjectType = "member"
-		v.ObjectID = int(p.Author.Int)
+		v.ObjectID = strconv.Itoa(int(p.Author.Int))
 		v.PostType = int(p.Type.Int)
 		ns[k] = v
 	}
