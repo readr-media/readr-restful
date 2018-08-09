@@ -74,6 +74,7 @@ type InsertCommentArgs struct {
 type GetCommentArgs struct {
 	MaxResult int              `form:"max_result"`
 	Page      int              `form:"page"`
+	IntraMax  int              `form:"intra_max"`
 	Sorting   string           `form:"sort"`
 	Author    []int            `form:"author"`
 	Resource  []string         `form:"resource"`
@@ -85,7 +86,8 @@ func (p *GetCommentArgs) Default() (result *GetCommentArgs) {
 	return &GetCommentArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at"}
 }
 
-func (p *GetCommentArgs) parse() (restricts string, values []interface{}) {
+func (p *GetCommentArgs) parse() (tableName, restricts string, values []interface{}) {
+
 	where := make([]string, 0)
 
 	if p.Status != nil {
@@ -98,6 +100,24 @@ func (p *GetCommentArgs) parse() (restricts string, values []interface{}) {
 		where = append(where, fmt.Sprintf("%s %s (?)", "comments.author", operatorHelper("in")))
 		values = append(values, p.Author)
 	}
+	if p.IntraMax != 0 {
+		switch {
+		case len(p.Resource) != 0:
+			tableName = fmt.Sprintf(`(SELECT *, @num := if(@resource = resource, @num + 1, 1) AS row_number, @resource := resource AS dummy FROM comments ORDER BY resource, parent_id, active DESC, %s)`, orderByHelper(p.Sorting))
+		case len(p.Parent) != 0:
+			tableName = fmt.Sprintf(`(SELECT *, @num := if(@resource = parent_id, @num + 1, 1) AS row_number, @resource := parent_id AS dummy FROM comments ORDER BY parent_id, active DESC, %s)`, orderByHelper(p.Sorting))
+		default:
+			// Default to `resource` case
+			tableName = fmt.Sprintf(`(SELECT *, @num := if(@resource = resource, @num + 1, 1) AS row_number, @resource := resource AS dummy FROM comments ORDER BY resource, %s)`, orderByHelper(p.Sorting))
+		}
+		where = append(where, fmt.Sprintf("comments.row_number <= %d", p.IntraMax))
+
+		p.MaxResult = p.MaxResult * p.IntraMax
+
+	} else {
+		tableName = `comments`
+	}
+
 	if len(p.Resource) != 0 {
 		where = append(where, fmt.Sprintf("%s %s (?) %s", "comments.resource", operatorHelper("in"), " AND comments.parent_id IS NULL"))
 		values = append(values, p.Resource)
@@ -113,7 +133,12 @@ func (p *GetCommentArgs) parse() (restricts string, values []interface{}) {
 	} else if len(where) == 1 {
 		restricts = where[0]
 	}
-	return restricts, values
+
+	if p.MaxResult != 0 {
+		restricts = restricts + " LIMIT ? OFFSET ?"
+		values = append(values, p.MaxResult, (p.Page-1)*p.MaxResult)
+	}
+	return tableName, restricts, values
 }
 
 type GetReportedCommentArgs struct {
@@ -150,6 +175,7 @@ func (p *GetReportedCommentArgs) parse() (restricts string, values []interface{}
 		restricts = where[0]
 		restricts = "WHERE " + restricts
 	}
+
 	return restricts, values
 }
 
@@ -218,10 +244,16 @@ func (c *commentAPI) GetComment(id int) (CommentAuthor, error) {
 }
 
 func (c *commentAPI) GetComments(args *GetCommentArgs) (result []CommentAuthor, err error) {
-	restricts, values := args.parse()
 
-	query := fmt.Sprintf("SELECT comments.*, INET_NTOA(comments.ip) AS ip, members.nickname AS author_nickname, members.profile_image AS author_image, members.role AS author_role, IFNULL(count.count, 0) AS comment_amount FROM comments AS comments LEFT JOIN members AS members ON comments.author = members.id LEFT JOIN (SELECT count(*) AS count, parent_id FROM comments GROUP BY parent_id) AS count ON comments.id = count.parent_id WHERE %s ORDER BY %s LIMIT ? OFFSET ?;", restricts, orderByHelper(args.Sorting))
-	values = append(values, args.MaxResult, (args.Page-1)*args.MaxResult)
+	commentFields := strings.Join(makeFieldString("general", "comments.%s", getStructDBTags("full", Comment{})), ",")
+	tableName, restricts, values := args.parse()
+
+	query := fmt.Sprintf(`
+	SELECT %s, INET_NTOA(comments.ip) AS ip, members.nickname AS author_nickname, members.profile_image AS author_image, members.role AS author_role, IFNULL(count.count, 0) AS comment_amount 
+	FROM %s AS comments 
+	LEFT JOIN members AS members ON comments.author = members.id 
+	LEFT JOIN (SELECT count(*) AS count, parent_id FROM comments GROUP BY parent_id) AS count ON comments.id = count.parent_id 
+	WHERE %s;`, commentFields, tableName, restricts)
 
 	query, values, err = sqlx.In(query, values...)
 	if err != nil {
@@ -229,7 +261,6 @@ func (c *commentAPI) GetComments(args *GetCommentArgs) (result []CommentAuthor, 
 		return nil, err
 	}
 	query = DB.Rebind(query)
-
 	rows, err := DB.Queryx(query, values...)
 	if err != nil {
 		log.Println(err.Error())
