@@ -2,9 +2,13 @@ package routes
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
+	"log"
 	"net/http"
 	"regexp"
 	"strconv"
+
 	"strings"
 	"time"
 
@@ -15,15 +19,58 @@ import (
 
 type tagHandler struct{}
 
+func (r *tagHandler) bindGetQuery(c *gin.Context, args *models.GetTagsArgs) (err error) {
+	err = c.Bind(args)
+	if err != nil {
+		return err
+	}
+
+	if c.Query("post_fields") != "" {
+		if err = json.Unmarshal([]byte(c.Query("post_fields")), &args.PostFields); err != nil {
+			log.Println(err.Error())
+			return err
+		}
+		for key, field := range args.PostFields {
+			if field == "id" {
+				field = "post_id"
+				args.PostFields[key] = "post_id"
+			}
+			if !r.validate(field, fmt.Sprintf("^(%s)$", strings.Join(args.FullPostTags(), "|"))) {
+				return errors.New("Invalid Fields")
+			}
+		}
+	} else {
+		args.PostFields = args.FullPostTags()
+	}
+
+	if c.Query("project_fields") != "" {
+		if err = json.Unmarshal([]byte(c.Query("project_fields")), &args.ProjectFields); err != nil {
+			log.Println(err.Error())
+			return err
+		}
+		for key, field := range args.ProjectFields {
+			if field == "id" {
+				field = "project_id"
+				args.PostFields[key] = "project_id"
+			}
+			if !r.validate(field, fmt.Sprintf("^(%s)$", strings.Join(args.FullProjectTags(), "|"))) {
+				return errors.New("Invalid Fields")
+			}
+		}
+	} else {
+		args.ProjectFields = args.FullProjectTags()
+	}
+	return nil
+}
+
 func (r *tagHandler) Get(c *gin.Context) {
 	args := models.DefaultGetTagsArgs()
-	err := c.Bind(&args)
-	if err != nil {
+	if err := r.bindGetQuery(c, &args); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
 
-	if err = args.ValidateGet(); err != nil {
+	if err := args.ValidateGet(); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
@@ -187,8 +234,8 @@ func (r *tagHandler) SetRoutes(router *gin.Engine) {
 	}
 }
 
-func validateSorting(s string) bool {
-	if matched, err := regexp.MatchString("-?(text|updated_at|created_at|related_reviews|related_news)", s); err != nil || !matched {
+func (r *tagHandler) validate(target string, paradigm string) bool {
+	if matched, err := regexp.MatchString(paradigm, target); err != nil || !matched {
 		return false
 	}
 	return true

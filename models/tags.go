@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"database/sql"
+	"encoding/json"
 
 	"github.com/garyburd/redigo/redis"
 	"github.com/go-sql-driver/mysql"
@@ -34,49 +35,13 @@ type Tag struct {
 
 type TagInterface interface {
 	ToggleTags(args UpdateMultipleTagsArgs) error
-	GetTags(args GetTagsArgs) ([]Tag, error)
+	GetTags(args GetTagsArgs) ([]TagRelatedResources, error)
 	InsertTag(tag Tag) (int, error)
 	UpdateTag(tag Tag) error
 	UpdateTagging(resourceType int, targetID int, tagIDs []int) error
 	CountTags(args GetTagsArgs) (int, error)
 	GetHotTags() ([]Tag, error)
 	UpdateHotTags() error
-}
-
-type GetTagsArgs struct {
-	MaxResult   uint8  `form:"max_result" json:"max_result"`
-	Page        uint16 `form:"page" json:"page"`
-	Sorting     string `form:"sort" json:"sort"`
-	Keyword     string `form:"keyword" json:"keyword"`
-	ShowStats   bool   `form:"stats" json:"stats"`
-	TaggingType int    `form:"tagging_type" json:"tagging_type" db:"tagging_type"`
-}
-
-func DefaultGetTagsArgs() GetTagsArgs {
-	return GetTagsArgs{
-		MaxResult: 50,
-		Page:      1,
-		Sorting:   "-updated_at",
-		ShowStats: false,
-	}
-}
-
-func (a *GetTagsArgs) ValidateGet() error {
-
-	if !utils.ValidateStringArgs(a.Sorting, "-?(text|updated_at|created_at|related_reviews|related_news)") {
-		return errors.New("Bad Sorting Option")
-	}
-	if a.TaggingType != 0 && !utils.ValidateTaggingType(a.TaggingType) {
-		return errors.New("Invalid Tagging Type")
-	}
-	return nil
-}
-
-type UpdateMultipleTagsArgs struct {
-	IDs       []int    `json:"ids"`
-	UpdatedBy string   `form:"updated_by" json:"updated_by" db:"updated_by"`
-	UpdatedAt NullTime `json:"-" db:"updated_at"`
-	Active    string   `json:"-" db:"active"`
 }
 
 type tagApi struct{}
@@ -108,9 +73,90 @@ func (t *tagApi) ToggleTags(args UpdateMultipleTagsArgs) error {
 	return nil
 }
 
-func (t *tagApi) GetTags(args GetTagsArgs) (tags []Tag, err error) {
+type GetTagsArgs struct {
+	MaxResult     uint8     `form:"max_result" json:"max_result"`
+	Page          uint16    `form:"page" json:"page"`
+	Sorting       string    `form:"sort" json:"sort"`
+	Keyword       string    `form:"keyword" json:"keyword"`
+	ShowStats     bool      `form:"stats" json:"stats"`
+	ShowResources bool      `form:"tagged_resources" json:"tagged_resources"`
+	TaggingType   int       `form:"tagging_type" json:"tagging_type" db:"tagging_type"`
+	IDs           []int     `form:"ids" json:"-"`
+	PostFields    sqlfields `form:"post_fields"`
+	ProjectFields sqlfields `form:"project_fields"`
+}
+
+func DefaultGetTagsArgs() GetTagsArgs {
+	return GetTagsArgs{
+		MaxResult: 50,
+		Page:      1,
+		Sorting:   "-updated_at",
+		ShowStats: false,
+	}
+}
+
+func (a *GetTagsArgs) ValidateGet() error {
+
+	if !utils.ValidateStringArgs(a.Sorting, "-?(text|updated_at|created_at|related_reviews|related_news|related_projects)") {
+		return errors.New("Bad Sorting Option")
+	}
+	if a.TaggingType != 0 && !utils.ValidateTaggingType(a.TaggingType) {
+		return errors.New("Invalid Tagging Type")
+	}
+	return nil
+}
+
+func (g *GetTagsArgs) FullPostTags() (result []string) {
+	return getStructDBTags("full", Post{})
+}
+
+func (g *GetTagsArgs) FullProjectTags() (result []string) {
+	return getStructDBTags("full", Project{})
+}
+
+type TagRelatedResources struct {
+	Tag
+	TagPosts    []tagPost    `json:"tagged_posts"`
+	TagProjects []tagProject `json:"tagged_projects"`
+}
+
+func (t *TagRelatedResources) MarshalJSON() ([]byte, error) {
+
+	values := make(map[string]interface{})
+
+	utils.MarshalIgnoreNullNullable(t.Tag, values)
+	utils.MarshalIgnoreNullNullable(*t, values)
+
+	return json.Marshal(values)
+
+}
+
+type tagPost struct {
+	Post  `db:"post"`
+	TagID int `db:"tag_id"`
+}
+
+func (t *tagPost) MarshalJSON() ([]byte, error) {
+	values := make(map[string]interface{})
+	utils.MarshalIgnoreNullNullable(t.Post, values)
+	return json.Marshal(values)
+}
+
+type tagProject struct {
+	Project `db:"project"`
+	TagID   int `db:"tag_id"`
+}
+
+func (t *tagProject) MarshalJSON() ([]byte, error) {
+	values := make(map[string]interface{})
+	utils.MarshalIgnoreNullNullable(t.Project, values)
+	return json.Marshal(values)
+}
+
+func (t *tagApi) GetTags(args GetTagsArgs) (tags []TagRelatedResources, err error) {
 
 	var query bytes.Buffer
+	var queryArgs []interface{}
 
 	if args.ShowStats {
 		base := `
@@ -133,41 +179,52 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []Tag, err error) {
 			config.Config.Models.TaggingType["project"],
 		))
 
-		if args.TaggingType == 0 {
-			query.WriteString(fmt.Sprintf(` WHERE ta.active=%d `, config.Config.Models.Tags["active"]))
-		} else {
-			query.WriteString(fmt.Sprintf(` LEFT JOIN tagging AS tg ON ta.tag_id = tg.tag_id WHERE ta.active=%d AND tg.type = :tagging_type`, config.Config.Models.Tags["active"]))
-		}
 	} else {
-		// query.WriteString(fmt.Sprintf(`SELECT ta.* FROM tags as ta WHERE ta.active=%d `, int(TagStatus["active"].(float64))))
-		if args.TaggingType == 0 {
-			//Avoid unnecessary join
-			query.WriteString(fmt.Sprintf(`SELECT ta.* FROM tags as ta WHERE ta.active=%d `, config.Config.Models.Tags["active"]))
-		} else {
-			query.WriteString(fmt.Sprintf(`SELECT ta.* FROM tags as ta LEFT JOIN tagging AS tg ON ta.tag_id = tg.tag_id WHERE ta.active=%d AND tg.type = :tagging_type`, config.Config.Models.Tags["active"]))
-		}
+		query.WriteString(`SELECT ta.* FROM tags as ta `)
+	}
+
+	if args.TaggingType == 0 {
+		query.WriteString(fmt.Sprintf(` WHERE ta.active=%d `, config.Config.Models.Tags["active"]))
+	} else {
+		query.WriteString(fmt.Sprintf(` LEFT JOIN tagging AS tg ON ta.tag_id = tg.tag_id WHERE ta.active=%d AND tg.type = ?`, config.Config.Models.Tags["active"]))
+		queryArgs = append(queryArgs, args.TaggingType)
 	}
 
 	if args.Keyword != "" {
-		query.WriteString(` AND ta.tag_content LIKE :keyword`)
+		query.WriteString(` AND ta.tag_content LIKE ?`)
 		args.Keyword = "%" + args.Keyword + "%"
+		queryArgs = append(queryArgs, args.Keyword)
+	}
+
+	if len(args.IDs) > 0 {
+		query.WriteString(` AND ta.tag_id IN (?)`)
+		queryArgs = append(queryArgs, args.IDs)
 	}
 
 	args.Page = (args.Page - 1) * uint16(args.MaxResult)
-	query.WriteString(fmt.Sprintf(` ORDER BY %s LIMIT :maxresult OFFSET :page;`, orderByHelper(args.Sorting)))
+	query.WriteString(fmt.Sprintf(` ORDER BY %s LIMIT ? OFFSET ?;`, orderByHelper(args.Sorting)))
+	queryArgs = append(queryArgs, args.MaxResult, args.Page)
 
-	rows, err := DB.NamedQuery(query.String(), args)
+	queryString, queryArgs, err := sqlx.In(query.String(), queryArgs...)
+	if err != nil {
+		log.Println("Error parsing IN query when get tag info when updating hottags:", err)
+		return nil, err
+	}
+	queryString = DB.Rebind(queryString)
+
+	rows, err := DB.Queryx(queryString, queryArgs...)
 	if err != nil {
 		log.Println(err.Error())
 		return nil, err
 	}
 
-	tags = []Tag{}
+	tag_ids := make([]int, 0)
+	tags = []TagRelatedResources{}
 	for rows.Next() {
 		var singleTag Tag
 		err = rows.StructScan(&singleTag)
 		if err != nil {
-			tags = []Tag{}
+			tags = []TagRelatedResources{}
 			log.Println(err.Error())
 			return tags, err
 		}
@@ -179,9 +236,83 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []Tag, err error) {
 				singleTag.RelatedReviews = NullInt{0, true}
 			}
 		}
-		tags = append(tags, singleTag)
+		tag_ids = append(tag_ids, singleTag.ID)
+		tags = append(tags, TagRelatedResources{Tag: singleTag})
 	}
 
+	if args.ShowResources {
+		// Get Related Post
+		relatedPostQuery := fmt.Sprintf(`
+			SELECT tg.tag_id, %s 
+			FROM tagging AS tg 
+			LEFT JOIN posts AS p ON p.post_id = tg.target_id 
+			WHERE tg.type = %d AND tg.tag_id IN (?) AND p.active = %d`,
+			args.PostFields.GetFields(`p.%s "post.%s"`),
+			config.Config.Models.TaggingType["post"],
+			config.Config.Models.Posts["active"],
+		)
+		relatedPostQuery, relatedPostArgs, err := sqlx.In(relatedPostQuery, tag_ids)
+		if err != nil {
+			log.Println(err.Error())
+			return nil, err
+		}
+		relatedPostQuery = DB.Rebind(relatedPostQuery)
+		rows, err := DB.Queryx(relatedPostQuery, relatedPostArgs...)
+		if err != nil {
+			return nil, err
+		}
+
+		for rows.Next() {
+			var tp tagPost
+			err = rows.StructScan(&tp)
+			if err != nil {
+				log.Fatalln("Error scan TagPost when getting Tags", err)
+				return nil, err
+			}
+			for k, v := range tags {
+				if tp.TagID == v.ID {
+					tags[k].TagPosts = append(v.TagPosts, tp)
+					break
+				}
+			}
+		}
+
+		// Get Related Projects
+		relatedProjectQuery := fmt.Sprintf(`
+			SELECT tg.tag_id, %s 
+			FROM tagging AS tg 
+			LEFT JOIN projects AS p ON p.project_id = tg.target_id 
+			WHERE tg.type = %d AND tg.tag_id IN (?) AND p.active = %d`,
+			args.ProjectFields.GetFields(`p.%s "project.%s"`),
+			config.Config.Models.TaggingType["project"],
+			config.Config.Models.ProjectsActive["active"],
+		)
+		relatedProjectQuery, relatedProjectArgs, err := sqlx.In(relatedProjectQuery, tag_ids)
+		if err != nil {
+			log.Println(err.Error())
+			return nil, err
+		}
+		relatedProjectQuery = DB.Rebind(relatedProjectQuery)
+		rows, err = DB.Queryx(relatedProjectQuery, relatedProjectArgs...)
+		if err != nil {
+			return nil, err
+		}
+
+		for rows.Next() {
+			var tp tagProject
+			err = rows.StructScan(&tp)
+			if err != nil {
+				log.Fatalln("Error scan TagProject when getting Tags", err)
+				return nil, err
+			}
+			for k, v := range tags {
+				if tp.TagID == v.ID {
+					tags[k].TagProjects = append(v.TagProjects, tp)
+					break
+				}
+			}
+		}
+	}
 	return tags, nil
 }
 
@@ -215,6 +346,13 @@ func (t *tagApi) InsertTag(tag Tag) (int, error) {
 	}
 
 	return int(lastID), nil
+}
+
+type UpdateMultipleTagsArgs struct {
+	IDs       []int    `json:"ids"`
+	UpdatedBy string   `form:"updated_by" json:"updated_by" db:"updated_by"`
+	UpdatedAt NullTime `json:"-" db:"updated_at"`
+	Active    string   `json:"-" db:"active"`
 }
 
 func (t *tagApi) UpdateTag(tag Tag) error {

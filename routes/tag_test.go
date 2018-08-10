@@ -31,18 +31,18 @@ func (t *mockTagAPI) ToggleTags(args models.UpdateMultipleTagsArgs) error {
 	return nil
 }
 
-func (t *mockTagAPI) GetTags(args models.GetTagsArgs) (tags []models.Tag, err error) {
-	var result []models.Tag
+func (t *mockTagAPI) GetTags(args models.GetTagsArgs) (tags []models.TagRelatedResources, err error) {
+	var result []models.TagRelatedResources
 	var offset = int(args.Page-1) * int(args.MaxResult)
 
 	for _, t := range mockTagDS {
 		if t.Active.Int != 0 {
-			result = append(result, t)
+			result = append(result, models.TagRelatedResources{Tag: t})
 		}
 	}
 
 	if args.Keyword != "" {
-		newResult := []models.Tag{}
+		newResult := []models.TagRelatedResources{}
 		for _, t := range result {
 			if strings.HasPrefix(t.Text, args.Keyword) {
 				newResult = append(newResult, t)
@@ -52,7 +52,7 @@ func (t *mockTagAPI) GetTags(args models.GetTagsArgs) (tags []models.Tag, err er
 	}
 
 	if offset > len(mockTagDS) {
-		result = []models.Tag{}
+		result = []models.TagRelatedResources{}
 	} else {
 		result = result[offset:]
 	}
@@ -234,6 +234,9 @@ func TestRouteTags(t *testing.T) {
 			}},
 			genericTestcase{"GetTagKeywordNotFound", "GET", "/tags?keyword=1024", ``, http.StatusOK, `{"_items":[]}`},
 			genericTestcase{"GetTagUnknownSortingKey", "GET", "/tags?sort=unknown", ``, http.StatusBadRequest, `{"Error":"Bad Sorting Option"}`},
+			//genericTestcase{"GetTagGetTaggedResources", "GET", `/tags?tagged_resources=1`, ``, http.StatusOK, `{"_items":[{"active":1,"created_at":"2018-08-10T12:56:57Z","id":1,"tagged_posts":[{"active":1,"author":931,"id":42,"type":0,"updated_by":931},{"active":1,"author":931,"id":44,"type":0,"updated_by":931}],"text":"tag1","updated_at":"2018-08-10T12:56:57Z","updated_by":931},{"active":1,"created_at":"2018-08-10T12:56:57Z","id":2,"tagged_posts":[{"active":1,"author":931,"id":42,"type":0,"updated_by":931}],"text":"tag2","updated_at":"2018-08-10T12:56:57Z","updated_by":931},{"active":1,"created_at":"2018-08-10T12:56:57Z","id":3,"tagged_posts":[{"active":1,"author":931,"id":44,"type":0,"updated_by":931}],"text":"tag3","updated_at":"2018-08-10T12:56:57Z","updated_by":931},{"active":1,"created_at":"2018-08-10T12:56:57Z","id":4,"text":"tag4","updated_at":"2018-08-10T12:56:57Z","updated_by":931}]}`},
+			genericTestcase{"GetTagGetTaggedResources", "GET", `/tags?post_fields=["unknown"]`, ``, http.StatusBadRequest, `{"Error":"Invalid Fields"}`},
+			//genericTestcase{"GetTagGetTaggedResources", "GET", `/tags?tagged_resources=1&post_fields=["post_id"]`, ``, http.StatusOK, `{"_items":[{"active":1,"created_at":"2018-08-10T12:56:57Z","id":1,"tagged_posts":[{"id":42},{"id":44}],"text":"tag1","updated_at":"2018-08-10T12:56:57Z","updated_by":931},{"active":1,"created_at":"2018-08-10T12:56:57Z","id":2,"tagged_posts":[{"id":42}],"text":"tag2","updated_at":"2018-08-10T12:56:57Z","updated_by":931},{"active":1,"created_at":"2018-08-10T12:56:57Z","id":3,"tagged_posts":[{"id":44}],"text":"tag3","updated_at":"2018-08-10T12:56:57Z","updated_by":931},{"active":1,"created_at":"2018-08-10T12:56:57Z","id":4,"text":"tag4","updated_at":"2018-08-10T12:56:57Z","updated_by":931}]}`},
 		} {
 			genericDoTest(testcase, t, asserter)
 		}
