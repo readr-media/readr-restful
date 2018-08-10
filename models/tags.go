@@ -40,7 +40,7 @@ type TagInterface interface {
 	UpdateTag(tag Tag) error
 	UpdateTagging(resourceType int, targetID int, tagIDs []int) error
 	CountTags(args GetTagsArgs) (int, error)
-	GetHotTags() ([]Tag, error)
+	GetHotTags() ([]TagRelatedResources, error)
 	UpdateHotTags() error
 }
 
@@ -201,9 +201,20 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []TagRelatedResources, err erro
 		queryArgs = append(queryArgs, args.IDs)
 	}
 
-	args.Page = (args.Page - 1) * uint16(args.MaxResult)
-	query.WriteString(fmt.Sprintf(` ORDER BY %s LIMIT ? OFFSET ?;`, orderByHelper(args.Sorting)))
-	queryArgs = append(queryArgs, args.MaxResult, args.Page)
+	if args.Sorting != "" {
+		query.WriteString(fmt.Sprintf(` ORDER BY %s`, orderByHelper(args.Sorting)))
+	}
+
+	if args.MaxResult != 0 {
+		query.WriteString(` LIMIT ?`)
+		queryArgs = append(queryArgs, args.MaxResult)
+
+		if args.Page != 0 {
+			args.Page = (args.Page - 1) * uint16(args.MaxResult)
+			query.WriteString(` OFFSET ?`)
+			queryArgs = append(queryArgs, args.Page)
+		}
+	}
 
 	queryString, queryArgs, err := sqlx.In(query.String(), queryArgs...)
 	if err != nil {
@@ -458,7 +469,7 @@ func (a *tagApi) CountTags(args GetTagsArgs) (result int, err error) {
 	return result, err
 }
 
-func (a *tagApi) GetHotTags() (tags []Tag, error error) {
+func (a *tagApi) GetHotTags() (tags []TagRelatedResources, error error) {
 	result, err := RedisHelper.GetHotTags("tag_hot_%d", 20)
 	if err != nil {
 		log.Printf("Error getting popular list: %v", err)
@@ -765,34 +776,20 @@ func (a *tagApi) UpdateHotTags() error {
 	for _, v := range sl[:limit] {
 		tagIDs = append(tagIDs, v.ID)
 	}
-	log.Println(tagIDs)
 
 	// Get Tag Info
-	tagQuery := "SELECT * FROM tags WHERE tag_id IN (?);"
-	tagQuery, args, err = sqlx.In(tagQuery, tagIDs)
-	if err != nil {
-		log.Println("Error parsing IN query when get tag info when updating hottags:", err)
-		return err
-	}
-	tagQuery = DB.Rebind(tagQuery)
-	rows, err = DB.Queryx(tagQuery, args...)
-	if err != nil {
-		log.Println("Error get post Commentcount when updating hottags:", err)
-		return err
+	getTagArgs := GetTagsArgs{
+		ShowStats:     true,
+		ShowResources: true,
+		IDs:           tagIDs,
+		PostFields:    sqlfields{"post_id", "publish_status", "published_at", "title", "type"},
+		ProjectFields: sqlfields{"project_id", "publish_status", "published_at", "title", "slug", "status"},
 	}
 
-	tags := make([]Tag, len(tagIDs))
-	for rows.Next() {
-		var t Tag
-		if err = rows.StructScan(&t); err != nil {
-			log.Println("Error scaning query result when updating hottags:", err)
-			return err
-		}
-		for k, v := range tagIDs {
-			if t.ID == v {
-				tags[k] = t
-			}
-		}
+	tagDetails, err := TagAPI.GetTags(getTagArgs)
+	if err != nil {
+		log.Println("Error getting tag info when updating hottags:", err)
+		return err
 	}
 
 	// Store to Redis
@@ -800,22 +797,22 @@ func (a *tagApi) UpdateHotTags() error {
 	conn := RedisHelper.Conn()
 	defer conn.Close()
 
-	keys, err := RedisHelper.GetRedisKeys("tag_hot_*")
-	if err != nil {
-		log.Println(err)
+	if _, err := conn.Do("DEL", redis.Args{}.Add("tagcache_hot")); err != nil {
+		log.Printf("Error delete cache from redis: %v", err)
 		return err
-	}
-	if len(keys) > 0 {
-		if _, err := conn.Do("DEL", redis.Args{}.AddFlat(keys)...); err != nil {
-			log.Printf("Error delete cache from redis: %v", err)
-			return err
-		}
 	}
 
 	conn.Send("MULTI")
-	for k, v := range tags {
-		conn.Send("HMSET", redis.Args{}.Add(fmt.Sprint("tag_hot_", k+1)).AddFlat(&v)...)
+	for _, tagInfo := range tagDetails {
+		for rank, tagID := range tagIDs {
+			if tagInfo.ID == tagID {
+				tagInfos, _ := json.Marshal(tagInfo)
+				conn.Send("HMSET", redis.Args{}.Add("tagcache_hot").Add(rank).Add(tagInfos)...)
+				break
+			}
+		}
 	}
+
 	if _, err := redis.Values(conn.Do("EXEC")); err != nil {
 		log.Printf("Error insert cache to redis: %v", err)
 		return err

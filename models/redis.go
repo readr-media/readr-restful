@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"encoding/json"
+
 	"github.com/garyburd/redigo/redis"
 )
 
@@ -173,25 +175,28 @@ func (r *redisHelper) GetHotPosts(keysTemplate string, quantity int) (result []H
 	return result, err
 }
 
-func (r *redisHelper) GetHotTags(keysTemplate string, quantity int) (result []Tag, err error) {
-	res, err := r.getOrderedHashes(keysTemplate, quantity)
+func (r *redisHelper) GetHotTags(keysTemplate string, quantity int) (result []TagRelatedResources, err error) {
+	conn := r.Conn()
+	defer conn.Close()
+
+	resMap, err := redis.StringMap(conn.Do("HGETALL", "tagcache_hot"))
 	if err != nil {
-		log.Printf("Error getting redis key: %v", err)
-		return result, err
-	}
-
-	for _, v := range res {
-		var t Tag
-		if err = redis.ScanStruct(v, &t); err != nil {
-			log.Printf("Error scan redis key: %v", err)
-			return result, err
+		fmt.Println("Error hgetall redis key:", "tagcache_hot", err.Error())
+	} else {
+		result = make([]TagRelatedResources, len(resMap))
+		for ranks, tagDetails := range resMap {
+			var t TagRelatedResources
+			if err = json.Unmarshal([]byte(tagDetails), &t); err != nil {
+				log.Printf("Error scan string from redis: %v", err)
+				return result, err
+			}
+			ranki, err := strconv.Atoi(ranks)
+			if err != nil {
+				continue
+			}
+			result[ranki] = t
 		}
-		if t.ID == 0 {
-			break
-		}
-		result = append(result, t)
 	}
-
 	return result, err
 }
 

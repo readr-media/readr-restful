@@ -126,8 +126,10 @@ func (t *mockTagAPI) CountTags(args models.GetTagsArgs) (int, error) {
 	return len(result), nil
 }
 
-func (t *mockTagAPI) GetHotTags() ([]models.Tag, error) { return []models.Tag{}, nil }
-func (t *mockTagAPI) UpdateHotTags() error              { return nil }
+func (t *mockTagAPI) GetHotTags() ([]models.TagRelatedResources, error) {
+	return []models.TagRelatedResources{}, nil
+}
+func (t *mockTagAPI) UpdateHotTags() error { return nil }
 
 func TestRouteTags(t *testing.T) {
 
