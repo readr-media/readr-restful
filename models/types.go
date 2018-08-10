@@ -31,6 +31,10 @@ func (s *sqlfields) GetFields(template string) (result string) {
 
 // ------------------------------  NULLABLE TYPE DEFINITION -----------------------------
 
+type Nullable interface {
+	Value() (driver.Value, error)
+}
+
 type NullTime struct {
 	Time  time.Time
 	Valid bool

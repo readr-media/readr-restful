@@ -1,13 +1,14 @@
 package models
 
 import (
-	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"strconv"
 	"strings"
+
+	"database/sql"
+	"encoding/json"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/config"

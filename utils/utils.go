@@ -2,7 +2,10 @@ package utils
 
 import (
 	"fmt"
+	"reflect"
 	"regexp"
+
+	"database/sql/driver"
 )
 
 func GetResourceTableInfo(resource string) (tableName string, idName string) {
@@ -62,5 +65,33 @@ func GenerateResourceInfo(resourceType string, resourceID int, slug string) (res
 		return fmt.Sprintf("%s/series/%s/%d", resStringPrefix, slug, resourceID)
 	default:
 		return resourceString
+	}
+}
+
+type Nullable interface {
+	Value() (driver.Value, error)
+}
+
+func MarshalIgnoreNullNullable(variable interface{}, jsonBody map[string]interface{}) {
+	rt, rv := reflect.TypeOf(variable), reflect.ValueOf(variable)
+	for i := 0; i < rv.NumField(); i++ {
+		fv := rv.Field(i).Interface()
+		n, ok := fv.(Nullable)
+		jsonTag := rt.Field(i).Tag.Get("json")
+		if jsonTag != "-" && jsonTag != "" {
+			if !ok {
+				if rv.Field(i).Kind() == reflect.Ptr && rv.Field(i).IsNil() {
+					continue
+				} else if (rv.Field(i).Kind() == reflect.Array || rv.Field(i).Kind() == reflect.Slice || rv.Field(i).Kind() == reflect.Map) && rv.Field(i).Len() == 0 {
+					continue
+				} else {
+					jsonBody[jsonTag] = fv
+				}
+			} else {
+				if nv, _ := n.Value(); nv != nil {
+					jsonBody[jsonTag] = fv
+				}
+			}
+		}
 	}
 }
