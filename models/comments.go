@@ -82,9 +82,19 @@ type GetCommentArgs struct {
 	Status    map[string][]int `form:"status"`
 }
 
-func (p *GetCommentArgs) Default() (result *GetCommentArgs) {
-	return &GetCommentArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at"}
+func NewGetCommentArgs(options ...func(*GetCommentArgs)) (*GetCommentArgs, error) {
+
+	arg := GetCommentArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at"}
+
+	for _, option := range options {
+		option(&arg)
+	}
+	return &arg, nil
 }
+
+// func (p *GetCommentArgs) Default() (result *GetCommentArgs) {
+// 	return &GetCommentArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at"}
+// }
 
 func (p *GetCommentArgs) parse() (tableName, restricts string, values []interface{}) {
 

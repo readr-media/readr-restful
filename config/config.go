@@ -76,7 +76,8 @@ type appConfig struct {
 		Emotions              map[string]int `mapstructure:"emotions"`
 	} `mapstructure:"models"`
 
-	StripeKey string `mapstructure:"stripe_Key"`
+	DomainName string `mapstructure:"domain_name"`
+	StripeKey  string `mapstructure:"stripe_Key"`
 }
 
 func LoadConfig(configPath string, configName string) error {
