@@ -347,9 +347,6 @@ func (f *followingAPI) Insert(params FollowArgs) (err error) {
 		return SQLInsertionFail
 	}
 
-	if params.Resource == "post" {
-		go PostCache.UpdateFollowing("follow", params.Subject, params.Object)
-	}
 	return nil
 }
 
@@ -379,9 +376,6 @@ func (f *followingAPI) Delete(params FollowArgs) (err error) {
 		log.Fatal(err)
 	}
 
-	if params.Resource == "post" {
-		go PostCache.UpdateFollowing("unfollow", params.Subject, params.Object)
-	}
 	return err
 }
 
