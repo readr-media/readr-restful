@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 
 	"github.com/garyburd/redigo/redis"
-	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/utils"
 )
@@ -33,10 +32,14 @@ type fullCachePost struct {
 
 func assembleCachePost(postIDs []uint32) (posts []fullCachePost, err error) {
 
-	targetPost, err := PostAPI.GetPost(postID)
+	postArgs := &PostArgs{}
+	postArgs = postArgs.Default()
+	postArgs.IDs = postIDs
+
+	targetPosts, err := PostAPI.GetPosts(postArgs)
 	if err != nil {
-		log.Printf("postCache failed to get post:%d in Insert phase\n", postID)
-		return fullCachePost{}, err
+		log.Printf("postCache failed to get posts:%v in Insert phase, %v\n", postIDs, err)
+		return []fullCachePost{}, err
 	}
 
 	setIntraMax := func(max int) func(*GetCommentArgs) {
@@ -44,25 +47,32 @@ func assembleCachePost(postIDs []uint32) (posts []fullCachePost, err error) {
 			arg.IntraMax = max
 		}
 	}
-	setResource := func(resource string) func(*GetCommentArgs) {
+	setResource := func(postIDs []uint32) func(*GetCommentArgs) {
 		return func(arg *GetCommentArgs) {
-			arg.Resource = append(arg.Resource, resource)
+			for _, postID := range postIDs {
+				commentResource := utils.GenerateResourceInfo("post", int(postID), "")
+				arg.Resource = append(arg.Resource, commentResource)
+			}
 		}
 	}
-	commentResource := utils.GenerateResourceInfo("post", int(postID), "")
-	args, err := NewGetCommentArgs(setIntraMax(2), setResource(commentResource))
+	args, err := NewGetCommentArgs(setIntraMax(2), setResource(postIDs))
 	if err != nil {
 		log.Printf("AssembleCachePost Error:%s\n", err.Error())
 	}
-	commentsFromTargetPost, err := CommentAPI.GetComments(args)
+	commentsFromTargetPosts, err := CommentAPI.GetComments(args)
 	if err != nil {
 		log.Printf("AssembleCachePost get comments error:%s\n", err.Error())
 	}
 
-	post.TaggedPostMember = targetPost
-	post.HeadComments = commentsFromTargetPost
+	for _, targetPost := range targetPosts {
+		post := fullCachePost{TaggedPostMember: targetPost}
+		for _, comment := range commentsFromTargetPosts {
+			post.HeadComments = append(post.HeadComments, comment)
+		}
+		posts = append(posts, post)
+	}
 
-	return post, nil
+	return posts, nil
 }
 
 func (p *postCache) Register(cacheType postCacheType) {
@@ -72,22 +82,18 @@ func (p *postCache) Register(cacheType postCacheType) {
 
 func (p *postCache) Insert(postID uint32) {
 
-	post, err := assembleCachePost(postID)
+	posts, err := assembleCachePost([]uint32{postID})
 	if err != nil {
 		log.Printf("Error Insert postCache:%v\n", err)
 		return
 	}
 
-	if post.Active.Valid &&
-		fmt.Sprint(post.Active.Int) != fmt.Sprint(config.Config.Models.Posts["active"]) {
-		return
-	}
-	if post.PublishStatus.Valid &&
-		fmt.Sprint(post.PublishStatus.Int) != fmt.Sprint(config.Config.Models.PostPublishStatus["publish"]) {
+	if len(posts) == 0 {
+		log.Printf("Error Assemble postCache:%v\n", err)
 		return
 	}
 	for _, cache := range p.caches {
-		cache.Insert(post)
+		cache.Insert(posts[0])
 	}
 }
 
@@ -223,7 +229,8 @@ func (c latestPostCache) Insert(post fullCachePost) {
 
 	conn.Send("MULTI")
 	postString, _ := json.Marshal(post)
-	postCacheMap, err := c.getHashMap(c.Key())
+
+	postCacheMap, err := redis.StringMap(conn.Do("HGETALL", c.Key()))
 	if err != nil {
 		fmt.Println("Error get post cache map:", c.Key(), err.Error())
 		return
@@ -241,7 +248,7 @@ func (c latestPostCache) Insert(post fullCachePost) {
 		}
 	}
 
-	postCacheIndex, err := c.getHashMap(fmt.Sprintf("%s_index", c.Key()))
+	postCacheIndex, err := redis.StringMap(conn.Do("HGETALL", c.Key()))
 	if err != nil {
 		fmt.Println("Error get post cache index:", fmt.Sprintf("%s_index", c.Key()), err.Error())
 		return
@@ -265,28 +272,14 @@ func (c latestPostCache) Insert(post fullCachePost) {
 	}
 }
 
-func (c *latestPostCache) getHashMap(key string) (map[string]string, error) {
-	conn := RedisHelper.Conn()
-	defer conn.Close()
-
-	resMap, err := redis.StringMap(conn.Do("HGETALL", key))
-	if err != nil {
-		fmt.Println("Error hgetall redis key:", c.Key(), err.Error())
-	}
-	return resMap, err
-}
-
 func (c latestPostCache) SyncFromDataStorage() {
 
 	conn := RedisHelper.Conn()
 	defer conn.Close()
 
-	rows, err := DB.Queryx(fmt.Sprintf(`
-		SELECT p.*, m.nickname AS m_name, m.profile_image AS m_image 
-		FROM posts AS p 
-		LEFT JOIN members AS m ON m.id = p.author 
-		WHERE p.active=%d AND p.publish_status=%d 
-		ORDER BY updated_at DESC LIMIT 20;`,
+	var postIDs []uint32
+	err := DB.Select(&postIDs, fmt.Sprintf(`
+		SELECT post_id FROM posts WHERE active=%d AND publish_status=%d ORDER BY updated_at DESC LIMIT 20;`,
 		config.Config.Models.Posts["active"],
 		config.Config.Models.PostPublishStatus["publish"],
 	))
@@ -295,29 +288,27 @@ func (c latestPostCache) SyncFromDataStorage() {
 		return
 	}
 
+	fullCachePosts, err := assembleCachePost(postIDs)
+	if err != nil {
+		fmt.Println("Error getting cache post when updating hot posts. PostIDs:", postIDs)
+		return
+	}
+
 	conn.Send("MULTI")
 
-	postIndex := 0
-	for rows.Next() {
-		var postF struct {
-			Post
-			AuthorNickname     NullString `db:"m_name"`
-			AuthorProfileImage NullString `db:"m_image"`
-		}
-		err = rows.StructScan(&postF)
-		if err != nil {
-			log.Printf("Error scan posts from db: %v", err)
-			return
-		}
+	for _, cachePost := range fullCachePosts {
+		for postIndex, postID := range postIDs {
+			if postID == cachePost.ID {
+				postString, err := json.Marshal(cachePost)
+				if err != nil {
+					fmt.Sprintf("Error marshal fullCachePost struct when updating latest post cache", err.Error())
+					continue
+				}
 
-		postFString, err := json.Marshal(postF)
-		if err != nil {
-			fmt.Sprintf("Error marshal postF struct when updating post cache", err.Error())
+				conn.Send("HSET", redis.Args{}.Add(c.Key()).Add(postIndex+1).Add(postString)...)
+				conn.Send("HSET", redis.Args{}.Add(fmt.Sprint(c.key, "_index")).Add(cachePost.ID).Add(postIndex+1)...)
+			}
 		}
-		conn.Send("HSET", redis.Args{}.Add(c.Key()).Add(postIndex).Add(postFString)...)
-		conn.Send("HSET", redis.Args{}.Add(fmt.Sprint(c.key, "_index")).Add(postF.ID).Add(postIndex)...)
-		postIndex += 1
-
 	}
 
 	if _, err := redis.Values(conn.Do("EXEC")); err != nil {
@@ -402,9 +393,9 @@ func (c hottestPostCache) SyncFromDataStorage() {
 		return b
 	}(len(PostScores), 20)
 
-	var hotPosts []int
+	var hotPosts []uint32
 	for i, post := range PostScores[:limit] {
-		hotPosts = append(hotPosts, post.ID)
+		hotPosts = append(hotPosts, uint32(post.ID))
 		post.Index = i + 1
 		PostScoreIndex[post.ID] = post
 	}
@@ -414,23 +405,9 @@ func (c hottestPostCache) SyncFromDataStorage() {
 		return
 	}
 
-	query, args, err := sqlx.In(fmt.Sprintf(`
-		SELECT p.*, m.nickname AS m_name, m.profile_image AS m_image 
-		FROM posts AS p 
-		LEFT JOIN members AS m ON m.id = p.author 
-			WHERE p.active= %d AND p.publish_status=%d AND p.post_id IN (?);`,
-		config.Config.Models.Posts["active"],
-		config.Config.Models.PostPublishStatus["publish"]),
-		hotPosts,
-	)
+	fullCachePosts, err := assembleCachePost(hotPosts)
 	if err != nil {
-		log.Println("error to build `in` query when fetching post cache data ", err)
-		return
-	}
-	query = DB.Rebind(query)
-	rows, err = DB.Queryx(query, args...)
-	if err != nil {
-		log.Println("error to query post when fetching post cache data ", err)
+		fmt.Println("Error getting cache post when updating hot posts. PostIDs:", hotPosts)
 		return
 	}
 
@@ -439,33 +416,17 @@ func (c hottestPostCache) SyncFromDataStorage() {
 	defer conn.Close()
 	conn.Send("MULTI")
 
-	var postIDs []uint32
-	for rows.Next() {
-		var postF struct {
-			Post
-			AuthorNickname     NullString `db:"m_name"`
-			AuthorProfileImage NullString `db:"m_image"`
-		}
-		err = rows.StructScan(&postF)
-		if err != nil {
-			log.Printf("Error scan posts from db: %v", err)
-			return
-		}
-		postIDs = append(postIDs, postF.Post.ID)
-		postI := PostScoreIndex[int(postF.ID)].Index
-		conn.Send("HMSET", redis.Args{}.Add(fmt.Sprint(c.key, postI)).Add("author_nickname").Add(postF.AuthorNickname).Add("author_profileImage").Add(postF.AuthorProfileImage).AddFlat(&postF.Post)...)
+	for _, cachePost := range fullCachePosts {
 
-		postFString, err := json.Marshal(postF)
+		postIndex := PostScoreIndex[int(cachePost.ID)].Index
+		postString, err := json.Marshal(cachePost)
 		if err != nil {
-			fmt.Sprintf("Error marshal postF struct when updating post cache", err.Error())
+			fmt.Sprintf("Error marshal fullCachePost struct when updating hot post cache", err.Error())
+			continue
 		}
 
-		for postIndex, v := range postIDs {
-			if v == postF.ID {
-				conn.Send("HSET", redis.Args{}.Add(c.Key()).Add(postIndex).Add(postFString)...)
-				conn.Send("HSET", redis.Args{}.Add(fmt.Sprint(c.key, "_index")).Add(postF.ID).Add(postIndex)...)
-			}
-		}
+		conn.Send("HSET", redis.Args{}.Add(c.Key()).Add(postIndex).Add(postString)...)
+		conn.Send("HSET", redis.Args{}.Add(fmt.Sprint(c.key, "_index")).Add(cachePost.ID).Add(postIndex)...)
 	}
 
 	if _, err := redis.Values(conn.Do("EXEC")); err != nil {
