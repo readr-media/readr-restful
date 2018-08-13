@@ -92,8 +92,9 @@ func (r *commentsHandler) GetComment(c *gin.Context) {
 }
 
 func (r *commentsHandler) GetComments(c *gin.Context) {
-	var args = &models.GetCommentArgs{}
-	args = args.Default()
+	// var args = &models.GetCommentArgs{}
+	// args = args.Default()
+	args, _ := models.NewGetCommentArgs()
 	if err := r.bindCommentQuery(c, args); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return

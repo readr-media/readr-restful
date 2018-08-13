@@ -128,5 +128,7 @@
             "like": 9,
             "dislike": 9
         }
-    }
+    },
+    "domain_name": "http://www.foo.bar",
+    "stripe_key": ""
 }

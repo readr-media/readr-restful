@@ -6,6 +6,8 @@ import (
 	"regexp"
 
 	"database/sql/driver"
+
+	"github.com/readr-media/readr-restful/config"
 )
 
 func GetResourceTableInfo(resource string) (tableName string, idName string) {
@@ -53,7 +55,7 @@ func ParseResourceInfo(resourceString string) (resourceType string, resourceID s
 }
 
 func GenerateResourceInfo(resourceType string, resourceID int, slug string) (resourceString string) {
-	resStringPrefix := "https://www.readr.tw"
+	resStringPrefix := config.Config.DomainName
 	switch resourceType {
 	case "post":
 		return fmt.Sprintf("%s/post/%d", resStringPrefix, resourceID)

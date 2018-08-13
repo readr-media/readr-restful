@@ -9,11 +9,12 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/utils"
 )
 
 type postCacheType interface {
 	Key() string
-	Insert(post Post)
+	Insert(post fullCachePost)
 	SyncFromDataStorage()
 }
 
@@ -21,18 +22,63 @@ type postCache struct {
 	caches []postCacheType
 }
 
-func (p *postCache) Register(cahceType postCacheType) {
-
-	p.caches = append(p.caches, cahceType)
+// fullCachePost holds the full fields a post cached should have.
+// There should be Author, Comment, Post, and Tag now.
+type fullCachePost struct {
+	TaggedPostMember
+	HeadComments []CommentAuthor `json:"comments" db:"comments"`
 }
 
-func (p *postCache) Insert(post Post) {
+func assembleCachePost(postID uint32) (post fullCachePost, err error) {
 
-	// if fmt.Sprint(post.Active.Int) != fmt.Sprint(PostStatus["active"]) {
+	targetPost, err := PostAPI.GetPost(postID)
+	if err != nil {
+		log.Printf("postCache failed to get post:%d in Insert phase\n", postID)
+		return fullCachePost{}, err
+	}
+
+	setIntraMax := func(max int) func(*GetCommentArgs) {
+		return func(arg *GetCommentArgs) {
+			arg.IntraMax = max
+		}
+	}
+	setResource := func(resource string) func(*GetCommentArgs) {
+		return func(arg *GetCommentArgs) {
+			arg.Resource = append(arg.Resource, resource)
+		}
+	}
+	commentResource := utils.GenerateResourceInfo("post", int(postID), "")
+	args, err := NewGetCommentArgs(setIntraMax(2), setResource(commentResource))
+	if err != nil {
+		log.Printf("AssembleCachePost Error:%s\n", err.Error())
+	}
+	commentsFromTargetPost, err := CommentAPI.GetComments(args)
+	if err != nil {
+		log.Printf("AssembleCachePost get comments error:%s\n", err.Error())
+	}
+
+	post.TaggedPostMember = targetPost
+	post.HeadComments = commentsFromTargetPost
+
+	return post, nil
+}
+
+func (p *postCache) Register(cacheType postCacheType) {
+
+	p.caches = append(p.caches, cacheType)
+}
+
+func (p *postCache) Insert(postID uint32) {
+
+	post, err := assembleCachePost(postID)
+	if err != nil {
+		log.Printf("Error Insert postCache:%v\n", err)
+		return
+	}
+
 	if fmt.Sprint(post.Active.Int) != fmt.Sprint(config.Config.Models.Posts["active"]) {
 		return
 	}
-	// if fmt.Sprint(post.PublishStatus.Int) != fmt.Sprint(PostPublishStatus["publish"]) {
 	if fmt.Sprint(post.PublishStatus.Int) != fmt.Sprint(config.Config.Models.PostPublishStatus["publish"]) {
 		return
 	}
@@ -261,7 +307,7 @@ type latestPostCache struct {
 func (c latestPostCache) Key() string {
 	return c.key
 }
-func (c latestPostCache) Insert(post Post) {
+func (c latestPostCache) Insert(post fullCachePost) {
 	conn := RedisHelper.Conn()
 	defer conn.Close()
 
@@ -306,7 +352,6 @@ func (c latestPostCache) Insert(post Post) {
 		log.Printf("Error delete cache from redis: %v", err)
 		return
 	}
-
 }
 
 func (c latestPostCache) SyncFromDataStorage() {
@@ -388,7 +433,7 @@ func (c hottestPostCache) Key() string {
 	return c.key
 }
 
-func (c hottestPostCache) Insert(post Post) {
+func (c hottestPostCache) Insert(post fullCachePost) {
 	return
 }
 
