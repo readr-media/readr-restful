@@ -183,7 +183,7 @@ func (r *redisHelper) GetHotTags(keysTemplate string, quantity int) (result []Ta
 	if err != nil {
 		fmt.Println("Error hgetall redis key:", "tagcache_hot", err.Error())
 	} else {
-		result = make([]TagRelatedResources, len(resMap))
+		result = make([]TagRelatedResources, 20)
 		for ranks, tagDetails := range resMap {
 			var t TagRelatedResources
 			if err = json.Unmarshal([]byte(tagDetails), &t); err != nil {
@@ -191,10 +191,11 @@ func (r *redisHelper) GetHotTags(keysTemplate string, quantity int) (result []Ta
 				return result, err
 			}
 			ranki, err := strconv.Atoi(ranks)
-			if err != nil {
+			if err != nil || ranki-1 > 20 {
 				continue
 			}
-			result[ranki] = t
+
+			result[ranki-1] = t
 		}
 	}
 	return result, err
