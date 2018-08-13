@@ -177,6 +177,7 @@ type PostArgs struct {
 	PublishStatus map[string][]int   `form:"publish_status"`
 	Author        map[string][]int64 `form:"author"`
 	Type          map[string][]int   `form:"type"`
+	IDs           []uint32           `form:"ids"`
 }
 
 func (p *PostArgs) Default() (result *PostArgs) {
@@ -218,6 +219,10 @@ func (p *PostArgs) parse() (restricts string, values []interface{}) {
 			where = append(where, fmt.Sprintf("%s %s (?)", "posts.type", operatorHelper(k)))
 			values = append(values, v)
 		}
+	}
+	if p.IDs != nil {
+		where = append(where, fmt.Sprintf("%s %s (?)", "posts.post_id", "IN"))
+		values = append(values, p.IDs)
 	}
 	if len(where) > 1 {
 		restricts = strings.Join(where, " AND ")
