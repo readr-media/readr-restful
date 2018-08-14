@@ -498,6 +498,7 @@ func (s sortableList) Less(i, j int) bool { return s[i].Key > s[j].Key }
 
 type resStats struct {
 	Clicks   int
+	PageView int
 	Emotions int
 	Comments int
 	Score    int
@@ -582,22 +583,28 @@ func (a *tagApi) UpdateHotTags() error {
 	}
 
 	esFilterQuery := elastic.NewBoolQuery()
-	queryParams := []interface{}{}
+	var queryParams []interface{}
 	for _, v := range postResourceStrings {
 		queryParams = append(queryParams, v)
 	}
 	for _, v := range projectResourceStrings {
 		queryParams = append(queryParams, v)
 	}
+
 	esFilterQuery = esFilterQuery.Must([]elastic.Query{
 		elastic.NewTermsQuery("jsonPayload.curr-url.keyword", queryParams...),
-		elastic.NewTermQuery("jsonPayload.event-type.keyword", "click")}...)
+		elastic.NewTermsQuery("jsonPayload.event-type.keyword", []interface{}{"click", "pageview"}...)}...)
 	esCnstScoreQuery := elastic.NewConstantScoreQuery(esFilterQuery)
 
-	esTermAggsQuery := elastic.NewTermsAggregation()
-	esTermAggsQuery = esTermAggsQuery.CollectionMode("breadth_first")
-	esTermAggsQuery = esTermAggsQuery.Field("jsonPayload.curr-url.keyword")
-	esTermAggsQuery = esTermAggsQuery.Size(10000)
+	esEventTypeAggsQuery := elastic.NewTermsAggregation().
+		CollectionMode("breadth_first").
+		Field("jsonPayload.event-type.keyword")
+
+	esTermAggsQuery := elastic.NewTermsAggregation().
+		CollectionMode("breadth_first").
+		Field("jsonPayload.curr-url.keyword").
+		Size(10000).
+		SubAggregation("evt", esEventTypeAggsQuery)
 
 	searchResult, err := esClient.Search().Query(esCnstScoreQuery).Aggregation("counts", esTermAggsQuery).Do(context.Background())
 	if err != nil {
@@ -610,17 +617,26 @@ func (a *tagApi) UpdateHotTags() error {
 	}
 	for _, bucket := range agg.Buckets {
 		t, ID := utils.ParseResourceInfo(bucket.Key.(string))
+		var iID int
 		if t == "post" {
-			iID, _ := strconv.Atoi(ID)
-			trs := tagResourcesStats[t][iID]
-			trs.Clicks = int(bucket.DocCount)
-			tagResourcesStats[t][iID] = trs
+			iID, _ = strconv.Atoi(ID)
 		} else if t == "project" {
-			iID := projectSlugIDMap[bucket.Key.(string)]
-			trs := tagResourcesStats[t][iID]
-			trs.Clicks = int(bucket.DocCount)
-			tagResourcesStats[t][iID] = trs
+			iID = projectSlugIDMap[bucket.Key.(string)]
 		}
+		subAgg, found := bucket.Terms("evt")
+		if !found {
+			log.Fatalf("we should have a terms aggregation called %q", "evt")
+		}
+
+		trs := tagResourcesStats[t][iID]
+		for _, subBucket := range subAgg.Buckets {
+			if subBucket.Key == "click" {
+				trs.Clicks = int(subBucket.DocCount)
+			} else if subBucket.Key == "pageview" {
+				trs.PageView = int(subBucket.DocCount)
+			}
+		}
+		tagResourcesStats[t][iID] = trs
 	}
 
 	// Resource Following
@@ -740,11 +756,11 @@ func (a *tagApi) UpdateHotTags() error {
 
 	// Calculate tag score
 	for k, v := range tagResourcesStats["post"] {
-		v.Score = v.Clicks + v.Emotions + v.Comments
+		v.Score = v.Clicks + v.PageView + v.Emotions + v.Comments
 		tagResourcesStats["post"][k] = v
 	}
 	for k, v := range tagResourcesStats["project"] {
-		v.Score = v.Clicks + v.Emotions + v.Comments
+		v.Score = v.Clicks + v.PageView + v.Emotions + v.Comments
 		tagResourcesStats["project"][k] = v
 	}
 
@@ -778,15 +794,13 @@ func (a *tagApi) UpdateHotTags() error {
 	}
 
 	// Get Tag Info
-	getTagArgs := GetTagsArgs{
+	tagDetails, err := TagAPI.GetTags(GetTagsArgs{
 		ShowStats:     true,
 		ShowResources: true,
 		IDs:           tagIDs,
 		PostFields:    sqlfields{"post_id", "publish_status", "published_at", "title", "type"},
 		ProjectFields: sqlfields{"project_id", "publish_status", "published_at", "title", "slug", "status"},
-	}
-
-	tagDetails, err := TagAPI.GetTags(getTagArgs)
+	})
 	if err != nil {
 		log.Println("Error getting tag info when updating hottags:", err)
 		return err
