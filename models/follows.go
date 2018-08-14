@@ -122,6 +122,7 @@ func (g *GetFollowingArgs) scan(rows *sqlx.Rows) (interface{}, error) {
 	}
 
 	if g.ResourceName == "tag" {
+		followings = make([]interface{}, 0)
 		tagDetails, err := TagAPI.GetTags(GetTagsArgs{
 			ShowStats:     true,
 			ShowResources: true,
