@@ -119,26 +119,26 @@ func (g *GetFollowingArgs) scan(rows *sqlx.Rows) (interface{}, error) {
 			log.Println(err.Error())
 			return followings, err
 		}
+	}
 
-		if g.ResourceName == "tag" {
-			tagDetails, err := TagAPI.GetTags(GetTagsArgs{
-				ShowStats:     true,
-				ShowResources: true,
-				IDs:           IDs,
-				PostFields:    sqlfields{"post_id", "publish_status", "published_at", "title", "type"},
-				ProjectFields: sqlfields{"project_id", "publish_status", "published_at", "title", "slug", "status"},
-			})
-			if err != nil {
-				log.Println("Error getting tag info when updating hottags:", err)
-				return nil, err
-			}
-
-			for _, tag := range tagDetails {
-				followings = append(followings, tag)
-			}
+	if g.ResourceName == "tag" {
+		tagDetails, err := TagAPI.GetTags(GetTagsArgs{
+			ShowStats:     true,
+			ShowResources: true,
+			IDs:           IDs,
+			PostFields:    sqlfields{"post_id", "publish_status", "published_at", "title", "type"},
+			ProjectFields: sqlfields{"project_id", "publish_status", "published_at", "title", "slug", "status"},
+		})
+		if err != nil {
+			log.Println("Error getting tag info when updating hottags:", err)
+			return nil, err
 		}
 
+		for _, tag := range tagDetails {
+			followings = append(followings, tag)
+		}
 	}
+
 	return followings, err
 }
 
