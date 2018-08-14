@@ -14,10 +14,6 @@ import (
 	"github.com/readr-media/readr-restful/config"
 )
 
-// var PostStatus map[string]interface{}
-// var PostType map[string]interface{}
-// var PostPublishStatus map[string]interface{}
-
 // Post could use json:"omitempty" tag to ignore null field
 // However, struct type field like NullTime, NullString must be declared as pointer,
 // like *NullTime, *NullString to be used with omitempty
@@ -181,6 +177,7 @@ type PostArgs struct {
 	PublishStatus map[string][]int   `form:"publish_status"`
 	Author        map[string][]int64 `form:"author"`
 	Type          map[string][]int   `form:"type"`
+	IDs           []uint32           `form:"ids"`
 }
 
 func (p *PostArgs) Default() (result *PostArgs) {
@@ -222,6 +219,10 @@ func (p *PostArgs) parse() (restricts string, values []interface{}) {
 			where = append(where, fmt.Sprintf("%s %s (?)", "posts.type", operatorHelper(k)))
 			values = append(values, v)
 		}
+	}
+	if p.IDs != nil {
+		where = append(where, fmt.Sprintf("%s %s (?)", "posts.post_id", "IN"))
+		values = append(values, p.IDs)
 	}
 	if len(where) > 1 {
 		restricts = strings.Join(where, " AND ")
@@ -347,22 +348,22 @@ func (a *postAPI) InsertPost(p Post) (int, error) {
 		return 0, err
 	}
 
-	// Only insert a post when it's published
-	if !p.Active.Valid || p.Active.Int != int64(config.Config.Models.Posts["deactive"]) {
-		if p.PublishStatus.Valid && p.PublishStatus.Int == int64(config.Config.Models.PostPublishStatus["publish"]) {
-			if p.ID == 0 {
-				p.ID = uint32(lastID)
-			}
-			go PostCache.Insert(p)
-			// Write to new post data to search feed
-			post, err := PostAPI.GetPost(p.ID)
-			if err != nil {
-				return 0, err
-			}
-			go Algolia.InsertPost([]TaggedPostMember{post})
-			go NotificationGen.GeneratePostNotifications(post)
-		}
-	}
+	// // Only insert a post when it's published
+	// if !p.Active.Valid || p.Active.Int != int64(config.Config.Models.Posts["deactive"]) {
+	// 	if p.PublishStatus.Valid && p.PublishStatus.Int == int64(config.Config.Models.PostPublishStatus["publish"]) {
+	// 		if p.ID == 0 {
+	// 			p.ID = uint32(lastID)
+	// 		}
+	// 		go PostCache.Insert(p)
+	// 		// Write to new post data to search feed
+	// 		post, err := PostAPI.GetPost(p.ID)
+	// 		if err != nil {
+	// 			return 0, err
+	// 		}
+	// 		go Algolia.InsertPost([]TaggedPostMember{post})
+	// 		go NotificationGen.GeneratePostNotifications(post)
+	// 	}
+	// }
 	return int(lastID), err
 }
 

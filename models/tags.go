@@ -807,7 +807,7 @@ func (a *tagApi) UpdateHotTags() error {
 		for rank, tagID := range tagIDs {
 			if tagInfo.ID == tagID {
 				tagInfos, _ := json.Marshal(tagInfo)
-				conn.Send("HMSET", redis.Args{}.Add("tagcache_hot").Add(rank+1).Add(tagInfos)...)
+				conn.Send("HSET", redis.Args{}.Add("tagcache_hot").Add(rank+1).Add(tagInfos)...)
 				break
 			}
 		}
