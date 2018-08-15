@@ -2,6 +2,17 @@ workspace:
   base: /go
   path: src/github.com/readr-media/readr-restful
 pipeline:
+  get_config_for_test:
+    image: gcr.io/mirrormedia-1470651750304/drone-cloud-sdk:latest
+    secrets: [google_credentials]
+    commands:
+    - gcloud source repos clone default default
+    - cp default/readr-restful/main.json config/main.json
+    - cp default/readr-restful/newsletter.html config/newsletter.html
+    when:
+      event: [pull_request]
+      branch: [master, dev]
+
   unit_test:
     image: golang:1.9
     commands:
