@@ -293,6 +293,8 @@ func TestFollowing(t *testing.T) {
 			genericTestcase{"FollowingPostReviewOK", "GET", `/following/user?resource=post&resource_type=review&id=71`, ``, http.StatusOK, nil},
 			genericTestcase{"FollowingPostNewsOK", "GET", `/following/user?resource=post&resource_type=news&id=71`, ``, http.StatusOK, nil},
 			genericTestcase{"FollowingProjectOK", "GET", `/following/user?resource=project&id=71`, ``, http.StatusOK, nil},
+			genericTestcase{"FollowingWithTargetIDsOK", "GET", `/following/user?resource=project&id=71&target_ids=[1,2,3]`, ``, http.StatusOK, nil},
+			genericTestcase{"FollowingWithModeIDOK", "GET", `/following/user?resource=project&id=71&mode=id`, ``, http.StatusOK, nil},
 
 			genericTestcase{"FollowedPostOK", "GET", `/following/resource?resource=post&ids=[42,84]&resource_type=news`, ``, http.StatusOK, nil},
 			genericTestcase{"FollowedPostReviewOK", "GET", `/following/resource?resource=post&ids=[42,84]&resource_type=review`, ``, http.StatusOK, nil},
@@ -303,7 +305,7 @@ func TestFollowing(t *testing.T) {
 			genericTestcase{"FollowedMissingResource", "GET", `/following/resource?ids=[420,840]`, ``, http.StatusBadRequest, `{"Error":"Unsupported Resource"}`},
 			genericTestcase{"FollowedMissingID", "GET", `/following/resource?resource=post&ids=[]`, ``, http.StatusBadRequest, `{"Error":"Bad Resource ID"}`},
 			genericTestcase{"FollowedPostNotExist", "GET", `/following/resource?resource=post&ids=[1000,1001]&resource_type=news`, ``, http.StatusOK, nil},
-			genericTestcase{"FollowedPostStringID", "GET", `/following/resource?resourcea=post&ids=[unintegerable]`, ``, http.StatusBadRequest, `{"Error":"Bad Resource ID"}`},
+			genericTestcase{"FollowedPostStringID", "GET", `/following/resource?resource=post&ids=[unintegerable]`, ``, http.StatusBadRequest, `{"Error":"Bad Resource ID"}`},
 			genericTestcase{"FollowedProjectStringID", "GET", `/following/resource?resource=project&ids=[unintegerable]`, ``, http.StatusBadRequest, `{"Error":"Bad Resource ID"}`},
 			genericTestcase{"FollowedProjectInvalidEmotion", "GET", `/following/resource?resource=project&ids=[42,84]&resource_type=review&emotion=angry`, ``, http.StatusBadRequest, `{"Error":"Unsupported Emotion"}`},
 
