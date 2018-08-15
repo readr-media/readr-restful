@@ -9,7 +9,7 @@ build:
 
 deps:
 	go get -v -d
-test:
+test: deps
 	go test -v ./...
 run:
 	go run $(ALLGOFILES)
