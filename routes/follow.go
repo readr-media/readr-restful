@@ -82,6 +82,12 @@ func bindFollow(c *gin.Context) (result interface{}, err error) {
 				return nil, err
 			}
 		}
+		if c.Query("target_ids") != "" {
+			err = json.Unmarshal([]byte(c.Query("target_ids")), &params.TargetIDs)
+			if err != nil {
+				return nil, err
+			}
+		}
 		params.Table, params.PrimaryKey, params.FollowType, params.Active, err = metadata(params.ResourceName)
 		if err != nil {
 			return nil, err

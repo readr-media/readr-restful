@@ -29,8 +29,10 @@ type GetFollowInterface interface {
 }
 
 type GetFollowingArgs struct {
-	MemberID int64 `form:"id" json:"id"`
-	Active   map[string][]int
+	MemberID  int64  `form:"id" json:"id"`
+	Mode      string `form:"mode"`
+	TargetIDs []int
+	Active    map[string][]int
 	Resource
 }
 
@@ -42,12 +44,17 @@ func (g *GetFollowingArgs) get() (*sqlx.Rows, error) {
 		args      []interface{}
 		printargs []interface{}
 	}{
-		base: `SELECT t.* FROM %s AS t 
+		base: `SELECT %s FROM %s AS t 
 		INNER JOIN following AS f ON t.%s = f.target_id
 		WHERE %s ORDER BY f.created_at DESC;`,
 		printargs: []interface{}{g.Table, g.PrimaryKey},
 		condition: []string{"f.type = ?", "f.member_id = ?", "f.emotion = ?"},
 		args:      []interface{}{g.FollowType, g.MemberID, 0},
+	}
+	if g.Mode == "id" {
+		osql.printargs = append([]interface{}{fmt.Sprint("t.", g.PrimaryKey)}, osql.printargs...)
+	} else {
+		osql.printargs = append([]interface{}{"t.*"}, osql.printargs...)
 	}
 	if g.Active != nil {
 		for k, v := range g.Active {
@@ -62,6 +69,10 @@ func (g *GetFollowingArgs) get() (*sqlx.Rows, error) {
 		} else if g.ResourceType != "" {
 			return nil, errors.New("Invalid Post Type")
 		}
+	}
+	if len(g.TargetIDs) > 0 {
+		osql.condition = append(osql.condition, "f.target_id IN (?)")
+		osql.args = append(osql.args, g.TargetIDs)
 	}
 	osql.printargs = append(osql.printargs, strings.Join(osql.condition, " AND "))
 
@@ -84,44 +95,48 @@ func (g *GetFollowingArgs) scan(rows *sqlx.Rows) (interface{}, error) {
 	)
 
 	for rows.Next() {
-
-		switch g.ResourceName {
-		case "post":
-			var post Post
-			err = rows.StructScan(&post)
-			followings = append(followings, post)
-		case "project":
-			var project Project
-			err = rows.StructScan(&project)
-			followings = append(followings, project)
-		case "member":
-			var member Member
-			err = rows.StructScan(&member)
-			followings = append(followings, member)
-		case "memo":
-			var memo Memo
-			err = rows.StructScan(&memo)
-			followings = append(followings, memo)
-		case "report":
-			var report Report
-			err = rows.StructScan(&report)
-			followings = append(followings, report)
-		case "tag":
-			var tag Tag
-			err = rows.StructScan(&tag)
-			IDs = append(IDs, tag.ID)
-			followings = append(followings, tag)
-		default:
-			return nil, errors.New("Unsupported Resource")
+		if g.Mode == "id" {
+			var i int
+			err = rows.Scan(&i)
+			followings = append(followings, i)
+		} else {
+			switch g.ResourceName {
+			case "post":
+				var post Post
+				err = rows.StructScan(&post)
+				followings = append(followings, post)
+			case "project":
+				var project Project
+				err = rows.StructScan(&project)
+				followings = append(followings, project)
+			case "member":
+				var member Member
+				err = rows.StructScan(&member)
+				followings = append(followings, member)
+			case "memo":
+				var memo Memo
+				err = rows.StructScan(&memo)
+				followings = append(followings, memo)
+			case "report":
+				var report Report
+				err = rows.StructScan(&report)
+				followings = append(followings, report)
+			case "tag":
+				var tag Tag
+				err = rows.StructScan(&tag)
+				IDs = append(IDs, tag.ID)
+				followings = append(followings, tag)
+			default:
+				return nil, errors.New("Unsupported Resource")
+			}
 		}
-
 		if err != nil {
 			log.Println(err.Error())
 			return followings, err
 		}
 	}
 
-	if g.ResourceName == "tag" {
+	if g.ResourceName == "tag" && len(IDs) != 0 && g.Mode != "id" {
 		followings = make([]interface{}, 0)
 		tagDetails, err := TagAPI.GetTags(GetTagsArgs{
 			ShowStats:     true,
@@ -227,7 +242,6 @@ func (g *GetFollowMapArgs) get() (*sqlx.Rows, error) {
 		join:      []string{"members AS m ON f.member_id = m.id", fmt.Sprintf("%s AS t ON f.target_id = t.%s", g.Table, g.PrimaryKey)},
 		condition: []string{"m.active = ?", "m.post_push = ?", "f.type = ?"},
 		args:      []interface{}{config.Config.Models.Members["active"], 1, g.FollowType},
-		// args:      []interface{}{int(MemberStatus["active"].(float64)), 1, g.FollowType},
 	}
 
 	switch g.ResourceName {
@@ -235,15 +249,12 @@ func (g *GetFollowMapArgs) get() (*sqlx.Rows, error) {
 		osql.join = append(osql.join, "posts AS p ON f.target_id = p.author")
 		osql.condition = append(osql.condition, "t.active = ?", "p.active = ?", "p.publish_status = ?", "p.updated_at > ?")
 		osql.args = append(osql.args, config.Config.Models.Members["active"], config.Config.Models.Posts["active"], config.Config.Models.PostPublishStatus["publish"], g.UpdateAfter)
-		// osql.args = append(osql.args, int(MemberStatus["active"].(float64)), int(PostStatus["active"].(float64)), int(PostPublishStatus["publish"].(float64)), g.UpdateAfter)
 	case "post":
 		osql.condition = append(osql.condition, "t.active = ?", "t.publish_status = ?", "t.updated_at > ?")
 		osql.args = append(osql.args, config.Config.Models.Posts["active"], config.Config.Models.PostPublishStatus["publish"], g.UpdateAfter)
-		// osql.args = append(osql.args, int(PostStatus["active"].(float64)), int(PostPublishStatus["publish"].(float64)), g.UpdateAfter)
 	case "project":
 		osql.condition = append(osql.condition, "t.active = ?", "t.publish_status = ?", "t.updated_at > ?")
 		osql.args = append(osql.args, config.Config.Models.ProjectsActive["active"], config.Config.Models.ProjectsPublishStatus["publish"], g.UpdateAfter)
-		// osql.args = append(osql.args, int(ProjectActive["active"].(float64)), int(ProjectPublishStatus["publish"].(float64)), g.UpdateAfter)
 	}
 
 	rows, err := DB.Queryx(fmt.Sprintf(osql.base, strings.Join(osql.join, " LEFT JOIN "), strings.Join(osql.condition, " AND ")), osql.args...)
