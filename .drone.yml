@@ -11,7 +11,7 @@ pipeline:
       branch: [master, dev]
   
   unit_test_result:
-    mage: plugins/slack
+    image: plugins/slack
     channel: jenkins
     secrets: [slack_webhook]
     username: drone
