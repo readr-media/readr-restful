@@ -5,11 +5,11 @@ all: deps test build
 build:
 	go build -a -o $(BINARY) -v
 
-.PHONY: test run
+.PHONY: test run deps
 
 deps:
 	go get -v -d
-test:
+test: deps
 	go test -v ./...
 run:
 	go run $(ALLGOFILES)
