@@ -3,7 +3,7 @@ workspace:
   path: src/github.com/readr-media/readr-restful
 pipeline:
   unit_test:
-    image: golang:1.9.2
+    image: golang:1.9
     commands:
     - make test
     when:
