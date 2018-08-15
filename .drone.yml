@@ -27,15 +27,16 @@ pipeline:
     secrets: [slack_webhook]
     username: drone
     icon_url: https://avatars2.githubusercontent.com/u/2181346?s=200&v=4
+    when:
+      status: [success, failure]
+      event: [pull_request]
+      branch: [master, dev]
     template: >
       {{#success build.status}}
         Unit test ${DRONE_REPO_NAME} *success*.
       {{else}}
         Houston, we have a problem. Unit test ${DRONE_REPO_NAME} failed. 
       {{/success}}
-    when:
-      event: [pull_request]
-      branch: [master, dev]
 
   start_slack:
     image: plugins/slack
