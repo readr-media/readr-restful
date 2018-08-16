@@ -20,11 +20,12 @@ func (r *mailHandler) sendMail(c *gin.Context) {
 	input := models.MailArgs{}
 	c.Bind(&input)
 
+	/*  Send to all user if receiver not specified
 	if len(input.Receiver) == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Receiver"})
 		return
 	}
-
+	*/
 	if err := models.MailAPI.Send(input); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 	}
