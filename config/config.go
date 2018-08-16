@@ -26,7 +26,8 @@ type appConfig struct {
 	} `mapstructure:"redis"`
 
 	ES struct {
-		Url string `mapstructure:"url"`
+		Url        string `mapstructure:"url"`
+		LogIndices string `mapstructure:"log_indices"`
 	} `mapstructure:"es"`
 
 	Crawler struct {

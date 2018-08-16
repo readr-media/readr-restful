@@ -14,7 +14,8 @@
         }
     },
     "es":{
-        "url": ""
+        "url": "",
+        "log_indices": "logstash-readr-site-client-behavior-*"
     },
     "crawler": {
         "headers":{}
