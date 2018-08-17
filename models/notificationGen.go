@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 
 	"github.com/readr-media/readr-restful/config"
 )
@@ -354,67 +355,71 @@ func (c *notificationGenerator) GenerateProjectNotifications(resource interface{
 	switch resourceTyep {
 	case "project":
 		p := resource.(Project)
-		eventType := ""
+		var eventType, tagEventType string
 
-		if p.PublishStatus.Valid && p.PublishStatus.Int == int64(config.Config.Models.ProjectsPublishStatus["publish"]) {
+		if p.Status.Valid && p.Status.Int == int64(config.Config.Models.ProjectsStatus["done"]) {
 			eventType = "follow_project_status"
+			tagEventType = "follow_tag_project_status"
 		} else if p.Progress.Valid {
 			eventType = "follow_project_progress"
+			tagEventType = "follow_tag_project_progress"
+		} else {
+			return nil
 		}
 
-		projectFollowers, err := c.getFollowers(p.ID, 3)
+		_ = c.generateTagNotifications(p, tagEventType)
+
+		projectFollowers, err := c.getFollowers(p.ID, config.Config.Models.FollowingType["project"])
 		if err != nil {
 			log.Println("Error get project followers", p.ID, err.Error())
 		}
 
 		for _, v := range projectFollowers {
-			ns = append(ns, NewNotification(eventType, v))
+			n := NewNotification(eventType, v)
+			n.SubjectID = strconv.Itoa(p.ID)
+			n.Nickname = p.Title.String
+			n.ProfileImage = p.HeroImage.String
+			n.ObjectName = p.Title.String
+			n.ObjectType = "project"
+			n.ObjectID = strconv.Itoa(p.ID)
+			n.ObjectSlug = p.Slug.String
+			ns = append(ns, n)
 		}
 
-		for k, v := range ns {
-			v.SubjectID = strconv.Itoa(p.ID)
-			v.Nickname = p.Title.String
-			v.ProfileImage = p.HeroImage.String
-			v.ObjectName = p.Title.String
-			v.ObjectType = "project"
-			v.ObjectID = strconv.Itoa(p.ID)
-			v.ObjectSlug = p.Slug.String
-			ns[k] = v
-		}
 	case "report":
 		log.Println("ok")
 		r := resource.(ReportAuthors)
 		eventType := "follow_project_report"
+		tagEventType := "follow_tag_report"
 
 		projectFollowers, err := c.getFollowers(r.ProjectID, 3)
 		if err != nil {
 			log.Println("Error get project followers", r.ProjectID, err.Error())
 		}
 
-		log.Println(projectFollowers)
-
 		project, err := ProjectAPI.GetProject(Project{ID: r.ProjectID})
 		if err != nil {
 			log.Println("Error get project", r.ProjectID, err.Error())
 		}
 
+		_ = c.generateTagNotifications(project, tagEventType)
+
 		for _, v := range projectFollowers {
-			ns = append(ns, NewNotification(eventType, v))
+			n := NewNotification(eventType, v)
+			n.SubjectID = strconv.Itoa(r.ID)
+			n.Nickname = r.Title.String
+			n.ProfileImage = project.HeroImage.String
+			n.ObjectName = project.Title.String
+			n.ObjectType = "project"
+			n.ObjectID = strconv.Itoa(project.ID)
+			n.ObjectSlug = project.Slug.String
+			ns = append(ns, n)
 		}
 
-		for k, v := range ns {
-			v.SubjectID = strconv.Itoa(r.ID)
-			v.Nickname = r.Title.String
-			v.ProfileImage = project.HeroImage.String
-			v.ObjectName = project.Title.String
-			v.ObjectType = "project"
-			v.ObjectID = strconv.Itoa(project.ID)
-			v.ObjectSlug = project.Slug.String
-			ns[k] = v
-		}
 	case "memo":
 		m := resource.(Memo)
 		eventType := "follow_project_memo"
+		tagEventType := "follow_tag_report"
 
 		projectFollowers, err := c.getFollowers(int(m.Project.Int), 3)
 		if err != nil {
@@ -426,20 +431,20 @@ func (c *notificationGenerator) GenerateProjectNotifications(resource interface{
 			log.Println("Error get project", m.Project.Int, err.Error())
 		}
 
+		_ = c.generateTagNotifications(project, tagEventType)
+
 		for _, v := range projectFollowers {
-			ns = append(ns, NewNotification(eventType, v))
+			n := NewNotification(eventType, v)
+			n.SubjectID = strconv.Itoa(m.ID)
+			n.Nickname = m.Title.String
+			n.ProfileImage = project.HeroImage.String
+			n.ObjectName = project.Title.String
+			n.ObjectType = "project"
+			n.ObjectID = strconv.Itoa(project.ID)
+			n.ObjectSlug = project.Slug.String
+			ns = append(ns, n)
 		}
 
-		for k, v := range ns {
-			v.SubjectID = strconv.Itoa(m.ID)
-			v.Nickname = m.Title.String
-			v.ProfileImage = project.HeroImage.String
-			v.ObjectName = project.Title.String
-			v.ObjectType = "project"
-			v.ObjectID = strconv.Itoa(project.ID)
-			v.ObjectSlug = project.Slug.String
-			ns[k] = v
-		}
 	default:
 	}
 
@@ -450,31 +455,96 @@ func (c *notificationGenerator) GenerateProjectNotifications(resource interface{
 func (c *notificationGenerator) GeneratePostNotifications(p TaggedPostMember) (err error) {
 	ns := Notifications{}
 
-	authorFollowers, err := c.getFollowers(int(p.Author.Int), 1)
-	if err != nil {
-		log.Println("Error get post followers", p.Author.Int, err.Error())
-	}
-	for _, v := range authorFollowers {
-		if v != int(p.Author.Int) {
-			ns = append(ns, NewNotification("follow_member_post", v))
-		}
-	}
-
 	authorInfo, err := MemberAPI.GetMember("ID", strconv.Itoa(int(p.Author.Int)))
 	if err != nil {
 		log.Println("Error get post author", p.Author.Int, err.Error())
 	}
 
-	for k, v := range ns {
-		v.SubjectID = strconv.Itoa(int(p.ID))
-		v.Nickname = p.Title.String
-		v.ProfileImage = authorInfo.ProfileImage.String
-		v.ObjectName = authorInfo.Nickname.String
-		v.ObjectType = "member"
-		v.ObjectID = strconv.Itoa(int(p.Author.Int))
-		v.PostType = strconv.Itoa(int(p.Type.Int))
-		ns[k] = v
+	if p.Tags.Valid {
+
+		tas := strings.Split(p.Tags.String, ",")
+		for _, ta := range tas {
+			t := strings.Split(ta, ":")
+			id, _ := strconv.Atoi(t[0])
+
+			tagFollowers, err := c.getFollowers(id, config.Config.Models.FollowingType["tag"])
+			if err != nil {
+				log.Println("Error get tag followers", p.Author.Int, err.Error())
+			}
+			for _, v := range tagFollowers {
+				if v != int(p.Author.Int) {
+					n := NewNotification("follow_tag_post", v)
+					n.SubjectID = strconv.Itoa(int(p.ID))
+					n.Nickname = p.Title.String
+					n.ProfileImage = authorInfo.ProfileImage.String
+					n.ObjectName = t[1]
+					n.ObjectType = "tag"
+					n.ObjectID = strconv.Itoa(id)
+					ns = append(ns, n)
+				}
+			}
+		}
 	}
+
+	authorFollowers, err := c.getFollowers(int(p.Author.Int), config.Config.Models.FollowingType["member"])
+	if err != nil {
+		log.Println("Error get member followers", p.Author.Int, err.Error())
+	}
+	for _, v := range authorFollowers {
+		if v != int(p.Author.Int) {
+			n := NewNotification("follow_member_post", v)
+			n.SubjectID = strconv.Itoa(int(p.ID))
+			n.Nickname = p.Title.String
+			n.ProfileImage = authorInfo.ProfileImage.String
+			n.ObjectName = authorInfo.Nickname.String
+			n.ObjectType = "member"
+			n.ObjectID = strconv.Itoa(int(p.Author.Int))
+			n.PostType = strconv.Itoa(int(p.Type.Int))
+			ns = append(ns, n)
+		}
+	}
+
+	ns.Send()
+	return err
+}
+
+func (c *notificationGenerator) generateTagNotifications(p Project, eventType string) (err error) {
+	ns := Notifications{}
+	query := "SELECT tags.tag_id, tags.tag_content FROM tagging LEFT JOIN tags ON tags.tag_id = tagging.tag_id WHERE type = ? AND target_id = ? AND active = ?"
+	rows, err := DB.Queryx(query, config.Config.Models.TaggingType["project"], p.ID, config.Config.Models.Tags["active"])
+	if err != nil {
+		log.Println("Error get project tags", p.ID, err.Error())
+		return err
+	}
+
+	for rows.Next() {
+		var tag Tag
+		err = rows.StructScan(&tag)
+		if err != nil {
+			log.Println("Error scan tag into Tag struct when generate tag notifications:\n", err.Error())
+			return err
+		}
+
+		tagFollowers, err := c.getFollowers(tag.ID, config.Config.Models.FollowingType["tag"])
+		if err != nil {
+			log.Println("Error get tag followers", tag.ID, err.Error())
+			return err
+		}
+
+		log.Println(tagFollowers)
+
+		for _, v := range tagFollowers {
+			n := NewNotification(eventType, v)
+			n.SubjectID = strconv.Itoa(int(p.ID))
+			n.Nickname = p.Title.String
+			n.ProfileImage = p.HeroImage.String
+			n.ObjectName = tag.Text
+			n.ObjectType = "tag"
+			n.ObjectID = strconv.Itoa(tag.ID)
+			ns = append(ns, n)
+		}
+	}
+
 	ns.Send()
 	return err
 }

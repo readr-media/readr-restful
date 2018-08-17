@@ -606,7 +606,7 @@ func (a *tagApi) UpdateHotTags() error {
 		Size(10000).
 		SubAggregation("evt", esEventTypeAggsQuery)
 
-	searchResult, err := esClient.Search().Query(esCnstScoreQuery).Aggregation("counts", esTermAggsQuery).Do(context.Background())
+	searchResult, err := esClient.Search(config.Config.ES.LogIndices).Query(esCnstScoreQuery).Aggregation("counts", esTermAggsQuery).Do(context.Background())
 	if err != nil {
 		panic(err)
 	}

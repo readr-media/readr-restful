@@ -43,10 +43,21 @@ func (m *mailApi) SetDialer(dialer gomail.Dialer) {
 
 func (m *mailApi) Send(args MailArgs) (err error) {
 
+	receivers, err := m.getMailingList(args.Receiver)
+	if err != nil {
+		fmt.Println("Error get mail list when send mail: ", err)
+		return err
+	}
+
+	var filteredReceivers []string
+	for _, receiver := range receivers {
+		filteredReceivers = append(filteredReceivers, receiver.Mail)
+	}
+
 	msg := gomail.NewMessage()
 	//msg.SetHeader("From", msg.FormatAddress(viper.Get("mail.user").(string), viper.Get("mail.user_name").(string)))
 	msg.SetHeader("From", msg.FormatAddress(config.Config.Mail.User, config.Config.Mail.UserName))
-	msg.SetHeader("To", args.Receiver...)
+	msg.SetHeader("To", filteredReceivers...)
 	msg.SetHeader("Cc", args.CC...)
 	msg.SetHeader("Bcc", args.BCC...)
 	msg.SetHeader("Subject", args.Subject)

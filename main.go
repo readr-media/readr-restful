@@ -45,12 +45,6 @@ func main() {
 	// Init Straats API
 	models.StraatsHelper.Init()
 
-	//Init cron jobs
-	//c := cron.New()
-	//c.AddFunc("@hourly", func() { models.PostCache.SyncFromDataStorage() })
-	//c.AddFunc("@every 30m", func() { models.StraatsSync.Cron() })
-	//c.Start()
-
 	// Set postcache settings
 	models.InitPostCache()
 

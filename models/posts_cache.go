@@ -227,20 +227,24 @@ func (c latestPostCache) Insert(post fullCachePost) {
 	conn := RedisHelper.Conn()
 	defer conn.Close()
 
-	conn.Send("MULTI")
 	postString, _ := json.Marshal(post)
 
 	postCacheMap, err := redis.StringMap(conn.Do("HGETALL", c.Key()))
 	if err != nil {
 		fmt.Println("Error get post cache map:", c.Key(), err.Error())
-		return
 	}
 
+	postCacheIndex, err := redis.StringMap(conn.Do("HGETALL", fmt.Sprintf("%s_index", c.Key())))
+	if err != nil {
+		fmt.Println("Error get post cache index:", fmt.Sprintf("%s_index", c.Key()), err.Error())
+	}
+
+	conn.Send("MULTI")
 	conn.Send("HSET", redis.Args{}.Add(c.Key()).Add("1").Add(postString)...)
 	for k, v := range postCacheMap {
 		ki, err := strconv.Atoi(k)
 		if err != nil {
-			fmt.Println("Error parse string to integer:", k)
+			fmt.Println("Error parse string to integer:", k, err)
 			continue
 		}
 		if ki+1 <= 20 {
@@ -248,21 +252,15 @@ func (c latestPostCache) Insert(post fullCachePost) {
 		}
 	}
 
-	postCacheIndex, err := redis.StringMap(conn.Do("HGETALL", c.Key()))
-	if err != nil {
-		fmt.Println("Error get post cache index:", fmt.Sprintf("%s_index", c.Key()), err.Error())
-		return
-	}
-
-	conn.Send("HSET", redis.Args{}.Add(c.Key()).Add(post.ID).Add(1)...)
+	conn.Send("HSET", redis.Args{}.Add(fmt.Sprintf("%s_index", c.Key())).Add(post.ID).Add(1)...)
 	for k, v := range postCacheIndex {
 		vi, err := strconv.Atoi(v)
 		if err != nil {
-			fmt.Println("Error parse string to integer:", k)
+			fmt.Println("Error parse string to integer:", v, err)
 			continue
 		}
 		if vi+1 <= 20 {
-			conn.Send("HSET", redis.Args{}.Add(c.Key()).Add(k).Add(vi+1)...)
+			conn.Send("HSET", redis.Args{}.Add(fmt.Sprintf("%s_index", c.Key())).Add(k).Add(vi+1)...)
 		}
 	}
 
@@ -279,7 +277,7 @@ func (c latestPostCache) SyncFromDataStorage() {
 
 	var postIDs []uint32
 	err := DB.Select(&postIDs, fmt.Sprintf(`
-		SELECT post_id FROM posts WHERE active=%d AND publish_status=%d ORDER BY updated_at DESC LIMIT 20;`,
+		SELECT post_id FROM posts WHERE active=%d AND publish_status=%d ORDER BY published_at DESC LIMIT 20;`,
 		config.Config.Models.Posts["active"],
 		config.Config.Models.PostPublishStatus["publish"],
 	))
