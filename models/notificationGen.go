@@ -419,7 +419,7 @@ func (c *notificationGenerator) GenerateProjectNotifications(resource interface{
 	case "memo":
 		m := resource.(Memo)
 		eventType := "follow_project_memo"
-		tagEventType := "follow_tag_report"
+		tagEventType := "follow_tag_memo"
 
 		projectFollowers, err := c.getFollowers(int(m.Project.Int), 3)
 		if err != nil {
