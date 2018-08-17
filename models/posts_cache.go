@@ -279,7 +279,7 @@ func (c latestPostCache) SyncFromDataStorage() {
 
 	var postIDs []uint32
 	err := DB.Select(&postIDs, fmt.Sprintf(`
-		SELECT post_id FROM posts WHERE active=%d AND publish_status=%d ORDER BY updated_at DESC LIMIT 20;`,
+		SELECT post_id FROM posts WHERE active=%d AND publish_status=%d ORDER BY published_at DESC LIMIT 20;`,
 		config.Config.Models.Posts["active"],
 		config.Config.Models.PostPublishStatus["publish"],
 	))
