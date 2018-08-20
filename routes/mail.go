@@ -28,6 +28,7 @@ func (r *mailHandler) sendMail(c *gin.Context) {
 	*/
 	if err := models.MailAPI.Send(input); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		return
 	}
 
 	c.Status(http.StatusOK)
