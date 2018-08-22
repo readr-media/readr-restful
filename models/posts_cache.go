@@ -31,19 +31,6 @@ type fullCachePost struct {
 	HeadComments []CommentAuthor `json:"comments" db:"comments"`
 }
 
-func (f fullCachePost) MarshalJSON() ([]byte, error) {
-	// type FCP fullCachePost
-
-	tpm, _ := json.Marshal(f.TaggedPostMember)
-	var final map[string]interface{}
-	if err := json.Unmarshal(tpm, &final); err != nil {
-		return []byte{}, err
-	}
-	// comments, _ := json.Marshal(f.HeadComments)
-	final["comments"] = f.HeadComments
-	return json.Marshal(final)
-}
-
 func assembleCachePost(postIDs []uint32) (posts []fullCachePost, err error) {
 
 	postArgs := &PostArgs{}
