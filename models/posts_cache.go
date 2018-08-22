@@ -5,6 +5,7 @@ import (
 	"log"
 	"sort"
 	"strconv"
+	"strings"
 
 	"encoding/json"
 
@@ -26,8 +27,21 @@ type postCache struct {
 // fullCachePost holds the full fields a post cached should have.
 // There should be Author, Comment, Post, and Tag now.
 type fullCachePost struct {
-	TaggedPostMember
+	*TaggedPostMember
 	HeadComments []CommentAuthor `json:"comments" db:"comments"`
+}
+
+func (f fullCachePost) MarshalJSON() ([]byte, error) {
+	// type FCP fullCachePost
+
+	tpm, _ := json.Marshal(f.TaggedPostMember)
+	var final map[string]interface{}
+	if err := json.Unmarshal(tpm, &final); err != nil {
+		return []byte{}, err
+	}
+	// comments, _ := json.Marshal(f.HeadComments)
+	final["comments"] = f.HeadComments
+	return json.Marshal(final)
 }
 
 func assembleCachePost(postIDs []uint32) (posts []fullCachePost, err error) {
@@ -55,7 +69,7 @@ func assembleCachePost(postIDs []uint32) (posts []fullCachePost, err error) {
 			}
 		}
 	}
-	args, err := NewGetCommentArgs(setIntraMax(2), setResource(postIDs))
+	args, err := NewGetCommentArgs(setIntraMax(2), setResource(postArgs.IDs))
 	if err != nil {
 		log.Printf("AssembleCachePost Error:%s\n", err.Error())
 	}
@@ -65,9 +79,13 @@ func assembleCachePost(postIDs []uint32) (posts []fullCachePost, err error) {
 	}
 
 	for _, targetPost := range targetPosts {
-		post := fullCachePost{TaggedPostMember: targetPost}
+		tpm := targetPost
+		post := fullCachePost{TaggedPostMember: &tpm}
 		for _, comment := range commentsFromTargetPosts {
-			post.HeadComments = append(post.HeadComments, comment)
+			commentResourceID, _ := strconv.ParseUint(strings.TrimPrefix(comment.Resource.String, fmt.Sprintf("%s/post/", config.Config.DomainName)), 10, 32)
+			if post.ID == uint32(commentResourceID) {
+				post.HeadComments = append(post.HeadComments, comment)
+			}
 		}
 		posts = append(posts, post)
 	}
@@ -297,7 +315,7 @@ func (c latestPostCache) SyncFromDataStorage() {
 	for _, cachePost := range fullCachePosts {
 		for postIndex, postID := range postIDs {
 			if postID == cachePost.ID {
-				postString, err := json.Marshal(cachePost)
+				postString, err := json.Marshal(&cachePost)
 				if err != nil {
 					fmt.Sprintf("Error marshal fullCachePost struct when updating latest post cache", err.Error())
 					continue
@@ -417,7 +435,7 @@ func (c hottestPostCache) SyncFromDataStorage() {
 	for _, cachePost := range fullCachePosts {
 
 		postIndex := PostScoreIndex[int(cachePost.ID)].Index
-		postString, err := json.Marshal(cachePost)
+		postString, err := json.Marshal(&cachePost)
 		if err != nil {
 			fmt.Sprintf("Error marshal fullCachePost struct when updating hot post cache", err.Error())
 			continue
