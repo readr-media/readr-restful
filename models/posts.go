@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -8,7 +9,6 @@ import (
 	"strings"
 
 	"database/sql"
-	"encoding/json"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/config"
@@ -59,9 +59,34 @@ type PostInterface interface {
 	SchedulePublish() error
 }
 
+// PostTags is the wrap for NullString used especially in TaggedPostMember
+// Because it is convenient to implement MarshalJSON to override Tags default JSON output
+// The reason I don't use direct alias, ex: type PostTags NullString,
+// is because in this way sqlx could not scan values into the type
+type PostTags struct{ NullString }
+
+func (pt PostTags) MarshalJSON() ([]byte, error) {
+	type tag struct {
+		ID      int    `json:"id"`
+		Content string `json:"text"`
+	}
+
+	var Tags []tag
+
+	if pt.Valid != false {
+		tagPairs := strings.Split(pt.String, ",")
+		for _, value := range tagPairs {
+			t := strings.Split(value, ":")
+			id, _ := strconv.Atoi(t[0])
+			Tags = append(Tags, tag{ID: id, Content: t[1]})
+		}
+	}
+	return json.Marshal(Tags)
+}
+
 type TaggedPostMember struct {
 	PostMember
-	Tags NullString `json:"-" db:"tags"`
+	Tags PostTags `json:"tags" db:"tags"`
 }
 
 type HotPost struct {
@@ -70,30 +95,30 @@ type HotPost struct {
 	AuthorProfileImage NullString `json:"author_profileImage" redis:"author_profileImage"`
 }
 
-func (t *TaggedPostMember) MarshalJSON() ([]byte, error) {
-	type TPM TaggedPostMember
-	type tag struct {
-		ID      int    `json:"id"`
-		Content string `json:"text"`
-	}
-	var Tags []tag
+// func (t *TaggedPostMember) MarshalJSON() ([]byte, error) {
+// 	type TPM TaggedPostMember
+// 	type tag struct {
+// 		ID      int    `json:"id"`
+// 		Content string `json:"text"`
+// 	}
+// 	var Tags []tag
 
-	if t.Tags.Valid != false {
-		tas := strings.Split(t.Tags.String, ",")
-		for _, value := range tas {
-			t := strings.Split(value, ":")
-			id, _ := strconv.Atoi(t[0])
-			Tags = append(Tags, tag{ID: id, Content: t[1]})
-		}
-	}
-	return json.Marshal(&struct {
-		LastSeen []tag `json:"tags"`
-		*TPM
-	}{
-		LastSeen: Tags,
-		TPM:      (*TPM)(t),
-	})
-}
+// 	if t.Tags.Valid != false {
+// 		tas := strings.Split(t.Tags.String, ",")
+// 		for _, value := range tas {
+// 			t := strings.Split(value, ":")
+// 			id, _ := strconv.Atoi(t[0])
+// 			Tags = append(Tags, tag{ID: id, Content: t[1]})
+// 		}
+// 	}
+// 	return json.Marshal(&struct {
+// 		LastSeen []tag `json:"tags"`
+// 		*TPM
+// 	}{
+// 		LastSeen: Tags,
+// 		TPM:      (*TPM)(t),
+// 	})
+// }
 
 // Currently not used. Need to be modified
 // func (t *TaggedPostMember) UnmarshalJSON(text []byte) error {
