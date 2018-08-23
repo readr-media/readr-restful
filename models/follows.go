@@ -143,7 +143,7 @@ func (g *GetFollowingArgs) scan(rows *sqlx.Rows) (interface{}, error) {
 			ShowResources: true,
 			IDs:           IDs,
 			PostFields:    sqlfields{"post_id", "publish_status", "published_at", "title", "type"},
-			ProjectFields: sqlfields{"project_id", "publish_status", "published_at", "title", "slug", "status"},
+			ProjectFields: sqlfields{"project_id", "publish_status", "published_at", "title", "slug", "status", "hero_image"},
 		})
 		if err != nil {
 			log.Println("Error getting tag info when updating hottags:", err)
