@@ -92,10 +92,6 @@ func NewGetCommentArgs(options ...func(*GetCommentArgs)) (*GetCommentArgs, error
 	return &arg, nil
 }
 
-// func (p *GetCommentArgs) Default() (result *GetCommentArgs) {
-// 	return &GetCommentArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at"}
-// }
-
 func (p *GetCommentArgs) parse() (tableName, restricts string, values []interface{}) {
 
 	where := make([]string, 0)
@@ -145,11 +141,16 @@ func (p *GetCommentArgs) parse() (tableName, restricts string, values []interfac
 	}
 
 	if p.MaxResult != 0 {
+		// Mode for all comments instead of grouped in posts,
+		// parse ORDER BY
+		if p.IntraMax == 0 {
+			restricts = restricts + fmt.Sprintf(" ORDER BY %s", orderByHelper(p.Sorting))
+		}
 		restricts = restricts + " LIMIT ? OFFSET ?"
 		values = append(values, p.MaxResult, (p.Page-1)*p.MaxResult)
 	}
 	return tableName, restricts, values
-}
+} // ---- End of GetCommentArgs parse()
 
 type GetReportedCommentArgs struct {
 	MaxResult int              `form:"max_result"`
@@ -554,7 +555,3 @@ func (c *commentAPI) UpdateAllCommentAmount() (err error) {
 }
 
 var CommentAPI CommentInterface = new(commentAPI)
-
-// var CommentActive map[string]interface{}
-// var CommentStatus map[string]interface{}
-// var ReportedCommentStatus map[string]interface{}
