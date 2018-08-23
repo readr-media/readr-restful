@@ -160,7 +160,7 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []TagRelatedResources, err erro
 
 	if args.ShowStats {
 		base := `
-		SELECT ta.*, pt.related_reviews, pt.related_news, jt.related_projects FROM tags as ta 
+		SELECT DISTINCT ta.*, pt.related_reviews, pt.related_news, jt.related_projects FROM tags as ta 
 		LEFT JOIN (SELECT t.tag_id as tag_id,
 			COUNT(CASE WHEN p.type=%d THEN p.post_id END) as related_reviews,
 			COUNT(CASE WHEN p.type=%d THEN p.post_id END) as related_news 
@@ -180,7 +180,7 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []TagRelatedResources, err erro
 		))
 
 	} else {
-		query.WriteString(`SELECT ta.* FROM tags as ta `)
+		query.WriteString(`SELECT DISTINCT ta.* FROM tags as ta `)
 	}
 
 	if args.TaggingType == 0 {
