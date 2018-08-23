@@ -58,7 +58,11 @@ func bindFollow(c *gin.Context) (result interface{}, err error) {
 		case "tag":
 			table = "tags"
 			key = "tag_id"
-			followtype = config.Config.Models.FollowingType["tag"]
+			if val, ok := config.Config.Models.FollowingType["tag"]; ok {
+				followtype = val
+			} else {
+				return "", "", 0, nil, errors.New("Invalid following_type: tag")
+			}
 			if method == "user" {
 				active = map[string][]int{"$in": []int{1}}
 			}
