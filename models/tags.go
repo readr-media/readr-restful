@@ -942,13 +942,21 @@ func (t *tagApi) GetPostReport(args *GetPostReportArgs) (result interface{}, err
 			args.Page = uint16(in.Page)
 			args.Sorting = in.Sorting
 			args.IDs = pl
+			// Is active setting necessary?
 			args.Active = map[string][]int{"$nin": []int{config.Config.Models.Reports["deactive"]}}
 		}
 	}
-	postargs := NewPostArgs(setPostArgs(args, postsList))
-	posts, err := PostAPI.GetPosts(postargs)
-	if err != nil {
-		return result, errors.New("Unable to get tagged posts")
+
+	var (
+		posts   []TaggedPostMember
+		reports []ReportAuthors
+	)
+	if len(postsList) > 0 {
+		postargs := NewPostArgs(setPostArgs(args, postsList))
+		posts, err = PostAPI.GetPosts(postargs)
+		if err != nil {
+			return result, errors.New("Unable to get tagged posts")
+		}
 	}
 
 	setReportArgs := func(in *GetPostReportArgs, pl []int64) func(*GetReportArgs) {
@@ -960,17 +968,41 @@ func (t *tagApi) GetPostReport(args *GetPostReportArgs) (result interface{}, err
 			args.Project = pl
 		}
 	}
-	reportargs := NewGetReportArgs(setReportArgs(args, projectsList))
-	reports, err := ReportAPI.GetReports(*reportargs)
-	if err != nil {
-		return result, errors.New("Unable to get tagged reports")
+
+	if len(projectsList) > 0 {
+		reportargs := NewGetReportArgs(setReportArgs(args, projectsList))
+		reports, err = ReportAPI.GetReports(*reportargs)
+		if err != nil {
+			return result, errors.New("Unable to get tagged reports")
+		}
 	}
 
 	// Construct an sorted array out of two sorted array
 	mixed := make([]interface{}, len(posts)+len(reports))
+
+	// sorter is the function compare two arrays,
+	// which support multiple sorting
+	sorter := func(p TaggedPostMember, r ReportAuthors) bool {
+		switch args.Sorting {
+		case "-published_at":
+			return p.PublishedAt.After(r.PublishedAt)
+		case "published_at":
+			return p.PublishedAt.Before(r.PublishedAt)
+		case "-updated_at":
+			return p.UpdatedAt.After(r.UpdatedAt)
+		case "updated_at":
+			return p.UpdatedAt.Before(r.UpdatedAt)
+		case "-created_at":
+			return p.CreatedAt.After(r.CreatedAt)
+		case "created_at":
+			return p.CreatedAt.Before(r.CreatedAt)
+		default:
+			return false
+		}
+	}
 	var i, j, k int
 	for i < len(posts) && j < len(reports) {
-		if posts[i].PublishedAt.After(reports[j].PublishedAt) {
+		if sorter(posts[i], reports[j]) {
 			mixed[k] = posts[i]
 			i++
 			k++
