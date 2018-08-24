@@ -42,6 +42,7 @@ type TagInterface interface {
 	CountTags(args GetTagsArgs) (int, error)
 	GetHotTags() ([]TagRelatedResources, error)
 	UpdateHotTags() error
+	GetPostReport(args *GetPostReportArgs) (interface{}, error)
 }
 
 type tagApi struct{}
@@ -896,5 +897,103 @@ func mapResourceIDint64(res []int) (res64 []int64) {
 	return res64
 }
 
-// var TagStatus map[string]interface{}
+type GetPostReportArgs struct {
+	MaxResult int    `form:"max_result"`
+	Page      int    `form:"page"`
+	Sorting   string `form:"sort"`
+	TagID     int    `db:"tag_id"`
+}
+
+func NewGetPostReportArgs(options ...func(*GetPostReportArgs)) *GetPostReportArgs {
+
+	arg := GetPostReportArgs{MaxResult: 20, Page: 1, Sorting: "-published_at"}
+
+	for _, option := range options {
+		option(&arg)
+	}
+	return &arg
+}
+
+func (t *tagApi) GetPostReport(args *GetPostReportArgs) (result interface{}, err error) {
+
+	tagging := []struct {
+		Type     int    `db:"type"`
+		TagID    int    `db:"tag_id"`
+		TargetID uint32 `db:"target_id"`
+	}{}
+	err = DB.Select(&tagging, `SELECT type, tag_id, target_id FROM tagging WHERE tag_id = ?`, args.TagID)
+
+	var (
+		postsList    []uint32
+		projectsList []int64
+	)
+	for _, v := range tagging {
+		if v.Type == config.Config.Models.TaggingType["post"] {
+			postsList = append(postsList, v.TargetID)
+		} else if v.Type == config.Config.Models.TaggingType["project"] {
+			projectsList = append(projectsList, int64(v.TargetID))
+		}
+	}
+
+	// set necessary PostArgs to get posts with specific tag
+	setPostArgs := func(in *GetPostReportArgs, pl []uint32) func(*PostArgs) {
+		return func(args *PostArgs) {
+			args.MaxResult = uint8(in.MaxResult)
+			args.Page = uint16(in.Page)
+			args.Sorting = in.Sorting
+			args.IDs = pl
+			args.Active = map[string][]int{"$nin": []int{config.Config.Models.Reports["deactive"]}}
+		}
+	}
+	postargs := NewPostArgs(setPostArgs(args, postsList))
+	posts, err := PostAPI.GetPosts(postargs)
+	if err != nil {
+		return result, errors.New("Unable to get tagged posts")
+	}
+
+	setReportArgs := func(in *GetPostReportArgs, pl []int64) func(*GetReportArgs) {
+		return func(args *GetReportArgs) {
+			args.MaxResult = in.MaxResult
+			args.Page = in.Page
+			args.Sorting = in.Sorting
+			args.Fields = []string{"nickname"}
+			args.Project = pl
+		}
+	}
+	reportargs := NewGetReportArgs(setReportArgs(args, projectsList))
+	reports, err := ReportAPI.GetReports(*reportargs)
+	if err != nil {
+		return result, errors.New("Unable to get tagged reports")
+	}
+
+	// Construct an sorted array out of two sorted array
+	mixed := make([]interface{}, len(posts)+len(reports))
+	var i, j, k int
+	for i < len(posts) && j < len(reports) {
+		if posts[i].PublishedAt.After(reports[j].PublishedAt) {
+			mixed[k] = posts[i]
+			i++
+			k++
+		} else {
+			mixed[k] = reports[j]
+			j++
+			k++
+		}
+	}
+	// Finish the remaining elements
+	// Only one of these loop functions at a time
+	for i < len(posts) {
+		mixed[k] = posts[i]
+		i++
+		k++
+	}
+	for j < len(reports) {
+		mixed[k] = reports[j]
+		j++
+		k++
+	}
+	result = mixed
+	return result, err
+}
+
 var TagAPI TagInterface = new(tagApi)

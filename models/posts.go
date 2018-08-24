@@ -205,12 +205,22 @@ type PostArgs struct {
 	IDs           []uint32           `form:"ids"`
 }
 
+// NewPostArgs return a PostArgs struct with default settings,
+// which could be overriden at any time as long as
+// there are functions passed in whose input in *PostArgs
+func NewPostArgs(options ...func(*PostArgs)) *PostArgs {
+	args := PostArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at"}
+	for _, option := range options {
+		option(&args)
+	}
+	return &args
+}
+
 func (p *PostArgs) Default() (result *PostArgs) {
 	return &PostArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at"}
 }
 
 func (p *PostArgs) DefaultActive() {
-	// p.Active = map[string][]int{"$nin": []int{int(PostStatus["deactive"].(float64))}}
 	p.Active = map[string][]int{"$nin": []int{config.Config.Models.Posts["deactive"]}}
 }
 

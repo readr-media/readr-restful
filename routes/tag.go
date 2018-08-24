@@ -219,6 +219,31 @@ func (r *tagHandler) PutHot(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
+func bindGetPostReportArgs(c *gin.Context, args *models.GetPostReportArgs) (err error) {
+	if err := c.ShouldBindQuery(args); err != nil {
+		return err
+	}
+	if c.Param("tag_id") != "" {
+		args.TagID, _ = strconv.Atoi(c.Param("tag_id"))
+	}
+	return err
+}
+
+func (r *tagHandler) GetPostReport(c *gin.Context) {
+
+	args := models.NewGetPostReportArgs()
+	if err := bindGetPostReportArgs(c, args); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
+	}
+	result, err := models.TagAPI.GetPostReport(args)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"_items": result})
+}
+
 func (r *tagHandler) SetRoutes(router *gin.Engine) {
 
 	tagRouter := router.Group("/tags")
@@ -231,6 +256,8 @@ func (r *tagHandler) SetRoutes(router *gin.Engine) {
 		tagRouter.GET("/count", r.Count)
 		tagRouter.GET("/hot", r.Hot)
 		tagRouter.PUT("/hot", r.PutHot)
+
+		tagRouter.GET("/pnr/:tag_id", r.GetPostReport)
 	}
 }
 

@@ -68,6 +68,14 @@ type GetReportArgs struct {
 	Fields sqlfields `form:"fields"`
 }
 
+func NewGetReportArgs(options ...func(*GetReportArgs)) *GetReportArgs {
+	args := GetReportArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at"}
+	for _, option := range options {
+		option(&args)
+	}
+	return &args
+}
+
 func (g *GetReportArgs) Default() {
 	g.MaxResult = 20
 	g.Page = 1
@@ -75,7 +83,6 @@ func (g *GetReportArgs) Default() {
 }
 
 func (g *GetReportArgs) DefaultActive() {
-	// g.Active = map[string][]int{"$nin": []int{int(ReportActive["deactive"].(float64))}}
 	g.Active = map[string][]int{"$nin": []int{config.Config.Models.Reports["deactive"]}}
 }
 
@@ -298,7 +305,6 @@ func (a *reportAPI) InsertReport(p Report) (lastID int, err error) {
 	lastID = int(lastid)
 
 	// Only insert a report when it's active
-	// if p.Active.Valid == true && p.Active.Int == int64(ReportActive["active"].(float64)) {
 	if !p.Active.Valid || p.Active.Int != int64(config.Config.Models.Reports["deactive"]) {
 		if p.PublishStatus.Valid && p.PublishStatus.Int == int64(config.Config.Models.ReportsPublishStatus["publish"]) {
 			if p.ID == 0 {
@@ -347,7 +353,6 @@ func (a *reportAPI) UpdateReport(p Report) error {
 		return errors.New("Report Not Found")
 	}
 
-	// if p.Active.Valid == true && p.Active.Int != int64(ReportActive["active"].(float64)) {
 	if (p.PublishStatus.Valid && p.PublishStatus.Int != int64(config.Config.Models.ReportsPublishStatus["publish"])) ||
 		(p.Active.Valid && p.Active.Int != int64(config.Config.Models.Reports["active"])) {
 		// Case: Set a report to unpublished state, Delete the report from cache/searcher
@@ -477,6 +482,3 @@ func (a *reportAPI) UpdateAuthors(reportID int, authorIDs []int) (err error) {
 }
 
 var ReportAPI ReportAPIInterface = new(reportAPI)
-
-// var ReportActive map[string]interface{}
-// var ReportPublishStatus map[string]interface{}
