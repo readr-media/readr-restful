@@ -66,6 +66,8 @@ type GetReportArgs struct {
 	Sorting   string `form:"sort" json:"sort"`
 
 	Fields sqlfields `form:"fields"`
+
+	Filter Filter
 }
 
 func NewGetReportArgs(options ...func(*GetReportArgs)) *GetReportArgs {
@@ -128,7 +130,10 @@ func (p *GetReportArgs) parse() (restricts string, values []interface{}) {
 		where = append(where, "(reports.title LIKE ? OR reports.id LIKE ?)")
 		values = append(values, p.Keyword, p.Keyword)
 	}
-
+	if p.Filter != (Filter{}) {
+		where = append(where, fmt.Sprintf("reports.%s %s ?", p.Filter.Field, p.Filter.Operator))
+		values = append(values, p.Filter.Condition)
+	}
 	if len(where) > 1 {
 		restricts = strings.Join(where, " AND ")
 	} else if len(where) == 1 {

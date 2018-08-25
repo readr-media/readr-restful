@@ -226,6 +226,19 @@ func bindGetPostReportArgs(c *gin.Context, args *models.GetPostReportArgs) (err 
 	if c.Param("tag_id") != "" {
 		args.TagID, _ = strconv.Atoi(c.Param("tag_id"))
 	}
+	if c.Query("filter") != "" {
+		filters := parseFilter(c.Query("filter"))
+		if val, ok := filters["pnr"]; ok {
+			args.Filter.Field = val[0]
+			args.Filter.Operator = val[1]
+			args.Filter.Condition = val[2]
+		} else {
+			return errors.New("No valid pnr filter")
+		}
+		if err = args.ValidateFilter(); err != nil {
+			return err
+		}
+	}
 	return err
 }
 
@@ -236,12 +249,60 @@ func (r *tagHandler) GetPostReport(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
+	if err := args.ValidateGet(); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
+	}
 	result, err := models.TagAPI.GetPostReport(args)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"_items": result})
+	// Format result
+	// cut result, create next if more than max_result
+	lastField := func(sorting string, in interface{}) string {
+
+		obj, ok := in.(models.TaggedPostMember)
+		if ok {
+			switch sorting {
+			case "published_at", "-published_at":
+				return obj.PublishedAt.Time.Format(time.RFC3339)
+			case "created_at", "-created_at":
+				return obj.CreatedAt.Time.Format(time.RFC3339)
+			case "updated_at", "-updated_at":
+				return obj.UpdatedAt.Time.Format(time.RFC3339)
+			}
+		} else {
+			obj, ok := in.(models.ReportAuthors)
+			if ok {
+				switch args.Sorting {
+				case "published_at", "-publihsed_at":
+					return obj.PublishedAt.Time.Format(time.RFC3339)
+				case "created_at", "-created_at":
+					return obj.CreatedAt.Time.Format(time.RFC3339)
+				case "updated_at", "-updated_at":
+					return obj.UpdatedAt.Time.Format(time.RFC3339)
+				}
+			}
+		}
+		return ""
+	}
+
+	var nextLink = struct {
+		Next string `json:"url,omitempty"`
+		Page int    `json:"page,omitempty"`
+	}{}
+	if len(result) > args.MaxResult {
+
+		result = result[:len(result)-1]
+		var nextLinkField string
+		if strings.HasPrefix(args.Sorting, "-") {
+			nextLinkField = strings.TrimPrefix(args.Sorting, "-")
+		}
+		nextLink.Next = fmt.Sprintf("/tags/pnr/%d?filter=pnr:%s%s%s", args.TagID, nextLinkField, "<=", lastField(args.Sorting, result[len(result)-1]))
+		nextLink.Page = args.Page + 1
+	}
+	c.JSON(http.StatusOK, gin.H{"_items": result, "_links": nextLink})
 }
 
 func (r *tagHandler) SetRoutes(router *gin.Engine) {

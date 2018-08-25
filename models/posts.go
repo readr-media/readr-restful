@@ -203,6 +203,8 @@ type PostArgs struct {
 	Author        map[string][]int64 `form:"author"`
 	Type          map[string][]int   `form:"type"`
 	IDs           []uint32           `form:"ids"`
+
+	Filter Filter
 }
 
 // NewPostArgs return a PostArgs struct with default settings,
@@ -258,6 +260,10 @@ func (p *PostArgs) parse() (restricts string, values []interface{}) {
 	if p.IDs != nil {
 		where = append(where, fmt.Sprintf("%s %s (?)", "posts.post_id", "IN"))
 		values = append(values, p.IDs)
+	}
+	if p.Filter != (Filter{}) {
+		where = append(where, fmt.Sprintf("posts.%s %s ?", p.Filter.Field, p.Filter.Operator))
+		values = append(values, p.Filter.Condition)
 	}
 	if len(where) > 1 {
 		restricts = strings.Join(where, " AND ")

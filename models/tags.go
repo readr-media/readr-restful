@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"database/sql"
 	"encoding/json"
@@ -42,7 +43,7 @@ type TagInterface interface {
 	CountTags(args GetTagsArgs) (int, error)
 	GetHotTags() ([]TagRelatedResources, error)
 	UpdateHotTags() error
-	GetPostReport(args *GetPostReportArgs) (interface{}, error)
+	GetPostReport(args *GetPostReportArgs) ([]interface{}, error)
 }
 
 type tagApi struct{}
@@ -330,7 +331,6 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []TagRelatedResources, err erro
 
 func (t *tagApi) InsertTag(tag Tag) (int, error) {
 	var existTag Tag
-	// query := fmt.Sprint("SELECT * FROM tags WHERE active=", TagStatus["active"].(float64), " AND BINARY tag_content=?;")
 	query := fmt.Sprint("SELECT * FROM tags WHERE active=", config.Config.Models.Tags["active"], " AND BINARY tag_content=?;")
 	err := DB.Get(&existTag, query, tag.Text)
 	if err != nil && err != sql.ErrNoRows {
@@ -370,7 +370,6 @@ type UpdateMultipleTagsArgs struct {
 func (t *tagApi) UpdateTag(tag Tag) error {
 
 	var existTag Tag
-	// query := fmt.Sprint("SELECT * FROM tags WHERE active=", TagStatus["active"].(float64), " AND BINARY tag_content=?;")
 	query := fmt.Sprint("SELECT * FROM tags WHERE active=", config.Config.Models.Tags["active"], " AND BINARY tag_content=?;")
 	err := DB.Get(&existTag, query, tag.Text)
 	if err != nil && err != sql.ErrNoRows {
@@ -901,7 +900,8 @@ type GetPostReportArgs struct {
 	MaxResult int    `form:"max_result"`
 	Page      int    `form:"page"`
 	Sorting   string `form:"sort"`
-	TagID     int    `db:"tag_id"`
+	TagID     int
+	Filter    Filter
 }
 
 func NewGetPostReportArgs(options ...func(*GetPostReportArgs)) *GetPostReportArgs {
@@ -914,7 +914,33 @@ func NewGetPostReportArgs(options ...func(*GetPostReportArgs)) *GetPostReportArg
 	return &arg
 }
 
-func (t *tagApi) GetPostReport(args *GetPostReportArgs) (result interface{}, err error) {
+func (a *GetPostReportArgs) ValidateGet() (err error) {
+
+	if !utils.ValidateStringArgs(a.Sorting, "-?(created_at|updated_at|published_at)") {
+		return errors.New("Invalid Sort Option")
+	}
+	return nil
+}
+
+func (a *GetPostReportArgs) ValidateFilter() (err error) {
+
+	if !utils.ValidateStringArgs(a.Filter.Field, "(created_at|updated_at|published_at)") {
+		return errors.New("Invalid Filter Field")
+	}
+	// if !utils.ValidateStringArgs(a.Filter.Operator, "(<|<=|>|>=|==)") {
+	// 	return errors.New("Invalid Filter Operator")
+	// }
+	if _, err := time.Parse(time.RFC3339, a.Filter.Condition); err != nil {
+		return errors.New("Invalid Filter Condition Time")
+	}
+	// If fields match a.Sorting
+	if utils.ValidateStringArgs(a.Filter.Field, a.Sorting) {
+		return errors.New("Inconsistent Filter Field")
+	}
+	return nil
+}
+
+func (t *tagApi) GetPostReport(args *GetPostReportArgs) (results []interface{}, err error) {
 
 	tagging := []struct {
 		Type     int    `db:"type"`
@@ -938,10 +964,10 @@ func (t *tagApi) GetPostReport(args *GetPostReportArgs) (result interface{}, err
 	// set necessary PostArgs to get posts with specific tag
 	setPostArgs := func(in *GetPostReportArgs, pl []uint32) func(*PostArgs) {
 		return func(args *PostArgs) {
-			args.MaxResult = uint8(in.MaxResult)
-			args.Page = uint16(in.Page)
+			args.MaxResult = uint8(in.MaxResult + 1)
 			args.Sorting = in.Sorting
 			args.IDs = pl
+			args.Filter = in.Filter
 			// Is active setting necessary?
 			args.Active = map[string][]int{"$nin": []int{config.Config.Models.Reports["deactive"]}}
 		}
@@ -955,17 +981,17 @@ func (t *tagApi) GetPostReport(args *GetPostReportArgs) (result interface{}, err
 		postargs := NewPostArgs(setPostArgs(args, postsList))
 		posts, err = PostAPI.GetPosts(postargs)
 		if err != nil {
-			return result, errors.New("Unable to get tagged posts")
+			return results, errors.New("Unable to get tagged posts")
 		}
 	}
 
 	setReportArgs := func(in *GetPostReportArgs, pl []int64) func(*GetReportArgs) {
 		return func(args *GetReportArgs) {
-			args.MaxResult = in.MaxResult
-			args.Page = in.Page
+			args.MaxResult = in.MaxResult + 1
 			args.Sorting = in.Sorting
 			args.Fields = []string{"nickname"}
 			args.Project = pl
+			args.Filter = in.Filter
 		}
 	}
 
@@ -973,12 +999,12 @@ func (t *tagApi) GetPostReport(args *GetPostReportArgs) (result interface{}, err
 		reportargs := NewGetReportArgs(setReportArgs(args, projectsList))
 		reports, err = ReportAPI.GetReports(*reportargs)
 		if err != nil {
-			return result, errors.New("Unable to get tagged reports")
+			return results, errors.New("Unable to get tagged reports")
 		}
 	}
 
 	// Construct an sorted array out of two sorted array
-	mixed := make([]interface{}, len(posts)+len(reports))
+	results = make([]interface{}, len(posts)+len(reports))
 
 	// sorter is the function compare two arrays,
 	// which support multiple sorting
@@ -1003,11 +1029,11 @@ func (t *tagApi) GetPostReport(args *GetPostReportArgs) (result interface{}, err
 	var i, j, k int
 	for i < len(posts) && j < len(reports) {
 		if sorter(posts[i], reports[j]) {
-			mixed[k] = posts[i]
+			results[k] = posts[i]
 			i++
 			k++
 		} else {
-			mixed[k] = reports[j]
+			results[k] = reports[j]
 			j++
 			k++
 		}
@@ -1015,17 +1041,19 @@ func (t *tagApi) GetPostReport(args *GetPostReportArgs) (result interface{}, err
 	// Finish the remaining elements
 	// Only one of these loop functions at a time
 	for i < len(posts) {
-		mixed[k] = posts[i]
+		results[k] = posts[i]
 		i++
 		k++
 	}
 	for j < len(reports) {
-		mixed[k] = reports[j]
+		results[k] = reports[j]
 		j++
 		k++
 	}
-	result = mixed
-	return result, err
+	if len(results) > args.MaxResult {
+		results = results[:args.MaxResult+1]
+	}
+	return results, err
 }
 
 var TagAPI TagInterface = new(tagApi)

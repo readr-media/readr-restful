@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/models"
@@ -14,6 +15,21 @@ type miscHandler struct{}
 type urlMetaInfo struct {
 	URL    string         `json:"url"`
 	OGInfo *models.OGInfo `json:"og_info"`
+}
+
+// parseFilter parse the comma-seperate filters like filter=pnr:published_at<2018-06-26T08:07:27Z
+func parseFilter(filter string) (results map[string][]string) {
+
+	results = make(map[string][]string)
+
+	slicedFilters := strings.Split(filter, ",")
+	for _, v := range slicedFilters {
+		matchedGroup := regexp.MustCompile(`([A-Za-z]+):([A-Za-z_]+)(<|<=|>|>=|==|!=)([A-Za-z0-9:-]+)`).FindAllStringSubmatch(v, -1)
+		if len(matchedGroup) > 0 {
+			results[matchedGroup[0][1]] = []string{matchedGroup[0][2], matchedGroup[0][3], matchedGroup[0][4]}
+		}
+	}
+	return results
 }
 
 func (r *miscHandler) GetUrlMeta(c *gin.Context) {
