@@ -927,14 +927,21 @@ func (a *GetPostReportArgs) ValidateFilter() (err error) {
 	if !utils.ValidateStringArgs(a.Filter.Field, "(created_at|updated_at|published_at)") {
 		return errors.New("Invalid Filter Field")
 	}
-	// if !utils.ValidateStringArgs(a.Filter.Operator, "(<|<=|>|>=|==)") {
+	// This will be blocked by Error: No Valid PNR Filter
+	// if !utils.ValidateStringArgs(a.Filter.Operator, "(<|<=|>|>=|==|!=)") {
 	// 	return errors.New("Invalid Filter Operator")
 	// }
 	if _, err := time.Parse(time.RFC3339, a.Filter.Condition); err != nil {
-		return errors.New("Invalid Filter Condition Time")
+		return errors.New("Invalid Filter Time Condition")
 	}
 	// If fields match a.Sorting
-	if utils.ValidateStringArgs(a.Filter.Field, a.Sorting) {
+	var sortPattern string
+	if strings.HasPrefix(a.Sorting, "-") {
+		sortPattern = strings.TrimPrefix(a.Sorting, "-")
+	} else {
+		sortPattern = a.Sorting
+	}
+	if !utils.ValidateStringArgs(a.Filter.Field, fmt.Sprintf("-?(%s)", sortPattern)) {
 		return errors.New("Inconsistent Filter Field")
 	}
 	return nil

@@ -232,7 +232,7 @@ func bindGetPostReportArgs(c *gin.Context, args *models.GetPostReportArgs) (err 
 			args.Filter.Operator = val[1]
 			args.Filter.Condition = val[2]
 		} else {
-			return errors.New("No valid pnr filter")
+			return errors.New("Invalid PNR Filter")
 		}
 		if err = args.ValidateFilter(); err != nil {
 			return err
@@ -272,6 +272,7 @@ func (r *tagHandler) GetPostReport(c *gin.Context) {
 		return ""
 	}
 
+	links := make(map[string]interface{})
 	var nextLink = struct {
 		Next string `json:"url,omitempty"`
 		Page int    `json:"page,omitempty"`
@@ -285,8 +286,9 @@ func (r *tagHandler) GetPostReport(c *gin.Context) {
 		}
 		nextLink.Page = args.Page + 1
 		nextLink.Next = fmt.Sprintf("/tags/pnr/%d?max_result=%d&page=%d&sort=%s&filter=pnr:%s%s%s", args.TagID, args.MaxResult, nextLink.Page, args.Sorting, nextLinkField, "<=", lastField(args.Sorting, result[len(result)-1]))
+		links["next"] = nextLink
 	}
-	c.JSON(http.StatusOK, gin.H{"_items": result, "_links": nextLink})
+	c.JSON(http.StatusOK, gin.H{"_items": result, "_links": links})
 }
 
 func (r *tagHandler) SetRoutes(router *gin.Engine) {
