@@ -963,6 +963,9 @@ func (t *tagApi) GetPostReport(args *GetPostReportArgs) (results []LastPNRInterf
 		TargetID uint32 `db:"target_id"`
 	}{}
 	err = DB.Select(&tagging, `SELECT type, tag_id, target_id FROM tagging WHERE tag_id = ?`, args.TagID)
+	if err != nil {
+		return results, err
+	}
 
 	var (
 		postsList    []uint32
