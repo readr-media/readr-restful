@@ -29,6 +29,12 @@ func (s *sqlfields) GetFields(template string) (result string) {
 	return strings.Join(makeFieldString("get", template, *s), ", ")
 }
 
+type Filter struct {
+	Field     string
+	Operator  string
+	Condition string
+}
+
 // ------------------------------  NULLABLE TYPE DEFINITION -----------------------------
 
 type Nullable interface {

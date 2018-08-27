@@ -170,7 +170,6 @@ func (r *tagHandler) Delete(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Updater"})
 		return
 	}
-	// args := models.UpdateMultipleTagsArgs{IDs: IDs, UpdatedBy: updater, Active: strconv.FormatFloat(models.TagStatus["deactive"].(float64), 'f', 6, 64)}
 	args := models.UpdateMultipleTagsArgs{IDs: IDs, UpdatedBy: updater, Active: strconv.FormatFloat(float64(config.Config.Models.Tags["deactive"]), 'f', 6, 64)}
 
 	err = models.TagAPI.ToggleTags(args)
@@ -219,6 +218,79 @@ func (r *tagHandler) PutHot(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
+func bindGetPostReportArgs(c *gin.Context, args *models.GetPostReportArgs) (err error) {
+	if err := c.ShouldBindQuery(args); err != nil {
+		return err
+	}
+	if c.Param("tag_id") != "" {
+		args.TagID, _ = strconv.Atoi(c.Param("tag_id"))
+	}
+	if c.Query("filter") != "" {
+		filters := parseFilter(c.Query("filter"))
+		if val, ok := filters["pnr"]; ok {
+			args.Filter.Field = val[0]
+			args.Filter.Operator = val[1]
+			args.Filter.Condition = val[2]
+		} else {
+			return errors.New("Invalid PNR Filter")
+		}
+		if err = args.ValidateFilter(); err != nil {
+			return err
+		}
+	}
+	return err
+}
+
+func (r *tagHandler) GetPostReport(c *gin.Context) {
+
+	args := models.NewGetPostReportArgs()
+	if err := bindGetPostReportArgs(c, args); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
+	}
+	if err := args.ValidateGet(); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
+	}
+	result, err := models.TagAPI.GetPostReport(args)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		return
+	}
+	// Format result
+	// cut result, create next if more than max_result
+	lastField := func(sorting string, in models.LastPNRInterface) string {
+
+		switch sorting {
+		case "published_at", "-published_at":
+			return in.ReturnPublishedAt().Format(time.RFC3339)
+		case "created_at", "-created_at":
+			return in.ReturnCreatedAt().Format(time.RFC3339)
+		case "updated_at", "-updated_at":
+			return in.ReturnUpdatedAt().Format(time.RFC3339)
+		}
+		return ""
+	}
+
+	links := make(map[string]interface{})
+	var nextLink = struct {
+		Next string `json:"url,omitempty"`
+		Page int    `json:"page,omitempty"`
+	}{}
+	if len(result) > args.MaxResult {
+
+		result = result[:len(result)-1]
+		var nextLinkField string
+		if strings.HasPrefix(args.Sorting, "-") {
+			nextLinkField = strings.TrimPrefix(args.Sorting, "-")
+		}
+		nextLink.Page = args.Page + 1
+		nextLink.Next = fmt.Sprintf("/tags/pnr/%d?max_result=%d&page=%d&sort=%s&filter=pnr:%s%s%s", args.TagID, args.MaxResult, nextLink.Page, args.Sorting, nextLinkField, "<=", lastField(args.Sorting, result[len(result)-1]))
+		links["next"] = nextLink
+	}
+	c.JSON(http.StatusOK, gin.H{"_items": result, "_links": links})
+}
+
 func (r *tagHandler) SetRoutes(router *gin.Engine) {
 
 	tagRouter := router.Group("/tags")
@@ -231,6 +303,8 @@ func (r *tagHandler) SetRoutes(router *gin.Engine) {
 		tagRouter.GET("/count", r.Count)
 		tagRouter.GET("/hot", r.Hot)
 		tagRouter.PUT("/hot", r.PutHot)
+
+		tagRouter.GET("/pnr/:tag_id", r.GetPostReport)
 	}
 }
 

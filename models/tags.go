@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"database/sql"
 	"encoding/json"
@@ -42,6 +43,7 @@ type TagInterface interface {
 	CountTags(args GetTagsArgs) (int, error)
 	GetHotTags() ([]TagRelatedResources, error)
 	UpdateHotTags() error
+	GetPostReport(args *GetPostReportArgs) ([]LastPNRInterface, error)
 }
 
 type tagApi struct{}
@@ -329,7 +331,6 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []TagRelatedResources, err erro
 
 func (t *tagApi) InsertTag(tag Tag) (int, error) {
 	var existTag Tag
-	// query := fmt.Sprint("SELECT * FROM tags WHERE active=", TagStatus["active"].(float64), " AND BINARY tag_content=?;")
 	query := fmt.Sprint("SELECT * FROM tags WHERE active=", config.Config.Models.Tags["active"], " AND BINARY tag_content=?;")
 	err := DB.Get(&existTag, query, tag.Text)
 	if err != nil && err != sql.ErrNoRows {
@@ -369,7 +370,6 @@ type UpdateMultipleTagsArgs struct {
 func (t *tagApi) UpdateTag(tag Tag) error {
 
 	var existTag Tag
-	// query := fmt.Sprint("SELECT * FROM tags WHERE active=", TagStatus["active"].(float64), " AND BINARY tag_content=?;")
 	query := fmt.Sprint("SELECT * FROM tags WHERE active=", config.Config.Models.Tags["active"], " AND BINARY tag_content=?;")
 	err := DB.Get(&existTag, query, tag.Text)
 	if err != nil && err != sql.ErrNoRows {
@@ -896,5 +896,181 @@ func mapResourceIDint64(res []int) (res64 []int64) {
 	return res64
 }
 
-// var TagStatus map[string]interface{}
+type GetPostReportArgs struct {
+	MaxResult int    `form:"max_result"`
+	Page      int    `form:"page"`
+	Sorting   string `form:"sort"`
+	TagID     int
+	Filter    Filter
+}
+
+func NewGetPostReportArgs(options ...func(*GetPostReportArgs)) *GetPostReportArgs {
+
+	arg := GetPostReportArgs{MaxResult: 20, Page: 1, Sorting: "-published_at"}
+
+	for _, option := range options {
+		option(&arg)
+	}
+	return &arg
+}
+
+func (a *GetPostReportArgs) ValidateGet() (err error) {
+
+	if !utils.ValidateStringArgs(a.Sorting, "-?(created_at|updated_at|published_at)") {
+		return errors.New("Invalid Sort Option")
+	}
+	return nil
+}
+
+func (a *GetPostReportArgs) ValidateFilter() (err error) {
+
+	if !utils.ValidateStringArgs(a.Filter.Field, "(created_at|updated_at|published_at)") {
+		return errors.New("Invalid Filter Field")
+	}
+	// This will be blocked by Error: No Valid PNR Filter
+	// if !utils.ValidateStringArgs(a.Filter.Operator, "(<|<=|>|>=|==|!=)") {
+	// 	return errors.New("Invalid Filter Operator")
+	// }
+	if _, err := time.Parse(time.RFC3339, a.Filter.Condition); err != nil {
+		return errors.New("Invalid Filter Time Condition")
+	}
+	// If fields match a.Sorting
+	var sortPattern string
+	if strings.HasPrefix(a.Sorting, "-") {
+		sortPattern = strings.TrimPrefix(a.Sorting, "-")
+	} else {
+		sortPattern = a.Sorting
+	}
+	if !utils.ValidateStringArgs(a.Filter.Field, fmt.Sprintf("-?(%s)", sortPattern)) {
+		return errors.New("Inconsistent Filter Field")
+	}
+	return nil
+}
+
+// LastPNRInterface is used in /tags/pnr
+// TaggedPostMember and ReportAuthors satisfy this interface
+type LastPNRInterface interface {
+	ReturnPublishedAt() time.Time
+	ReturnCreatedAt() time.Time
+	ReturnUpdatedAt() time.Time
+}
+
+func (t *tagApi) GetPostReport(args *GetPostReportArgs) (results []LastPNRInterface, err error) {
+
+	tagging := []struct {
+		Type     int    `db:"type"`
+		TagID    int    `db:"tag_id"`
+		TargetID uint32 `db:"target_id"`
+	}{}
+	err = DB.Select(&tagging, `SELECT type, tag_id, target_id FROM tagging WHERE tag_id = ?`, args.TagID)
+	if err != nil {
+		return results, err
+	}
+
+	var (
+		postsList    []uint32
+		projectsList []int64
+	)
+	for _, v := range tagging {
+		if v.Type == config.Config.Models.TaggingType["post"] {
+			postsList = append(postsList, v.TargetID)
+		} else if v.Type == config.Config.Models.TaggingType["project"] {
+			projectsList = append(projectsList, int64(v.TargetID))
+		}
+	}
+
+	// set necessary PostArgs to get posts with specific tag
+	setPostArgs := func(in *GetPostReportArgs, pl []uint32) func(*PostArgs) {
+		return func(args *PostArgs) {
+			args.MaxResult = uint8(in.MaxResult + 1)
+			args.Sorting = in.Sorting
+			args.IDs = pl
+			args.Filter = in.Filter
+			args.Active = map[string][]int{"$nin": []int{config.Config.Models.Reports["deactive"]}}
+		}
+	}
+
+	var (
+		posts   []TaggedPostMember
+		reports []ReportAuthors
+	)
+	if len(postsList) > 0 {
+		postargs := NewPostArgs(setPostArgs(args, postsList))
+		posts, err = PostAPI.GetPosts(postargs)
+		if err != nil {
+			return results, errors.New("Unable to get tagged posts")
+		}
+	}
+
+	setReportArgs := func(in *GetPostReportArgs, pl []int64) func(*GetReportArgs) {
+		return func(args *GetReportArgs) {
+			args.MaxResult = in.MaxResult + 1
+			args.Sorting = in.Sorting
+			args.Fields = []string{"nickname"}
+			args.Project = pl
+			args.Filter = in.Filter
+		}
+	}
+
+	if len(projectsList) > 0 {
+		reportargs := NewGetReportArgs(setReportArgs(args, projectsList))
+		reports, err = ReportAPI.GetReports(*reportargs)
+		if err != nil {
+			return results, errors.New("Unable to get tagged reports")
+		}
+	}
+
+	// Construct an sorted array out of two sorted array
+	results = make([]LastPNRInterface, len(posts)+len(reports))
+
+	// sorter is the function compare two arrays,
+	// which support multiple sorting
+	sorter := func(p TaggedPostMember, r ReportAuthors) bool {
+		switch args.Sorting {
+		case "-published_at":
+			return p.PublishedAt.After(r.PublishedAt)
+		case "published_at":
+			return p.PublishedAt.Before(r.PublishedAt)
+		case "-updated_at":
+			return p.UpdatedAt.After(r.UpdatedAt)
+		case "updated_at":
+			return p.UpdatedAt.Before(r.UpdatedAt)
+		case "-created_at":
+			return p.CreatedAt.After(r.CreatedAt)
+		case "created_at":
+			return p.CreatedAt.Before(r.CreatedAt)
+		default:
+			return false
+		}
+	}
+	var i, j, k int
+	for i < len(posts) && j < len(reports) {
+		if sorter(posts[i], reports[j]) {
+			results[k] = posts[i]
+			i++
+			k++
+		} else {
+			results[k] = reports[j]
+			j++
+			k++
+		}
+	}
+	// Finish the remaining elements
+	// Only one of these loop functions at a time
+	for i < len(posts) {
+		results[k] = posts[i]
+		i++
+		k++
+	}
+	for j < len(reports) {
+		results[k] = reports[j]
+		j++
+		k++
+	}
+	if len(results) > args.MaxResult {
+		results = results[:args.MaxResult+1]
+	}
+	return results, err
+}
+
 var TagAPI TagInterface = new(tagApi)

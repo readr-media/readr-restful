@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"database/sql"
 
@@ -66,6 +67,16 @@ type GetReportArgs struct {
 	Sorting   string `form:"sort" json:"sort"`
 
 	Fields sqlfields `form:"fields"`
+
+	Filter Filter
+}
+
+func NewGetReportArgs(options ...func(*GetReportArgs)) *GetReportArgs {
+	args := GetReportArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at"}
+	for _, option := range options {
+		option(&args)
+	}
+	return &args
 }
 
 func (g *GetReportArgs) Default() {
@@ -75,7 +86,6 @@ func (g *GetReportArgs) Default() {
 }
 
 func (g *GetReportArgs) DefaultActive() {
-	// g.Active = map[string][]int{"$nin": []int{int(ReportActive["deactive"].(float64))}}
 	g.Active = map[string][]int{"$nin": []int{config.Config.Models.Reports["deactive"]}}
 }
 
@@ -121,7 +131,10 @@ func (p *GetReportArgs) parse() (restricts string, values []interface{}) {
 		where = append(where, "(reports.title LIKE ? OR reports.id LIKE ?)")
 		values = append(values, p.Keyword, p.Keyword)
 	}
-
+	if p.Filter != (Filter{}) {
+		where = append(where, fmt.Sprintf("reports.%s %s ?", p.Filter.Field, p.Filter.Operator))
+		values = append(values, p.Filter.Condition)
+	}
 	if len(where) > 1 {
 		restricts = strings.Join(where, " AND ")
 	} else if len(where) == 1 {
@@ -160,6 +173,34 @@ type ReportAuthors struct {
 	Authors []Stunt `json:"authors"`
 	Project Project `json:"project"`
 }
+
+// ------------ ↓↓↓ Requirement to satisfy LastPNRInterface  ↓↓↓ ------------
+
+// ReturnPublishedAt is created to return published_at and used in pnr API
+func (ra ReportAuthors) ReturnPublishedAt() time.Time {
+	if ra.PublishedAt.Valid {
+		return ra.PublishedAt.Time
+	}
+	return time.Time{}
+}
+
+// ReturnCreatedAt is created to return created_at and used in pnr API
+func (ra ReportAuthors) ReturnCreatedAt() time.Time {
+	if ra.CreatedAt.Valid {
+		return ra.CreatedAt.Time
+	}
+	return time.Time{}
+}
+
+// ReturnUpdatedAt is created to return updated_at and used in pnr API
+func (ra ReportAuthors) ReturnUpdatedAt() time.Time {
+	if ra.UpdatedAt.Valid {
+		return ra.UpdatedAt.Time
+	}
+	return time.Time{}
+}
+
+// ------------ ↑↑↑ End of requirement to satisfy LastPNRInterface  ↑↑↑ ------------
 
 type ReportAuthor struct {
 	Report
@@ -298,7 +339,6 @@ func (a *reportAPI) InsertReport(p Report) (lastID int, err error) {
 	lastID = int(lastid)
 
 	// Only insert a report when it's active
-	// if p.Active.Valid == true && p.Active.Int == int64(ReportActive["active"].(float64)) {
 	if !p.Active.Valid || p.Active.Int != int64(config.Config.Models.Reports["deactive"]) {
 		if p.PublishStatus.Valid && p.PublishStatus.Int == int64(config.Config.Models.ReportsPublishStatus["publish"]) {
 			if p.ID == 0 {
@@ -347,7 +387,6 @@ func (a *reportAPI) UpdateReport(p Report) error {
 		return errors.New("Report Not Found")
 	}
 
-	// if p.Active.Valid == true && p.Active.Int != int64(ReportActive["active"].(float64)) {
 	if (p.PublishStatus.Valid && p.PublishStatus.Int != int64(config.Config.Models.ReportsPublishStatus["publish"])) ||
 		(p.Active.Valid && p.Active.Int != int64(config.Config.Models.Reports["active"])) {
 		// Case: Set a report to unpublished state, Delete the report from cache/searcher
@@ -477,6 +516,3 @@ func (a *reportAPI) UpdateAuthors(reportID int, authorIDs []int) (err error) {
 }
 
 var ReportAPI ReportAPIInterface = new(reportAPI)
-
-// var ReportActive map[string]interface{}
-// var ReportPublishStatus map[string]interface{}

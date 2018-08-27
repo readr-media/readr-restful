@@ -131,6 +131,9 @@ func (t *mockTagAPI) GetHotTags() ([]models.TagRelatedResources, error) {
 }
 func (t *mockTagAPI) UpdateHotTags() error { return nil }
 
+func (t *mockTagAPI) GetPostReport(args *models.GetPostReportArgs) ([]models.LastPNRInterface, error) {
+	return []models.LastPNRInterface{}, nil
+}
 func TestRouteTags(t *testing.T) {
 
 	tags := []models.Tag{
@@ -285,6 +288,18 @@ func TestRouteTags(t *testing.T) {
 			genericTestcase{"PostSameAsActiveTag", "POST", "/tags", `{"text":"text5566", "updated_by":931}`, http.StatusBadRequest, `{"Error":"Duplicate Entry"}`},
 		} {
 			genericDoTest(testcase, t, asserter)
+		}
+	})
+	t.Run("GetPostReport", func(t *testing.T) {
+		for _, testcase := range []genericTestcase{
+			genericTestcase{"BasicOK", "GET", "/tags/pnr/1", ``, http.StatusOK, nil},
+			genericTestcase{"FilterOK", "GET", "/tags/pnr/1?max_result=5&page=2&sort=-published_at&filter=pnr:published_at<=2018-05-17T02:54:25Z", ``, http.StatusOK, nil},
+			genericTestcase{"InvalidSort", "GET", "/tags/pnr/1?sort=author", ``, http.StatusBadRequest, `{"Error":"Invalid Sort Option"}`},
+			genericTestcase{"InvalidPNRFilter", "GET", "/tags/pnr/94?filter=pnr:published_at<<2018-06-26T08:07:27Z", ``, http.StatusBadRequest, `{"Error":"Invalid PNR Filter"}`},
+			genericTestcase{"InvalidTimeFilter", "GET", "/tags/pnr/1?filter=pnr:published_at<=2018:06:26T08-07-27Z", ``, http.StatusBadRequest, `{"Error":"Invalid Filter Time Condition"}`},
+			genericTestcase{"InconsistentFilterField", "GET", "/tags/pnr/1?sort=updated_at&filter=pnr:published_at<=2018-06-26T08:07:27Z", ``, http.StatusBadRequest, `{"Error":"Inconsistent Filter Field"}`},
+		} {
+			genericDoTest(testcase, t, nil)
 		}
 	})
 	/*

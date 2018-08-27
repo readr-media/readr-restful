@@ -7,6 +7,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"time"
 
 	"database/sql"
 
@@ -88,6 +89,34 @@ type TaggedPostMember struct {
 	PostMember
 	Tags PostTags `json:"tags" db:"tags"`
 }
+
+// ------------ ↓↓↓ Requirement to satisfy LastPNRInterface  ↓↓↓ ------------
+
+// ReturnPublishedAt is created to return published_at and used in pnr API
+func (tpm TaggedPostMember) ReturnPublishedAt() time.Time {
+	if tpm.PublishedAt.Valid {
+		return tpm.PublishedAt.Time
+	}
+	return time.Time{}
+}
+
+// ReturnCreatedAt is created to return created_at and used in pnr API
+func (tpm TaggedPostMember) ReturnCreatedAt() time.Time {
+	if tpm.CreatedAt.Valid {
+		return tpm.CreatedAt.Time
+	}
+	return time.Time{}
+}
+
+// ReturnUpdatedAt is created to return updated_at and used in pnr API
+func (tpm TaggedPostMember) ReturnUpdatedAt() time.Time {
+	if tpm.UpdatedAt.Valid {
+		return tpm.UpdatedAt.Time
+	}
+	return time.Time{}
+}
+
+// ------------ ↑↑↑ End of requirement to satisfy LastPNRInterface  ↑↑↑ ------------
 
 type HotPost struct {
 	Post
@@ -203,6 +232,19 @@ type PostArgs struct {
 	Author        map[string][]int64 `form:"author"`
 	Type          map[string][]int   `form:"type"`
 	IDs           []uint32           `form:"ids"`
+
+	Filter Filter
+}
+
+// NewPostArgs return a PostArgs struct with default settings,
+// which could be overriden at any time as long as
+// there are functions passed in whose input in *PostArgs
+func NewPostArgs(options ...func(*PostArgs)) *PostArgs {
+	args := PostArgs{MaxResult: 20, Page: 1, Sorting: "-updated_at"}
+	for _, option := range options {
+		option(&args)
+	}
+	return &args
 }
 
 func (p *PostArgs) Default() (result *PostArgs) {
@@ -210,7 +252,6 @@ func (p *PostArgs) Default() (result *PostArgs) {
 }
 
 func (p *PostArgs) DefaultActive() {
-	// p.Active = map[string][]int{"$nin": []int{int(PostStatus["deactive"].(float64))}}
 	p.Active = map[string][]int{"$nin": []int{config.Config.Models.Posts["deactive"]}}
 }
 
@@ -248,6 +289,10 @@ func (p *PostArgs) parse() (restricts string, values []interface{}) {
 	if p.IDs != nil {
 		where = append(where, fmt.Sprintf("%s %s (?)", "posts.post_id", "IN"))
 		values = append(values, p.IDs)
+	}
+	if p.Filter != (Filter{}) {
+		where = append(where, fmt.Sprintf("posts.%s %s ?", p.Filter.Field, p.Filter.Operator))
+		values = append(values, p.Filter.Condition)
 	}
 	if len(where) > 1 {
 		restricts = strings.Join(where, " AND ")
