@@ -43,7 +43,7 @@ type TagInterface interface {
 	CountTags(args GetTagsArgs) (int, error)
 	GetHotTags() ([]TagRelatedResources, error)
 	UpdateHotTags() error
-	GetPostReport(args *GetPostReportArgs) ([]interface{}, error)
+	GetPostReport(args *GetPostReportArgs) ([]LastPNRInterface, error)
 }
 
 type tagApi struct{}
@@ -940,7 +940,15 @@ func (a *GetPostReportArgs) ValidateFilter() (err error) {
 	return nil
 }
 
-func (t *tagApi) GetPostReport(args *GetPostReportArgs) (results []interface{}, err error) {
+// LastPNRInterface is used in /tags/pnr
+// TaggedPostMember and ReportAuthors satisfy this interface
+type LastPNRInterface interface {
+	ReturnPublishedAt() time.Time
+	ReturnCreatedAt() time.Time
+	ReturnUpdatedAt() time.Time
+}
+
+func (t *tagApi) GetPostReport(args *GetPostReportArgs) (results []LastPNRInterface, err error) {
 
 	tagging := []struct {
 		Type     int    `db:"type"`
@@ -968,7 +976,6 @@ func (t *tagApi) GetPostReport(args *GetPostReportArgs) (results []interface{}, 
 			args.Sorting = in.Sorting
 			args.IDs = pl
 			args.Filter = in.Filter
-			// Is active setting necessary?
 			args.Active = map[string][]int{"$nin": []int{config.Config.Models.Reports["deactive"]}}
 		}
 	}
@@ -1004,7 +1011,7 @@ func (t *tagApi) GetPostReport(args *GetPostReportArgs) (results []interface{}, 
 	}
 
 	// Construct an sorted array out of two sorted array
-	results = make([]interface{}, len(posts)+len(reports))
+	results = make([]LastPNRInterface, len(posts)+len(reports))
 
 	// sorter is the function compare two arrays,
 	// which support multiple sorting

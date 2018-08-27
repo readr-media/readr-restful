@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"database/sql"
 
@@ -172,6 +173,34 @@ type ReportAuthors struct {
 	Authors []Stunt `json:"authors"`
 	Project Project `json:"project"`
 }
+
+// ------------ ↓↓↓ Requirement to satisfy LastPNRInterface  ↓↓↓ ------------
+
+// ReturnPublishedAt is created to return published_at and used in pnr API
+func (ra ReportAuthors) ReturnPublishedAt() time.Time {
+	if ra.PublishedAt.Valid {
+		return ra.PublishedAt.Time
+	}
+	return time.Time{}
+}
+
+// ReturnCreatedAt is created to return created_at and used in pnr API
+func (ra ReportAuthors) ReturnCreatedAt() time.Time {
+	if ra.CreatedAt.Valid {
+		return ra.CreatedAt.Time
+	}
+	return time.Time{}
+}
+
+// ReturnUpdatedAt is created to return updated_at and used in pnr API
+func (ra ReportAuthors) ReturnUpdatedAt() time.Time {
+	if ra.UpdatedAt.Valid {
+		return ra.UpdatedAt.Time
+	}
+	return time.Time{}
+}
+
+// ------------ ↑↑↑ End of requirement to satisfy LastPNRInterface  ↑↑↑ ------------
 
 type ReportAuthor struct {
 	Report

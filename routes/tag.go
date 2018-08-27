@@ -170,7 +170,6 @@ func (r *tagHandler) Delete(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Updater"})
 		return
 	}
-	// args := models.UpdateMultipleTagsArgs{IDs: IDs, UpdatedBy: updater, Active: strconv.FormatFloat(models.TagStatus["deactive"].(float64), 'f', 6, 64)}
 	args := models.UpdateMultipleTagsArgs{IDs: IDs, UpdatedBy: updater, Active: strconv.FormatFloat(float64(config.Config.Models.Tags["deactive"]), 'f', 6, 64)}
 
 	err = models.TagAPI.ToggleTags(args)
@@ -260,30 +259,15 @@ func (r *tagHandler) GetPostReport(c *gin.Context) {
 	}
 	// Format result
 	// cut result, create next if more than max_result
-	lastField := func(sorting string, in interface{}) string {
+	lastField := func(sorting string, in models.LastPNRInterface) string {
 
-		obj, ok := in.(models.TaggedPostMember)
-		if ok {
-			switch sorting {
-			case "published_at", "-published_at":
-				return obj.PublishedAt.Time.Format(time.RFC3339)
-			case "created_at", "-created_at":
-				return obj.CreatedAt.Time.Format(time.RFC3339)
-			case "updated_at", "-updated_at":
-				return obj.UpdatedAt.Time.Format(time.RFC3339)
-			}
-		} else {
-			obj, ok := in.(models.ReportAuthors)
-			if ok {
-				switch args.Sorting {
-				case "published_at", "-publihsed_at":
-					return obj.PublishedAt.Time.Format(time.RFC3339)
-				case "created_at", "-created_at":
-					return obj.CreatedAt.Time.Format(time.RFC3339)
-				case "updated_at", "-updated_at":
-					return obj.UpdatedAt.Time.Format(time.RFC3339)
-				}
-			}
+		switch sorting {
+		case "published_at", "-published_at":
+			return in.ReturnPublishedAt().Format(time.RFC3339)
+		case "created_at", "-created_at":
+			return in.ReturnCreatedAt().Format(time.RFC3339)
+		case "updated_at", "-updated_at":
+			return in.ReturnUpdatedAt().Format(time.RFC3339)
 		}
 		return ""
 	}
@@ -299,8 +283,8 @@ func (r *tagHandler) GetPostReport(c *gin.Context) {
 		if strings.HasPrefix(args.Sorting, "-") {
 			nextLinkField = strings.TrimPrefix(args.Sorting, "-")
 		}
-		nextLink.Next = fmt.Sprintf("/tags/pnr/%d?filter=pnr:%s%s%s", args.TagID, nextLinkField, "<=", lastField(args.Sorting, result[len(result)-1]))
 		nextLink.Page = args.Page + 1
+		nextLink.Next = fmt.Sprintf("/tags/pnr/%d?max_result=%d&page=%d&sort=%s&filter=pnr:%s%s%s", args.TagID, args.MaxResult, nextLink.Page, args.Sorting, nextLinkField, "<=", lastField(args.Sorting, result[len(result)-1]))
 	}
 	c.JSON(http.StatusOK, gin.H{"_items": result, "_links": nextLink})
 }

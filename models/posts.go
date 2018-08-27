@@ -7,6 +7,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"time"
 
 	"database/sql"
 
@@ -88,6 +89,34 @@ type TaggedPostMember struct {
 	PostMember
 	Tags PostTags `json:"tags" db:"tags"`
 }
+
+// ------------ ↓↓↓ Requirement to satisfy LastPNRInterface  ↓↓↓ ------------
+
+// ReturnPublishedAt is created to return published_at and used in pnr API
+func (tpm TaggedPostMember) ReturnPublishedAt() time.Time {
+	if tpm.PublishedAt.Valid {
+		return tpm.PublishedAt.Time
+	}
+	return time.Time{}
+}
+
+// ReturnCreatedAt is created to return created_at and used in pnr API
+func (tpm TaggedPostMember) ReturnCreatedAt() time.Time {
+	if tpm.CreatedAt.Valid {
+		return tpm.CreatedAt.Time
+	}
+	return time.Time{}
+}
+
+// ReturnUpdatedAt is created to return updated_at and used in pnr API
+func (tpm TaggedPostMember) ReturnUpdatedAt() time.Time {
+	if tpm.UpdatedAt.Valid {
+		return tpm.UpdatedAt.Time
+	}
+	return time.Time{}
+}
+
+// ------------ ↑↑↑ End of requirement to satisfy LastPNRInterface  ↑↑↑ ------------
 
 type HotPost struct {
 	Post
