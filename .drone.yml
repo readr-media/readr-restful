@@ -27,7 +27,7 @@ pipeline:
       branch: [master, dev]
 
   builds:
-    image: golang
+    image: golang:1.8.5-alpine
     commands:
     - make build-alpine
     # - go get github.com/robfig/cron
