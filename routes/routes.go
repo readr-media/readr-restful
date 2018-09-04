@@ -15,6 +15,7 @@ func SetRoutes(router *gin.Engine) {
 		&MemberHandler,
 		&MemoHandler,
 		&MiscHandler,
+		&NotificationHandler,
 		&PermissionHandler,
 		&PointsHandler,
 		&PostHandler,
