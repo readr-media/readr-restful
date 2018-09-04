@@ -60,6 +60,20 @@ func (r *tagHandler) bindGetQuery(c *gin.Context, args *models.GetTagsArgs) (err
 	} else {
 		args.ProjectFields = args.FullProjectTags()
 	}
+
+	if c.Query("report_fields") != "" {
+		if err = json.Unmarshal([]byte(c.Query("report_fields")), &args.ReportFields); err != nil {
+			log.Println(err.Error())
+			return err
+		}
+		for _, field := range args.ReportFields {
+			if !r.validate(field, fmt.Sprintf("^(%s)$", strings.Join(args.FullReportTags(), "|"))) {
+				return errors.New("Invalid Fields")
+			}
+		}
+	} else {
+		args.ReportFields = args.FullReportTags()
+	}
 	return nil
 }
 
