@@ -86,6 +86,7 @@ type GetTagsArgs struct {
 	IDs           []int     `form:"ids" json:"-"`
 	PostFields    sqlfields `form:"post_fields"`
 	ProjectFields sqlfields `form:"project_fields"`
+	ReportFields  sqlfields `form:"report_fields"`
 }
 
 func DefaultGetTagsArgs() GetTagsArgs {
@@ -116,10 +117,15 @@ func (g *GetTagsArgs) FullProjectTags() (result []string) {
 	return getStructDBTags("full", Project{})
 }
 
+func (g *GetTagsArgs) FullReportTags() (result []string) {
+	return getStructDBTags("full", Report{})
+}
+
 type TagRelatedResources struct {
 	Tag
 	TagPosts    []tagPost    `json:"tagged_posts"`
 	TagProjects []tagProject `json:"tagged_projects"`
+	TagReports  []tagReport  `json:"tagged_reports"`
 }
 
 func (t *TagRelatedResources) MarshalJSON() ([]byte, error) {
@@ -152,6 +158,17 @@ type tagProject struct {
 func (t *tagProject) MarshalJSON() ([]byte, error) {
 	values := make(map[string]interface{})
 	utils.MarshalIgnoreNullNullable(t.Project, values)
+	return json.Marshal(values)
+}
+
+type tagReport struct {
+	Report `db:"report"`
+	TagID  int `db:"tag_id"`
+}
+
+func (t *tagReport) MarshalJSON() ([]byte, error) {
+	values := make(map[string]interface{})
+	utils.MarshalIgnoreNullNullable(t.Report, values)
 	return json.Marshal(values)
 }
 
@@ -321,6 +338,44 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []TagRelatedResources, err erro
 			for k, v := range tags {
 				if tp.TagID == v.ID {
 					tags[k].TagProjects = append(v.TagProjects, tp)
+					break
+				}
+			}
+		}
+
+		// Get Related Reports
+		relatedReportQuery := fmt.Sprintf(`
+			SELECT tg.tag_id, %s 
+			FROM tagging AS tg 
+			LEFT JOIN projects ON projects.project_id = tg.target_id 
+			LEFT JOIN reports AS p ON p.project_id = projects.project_id 
+			WHERE tg.type = %d AND tg.tag_id IN (?) AND p.active = %d 
+			ORDER BY p.published_at DESC`,
+			args.ReportFields.GetFields(`p.%s "report.%s"`),
+			config.Config.Models.TaggingType["project"],
+			config.Config.Models.Reports["active"],
+		)
+		relatedReportQuery, relatedReportArgs, err := sqlx.In(relatedReportQuery, tag_ids)
+		if err != nil {
+			log.Println(err.Error())
+			return nil, err
+		}
+		relatedReportQuery = DB.Rebind(relatedReportQuery)
+		rows, err = DB.Queryx(relatedReportQuery, relatedReportArgs...)
+		if err != nil {
+			return nil, err
+		}
+
+		for rows.Next() {
+			var tp tagReport
+			err = rows.StructScan(&tp)
+			if err != nil {
+				log.Fatalln("Error scan TagPost when getting Tags", err)
+				return nil, err
+			}
+			for k, v := range tags {
+				if tp.TagID == v.ID {
+					tags[k].TagReports = append(v.TagReports, tp)
 					break
 				}
 			}
@@ -800,6 +855,7 @@ func (a *tagApi) UpdateHotTags() error {
 		IDs:           tagIDs,
 		PostFields:    sqlfields{"post_id", "publish_status", "published_at", "title", "type"},
 		ProjectFields: sqlfields{"project_id", "publish_status", "published_at", "title", "slug", "status", "hero_image"},
+		ReportFields:  sqlfields{"id", "publish_status", "published_at", "title", "hero_image", "project_id", "slug"},
 	})
 	if err != nil {
 		log.Println("Error getting tag info when updating hottags:", err)
