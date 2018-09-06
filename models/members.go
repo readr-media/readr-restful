@@ -25,6 +25,7 @@ type Member struct {
 	Gender   NullString `json:"gender" db:"gender"`
 	Work     NullString `json:"work" db:"work"`
 	Mail     NullString `json:"mail" db:"mail"`
+	Phone    NullString `json:"phone" db:"phone"`
 
 	RegisterMode NullString `json:"register_mode" db:"register_mode"`
 	SocialID     NullString `json:"social_id,omitempty" db:"social_id"`
