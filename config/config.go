@@ -78,7 +78,15 @@ type appConfig struct {
 	} `mapstructure:"models"`
 
 	DomainName string `mapstructure:"domain_name"`
-	StripeKey  string `mapstructure:"stripe_Key"`
+
+	PaymentService struct {
+		PartnerKey         string `mapstructure:"partner_key"`
+		MerchantID         string `mapstructure:"merchant_id"`
+		PrimeURL           string `mapstructure:"prime_url"`
+		TokenURL           string `mapstructure:"token_url"`
+		Currency           string `mapstructure:"currency"`
+		PaymentDescription string `mapstructure:"payment_description"`
+	} `mapstructure:"payment_service"`
 }
 
 func LoadConfig(configPath string, configName string) error {

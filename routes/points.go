@@ -91,6 +91,10 @@ func (r *pointsHandler) Post(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Token"})
 		return
 	}
+	if pts.Points.Points < 0 && (pts.MemberName == nil || pts.MemberPhone == nil || pts.MemberMail == nil) {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Payment Info"})
+		return
+	}
 	if pts.Points.ObjectID == 0 && (pts.Points.Points > 0 || pts.Points.ObjectType != 2) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Object ID"})
 		return

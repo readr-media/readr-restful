@@ -178,6 +178,7 @@ func TestRoutePoints(t *testing.T) {
 		for _, testcase := range []genericTestcase{
 			genericTestcase{"BasicPoints", "POST", `/points`, `{"member_id":1,"object_type": 2,"object_id": 1,"points": 100}`, http.StatusOK, `{"points":1000}`},
 			genericTestcase{"InvalidToken", "POST", `/points`, `{"member_id":1,"object_type": 2,"object_id": 1,"points": -100}`, http.StatusBadRequest, `{"Error":"Invalid Token"}`},
+			genericTestcase{"InvalidMemberInfo", "POST", `/points`, `{"member_id":1,"object_type": 2,"object_id": 1,"points": -100, "token": "token"}`, http.StatusBadRequest, `{"Error":"Invalid Payment Info"}`},
 		} {
 			genericDoTest(testcase, t, asserter)
 		}

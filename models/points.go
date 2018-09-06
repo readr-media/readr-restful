@@ -1,13 +1,16 @@
 package models
 
 import (
+	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 
+	"encoding/json"
+
 	"github.com/readr-media/readr-restful/config"
-	stripe "github.com/stripe/stripe-go"
-	"github.com/stripe/stripe-go/charge"
+	"github.com/readr-media/readr-restful/utils"
 )
 
 type Points struct {
@@ -29,7 +32,10 @@ type Points struct {
 // I have to use embedded struct here. Might have to reform getStructDBTags
 type PointsToken struct {
 	Points
-	Token *string `json:"token,omitempty"`
+	Token       *string `json:"token,omitempty"`
+	MemberName  *string `json:"member_name,omitempty"`
+	MemberPhone *string `json:"member_phone,omitempty"`
+	MemberMail  *string `json:"member_mail,omitempty"`
 }
 
 type pointsAPI struct{}
@@ -155,29 +161,48 @@ func (p *pointsAPI) Insert(pts PointsToken) (result int, err error) {
 	tags := getStructDBTags("full", pts.Points)
 
 	if pts.Points.Points < 0 {
+
 		if pts.Token != nil {
-			// Set your secret key: remember to change this to your live secret key in production
-			// See your keys here: https://dashboard.stripe.com/account/apikeys
-			stripe.Key = config.Config.StripeKey
+			// Member Pay with Prime Token
+			reqBody, _ := json.Marshal(map[string]interface{}{
+				// Token is aquired in frontend
+				"prime":       pts.Token,
+				"partner_key": config.Config.PaymentService.PartnerKey,
+				"merchant_id": config.Config.PaymentService.MerchantID,
+				// Real amount for TapPay should be positive
+				// 100 would become 1 TWD in TapPay
+				"amount":   strconv.Itoa(int(int64((0 - pts.Points.Points) * 100))),
+				"currency": config.Config.PaymentService.Currency,
+				"details":  config.Config.PaymentService.PaymentDescription,
+				"cardholder": map[string]string{
+					"phone_number": *pts.MemberPhone,
+					"name":         *pts.MemberName,
+					"email":        *pts.MemberMail,
+				},
+			})
 
-			// Real amount for stripe should be positive
-			// 100 would become 1 TWD in Stripe
-			amount := int64((0 - pts.Points.Points) * 100)
-			// Token is created using Checkout or Elements!
-			// Get the payment token ID submitted by the form:
-			// token := r.FormValue("stripeToken")
-			token := *pts.Token
+			_, body, err := utils.HTTPRequest("POST", config.Config.PaymentService.PrimeURL,
+				map[string]string{
+					"x-api-key": config.Config.PaymentService.PartnerKey,
+				}, reqBody)
 
-			params := &stripe.ChargeParams{
-				Amount:      stripe.Int64(amount),
-				Currency:    stripe.String(string(stripe.CurrencyTWD)),
-				Description: stripe.String("REARr points"),
-			}
-			params.SetSource(token)
-			_, err := charge.New(params)
 			if err != nil {
 				log.Printf("Charge error:%v\n", err)
 				return 0, err
+			}
+
+			type PaymentResp struct {
+				Status      int    `json:"status"`
+				Message     string `json:"msg"`
+				BankCode    string `json:"bank_result_code"`
+				BankMessage string `json:"bank_result_msg"`
+			}
+			var paymentResp PaymentResp
+			json.Unmarshal(body, &paymentResp)
+
+			if paymentResp.Status != 0 {
+				return 0, errors.New(fmt.Sprintf("Payment Error, Code: %d, ErrorMsg: %s, BankSatusCode: %s, BankMsg: %s",
+					paymentResp.Status, paymentResp.Message, paymentResp.BankCode, paymentResp.BankMessage))
 			}
 		}
 	}
