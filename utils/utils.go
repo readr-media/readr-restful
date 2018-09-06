@@ -1,11 +1,15 @@
 package utils
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
 
 	"database/sql/driver"
+	"io/ioutil"
+	"net/http"
 
 	"github.com/readr-media/readr-restful/config"
 )
@@ -96,4 +100,27 @@ func MarshalIgnoreNullNullable(variable interface{}, jsonBody map[string]interfa
 			}
 		}
 	}
+}
+
+func HTTPRequest(method string, url string, headers map[string]string, body []byte) (resp *http.Response, respBody []byte, err error) {
+	req, err := http.NewRequest(method, url, bytes.NewBuffer(body))
+	if err != nil {
+		return nil, respBody, errors.New(fmt.Sprintf("http.NewRequest Error: %s", err.Error()))
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+
+	c := &http.Client{}
+	resp, err = c.Do(req)
+	if err != nil {
+		return resp, respBody, errors.New(fmt.Sprintf("Make HTTP Request Error: %s", err.Error()))
+	}
+
+	defer resp.Body.Close()
+	respBody, _ = ioutil.ReadAll(resp.Body)
+	return resp, respBody, nil
+
 }
