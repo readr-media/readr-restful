@@ -162,7 +162,8 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 						ogInfo, err := models.OGParser.GetOGInfoFromUrl(v)
 						if err != nil {
 							log.Printf("%s %s parse embeded url fail: %v \n", msgType, actionType, err.Error())
-							return
+							c.JSON(http.StatusOK, gin.H{"Error": fmt.Sprintf("%s %s parse embeded url fail: %v \n", msgType, actionType, err.Error())})
+							break
 						}
 						comment.OgTitle = models.NullString{String: ogInfo.Title, Valid: true}
 						if ogInfo.Description != "" {
@@ -226,7 +227,8 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 							ogInfo, err := models.OGParser.GetOGInfoFromUrl(v)
 							if err != nil {
 								log.Printf("%s %s parse embeded url fail: %v \n", msgType, actionType, err.Error())
-								return
+								c.JSON(http.StatusOK, gin.H{"Error": fmt.Sprintf("%s %s parse embeded url fail: %v \n", msgType, actionType, err.Error())})
+								break
 							}
 							comment.OgTitle = models.NullString{String: ogInfo.Title, Valid: true}
 							if ogInfo.Description != "" {
