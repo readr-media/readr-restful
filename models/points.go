@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"strconv"
 	"strings"
 
 	"encoding/json"
@@ -171,7 +170,7 @@ func (p *pointsAPI) Insert(pts PointsToken) (result int, err error) {
 				"merchant_id": config.Config.PaymentService.MerchantID,
 				// Real amount for TapPay should be positive
 				// 100 would become 1 TWD in TapPay
-				"amount":   strconv.Itoa(int(int64((0 - pts.Points.Points) * 100))),
+				"amount":   0 - pts.Points.Points,
 				"currency": config.Config.PaymentService.Currency,
 				"details":  config.Config.PaymentService.PaymentDescription,
 				"cardholder": map[string]string{
