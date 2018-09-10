@@ -409,6 +409,7 @@ func (m *memoAPI) InsertMemo(memo Memo) (err error) {
 	if memo.PublishStatus.Valid && memo.PublishStatus.Int == int64(config.Config.Models.MemosPublishStatus["publish"]) &&
 		memo.Active.Valid && memo.Active.Int == int64(config.Config.Models.Memos["active"]) {
 		go NotificationGen.GenerateProjectNotifications(memo, "memo")
+		go MailAPI.SendProjectUpdateMail(memo, "memo")
 	}
 
 	return err
@@ -442,6 +443,7 @@ func (m *memoAPI) UpdateMemo(memo Memo) (err error) {
 		if m.PublishStatus.Int == int64(config.Config.Models.MemosPublishStatus["publish"]) &&
 			m.Active.Int == int64(config.Config.Models.Memos["active"]) {
 			go NotificationGen.GenerateProjectNotifications(m, "memo")
+			go MailAPI.SendProjectUpdateMail(m, "memo")
 		}
 	}
 

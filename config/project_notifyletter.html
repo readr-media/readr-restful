@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+  <title>READr newsletter</title>
+  <meta charset='utf-8'>
+  <meta name='viewport' content='width=device-width, initial-scale=1, minimal-ui'>
+  <meta name='description' content='READr newsletter'>
+  <style>
+    /* normalizing css styles */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Microsoft JhengHei', 'PingFang TC';
+      background-color: #f3f3f3;
+    }
+  </style>
+  <style>
+    /* COMMON section header */
+    .section-header {
+      border-bottom: 6px solid #ddcf21;
+    }
+    .section-header__title {
+      width: 200px;
+      height: 40px;
+      line-height: 40px;
+      background-color: #ddcf21;
+      font-size: 25px;
+      font-weight: 600;
+      letter-spacing: 10px;
+      color: #ffffff;
+      text-align: center;
+    }
+
+    /* COMMON article content  */
+    .article-content--categorize-author {
+      padding: 20px 0 30px 0;
+    }
+    .article-content--categorize-author + .article-content--categorize-author {
+      border-top: 1px solid #979797;
+    }
+    .article-content--categorize-author:last-child {
+      padding: 20px 0 0 0;
+    }
+    .article-content__title {
+      font-size: 18px;
+      font-weight: 600;
+      text-align: justify;
+      color: #000000;
+      text-decoration: none;
+      margin: 0 0 10px 0; 
+    }
+    .article-content__description {
+      font-size: 15px;
+      text-align: justify;
+      color: #000000;
+    }
+
+    /* COMMON author figure */
+    .author-figure__link {
+      text-decoration: none;
+    }
+    .author-figure__thumbnail {
+      width: 75px;
+      height: 75px;
+      border-radius: 75px;
+      border: solid 1px #979797;
+      object-fit: cover;
+      vertical-align: middle;
+    }
+    .author-figure__nickname {
+      font-size: 20px;
+      text-align: justify;
+      color: #000000;
+      margin: 0 0 0 13.5px;
+      display: inline;
+    }
+
+    /* COMMEN ordered list */
+    .ordered-list {
+      list-style: none;
+    }
+    .list-item {
+      display: flex;
+    }
+    .list-item + .list-item {
+      margin: 39.5px 0 0 0;
+    }
+    .list-item__order {
+      margin: 10px 10px 0 0;
+      font-size: 36px;
+      font-weight: bold;
+      text-align: center;
+      color: #979797;
+      line-height: 1;
+      min-width: 41px;
+    }
+
+    /* COMMON source figure */
+    .source-figure {
+      display: flex;
+      border: solid 1px #979797;
+      margin: 11px 0 0 0;
+      width: 100%;
+      max-height: 77px;
+      height: 77px;
+      overflow: hidden;
+    }
+    .source-figure__link-title {
+      font-size: 18px;
+      font-weight: 600;
+      text-align: justify;
+      color: #979797;
+      margin: auto 27.5px;
+      width: 75%;
+      max-width: 75%;
+    }
+    .source-figure__link-image {
+      /* min-width: 132px; */
+      min-width: 25%;
+      width: 25%;
+      height: 75px;
+      object-fit: cover;
+    }
+    
+    @media screen and (max-width: 425px) {
+      .source-figure__link-title {
+        font-size: 14px;
+        margin: auto 13px;
+        width: 50%;
+        max-width: 50%;
+      }
+      .source-figure__link-image {
+        /* min-width: 132px; */
+        min-width: 50%;
+        width: 50%;
+      }
+    }
+  </style>
+  <style>
+    /* newsletter header */
+    .newsletter-header {
+      height: 100.5px;
+    }
+    .newsletter-header__banner {
+      width: 100%;
+      height: 53.5px;
+      background-color: #444746;
+    }
+    .newsletter-header__link {
+      margin: 0 auto;
+      display: block;
+      text-align: center
+    }
+    .newsletter-header__logo {
+      width: 53.5px;
+      margin: 17px 0 0 0;
+    }
+    .newsletter-header__date {
+      font-size: 25px;
+      font-weight: 600;
+      color: #444746;
+      text-align: center;
+    }
+
+    /* newsletter content */
+    .newsletter-content {
+      max-width: 582.2px;
+      margin: 55.5px auto;
+    }
+    .newsletter-content__section {
+      width: 100%;
+      margin: 0 0 39.5px 0;
+    }
+    .newsletter-content__link {
+      text-decoration: none;
+      color: black;
+    }
+
+    /* reports section only styles */
+    .reports-article + .reports-article {
+      margin: 39.5px 0 0 0;
+    }
+    .reports-article__hero-image {
+      width: 100%;
+    }
+    .reports-article__content {
+      margin: 15px 0 0 0;
+    }
+
+    /* memos section only styles */
+    .memos-article__content {
+      margin: 10px 0 0 0;
+    }
+
+    /* READr section only styles */
+    .readr-article {
+      margin: 18.5px 0 0 0;
+    }
+
+    /* newsletter footer */
+    .newsletter-footer {
+      margin-top: 20px;
+      text-align: center;
+    }
+    .newsletter-footer__unsubscribe {
+      color: #aaa9a1;
+      font-size: 12px;
+      letter-spacing: 1px;
+      text-decoration: none;
+    }
+  </style>
+</head>
+
+<body>
+  <header class='newsletter-header'>
+    <div class='newsletter-header__banner'>
+      <a class='newsletter-header__link' href='https://www.readr.tw?utm=dailydigest' target='_blank'>
+        <img class='newsletter-header__logo' src='https://www.readr.tw/assets/icons/readr-logo-backstage.png' alt='newsletter-header__logo'>
+      </a>
+      <p class="newsletter-header__date">您所參與的專題
+          <a class='newsletter-header__link' href='https://www.readr.tw/series/{{.ProjectSlug}}?utm=dailydigest' target='_blank'>
+            {{.ProjectTitle}}
+          </a>
+      有新的內容發布</p>
+    </div>
+  </header>
+  <div class='newsletter-content'>
+    {{if .HasReport}}
+    <section class='newsletter-content__section reports'>
+      <header class='section-header'>
+        <h1 class='section-header__title'>報導</h1>
+      </header>
+      <article class="reports-article">
+        <a class="newsletter-content__link" href="https://www.readr.tw/project/{{.Slug}}?utm=dailydigest" target="_blank">
+          <img class="reports-article__hero-image" src="https://www.readr.tw/{{.Image}}" alt="reports-article__hero-image">
+          <div class="article-content reports-article__content">
+            <h1 class="article-content__title">{{.Title}}</h1>
+            <p class="article-content__description">{{.Content}}</p>
+          </div>
+        </a>
+      </article>
+    </section>
+    {{end}}
+    {{if .HasMemo}}
+    <section class='newsletter-content__section memos'>
+      <header class='section-header'>
+        <h1 class='section-header__title'>採訪筆記</h1>
+      </header>
+      <div class='article-content--categorize-author'>
+        <figure class="author-figure">
+          <a class="author-figure__link" href="https://www.readr.tw/profile/{{.AuthorID}}?utm=dailydigest" target="_blank">
+            <img class="author-figure__thumbnail" src="https://www.readr.tw/{{.AuthorImage}}" alt="author-figure__thumbnail">
+            <figcaption class="author-figure__nickname">{{.AuthorName}}</figcaption>
+          </a>
+        </figure>
+        <article class="memos-article">
+          <a class="newsletter-content__link" href="https://www.readr.tw/series/{{.Slug}}?utm=dailydigest" target="_blank">
+            <div class="article-content memos-article__content">
+              <h1 class="article-content__title">{{.Title}}</h1>
+              <p class="article-content__description">{{.Content}}</p>
+            </div>
+          </a>
+        </article>
+      </div>
+    </section>
+    {{end}}
+    <footer class='newsletter-footer'>
+      <a href="{{.SubLink}}" class="newsletter-footer__unsubscribe">取消訂閱 Unsubscribe</a>
+    </footer>
+  </div>
+</body>
+</html>

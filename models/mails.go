@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -32,6 +33,7 @@ type MailInterface interface {
 	SendUpdateNoteAllResource(args GetFollowMapArgs) (err error)
 	GenDailyDigest() (err error)
 	SendDailyDigest(receiver []string) (err error)
+	SendProjectUpdateMail(resource interface{}, resourceTyep string) (err error)
 }
 
 type mailApi struct {
@@ -43,11 +45,13 @@ func (m *mailApi) SetDialer(dialer gomail.Dialer) {
 }
 
 func (m *mailApi) Send(args MailArgs) (err error) {
-
-	receivers, err := m.getMailingList(args.Receiver, args.Type)
-	if err != nil {
-		fmt.Println("Error get mail list when send mail: ", err)
-		return err
+	receivers := make([]mailReceiver, 0)
+	if len(args.Receiver) > 0 {
+		receivers, err = m.getMailingList(args.Receiver, args.Type)
+		if err != nil {
+			fmt.Println("Error get mail list when send mail: ", err)
+			return err
+		}
 	}
 
 	var filteredReceivers []string
@@ -409,7 +413,6 @@ func (m *mailApi) getMailingList(listArgs ...interface{}) (list []mailReceiver, 
 		}
 
 		query = DB.Rebind(query)
-		log.Println(query, args)
 		rows, err = DB.Queryx(query, args...)
 	} else {
 		query := fmt.Sprintf("SELECT mail, role FROM members WHERE active = %d AND daily_push = %d", config.Config.Models.Members["active"], config.Config.Models.MemberDailyPush["active"])
@@ -436,8 +439,7 @@ func (m *mailApi) htmlEscape(s string, length int) string {
 	}
 }
 
-func (m *mailApi) sendDailyDigestToAll(s string, mailList []string) (err error) {
-	date := time.Now()
+func (m *mailApi) sendToAll(t string, s string, mailList []string) (err error) {
 	for len(mailList) > 0 {
 		receiver := mailList
 		if len(mailList) > 100 {
@@ -448,7 +450,7 @@ func (m *mailApi) sendDailyDigestToAll(s string, mailList []string) (err error) 
 		}
 
 		args := MailArgs{
-			Subject: fmt.Sprintf("Readr %d/%d 選文", int(date.Month()), date.Day()),
+			Subject: t,
 			Payload: s,
 			BCC:     receiver,
 		}
@@ -494,9 +496,131 @@ func (m *mailApi) SendDailyDigest(mailList []string) (err error) {
 			}
 		}
 
-		err = m.sendDailyDigestToAll(string(s), mails)
+		date := time.Now()
+		err = m.sendToAll(fmt.Sprintf("Readr %d/%d 選文", int(date.Month()), date.Day()), string(s), mails)
 	}
 	return err
+}
+
+type projectUpdateNotify struct {
+	ProjectID    int
+	ProjectTitle string
+	ProjectSlug  string
+	AuthorID     int
+	AuthorName   string
+	AuthorImage  string
+	Slug         string
+	Title        string
+	Content      string
+	Image        string
+	HasReport    bool
+	HasMemo      bool
+	SubLink      string
+}
+
+func (m *mailApi) SendProjectUpdateMail(resource interface{}, resourceTyep string) (err error) {
+	var mailData projectUpdateNotify
+	switch resourceTyep {
+	case "report":
+		p := resource.(ReportAuthors)
+		mailData.ProjectID = p.ProjectID
+		mailData.Slug = p.Slug.String
+		mailData.Title = p.Title.String
+		mailData.Content = p.Description.String
+		mailData.Image = p.OgImage.String
+		mailData.HasReport = true
+	case "memo":
+		m := resource.(Memo)
+		mailData.ProjectID = int(m.Project.Int)
+		mailData.AuthorID = int(m.Author.Int)
+		mailData.Slug = strconv.Itoa(m.ID)
+		mailData.Title = m.Title.String
+		mailData.Content = m.Content.String
+		mailData.HasMemo = true
+	}
+
+	if mailData.AuthorID > 0 {
+		author, err := MemberAPI.GetMember("id", strconv.Itoa(mailData.AuthorID))
+		if err != nil {
+			log.Println("Get member %d error when SendProjectUpdateMail", mailData.AuthorID)
+			return err
+		}
+
+		mailData.AuthorImage = author.ProfileImage.String
+		mailData.AuthorName = author.Nickname.String
+	}
+
+	if mailData.ProjectID < 0 {
+		log.Println("Invalid projectID when SendProjectUpdateMail")
+		return errors.New("Invalid projectID when SendProjectUpdateMail")
+	}
+
+	project, err := ProjectAPI.GetProject(Project{ID: mailData.ProjectID})
+	if err != nil {
+		log.Println("Get project %d error when SendProjectUpdateMail", mailData.ProjectID)
+		return err
+	}
+
+	mailData.ProjectSlug = project.Slug.String
+	mailData.ProjectTitle = project.Title.String
+
+	subLink := m.GetSubLink()
+	templatesForRoles := make(map[int]string, 0)
+	var mailReceiverList []mailReceiver
+
+	t := template.New("project_notifyletter.html")
+	t = template.Must(t.ParseFiles("config/project_notifyletter.html"))
+	for k, v := range m.GetSubLink() {
+		mailData.SubLink = v
+		buf := new(bytes.Buffer)
+		err = t.Execute(buf, mailData)
+		s := buf.String()
+		log.Println(s)
+		templatesForRoles[k] = s
+	}
+
+	query := fmt.Sprintf(`
+		SELECT mail, role FROM members AS m 
+		LEFT JOIN following AS f 
+			ON m.id = f.member_id 
+		WHERE m.active = %d 
+			AND m.daily_push = %d 
+			AND f.type = %d 
+			AND f.emotion = %d 
+			AND f.target_id = %d`,
+		config.Config.Models.Members["active"],
+		config.Config.Models.MemberDailyPush["active"],
+		config.Config.Models.FollowingType["project"], 0,
+		mailData.ProjectID)
+
+	rows, err := DB.Queryx(query)
+	if err != nil {
+		log.Println("Get followers of project %d error when SendProjectUpdateMail", mailData.ProjectID)
+		return err
+	}
+	for rows.Next() {
+		var receiver mailReceiver
+		if err = rows.StructScan(&receiver); err != nil {
+			log.Println("Scan followers of project %d error when SendProjectUpdateMail", mailData.ProjectID)
+			return err
+		}
+		mailReceiverList = append(mailReceiverList, receiver)
+	}
+
+	for k, _ := range subLink {
+		var mails []string
+		s := templatesForRoles[k]
+
+		for _, receiver := range mailReceiverList {
+			if receiver.Role == k {
+				mails = append(mails, receiver.Mail)
+			}
+		}
+
+		err = m.sendToAll("Readr 專題內容更新", s, mails)
+	}
+	return err
+
 }
 
 var MailAPI MailInterface = new(mailApi)

@@ -358,6 +358,7 @@ func (a *reportAPI) InsertReport(p Report) (lastID int, err error) {
 			go Algolia.InsertReport(reports)
 			if len(reports) > 0 {
 				go NotificationGen.GenerateProjectNotifications(reports[0], "report")
+				go MailAPI.SendProjectUpdateMail(reports[0], "report")
 			}
 		}
 	}
@@ -410,6 +411,7 @@ func (a *reportAPI) UpdateReport(p Report) error {
 			reports[0].Active.Int == int64(config.Config.Models.Reports["active"]) {
 			go Algolia.InsertReport(reports)
 			go NotificationGen.GenerateProjectNotifications(reports[0], "report")
+			go MailAPI.SendProjectUpdateMail(reports[0], "report")
 		}
 
 	}
