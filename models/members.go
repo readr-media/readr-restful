@@ -64,6 +64,7 @@ type Stunt struct {
 	Points   *NullInt    `json:"points,omitempty" db:"points"`
 	Name     *NullString `json:"name,omitempty" db:"name"`
 	Nickname *NullString `json:"nickname,omitempty" db:"nickname"`
+	Phone    *NullString `json:"phone" db:"phone"`
 
 	Birthday *NullTime   `json:"birthday,omitempty" db:"birthday"`
 	Gender   *NullString `json:"gender,omitempty" db:"gender"`
