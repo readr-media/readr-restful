@@ -175,55 +175,32 @@ func TestRouteRegister(t *testing.T) {
 		out  RegisterCaseOut
 	}{
 		{"RegisterOK", RegisterCaseIn{
-			MemberID: "registertest1@mirrormedia.mg",
 			Password: "mir",
 			Mail:     "registertest1@mirrormedia.mg",
 			Mode:     "ordinary"}, RegisterCaseOut{http.StatusOK, `ok`}},
 		{"RegisterNoPassword", RegisterCaseIn{
-			MemberID: "registertest1@mirrormedia.mg",
 			Password: "",
 			Mail:     "logintest1@mirrormedia.mg",
 			Mode:     "ordinary"}, RegisterCaseOut{http.StatusBadRequest, `{"Error":"Bad Request"}`}},
 		{"RegisterNoMail", RegisterCaseIn{
-			MemberID: "registertest1@mirrormedia.mg",
 			Password: "mir",
 			Mail:     "",
 			Mode:     "ordinary"}, RegisterCaseOut{http.StatusBadRequest, `{"Error":"Bad Request"}`}},
 		{"RegisterNoMode", RegisterCaseIn{
-			MemberID: "registertest1@mirrormedia.mg",
 			Password: "mirr",
 			Mail:     "logintest1@mirrormedia.mg",
 			Mode:     ""}, RegisterCaseOut{http.StatusBadRequest, `{"Error":"Bad Request"}`}},
-		{"RegisterNoID", RegisterCaseIn{
-			MemberID: "",
-			Password: "mir",
-			Mail:     "logintest1@mirrormedia.mg",
-			Mode:     "ordinary"}, RegisterCaseOut{http.StatusBadRequest, `{"Error":"Bad Request"}`}},
 		{"RegisterSocialOK", RegisterCaseIn{
-			MemberID: "112233445566",
 			Password: "mir",
 			Mail:     "logintest1@mirrormedia.mg",
 			Mode:     "oauth-fb",
 			SocialID: "112233445566"}, RegisterCaseOut{http.StatusOK, `ok`}},
 		{"RegisterNoSocialID", RegisterCaseIn{
-			MemberID: "112233445566",
 			Password: "mir",
 			Mail:     "logintest1@mirrormedia.mg",
 			Mode:     "oauth-fb",
 			SocialID: ""}, RegisterCaseOut{http.StatusBadRequest, `{"Error":"Bad Request"}`}},
-		{"RegisterWrongSocialID", RegisterCaseIn{
-			MemberID: "112233445566",
-			Password: "mir",
-			Mail:     "logintest1@mirrormedia.mg",
-			Mode:     "oauth-fb",
-			SocialID: "112233445567"}, RegisterCaseOut{http.StatusBadRequest, `{"Error":"Bad Request"}`}},
 		{"RegisterUserDupe", RegisterCaseIn{
-			MemberID: "logintest2018",
-			Password: "1233211234567",
-			Mail:     "logintest1@mirrormedia.mg",
-			Mode:     "ordinary"}, RegisterCaseOut{http.StatusBadRequest, `{"Error":"User Duplicated"}`}},
-		{"RegisterSocialUserDupe", RegisterCaseIn{
-			MemberID: "logintest2018",
 			Password: "1233211234567",
 			Mail:     "logintest1@mirrormedia.mg",
 			Mode:     "ordinary"}, RegisterCaseOut{http.StatusBadRequest, `{"Error":"User Duplicated"}`}},
