@@ -34,6 +34,7 @@ type MailInterface interface {
 	GenDailyDigest() (err error)
 	SendDailyDigest(receiver []string) (err error)
 	SendProjectUpdateMail(resource interface{}, resourceTyep string) (err error)
+	SendCECommentNotify(tmp TaggedPostMember) (err error)
 }
 
 type mailApi struct {
@@ -279,8 +280,9 @@ func (m *mailApi) GenDailyDigest() (err error) {
 		return err
 	}
 
-	t := template.New("newsletter.html")
-	t = template.Must(t.ParseFiles("config/newsletter.html"))
+	//t := template.New("newsletter.html")
+	//t = template.Must(t.ParseFiles("config/newsletter.html"))
+	t := template.Must(template.ParseGlob("config/*.html"))
 
 	data := dailyDigest{DateDay: date.Day(), DateMonth: int(date.Month()), DateYear: date.Year()}
 
@@ -321,7 +323,7 @@ OLP:
 	for k, v := range subLink {
 		data.SubLink = v
 		buf := new(bytes.Buffer)
-		err = t.Execute(buf, data)
+		err = t.ExecuteTemplate(buf, "newsletter.html", data)
 		s := buf.String()
 
 		conn := RedisHelper.Conn()
@@ -568,12 +570,12 @@ func (m *mailApi) SendProjectUpdateMail(resource interface{}, resourceTyep strin
 	templatesForRoles := make(map[int]string, 0)
 	var mailReceiverList []mailReceiver
 
-	t := template.New("project_notifyletter.html")
-	t = template.Must(t.ParseFiles("config/project_notifyletter.html"))
+	//t := template.New("project_notifyletter.html")
+	t := template.Must(template.ParseGlob("config/*.html"))
 	for k, v := range m.GetSubLink() {
 		mailData.SubLink = v
 		buf := new(bytes.Buffer)
-		err = t.Execute(buf, mailData)
+		err = t.ExecuteTemplate(buf, "project_notifyletter.html", mailData)
 		s := buf.String()
 		log.Println(s)
 		templatesForRoles[k] = s
@@ -616,11 +618,31 @@ func (m *mailApi) SendProjectUpdateMail(resource interface{}, resourceTyep strin
 				mails = append(mails, receiver.Mail)
 			}
 		}
-
 		err = m.sendToAll("Readr 專題內容更新", s, mails)
 	}
 	return err
 
+}
+
+func (m *mailApi) SendCECommentNotify(tpm TaggedPostMember) (err error) {
+	t, err := template.New("CEComment_notify").Parse(`
+		客座總編 <strong>{{.Member.Nickname.String}}</strong> 已發布一篇新評論：<strong>{{.Post.Title.String}}</strong> <br>
+		新聞連結： <strong>{{.Post.Link.String}}</strong> <br>
+		內文： <strong>{{.Post.Content.String}}</strong>
+		`)
+	if err != nil {
+		return err
+	}
+	buf := new(bytes.Buffer)
+	err = t.Execute(buf, tpm)
+	if err != nil {
+		return err
+	}
+
+	s := buf.String()
+
+	err = m.sendToAll("[READr] 客座編輯發文通知", s, []string{config.Config.Mail.DevTeam})
+	return nil
 }
 
 var MailAPI MailInterface = new(mailApi)

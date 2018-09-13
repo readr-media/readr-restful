@@ -250,6 +250,9 @@ func (a *mockPostAPI) Hot() (result []models.HotPost, err error) {
 func (a *mockPostAPI) SchedulePublish() error {
 	return nil
 }
+func (a *mockPostAPI) PublishPipeline(ids []uint32) error {
+	return nil
+}
 
 func TestRoutePost(t *testing.T) {
 

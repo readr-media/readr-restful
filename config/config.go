@@ -40,6 +40,7 @@ type appConfig struct {
 		User     string `mapstructure:"user"`
 		Password string `mapstructure:"password"`
 		UserName string `mapstructure:"user_name"`
+		DevTeam  string `mapstructure:"dev_team"`
 	} `mapstructure:"mail"`
 
 	SearchFeed struct {
@@ -87,6 +88,10 @@ type appConfig struct {
 		Currency           string `mapstructure:"currency"`
 		PaymentDescription string `mapstructure:"payment_description"`
 	} `mapstructure:"payment_service"`
+
+	Slack struct {
+		NotifyWebhook string `mapstructure:"notify_webhook"`
+	} `mapstructure:"slack"`
 }
 
 func LoadConfig(configPath string, configName string) error {

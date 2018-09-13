@@ -15,7 +15,7 @@
     },
     "es":{
         "url": "",
-        "log_indices": "logstash-readr-site-client-behavior-*"
+        "log_indices": ""
     },
     "crawler": {
         "headers":{}
@@ -25,7 +25,8 @@
         "port": 0,
         "user": "",
         "password": "",
-        "user_name": ""
+        "user_name": "",
+        "dev_team": ""
     },
     "search_feed":{
         "app_id": "",
@@ -43,6 +44,10 @@
             "active": 9,
             "deactive": 9,
             "delete": 9
+        },
+	"member_daily_push":{
+            "deactive": 9,
+            "active": 9
         },
         "posts":{
             "deactive": 9,
@@ -137,6 +142,9 @@
         "prime_url": "",
         "token_url": "",
         "currency": "",
-        "payment_description": "READr points"
+        "payment_description": ""
+    },
+    "slack":{
+        "notify_webhook": ""
     }
 }
