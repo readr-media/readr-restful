@@ -167,6 +167,7 @@ func (r *authHandler) userRegister(c *gin.Context) {
 		member.Salt = models.NullString{string(salt), true}
 		member.Password = models.NullString{string(hpw), true}
 		member.Active = models.NullInt{0, true}
+		member.Points = models.NullInt{0, true}
 
 	} else {
 
@@ -177,6 +178,7 @@ func (r *authHandler) userRegister(c *gin.Context) {
 
 		member.MemberID = member.SocialID.String
 		member.Active = models.NullInt{1, true}
+		member.Points = models.NullInt{0, true}
 	}
 
 	// 4. fill in data and defaults
