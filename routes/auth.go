@@ -105,7 +105,6 @@ func (r *authHandler) userLogin(c *gin.Context) {
 }
 
 type userRegisterParams struct {
-	MemberID     string `json:"member_id" db:"member_id"`
 	Name         string `json:"name" db:"name"`
 	Nickname     string `json:"nickname" db:"nick"`
 	Gender       string `json:"gender" db:"gender"`
@@ -137,14 +136,14 @@ func (r *authHandler) userRegister(c *gin.Context) {
 	member.Password = models.NullString{params.Password, true}
 
 	switch {
-	case !utils.ValidateUserID(member.MemberID), !validateMode(member.RegisterMode.String), !validateMail(member.Mail.String):
+	case !validateMode(member.RegisterMode.String), !validateMail(member.Mail.String):
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Request"})
 		return
 	}
 
 	if member.RegisterMode.String == "ordinary" {
 
-		if member.Password.String == "" {
+		if member.Password.String == "" || member.Mail.String == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Request"})
 			return
 		}
@@ -164,20 +163,20 @@ func (r *authHandler) userRegister(c *gin.Context) {
 			return
 		}
 
+		member.MemberID = member.Mail.String
 		member.Salt = models.NullString{string(salt), true}
 		member.Password = models.NullString{string(hpw), true}
 		member.Active = models.NullInt{0, true}
-		member.Points = models.NullInt{0, true}
 
 	} else {
 
-		if member.SocialID.String != member.MemberID {
+		if member.SocialID.String == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Request"})
 			return
 		}
 
+		member.MemberID = member.SocialID.String
 		member.Active = models.NullInt{1, true}
-		member.Points = models.NullInt{0, true}
 	}
 
 	// 4. fill in data and defaults
