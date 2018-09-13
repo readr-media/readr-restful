@@ -39,6 +39,7 @@ func (m *mockMailAPI) SendDailyDigest(s []string) (err error)                   
 func (m *mockMailAPI) SendProjectUpdateMail(resource interface{}, resourceTyep string) (err error) {
 	return err
 }
+func (m *mockMailAPI) SendCECommentNotify(tmp models.TaggedPostMember) (err error) { return nil }
 
 func TestRouteEmail(t *testing.T) {
 

@@ -173,19 +173,10 @@ func (r *postHandler) Post(c *gin.Context) {
 		}
 	}
 
-	// Only insert a post into redis and algolia when it's published
-	if !post.Active.Valid || post.Active.Int != int64(config.Config.Models.Posts["deactive"]) {
-		if post.PublishStatus.Valid && post.PublishStatus.Int == int64(config.Config.Models.PostPublishStatus["publish"]) {
-			go models.PostCache.Insert(uint32(postID))
-			// Write to new post data to search feed
-			post, err := models.PostAPI.GetPost(uint32(postID))
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
-				return
-			}
-			go models.Algolia.InsertPost([]models.TaggedPostMember{post})
-			go models.NotificationGen.GeneratePostNotifications(post)
-		}
+	// Only do the pipeline when it's published
+	if (!post.Active.Valid || post.Active.Int != int64(config.Config.Models.Posts["deactive"])) &&
+		(post.PublishStatus.Valid && post.PublishStatus.Int == int64(config.Config.Models.PostPublishStatus["publish"])) {
+		models.PostAPI.PublishPipeline([]uint32{uint32(postID)})
 	}
 	c.Status(http.StatusOK)
 }
