@@ -1,0 +1,1 @@
+ALTER TABLE members MODIFY COLUMN role int DEFAULT 1;

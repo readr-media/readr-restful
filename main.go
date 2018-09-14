@@ -31,7 +31,12 @@ func main() {
 	dbURI := fmt.Sprintf("%s:%s@tcp(%s)/memberdb?parseTime=true&charset=utf8mb4&multiStatements=true", config.Config.SQL.User, config.Config.SQL.Password, fmt.Sprintf("%s:%v", config.Config.SQL.Host, config.Config.SQL.Port))
 
 	// Start with default middleware
-	router := gin.Default()
+	// router := gin.Default()
+	router := gin.New()
+	router.Use(gin.Recovery())
+
+	// Set customed logger, specify routes skiped from logged
+	router.Use(gin.LoggerWithWriter(gin.DefaultWriter, "/metrics"))
 
 	// Init Mysql connections
 	models.Connect(dbURI)
