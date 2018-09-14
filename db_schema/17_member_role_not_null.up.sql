@@ -1,0 +1,2 @@
+UPDATE members SET role = 1 WHERE role IS NULL;
+ALTER TABLE members MODIFY COLUMN role int NOT NULL DEFAULT 1;
