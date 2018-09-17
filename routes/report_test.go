@@ -174,11 +174,6 @@ func (a *mockReportAPI) DeleteReport(p models.Report) error {
 	}
 	return err
 }
-
-func (a *mockReportAPI) SchedulePublish() error {
-	return nil
-}
-
 func (a *mockReportAPI) InsertAuthors(reportID int, authorIDs []int) (err error) {
 	return err
 }
@@ -186,6 +181,9 @@ func (a *mockReportAPI) InsertAuthors(reportID int, authorIDs []int) (err error)
 func (a *mockReportAPI) UpdateAuthors(reportID int, authorIDs []int) (err error) {
 	return err
 }
+func (m *mockReportAPI) SchedulePublish() ([]int, error)                { return []int{}, nil }
+func (m *mockReportAPI) PublishHandler(ids []int) error                 { return nil }
+func (m *mockReportAPI) UpdateHandler(ids []int, params ...int64) error { return nil }
 
 var MockReportAPI mockReportAPI
 

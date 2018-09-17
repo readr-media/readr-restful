@@ -531,40 +531,25 @@ func (m *mailApi) SendProjectUpdateMail(resource interface{}, resourceTyep strin
 		mailData.Content = p.Description.String
 		mailData.Image = p.OgImage.String
 		mailData.HasReport = true
+
+		mailData.ProjectSlug = p.Project.Slug.String
+		mailData.ProjectTitle = p.Project.Title.String
+
 	case "memo":
-		m := resource.(Memo)
-		mailData.ProjectID = int(m.Project.Int)
-		mailData.AuthorID = int(m.Author.Int)
+		m := resource.(MemoDetail)
+		mailData.ProjectID = int(m.Project.ID)
 		mailData.Slug = strconv.Itoa(m.ID)
 		mailData.Title = m.Title.String
 		mailData.Content = m.Content.String
 		mailData.HasMemo = true
+
+		mailData.AuthorID = int(m.Author.Int)
+		mailData.AuthorImage = m.Authors.ProfileImage.String
+		mailData.AuthorName = m.Authors.Nickname.String
+
+		mailData.ProjectSlug = m.Project.Slug.String
+		mailData.ProjectTitle = m.Project.Title.String
 	}
-
-	if mailData.AuthorID > 0 {
-		author, err := MemberAPI.GetMember("id", strconv.Itoa(mailData.AuthorID))
-		if err != nil {
-			log.Println("Get member %d error when SendProjectUpdateMail", mailData.AuthorID)
-			return err
-		}
-
-		mailData.AuthorImage = author.ProfileImage.String
-		mailData.AuthorName = author.Nickname.String
-	}
-
-	if mailData.ProjectID < 0 {
-		log.Println("Invalid projectID when SendProjectUpdateMail")
-		return errors.New("Invalid projectID when SendProjectUpdateMail")
-	}
-
-	project, err := ProjectAPI.GetProject(Project{ID: mailData.ProjectID})
-	if err != nil {
-		log.Println("Get project %d error when SendProjectUpdateMail", mailData.ProjectID)
-		return err
-	}
-
-	mailData.ProjectSlug = project.Slug.String
-	mailData.ProjectTitle = project.Title.String
 
 	subLink := m.GetSubLink()
 	templatesForRoles := make(map[int]string, 0)
@@ -577,7 +562,6 @@ func (m *mailApi) SendProjectUpdateMail(resource interface{}, resourceTyep strin
 		buf := new(bytes.Buffer)
 		err = t.ExecuteTemplate(buf, "project_notifyletter.html", mailData)
 		s := buf.String()
-		log.Println(s)
 		templatesForRoles[k] = s
 	}
 

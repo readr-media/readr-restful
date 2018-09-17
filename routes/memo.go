@@ -84,7 +84,12 @@ func (r *memoHandler) bindQuery(c *gin.Context, args *models.MemoGetArgs) (err e
 	}
 	if c.Param("id") != "" {
 		id, _ := strconv.Atoi(c.Param("id"))
-		args.MemoID = int64(id)
+		args.IDs = []int64{int64(id)}
+	}
+	if c.Param("ids") != "" {
+		if err = json.Unmarshal([]byte(c.Query("ids")), &args.IDs); err != nil {
+			return err
+		}
 	}
 	return nil
 }

@@ -28,7 +28,7 @@ type Report struct {
 	Active        NullInt    `json:"active" db:"active"`
 	ProjectID     int        `json:"project_id" db:"project_id"`
 	UpdatedAt     NullTime   `json:"updated_at" db:"updated_at"`
-	UpdatedBy     NullString `json:"updated_by" db:"updated_by"`
+	UpdatedBy     NullInt    `json:"updated_by" db:"updated_by"`
 	PublishedAt   NullTime   `json:"published_at" db:"published_at"`
 	Slug          NullString `json:"slug" db:"slug"`
 	Views         NullInt    `json:"views" db:"views"`
@@ -44,9 +44,11 @@ type ReportAPIInterface interface {
 	GetReports(args GetReportArgs) ([]ReportAuthors, error)
 	InsertReport(p Report) (int, error)
 	UpdateReport(p Report) error
-	SchedulePublish() error
 	InsertAuthors(id int, authors []int) (err error)
 	UpdateAuthors(id int, authors []int) (err error)
+	SchedulePublish() (ids []int, err error)
+	PublishHandler(ids []int) error
+	UpdateHandler(ids []int, params ...int64) error
 }
 
 type GetReportArgs struct {
@@ -337,28 +339,18 @@ func (a *reportAPI) InsertReport(p Report) (lastID int, err error) {
 		return lastID, err
 	}
 	lastID = int(lastid)
+	if p.ID == 0 {
+		p.ID = int(lastID)
+	}
 
 	// Only insert a report when it's active
 	if !p.Active.Valid || p.Active.Int != int64(config.Config.Models.Reports["deactive"]) {
 		if p.PublishStatus.Valid && p.PublishStatus.Int == int64(config.Config.Models.ReportsPublishStatus["publish"]) {
-			if p.ID == 0 {
-				p.ID = int(lastID)
-			}
-			arg := GetReportArgs{}
-			arg.Default()
-			arg.IDs = []int{p.ID}
-			arg.Fields = arg.FullAuthorTags()
-			arg.MaxResult = 1
-			arg.Page = 1
-			reports, err := ReportAPI.GetReports(arg)
-			if err != nil {
-				log.Printf("Error When Getting Report to Insert to Algolia: %v", err.Error())
-				return lastID, nil
-			}
-			go Algolia.InsertReport(reports)
-			if len(reports) > 0 {
-				go NotificationGen.GenerateProjectNotifications(reports[0], "report")
-				go MailAPI.SendProjectUpdateMail(reports[0], "report")
+			a.PublishHandler([]int{p.ID})
+			if p.UpdatedBy.Valid {
+				a.UpdateHandler([]int{p.ID}, p.UpdatedBy.Int)
+			} else {
+				a.UpdateHandler([]int{p.ID})
 			}
 		}
 	}
@@ -395,23 +387,14 @@ func (a *reportAPI) UpdateReport(p Report) error {
 	} else if p.PublishStatus.Valid || p.Active.Valid {
 		// Case: Publish a report or update a report.
 		// Read whole report from database, then store to cache/searcher.
-		arg := GetReportArgs{}
-		arg.Default()
-		arg.IDs = []int{p.ID}
-		arg.Fields = arg.FullAuthorTags()
-		arg.MaxResult = 1
-		arg.Page = 1
-		reports, err := ReportAPI.GetReports(arg)
-		if err != nil {
-			log.Printf("Error When Getting Report to Insert to Algolia: %v", err.Error())
-			return nil
-		}
-
-		if reports[0].PublishStatus.Int == int64(config.Config.Models.ReportsPublishStatus["publish"]) &&
-			reports[0].Active.Int == int64(config.Config.Models.Reports["active"]) {
-			go Algolia.InsertReport(reports)
-			go NotificationGen.GenerateProjectNotifications(reports[0], "report")
-			go MailAPI.SendProjectUpdateMail(reports[0], "report")
+		if p.PublishStatus.Int == int64(config.Config.Models.ReportsPublishStatus["publish"]) ||
+			p.Active.Int == int64(config.Config.Models.Reports["active"]) {
+			a.PublishHandler([]int{p.ID})
+			if p.UpdatedBy.Valid {
+				a.UpdateHandler([]int{p.ID}, p.UpdatedBy.Int)
+			} else {
+				a.UpdateHandler([]int{p.ID})
+			}
 		}
 
 	}
@@ -435,14 +418,6 @@ func (a *reportAPI) DeleteReport(p Report) error {
 	go Algolia.DeleteReport([]int{p.ID})
 
 	return err
-}
-
-func (a *reportAPI) SchedulePublish() error {
-	_, err := DB.Exec("UPDATE reports SET publish_status=2 WHERE publish_status=3 AND published_at <= cast(now() as datetime);")
-	if err != nil {
-		return err
-	}
-	return nil
 }
 
 func (a *reportAPI) InsertAuthors(reportID int, authorIDs []int) (err error) {
@@ -515,6 +490,108 @@ func (a *reportAPI) UpdateAuthors(reportID int, authorIDs []int) (err error) {
 		return err
 	}
 	return err
+}
+
+func (a *reportAPI) SchedulePublish() (ids []int, err error) {
+
+	rows, err := DB.Queryx("SELECT id FROM reports WHERE publish_status=3 AND published_at <= cast(now() as datetime);")
+	if err != nil {
+		log.Println("Getting report error when schedule publishing reports", err)
+		return ids, err
+	}
+
+	for rows.Next() {
+		var i int
+		if err = rows.Scan(&i); err != nil {
+			continue
+		}
+		ids = append(ids, i)
+	}
+
+	_, err = DB.Exec("UPDATE reports SET publish_status=2 WHERE publish_status=3 AND published_at <= cast(now() as datetime);")
+	if err != nil {
+		return ids, err
+	}
+	return ids, nil
+}
+
+func (a *reportAPI) PublishHandler(ids []int) error {
+	// Redis notification
+	// Mail notification
+
+	if len(ids) == 0 {
+		return nil
+	}
+
+	args := GetReportArgs{
+		IDs:                 ids,
+		Active:              map[string][]int{"IN": []int{int(config.Config.Models.Reports["active"])}},
+		ReportPublishStatus: map[string][]int{"IN": []int{int(config.Config.Models.ReportsPublishStatus["publish"])}},
+	}
+	args.Fields = args.FullAuthorTags()
+
+	reports, err := a.GetReports(args)
+	if err != nil {
+		log.Println("Getting reports info fail when running publish handling process", err)
+		return err
+	}
+	if len(reports) == 0 {
+		return nil
+	}
+
+	go Algolia.InsertReport(reports)
+	for _, report := range reports {
+		go NotificationGen.GenerateProjectNotifications(report, "report")
+		go MailAPI.SendProjectUpdateMail(report, "report")
+	}
+
+	return nil
+}
+
+func (a *reportAPI) UpdateHandler(ids []int, params ...int64) error {
+	// update update time for projects
+
+	if len(ids) == 0 {
+		return nil
+	}
+
+	args := GetReportArgs{
+		IDs:                 ids,
+		Active:              map[string][]int{"IN": []int{int(config.Config.Models.Reports["active"])}},
+		ReportPublishStatus: map[string][]int{"IN": []int{int(config.Config.Models.ReportsPublishStatus["publish"])}},
+	}
+	args.Fields = args.FullAuthorTags()
+
+	reports, err := a.GetReports(args)
+	if err != nil {
+		log.Println("Getting reports info fail when running publish handling process", err)
+		return err
+	}
+	if len(reports) == 0 {
+		return nil
+	}
+
+	projectIDs := make([]int, 0)
+	for _, report := range reports {
+		projectIDs = append(projectIDs, report.Project.ID)
+	}
+
+	var updated_by = ""
+	if len(params) > 0 {
+		updated_by = fmt.Sprintf(", updated_by = %d", params[0])
+	}
+
+	query := fmt.Sprintf(`UPDATE projects SET updated_at = CAST(NOW() AS DATETIME) %s WHERE project_id IN (?);`, updated_by)
+	query, sqlArgs, err := sqlx.In(query, projectIDs)
+	if err != nil {
+		return err
+	}
+	query = DB.Rebind(query)
+	_, err = DB.Exec(query, sqlArgs...)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 var ReportAPI ReportAPIInterface = new(reportAPI)
