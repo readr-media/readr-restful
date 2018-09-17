@@ -1,0 +1,2 @@
+ALTER TABLE points DROP COLUMN reason;
+ALTER TABLE points MODIFY COLUMN object_id int NOT NULL;
