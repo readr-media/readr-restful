@@ -1,0 +1,2 @@
+ALTER TABLE points ADD COLUMN reason varchar(128);
+ALTER TABLE points MODIFY COLUMN object_id int NOT NULL DEFAULT 0;

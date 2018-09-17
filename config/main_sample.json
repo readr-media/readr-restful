@@ -133,6 +133,12 @@
         "emotions":{
             "like": 9,
             "dislike": 9
+        },
+        "point_type":{
+            "project": 9,
+            "project_mamo": 9,
+            "topup": 9,
+            "gift": 9
         }
     },
     "domain_name": "http://www.foo.bar",

@@ -13,15 +13,16 @@ import (
 )
 
 type Points struct {
-	PointsID   int64    `json:"id" db:"id"`
-	MemberID   int64    `json:"member_id" db:"member_id" binding:"required"`
-	ObjectType int      `json:"object_type" db:"object_type" binding:"required"`
-	ObjectID   int      `json:"object_id" db:"object_id"`
-	Points     int      `json:"points" db:"points"`
-	Balance    int      `json:"balance" db:"balance"`
-	CreatedAt  NullTime `json:"created_at" db:"created_at"`
-	UpdatedBy  NullInt  `json:"updated_by" db:"updated_by"`
-	UpdatedAt  NullTime `json:"updated_at" db:"updated_at"`
+	PointsID   int64      `json:"id" db:"id"`
+	MemberID   int64      `json:"member_id" db:"member_id" binding:"required"`
+	ObjectType int        `json:"object_type" db:"object_type" binding:"required"`
+	ObjectID   int        `json:"object_id" db:"object_id"`
+	Points     int        `json:"points" db:"points"`
+	Balance    int        `json:"balance" db:"balance"`
+	CreatedAt  NullTime   `json:"created_at" db:"created_at"`
+	UpdatedBy  NullInt    `json:"updated_by" db:"updated_by"`
+	UpdatedAt  NullTime   `json:"updated_at" db:"updated_at"`
+	Reason     NullString `json:"reason" db:"reason"`
 }
 
 // PointsToken is made to solve problem if Token is added to Points struct
@@ -159,7 +160,7 @@ func (p *pointsAPI) Get(args *PointsArgs) (result []PointsProject, err error) {
 func (p *pointsAPI) Insert(pts PointsToken) (result int, err error) {
 	tags := getStructDBTags("full", pts.Points)
 
-	if pts.Points.Points < 0 {
+	if pts.Points.Points < 0 && pts.Points.ObjectType == config.Config.Models.PointType["topup"] {
 
 		if pts.Token != nil {
 			// Member Pay with Prime Token

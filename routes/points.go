@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -87,15 +88,20 @@ func (r *pointsHandler) Post(c *gin.Context) {
 	if !pts.UpdatedAt.Valid {
 		pts.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
 	}
-	if pts.Points.Points < 0 && pts.Token == nil {
+
+	if pts.Points.ObjectType == config.Config.Models.PointType["topup"] && pts.Token == nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Token"})
 		return
 	}
-	if pts.Points.Points < 0 && (pts.MemberName == nil || pts.MemberPhone == nil || pts.MemberMail == nil) {
+	if pts.Points.ObjectType == config.Config.Models.PointType["topup"] && pts.Points.Points >= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Topup Amount"})
+		return
+	}
+	if pts.Points.ObjectType == config.Config.Models.PointType["topup"] && (pts.MemberName == nil || pts.MemberPhone == nil || pts.MemberMail == nil) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Payment Info"})
 		return
 	}
-	if pts.Points.ObjectID == 0 && (pts.Points.Points > 0 || pts.Points.ObjectType != 2) {
+	if pts.Points.ObjectID == 0 && (pts.Points.ObjectType == config.Config.Models.PointType["project"] || pts.Points.ObjectType == config.Config.Models.PointType["project_mamo"]) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Object ID"})
 		return
 	}
