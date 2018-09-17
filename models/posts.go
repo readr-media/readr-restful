@@ -619,6 +619,10 @@ func (a *postAPI) PublishPipeline(ids []uint32) error {
 	// Insert to Algolia / Redis PostCache / Redis notification
 	// Send notify mail / slack message
 
+	if len(ids) == 0 {
+		return nil
+	}
+
 	posts, err := a.GetPosts(NewPostArgs(func(arg *PostArgs) { arg.IDs = ids }))
 	if err != nil {
 		log.Println("Getting posts info fail when running publish pipeline", err)

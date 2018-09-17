@@ -417,31 +417,26 @@ func (c *notificationGenerator) GenerateProjectNotifications(resource interface{
 		}
 
 	case "memo":
-		m := resource.(Memo)
+		m := resource.(MemoDetail)
 		eventType := "follow_project_memo"
 		tagEventType := "follow_tag_memo"
 
-		projectFollowers, err := c.getFollowers(int(m.Project.Int), config.Config.Models.FollowingType["project"])
+		projectFollowers, err := c.getFollowers(int(m.Project.ID), config.Config.Models.FollowingType["project"])
 		if err != nil {
-			log.Println("Error get project followers", m.Project.Int, err.Error())
+			log.Println("Error get project followers", m.Project.ID, err.Error())
 		}
 
-		project, err := ProjectAPI.GetProject(Project{ID: int(m.Project.Int)})
-		if err != nil {
-			log.Println("Error get project", m.Project.Int, err.Error())
-		}
-
-		_ = c.generateTagNotifications(project, tagEventType)
+		_ = c.generateTagNotifications(m.Project.Project, tagEventType)
 
 		for _, v := range projectFollowers {
 			n := NewNotification(eventType, v)
 			n.SubjectID = strconv.Itoa(m.ID)
 			n.Nickname = m.Title.String
-			n.ProfileImage = project.HeroImage.String
-			n.ObjectName = project.Title.String
+			n.ProfileImage = m.Project.HeroImage.String
+			n.ObjectName = m.Project.Title.String
 			n.ObjectType = "project"
-			n.ObjectID = strconv.Itoa(project.ID)
-			n.ObjectSlug = project.Slug.String
+			n.ObjectID = strconv.Itoa(m.Project.ID)
+			n.ObjectSlug = m.Project.Slug.String
 			ns = append(ns, n)
 		}
 

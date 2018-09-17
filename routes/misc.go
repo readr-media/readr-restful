@@ -55,8 +55,23 @@ func (r *miscHandler) GetUrlMeta(c *gin.Context) {
 func (r *miscHandler) PublishResources(c *gin.Context) {
 	models.PostAPI.SchedulePublish()
 	models.ProjectAPI.SchedulePublish()
-	models.MemoAPI.SchedulePublish()
-	models.ReportAPI.SchedulePublish()
+
+	memoIDs, err := models.MemoAPI.SchedulePublish()
+	if err != nil {
+		log.Println(err)
+	} else {
+		models.MemoAPI.PublishHandler(memoIDs)
+		models.MemoAPI.UpdateHandler(memoIDs)
+	}
+
+	reportIDs, err := models.ReportAPI.SchedulePublish()
+	if err != nil {
+		log.Println(err)
+	} else {
+		models.ReportAPI.PublishHandler(reportIDs)
+		models.ReportAPI.UpdateHandler(reportIDs)
+	}
+
 	c.Status(http.StatusOK)
 }
 

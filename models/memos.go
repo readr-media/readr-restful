@@ -41,7 +41,9 @@ type MemoInterface interface {
 	InsertMemo(memo Memo) error
 	UpdateMemo(memo Memo) error
 	UpdateMemos(args MemoUpdateArgs) error
-	SchedulePublish() error
+	SchedulePublish() (ids []int, err error)
+	PublishHandler(ids []int) error
+	UpdateHandler(ids []int, params ...int64) error
 }
 
 type MemoGetArgs struct {
@@ -57,7 +59,7 @@ type MemoGetArgs struct {
 	ProjectPublishStatus map[string][]int `form:"project_publish_status"`
 	MemberID             int64            `form:"member_id"`
 	AbstractLength       int64            `form:"abstract_length"`
-	MemoID               int64
+	IDs                  []int64
 }
 
 func (p *MemoGetArgs) Default() (result *MemoGetArgs) {
@@ -112,9 +114,9 @@ func (p *MemoGetArgs) parse() (restricts string, values []interface{}) {
 		where = append(where, fmt.Sprintf("%s IN (?)", "project.slug"))
 		values = append(values, p.Slugs)
 	}
-	if p.MemoID != 0 {
-		where = append(where, fmt.Sprintf("%s = ?", "memos.memo_id"))
-		values = append(values, p.MemoID)
+	if len(p.IDs) > 0 {
+		where = append(where, fmt.Sprintf("%s IN (?)", "memos.memo_id"))
+		values = append(values, p.IDs)
 	}
 	if p.Keyword != "" {
 		p.Keyword = fmt.Sprintf("%s%s%s", "%", p.Keyword, "%")
@@ -405,11 +407,25 @@ func (m *memoAPI) InsertMemo(memo Memo) (err error) {
 	} else if rowCnt == 0 {
 		return errors.New("Post Not Found")
 	}
+	lastid, err := result.LastInsertId()
+	if err != nil {
+		log.Printf("Fail to get last insert ID when insert a memo: %v", err)
+		return err
+	}
+	lastID := int(lastid)
+	if memo.ID == 0 {
+		memo.ID = int(lastID)
+	}
 
 	if memo.PublishStatus.Valid && memo.PublishStatus.Int == int64(config.Config.Models.MemosPublishStatus["publish"]) &&
 		memo.Active.Valid && memo.Active.Int == int64(config.Config.Models.Memos["active"]) {
-		go NotificationGen.GenerateProjectNotifications(memo, "memo")
-		go MailAPI.SendProjectUpdateMail(memo, "memo")
+
+		m.PublishHandler([]int{memo.ID})
+	}
+	if memo.UpdatedBy.Valid {
+		m.UpdateHandler([]int{memo.ID}, memo.UpdatedBy.Int)
+	} else {
+		m.UpdateHandler([]int{memo.ID})
 	}
 
 	return err
@@ -435,16 +451,13 @@ func (m *memoAPI) UpdateMemo(memo Memo) (err error) {
 	}
 
 	if memo.PublishStatus.Valid || memo.Active.Valid {
-		m, err := m.GetMemo(memo.ID)
-		if err != nil {
-			return errors.New(fmt.Sprintf("Fail get memo: %d", memo.ID))
-		}
+		m.PublishHandler([]int{memo.ID})
+	}
 
-		if m.PublishStatus.Int == int64(config.Config.Models.MemosPublishStatus["publish"]) &&
-			m.Active.Int == int64(config.Config.Models.Memos["active"]) {
-			go NotificationGen.GenerateProjectNotifications(m, "memo")
-			go MailAPI.SendProjectUpdateMail(m, "memo")
-		}
+	if memo.UpdatedBy.Valid {
+		m.UpdateHandler([]int{memo.ID}, memo.UpdatedBy.Int)
+	} else {
+		m.UpdateHandler([]int{memo.ID})
 	}
 
 	return err
@@ -473,11 +486,117 @@ func (m *memoAPI) UpdateMemos(args MemoUpdateArgs) (err error) {
 		return errors.New("Posts Not Found")
 	}
 
+	if args.Active.Valid {
+		m.PublishHandler(args.IDs)
+	}
+
+	if args.UpdatedBy != 0 {
+		m.UpdateHandler(args.IDs, args.UpdatedBy)
+	} else {
+		m.UpdateHandler(args.IDs)
+	}
+
 	return nil
 }
 
-func (m *memoAPI) SchedulePublish() error {
-	_, err := DB.Exec("UPDATE memos SET publish_status=2 WHERE publish_status=3 AND published_at <= cast(now() as datetime);")
+func (m *memoAPI) SchedulePublish() (ids []int, err error) {
+
+	rows, err := DB.Queryx("SELECT memo_id FROM memos WHERE publish_status=3 AND published_at <= cast(now() as datetime);")
+	if err != nil {
+		log.Println("Getting memo error when schedule publishing memos", err)
+		return ids, err
+	}
+
+	for rows.Next() {
+		var i int
+		if err = rows.Scan(&i); err != nil {
+			continue
+		}
+		ids = append(ids, i)
+	}
+
+	_, err = DB.Exec("UPDATE memos SET publish_status=2 WHERE publish_status=3 AND published_at <= cast(now() as datetime);")
+	if err != nil {
+		return ids, err
+	}
+	return ids, nil
+}
+
+func (m *memoAPI) PublishHandler(ids []int) error {
+	// Redis notification
+	// Mail notification
+
+	if len(ids) == 0 {
+		return nil
+	}
+
+	memoIDs := make([]int64, 0)
+	for _, id := range ids {
+		memoIDs = append(memoIDs, int64(id))
+	}
+
+	memos, err := m.GetMemos(&MemoGetArgs{
+		IDs:               memoIDs,
+		Active:            map[string][]int{"IN": []int{int(config.Config.Models.Memos["active"])}},
+		MemoPublishStatus: map[string][]int{"IN": []int{int(config.Config.Models.MemosPublishStatus["publish"])}},
+	})
+	if err != nil {
+		log.Println("Getting memos info fail when running publish handling process", err)
+		return err
+	}
+	if len(memos) == 0 {
+		return nil
+	}
+
+	for _, memo := range memos {
+		go NotificationGen.GenerateProjectNotifications(memo, "memo")
+		go MailAPI.SendProjectUpdateMail(memo, "memo")
+	}
+
+	return nil
+}
+
+func (m *memoAPI) UpdateHandler(ids []int, params ...int64) error {
+	// update update time for projects
+
+	if len(ids) == 0 {
+		return nil
+	}
+
+	memoIDs := make([]int64, 0)
+	for _, id := range ids {
+		memoIDs = append(memoIDs, int64(id))
+	}
+	memos, err := m.GetMemos(&MemoGetArgs{
+		IDs:               memoIDs,
+		Active:            map[string][]int{"IN": []int{int(config.Config.Models.Memos["active"])}},
+		MemoPublishStatus: map[string][]int{"IN": []int{int(config.Config.Models.MemosPublishStatus["publish"])}},
+	})
+	if err != nil {
+		log.Println("Getting memos info fail when running publish handling process", err)
+		return err
+	}
+	if len(memos) == 0 {
+		return nil
+	}
+
+	projectIDs := make([]int, 0)
+	for _, memo := range memos {
+		projectIDs = append(projectIDs, memo.Project.ID)
+	}
+
+	updated_by := ""
+	if len(params) > 0 {
+		updated_by = fmt.Sprintf(", updated_by = %d", params[0])
+	}
+
+	query := fmt.Sprintf(`UPDATE projects SET updated_at = CAST(NOW() AS DATETIME) %s WHERE project_id IN (?);`, updated_by)
+	query, sqlArgs, err := sqlx.In(query, projectIDs)
+	if err != nil {
+		return err
+	}
+	query = DB.Rebind(query)
+	_, err = DB.Exec(query, sqlArgs...)
 	if err != nil {
 		return err
 	}

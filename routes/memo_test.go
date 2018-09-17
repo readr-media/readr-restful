@@ -40,7 +40,7 @@ func (m *mockMemoAPI) GetMemo(id int) (memo models.Memo, err error) {
 }
 func (m *mockMemoAPI) GetMemos(args *models.MemoGetArgs) (memos []models.MemoDetail, err error) {
 	switch {
-	case args.MemoID == 1:
+	case len(args.IDs) == 1:
 		return []models.MemoDetail{
 			models.MemoDetail{Memo: models.Memo{ID: 1, Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullInt{131, true}, Project: models.NullInt{420, true}, Active: models.NullInt{1, true}}}}, nil
 	case len(args.Author) > 0 && len(args.Project) > 0:
@@ -125,10 +125,9 @@ func (m *mockMemoAPI) UpdateMemo(memo models.Memo) (err error) {
 	return nil
 }
 func (m *mockMemoAPI) UpdateMemos(args models.MemoUpdateArgs) (err error) { return nil }
-
-func (a *mockMemoAPI) SchedulePublish() error {
-	return nil
-}
+func (m *mockMemoAPI) SchedulePublish() ([]int, error)                    { return []int{}, nil }
+func (m *mockMemoAPI) PublishHandler(ids []int) error                     { return nil }
+func (m *mockMemoAPI) UpdateHandler(ids []int, params ...int64) error     { return nil }
 
 func TestRouteMemos(t *testing.T) {
 
