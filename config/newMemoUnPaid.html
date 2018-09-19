@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang='en'>
+  <head>
+    <title>新筆記</title>
+    <meta charset='utf-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1, minimal-ui'>
+    <meta name='description' content='新筆記'>
+    <style>
+      /* normalizing css styles */
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body {
+        font-family: 'Microsoft JhengHei', 'PingFang TC';      
+      }
+
+      a {
+        text-decoration: none;
+      }
+    </style>
+    <style>
+      /* common components styles */
+      #mail {
+        background-color: #f3f3f3;
+        padding: 0 0 34px 0;
+      }
+
+      .content {
+        max-width: 600px;
+        margin: 0 auto;
+      }
+      .content__header {
+        height: 40px;
+        background-color: #434746;
+      }
+      .content__footer {
+        margin: 76px 0 0 0;
+      }
+
+      .header__readr-link {
+        float: right;
+        margin: 6px 13px 0 0;
+      }
+      .header__logo {
+        height: 43px;
+      }
+
+      .article {
+        color: #434746 !important;
+        font-size: 15px;
+        line-height: 1.73;
+      }
+      .article div {
+        margin: 30px 0 0 0;
+        padding: 0 35px;
+        text-align: justify;
+      }
+      .article a {
+        color: #0db9c9;
+      }
+      .article__intro {
+        margin: 0 !important;
+        padding: 50px 35px 0 35px !important;
+        font-size: 21px;
+        color: #434746;
+        line-height: 1.71;
+      }
+      .article__intro h1 {
+        font-size: 21px;
+        font-weight: 900;
+      }
+      .no-reply {
+        font-size: 11px;
+        color: #959595;
+      }
+
+      .footer {
+        text-align: center;
+      }
+      .footer__credits {
+        margin: 39px 0 0 0;
+        font-size: 11px;
+        line-height: 1.82;
+        color: #959595;
+      }
+      .footer__credits a {
+        color: #959595 !important;
+      }
+      .footer__credits br {
+        display: none;
+      }
+      .social-media__link img {
+        width: 24px;
+        height: 24px;
+        margin: 0 4px;
+      }
+      .unfollow {
+        color: #959595;
+        border-bottom: 1px solid #959595;
+      }
+
+      @media (max-width: 425px) {
+        .article div {
+          padding: 0 10px;
+        }
+
+        .article__intro {
+          padding: 50px 10px 0 10px !important;
+        }
+
+        .footer__credits br {
+          display: initial;
+        }
+      }
+    </style>
+    <style>
+      .memo {
+        background-color: #fff;
+        color: #434746 !important;
+        padding: 38px 35px;
+        margin: 50px 0 0 0;
+      }
+      .memo div {
+        margin: 0;
+        padding: 0;
+        clear: both;
+      }
+      .memo p {
+        margin: 38px 0 0 0;
+      }
+
+      .memo-info__quote-icon {
+        width: 42px;
+        float: left;
+      }
+      .memo-info__meta {
+        display: inline-block;
+        width: 377px;
+        min-height: 70px;
+        margin: 0 0 0 21px !important;
+      }
+      .memo-info__title {
+        display: inline-block;
+        width: 100%;
+        min-height: 55px;
+        font-size: 21px;
+      }
+      .memo-info__credit {
+        margin: 8px 0 0 0 !important;
+        float: right;
+        line-height: 1;
+        font-size: 14px;
+      }
+      .memo-info__thumbnail {
+        float: right;
+        width: 70px;
+        height: 70px;
+        object-fit: contain;
+        margin: 8px 0 0 0;
+      }
+
+      @media (max-width: 425px) {
+        .memo {
+          padding: 38px 10px;
+        }
+        
+        .memo-info__quote-icon {
+          display: none;
+        }
+        .memo-info__meta {
+          margin: 0 !important;
+          width: calc(100% - 70px - 21px);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="mail">
+      <section class="content">
+        <header class="content__header header">
+          <a class="header__readr-link" href="https://www.readr.tw/" target="_blank">
+            <img class="header__logo" src="https://www.readr.tw/assets/mail/readr-logo-email-transparent-mm.png" alt="">
+          </a>
+        </header>
+        <article class="content__article article">
+          <div class="article__intro">
+            <h1>哈囉，密切追蹤 {{.ProjectTitle}} 的你</h1>
+            <p>很高興與你分享，我們 {{.ProjectTitle}} 專題內容更新囉！</p>
+          </div>
+          <article class="article__memo memo">
+            <blockquote class="memo__memo-info memo-info">
+              <img class="memo-info__quote-icon" src="https://www.readr.tw/public/icons/quotation.png" alt="">
+              <div class="memo-info__meta">
+                <!-- memo.title -->
+                <h1 class="memo-info__title">{{.Title}}</h1>
+                <!-- memo.created_at + memo.author.nickname -->
+                <p class="memo-info__credit">{{.CreatedAt}} {{.AuthorNickname}}</p>
+              </div>
+              <!-- https://www.readr.tw{memo.author.profile_image} -->
+              <img class="memo-info__thumbnail" src="{{.AuthorProfileImage}}" alt="">
+            </blockquote>
+            <!-- memo.content -->
+            <div>
+              {{.PartialContent}}
+            </div>
+          </article>
+          <div>
+            <p>如果你對於報導有任何想法，都歡迎加入討論區，<a href="https://www.readr.tw/series/{{.ProjectSlug}}" target="_blank">討論區傳送門</a>。</p>
+          </div>
+          <div>
+            <p>讀＋READr 團隊 敬上</p>
+            <p class="no-reply">此電子郵件由系統自動發出，請勿直接回覆，謝謝您。</p>
+          </div>
+        </article>
+        <footer class="content__footer footer">
+          <div class="footer__social-media social-media">
+            <a class="social-media__link" href="https://www.facebook.com/readr.tw/" target="_blank">
+              <img src="https://www.readr.tw/assets/mail/link-facebook.jpg" alt="">
+            </a>
+            <a class="social-media__link" href="https://twitter.com/READr_news" target="_blank">
+              <img src="https://www.readr.tw/assets/mail/link-twitter.jpg" alt="">
+            </a>
+            <a class="social-media__link" href="https://www.instagram.com/readrteam_daily/" target="_blank">
+              <img src="https://www.readr.tw/assets/mail/link-instagram.jpg" alt="">
+            </a>
+          </div>
+          <div class="footer__credits">
+            <p>readr@readr.tw © 2018 READr</p>
+            <p>
+              如果你不想收到專題最新消息通知信，<br>你可以按這裡 
+              <!-- 取消訂閱： ​​link to 個人通知取消訂閱（new feature in readr-site）, 取消追蹤專題： navigate to unfollow -->
+              <a href="{{.UnsubLink}}" target="_blank" class="unfollow">取消訂閱</a>，<a href="{{.UnfollowLink}}" target="_blank" class="unfollow">取消追蹤專題</a>
+            </p>
+          </div>
+        </footer>
+      </section>
+    </div>
+  </body>
+</html>

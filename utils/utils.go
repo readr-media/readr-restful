@@ -4,13 +4,16 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math"
 	"reflect"
 	"regexp"
+	"strings"
 
 	"database/sql/driver"
 	"io/ioutil"
 	"net/http"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/readr-media/readr-restful/config"
 )
 
@@ -123,4 +126,19 @@ func HTTPRequest(method string, url string, headers map[string]string, body []by
 	respBody, _ = ioutil.ReadAll(resp.Body)
 	return resp, respBody, nil
 
+}
+
+func CutAbstract(html string, length int64, formatter func(abstract []rune) string) (result string, err error) {
+	// buf := bytes.NewBuffer(strings.NewReader(html))
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	if err != nil {
+		return "", err
+	}
+	content := doc.Find("p:not(:has(img))").First().Text()
+
+	abstract := []rune(content)
+	abstract = abstract[:int(math.Min(float64(len(content)), float64(length)))]
+	result = formatter(abstract)
+	return result, nil
 }

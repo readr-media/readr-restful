@@ -542,7 +542,7 @@ func (a *reportAPI) PublishHandler(ids []int) error {
 	go Algolia.InsertReport(reports)
 	for _, report := range reports {
 		go NotificationGen.GenerateProjectNotifications(report, "report")
-		go MailAPI.SendProjectUpdateMail(report, "report")
+		go MailAPI.SendReportPublishMail(report)
 	}
 
 	return nil

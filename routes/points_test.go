@@ -178,8 +178,8 @@ func TestRoutePoints(t *testing.T) {
 		for _, testcase := range []genericTestcase{
 			genericTestcase{"BasicPoints", "POST", `/points`, `{"member_id":1,"object_type": 2,"object_id": 1,"points": 100}`, http.StatusOK, `{"points":1000}`},
 			genericTestcase{"InvalidToken", "POST", `/points`, `{"member_id":1,"object_type": 3,"object_id": 1,"points": -100}`, http.StatusBadRequest, `{"Error":"Invalid Token"}`},
-			genericTestcase{"InvalidTopupAmount", "POST", `/points`, `{"member_id":1,"object_type": 3,"object_id": 1,"points": 100, "token": "token"}`, http.StatusBadRequest, `{"Error":"Invalid Topup Amount"}`},
-			genericTestcase{"InvalidMemberInfo", "POST", `/points`, `{"member_id":1,"object_type": 3,"object_id": 1,"points": -100, "token": "token"}`, http.StatusBadRequest, `{"Error":"Invalid Payment Info"}`},
+			genericTestcase{"InvalidTopupAmount", "POST", `/points`, `{"member_id":1,"object_type": 3,"points": 100, "token": "token"}`, http.StatusBadRequest, `{"Error":"Invalid Topup Amount"}`},
+			genericTestcase{"InvalidMemberInfo", "POST", `/points`, `{"member_id":1,"object_type": 3,"points": -100, "token": "token"}`, http.StatusBadRequest, `{"Error":"Invalid Payment Info"}`},
 			genericTestcase{"InvalidObjectID", "POST", `/points`, `{"member_id":1,"object_type": 2,"points": -100}`, http.StatusBadRequest, `{"Error":"Invalid Object ID"}`},
 		} {
 			genericDoTest(testcase, t, asserter)

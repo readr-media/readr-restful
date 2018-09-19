@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"strconv"
 	"strings"
 	"time"
 
@@ -14,6 +13,7 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/utils"
 	"gopkg.in/gomail.v2"
 )
 
@@ -33,8 +33,11 @@ type MailInterface interface {
 	SendUpdateNoteAllResource(args GetFollowMapArgs) (err error)
 	GenDailyDigest() (err error)
 	SendDailyDigest(receiver []string) (err error)
-	SendProjectUpdateMail(resource interface{}, resourceTyep string) (err error)
 	SendCECommentNotify(tmp TaggedPostMember) (err error)
+
+	SendReportPublishMail(report ReportAuthors) (err error)
+	SendMemoPublishMail(memo MemoDetail) (err error)
+	SendFollowProjectMail() (err error)
 }
 
 type mailApi struct {
@@ -248,11 +251,12 @@ type dailyPost struct {
 	Order      int
 }
 type mailReceiver struct {
-	Mail string `db:"mail"`
-	Role int    `db:"role"`
+	Mail  string `db:"mail"`
+	Role  int    `db:"role"`
+	Subed bool   `db:"subed"`
 }
 
-func (m *mailApi) GetSubLink() map[int]string {
+func (m *mailApi) GetUnsubLink() map[int]string {
 	return map[int]string{
 		9: "https://www.readr.tw/admin",
 		3: "https://www.readr.tw/editor",
@@ -260,9 +264,12 @@ func (m *mailApi) GetSubLink() map[int]string {
 		1: "https://www.readr.tw/member",
 	}
 }
+func (m *mailApi) GetUnfollowLink(id int) string {
+	return fmt.Sprintf("%d", id)
+}
 
 func (m *mailApi) GenDailyDigest() (err error) {
-	subLink := m.GetSubLink()
+	subLink := m.GetUnsubLink()
 	date := time.Now() //.AddDate(0, 0, -1)
 	reports, err := m.getDailyReport()
 	if err != nil {
@@ -472,7 +479,7 @@ func (m *mailApi) SendDailyDigest(mailList []string) (err error) {
 	conn := RedisHelper.Conn()
 	defer conn.Close()
 
-	subLink := m.GetSubLink()
+	subLink := m.GetUnsubLink()
 
 	mailReceiverList, err := m.getMailingList(mailList)
 	if err != nil {
@@ -504,108 +511,181 @@ func (m *mailApi) SendDailyDigest(mailList []string) (err error) {
 	return err
 }
 
-type projectUpdateNotify struct {
-	ProjectID    int
-	ProjectTitle string
-	ProjectSlug  string
-	AuthorID     int
-	AuthorName   string
-	AuthorImage  string
-	Slug         string
-	Title        string
-	Content      string
-	Image        string
-	HasReport    bool
-	HasMemo      bool
-	SubLink      string
+type reportPublishData struct {
+	ProjectTitle     string
+	ProjectHeroImage string
+	ProjectSlug      string
+	Title            string
+	Description      string
+	Slug             string
+	UnsubLink        string
+	UnfollowLink     string
 }
 
-func (m *mailApi) SendProjectUpdateMail(resource interface{}, resourceTyep string) (err error) {
-	var mailData projectUpdateNotify
-	switch resourceTyep {
-	case "report":
-		p := resource.(ReportAuthors)
-		mailData.ProjectID = p.ProjectID
-		mailData.Slug = p.Slug.String
-		mailData.Title = p.Title.String
-		mailData.Content = p.Description.String
-		mailData.Image = p.OgImage.String
-		mailData.HasReport = true
-
-		mailData.ProjectSlug = p.Project.Slug.String
-		mailData.ProjectTitle = p.Project.Title.String
-
-	case "memo":
-		m := resource.(MemoDetail)
-		mailData.ProjectID = int(m.Project.ID)
-		mailData.Slug = strconv.Itoa(m.ID)
-		mailData.Title = m.Title.String
-		mailData.Content = m.Content.String
-		mailData.HasMemo = true
-
-		mailData.AuthorID = int(m.Author.Int)
-		mailData.AuthorImage = m.Authors.ProfileImage.String
-		mailData.AuthorName = m.Authors.Nickname.String
-
-		mailData.ProjectSlug = m.Project.Slug.String
-		mailData.ProjectTitle = m.Project.Title.String
+func (m *mailApi) SendReportPublishMail(report ReportAuthors) (err error) {
+	// newReport.html
+	UnsubLink := m.GetUnsubLink()
+	data := reportPublishData{
+		ProjectTitle:     report.Project.Title.String,
+		ProjectSlug:      report.Project.Slug.String,
+		ProjectHeroImage: report.Project.HeroImage.String,
+		Title:            report.Report.Title.String,
+		Description:      report.Report.Description.String,
+		Slug:             report.Report.Slug.String,
+		UnfollowLink:     m.GetUnfollowLink(report.Project.ID),
 	}
 
-	subLink := m.GetSubLink()
-	templatesForRoles := make(map[int]string, 0)
-	var mailReceiverList []mailReceiver
-
-	//t := template.New("project_notifyletter.html")
-	t := template.Must(template.ParseGlob("config/*.html"))
-	for k, v := range m.GetSubLink() {
-		mailData.SubLink = v
-		buf := new(bytes.Buffer)
-		err = t.ExecuteTemplate(buf, "project_notifyletter.html", mailData)
-		s := buf.String()
-		templatesForRoles[k] = s
-	}
-
-	query := fmt.Sprintf(`
-		SELECT mail, role FROM members AS m 
-		LEFT JOIN following AS f 
-			ON m.id = f.member_id 
-		WHERE m.active = %d 
-			AND m.daily_push = %d 
-			AND f.type = %d 
-			AND f.emotion = %d 
-			AND f.target_id = %d`,
-		config.Config.Models.Members["active"],
-		config.Config.Models.MemberDailyPush["active"],
-		config.Config.Models.FollowingType["project"], 0,
-		mailData.ProjectID)
-
-	rows, err := DB.Queryx(query)
+	mailReceiverList, err := m.getProjectFollowerMailList(report.Project.ID)
 	if err != nil {
-		log.Println("Get followers of project %d error when SendProjectUpdateMail", mailData.ProjectID)
+		log.Print(err)
 		return err
 	}
-	for rows.Next() {
-		var receiver mailReceiver
-		if err = rows.StructScan(&receiver); err != nil {
-			log.Println("Scan followers of project %d error when SendProjectUpdateMail", mailData.ProjectID)
-			return err
-		}
-		mailReceiverList = append(mailReceiverList, receiver)
-	}
 
-	for k, _ := range subLink {
+	t := template.Must(template.ParseGlob("config/newReport.html"))
+	for k, v := range UnsubLink {
 		var mails []string
-		s := templatesForRoles[k]
-
 		for _, receiver := range mailReceiverList {
 			if receiver.Role == k {
 				mails = append(mails, receiver.Mail)
 			}
 		}
-		err = m.sendToAll("Readr 專題內容更新", s, mails)
-	}
-	return err
 
+		if len(mails) > 0 {
+			data.UnsubLink = v
+
+			buf := new(bytes.Buffer)
+			err = t.ExecuteTemplate(buf, "newReport.html", data)
+			s := buf.String()
+
+			err = m.sendToAll(fmt.Sprintf("【%s】最新報導<%s>", data.ProjectTitle, data.Title), s, mails)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+type memoPublishData struct {
+	ProjectTitle       string
+	ProjectSlug        string
+	Title              string
+	Content            string
+	PartialContent     string
+	CreatedAt          string // 2018/07/02
+	AuthorNickname     string
+	AuthorProfileImage string
+	UnsubLink          string
+	UnfollowLink       string
+}
+
+func (m *mailApi) SendMemoPublishMail(memo MemoDetail) (err error) {
+	// newMemoPaid.html
+	// newMemoUnPaid.html
+	UnsubLink := m.GetUnsubLink()
+	abstract, _ := utils.CutAbstract(memo.Memo.Content.String, 100, func(a []rune) string {
+		return fmt.Sprintf(`<p>%s... <a href="https://www.readr.tw/series/%s/%d" target="_blank">閱讀完整內容</a><p>`, string(a), memo.Project.Slug.String, memo.Memo.ID)
+	})
+
+	data := memoPublishData{
+		ProjectTitle:       memo.Project.Project.Title.String,
+		ProjectSlug:        memo.Project.Project.Slug.String,
+		Title:              memo.Memo.Title.String,
+		Content:            memo.Memo.Content.String,
+		PartialContent:     abstract,
+		CreatedAt:          fmt.Sprintf("%d/%02d/%02d", memo.Memo.CreatedAt.Time.Year(), memo.Memo.CreatedAt.Time.Month(), memo.Memo.CreatedAt.Time.Day()),
+		AuthorNickname:     memo.Authors.Nickname.String,
+		AuthorProfileImage: fmt.Sprintf("https://www.readr.tw%s", memo.Authors.ProfileImage.String),
+		UnfollowLink:       m.GetUnfollowLink(memo.Project.ID),
+	}
+
+	mailReceiverList, err := m.getProjectFollowerMailList(memo.Project.ID)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
+	t := template.Must(template.ParseGlob("config/newMemo*.html"))
+	for k, v := range UnsubLink {
+		var submails, unsubmails []string
+		for _, receiver := range mailReceiverList {
+			if receiver.Role == k {
+				if receiver.Subed {
+					submails = append(submails, receiver.Mail)
+				} else {
+					unsubmails = append(unsubmails, receiver.Mail)
+				}
+
+			}
+		}
+
+		data.UnsubLink = v
+
+		if len(submails) > 0 {
+			buf := new(bytes.Buffer)
+			_ = t.ExecuteTemplate(buf, "newMemoPaid.html", data)
+			s := buf.String()
+
+			err = m.sendToAll(fmt.Sprintf("【%s】筆記更新<%s>", data.ProjectTitle, data.Title), s, submails)
+			if err != nil {
+				return err
+			}
+		}
+
+		if len(unsubmails) > 0 {
+			buf := new(bytes.Buffer)
+			_ = t.ExecuteTemplate(buf, "newMemoUnPaid.html", data)
+			s := buf.String()
+
+			err = m.sendToAll(fmt.Sprintf("【%s】筆記更新<%s>", data.ProjectTitle, data.Title), s, unsubmails)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (m *mailApi) SendFollowProjectMail() (err error) {
+	return nil
+}
+
+func (m *mailApi) getProjectFollowerMailList(id int) (receiveres []mailReceiver, err error) {
+	query := fmt.Sprintf(`
+		SELECT mail, role, IF(p.id IS NOT NULL, true, false) as subed FROM members AS m 
+		LEFT JOIN following AS f 
+			ON m.id = f.member_id 
+		LEFT JOIN (
+			SELECT id, member_id FROM points WHERE object_type = %d AND object_id = %d
+			) AS p 
+			ON f.member_id = p.member_id 
+		WHERE m.active = %d 
+			AND m.daily_push = %d 
+			AND f.type = %d 
+			AND f.emotion = %d 
+			AND f.target_id = %d`,
+		config.Config.Models.PointType["project_memo"], id,
+		config.Config.Models.Members["active"],
+		config.Config.Models.MemberDailyPush["active"],
+		config.Config.Models.FollowingType["project"], 0,
+		id)
+
+	rows, err := DB.Queryx(query)
+	if err != nil {
+		log.Println("Get followers of project %d error when SendProjectUpdateMail", id)
+		return receiveres, err
+	}
+	for rows.Next() {
+		var receiver mailReceiver
+		if err = rows.StructScan(&receiver); err != nil {
+			log.Println("Scan followers of project %d error when SendProjectUpdateMail", id)
+			return receiveres, err
+		}
+		receiveres = append(receiveres, receiver)
+	}
+	return receiveres, err
 }
 
 func (m *mailApi) SendCECommentNotify(tpm TaggedPostMember) (err error) {
