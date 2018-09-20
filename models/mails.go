@@ -447,6 +447,10 @@ func (m *mailApi) htmlEscape(s string, length int) string {
 }
 
 func (m *mailApi) sendToAll(t string, s string, mailList []string) (err error) {
+	if !config.Config.Mail.Enable {
+		return nil
+	}
+
 	for len(mailList) > 0 {
 		receiver := mailList
 		if len(mailList) > 100 {

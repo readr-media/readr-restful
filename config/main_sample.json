@@ -26,12 +26,13 @@
         "user": "",
         "password": "",
         "user_name": "",
-        "dev_team": ""
+        "dev_team": "",
+        "enable": false
     },
     "search_feed":{
         "app_id": "",
         "app_key": "",
-        "index": "",
+        "index_name": "",
         "max_retry": 0
     },
     "straats":{

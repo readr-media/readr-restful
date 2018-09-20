@@ -97,7 +97,7 @@ func (r *mailHandler) SendDailyDigest(c *gin.Context) {
 
 func (r *mailHandler) SetRoutes(router *gin.Engine) {
 	router.POST("/mail", r.sendMail)
-	router.POST("/mail/updatenote", r.updateNote)
+	// router.POST("/mail/updatenote", r.updateNote)
 	router.POST("/mail/gendailydigest", r.GenDailyDigest)
 	router.POST("/mail/senddailydigest", r.SendDailyDigest)
 

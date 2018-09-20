@@ -41,6 +41,7 @@ type appConfig struct {
 		Password string `mapstructure:"password"`
 		UserName string `mapstructure:"user_name"`
 		DevTeam  string `mapstructure:"dev_team"`
+		Enable   bool   `mapstructure:"enable"`
 	} `mapstructure:"mail"`
 
 	SearchFeed struct {
