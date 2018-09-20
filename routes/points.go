@@ -101,7 +101,7 @@ func (r *pointsHandler) Post(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Payment Info"})
 		return
 	}
-	if pts.Points.ObjectID == 0 && (pts.Points.ObjectType == config.Config.Models.PointType["project"] || pts.Points.ObjectType == config.Config.Models.PointType["project_mamo"]) {
+	if pts.Points.ObjectID == 0 && (pts.Points.ObjectType == config.Config.Models.PointType["project"] || pts.Points.ObjectType == config.Config.Models.PointType["project_memo"]) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Object ID"})
 		return
 	}

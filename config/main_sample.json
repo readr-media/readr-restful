@@ -26,12 +26,13 @@
         "user": "",
         "password": "",
         "user_name": "",
-        "dev_team": ""
+        "dev_team": "",
+        "enable": false
     },
     "search_feed":{
         "app_id": "",
         "app_key": "",
-        "index": "",
+        "index_name": "",
         "max_retry": 0
     },
     "straats":{
@@ -136,7 +137,7 @@
         },
         "point_type":{
             "project": 9,
-            "project_mamo": 9,
+            "project_memo": 9,
             "topup": 9,
             "gift": 9
         }

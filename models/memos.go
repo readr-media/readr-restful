@@ -5,13 +5,12 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"math"
 	"regexp"
 	"strings"
 
-	"github.com/PuerkitoBio/goquery"
 	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/utils"
 )
 
 // var MemoStatus map[string]interface{}
@@ -326,21 +325,6 @@ func (m *memoAPI) GetMemos(args *MemoGetArgs) (memos []MemoDetail, err error) {
 
 	memos = []MemoDetail{}
 
-	cutAbstract := func(html string, length int64) (result string, err error) {
-		// buf := bytes.NewBuffer(strings.NewReader(html))
-
-		doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
-		if err != nil {
-			return "", err
-		}
-		content := doc.Find("p:not(:has(img))").First().Text()
-
-		abstract := []rune(content)
-		abstract = abstract[:int(math.Min(float64(len(content)), float64(length)))]
-		result = fmt.Sprintf("<p>%s</p>", string(abstract))
-		return result, nil
-	}
-
 	for rows.Next() {
 		var (
 			abstract string
@@ -355,7 +339,9 @@ func (m *memoAPI) GetMemos(args *MemoGetArgs) (memos []MemoDetail, err error) {
 		if memo.Content.Valid {
 			fulltext = memo.Content.String
 
-			abstract, _ = cutAbstract(memo.Content.String, args.AbstractLength)
+			abstract, _ = utils.CutAbstract(memo.Content.String, args.AbstractLength, func(abstact []rune) string {
+				return fmt.Sprintf("<p>%s</p>", string(abstract))
+			})
 			// Default show abstract
 			memo.Content.String = abstract
 		}
@@ -550,7 +536,7 @@ func (m *memoAPI) PublishHandler(ids []int) error {
 
 	for _, memo := range memos {
 		go NotificationGen.GenerateProjectNotifications(memo, "memo")
-		go MailAPI.SendProjectUpdateMail(memo, "memo")
+		go MailAPI.SendMemoPublishMail(memo)
 	}
 
 	return nil

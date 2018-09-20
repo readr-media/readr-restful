@@ -14,6 +14,7 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/utils"
 	"gopkg.in/gomail.v2"
 )
 
@@ -33,8 +34,11 @@ type MailInterface interface {
 	SendUpdateNoteAllResource(args GetFollowMapArgs) (err error)
 	GenDailyDigest() (err error)
 	SendDailyDigest(receiver []string) (err error)
-	SendProjectUpdateMail(resource interface{}, resourceTyep string) (err error)
 	SendCECommentNotify(tmp TaggedPostMember) (err error)
+
+	SendReportPublishMail(report ReportAuthors) (err error)
+	SendMemoPublishMail(memo MemoDetail) (err error)
+	SendFollowProjectMail(args FollowArgs) (err error)
 }
 
 type mailApi struct {
@@ -205,7 +209,7 @@ type dailyDigest struct {
 	HasMemo      bool
 	HasPost      bool
 	HasReadrPost bool
-	SubLink      string
+	SettingLink  string
 }
 type dailyReport struct {
 	ID          int    `db:"id"`
@@ -248,11 +252,12 @@ type dailyPost struct {
 	Order      int
 }
 type mailReceiver struct {
-	Mail string `db:"mail"`
-	Role int    `db:"role"`
+	Mail  string `db:"mail"`
+	Role  int    `db:"role"`
+	Subed bool   `db:"subed"`
 }
 
-func (m *mailApi) GetSubLink() map[int]string {
+func (m *mailApi) GetSettingLink() map[int]string {
 	return map[int]string{
 		9: "https://www.readr.tw/admin",
 		3: "https://www.readr.tw/editor",
@@ -262,7 +267,7 @@ func (m *mailApi) GetSubLink() map[int]string {
 }
 
 func (m *mailApi) GenDailyDigest() (err error) {
-	subLink := m.GetSubLink()
+	settingLink := m.GetSettingLink()
 	date := time.Now() //.AddDate(0, 0, -1)
 	reports, err := m.getDailyReport()
 	if err != nil {
@@ -320,8 +325,8 @@ OLP:
 	data.HasPost = len(data.Posts) > 0
 	data.HasReadrPost = len(data.ReadrPosts) > 0
 
-	for k, v := range subLink {
-		data.SubLink = v
+	for k, v := range settingLink {
+		data.SettingLink = v
 		buf := new(bytes.Buffer)
 		err = t.ExecuteTemplate(buf, "newsletter.html", data)
 		s := buf.String()
@@ -442,6 +447,10 @@ func (m *mailApi) htmlEscape(s string, length int) string {
 }
 
 func (m *mailApi) sendToAll(t string, s string, mailList []string) (err error) {
+	if !config.Config.Mail.Enable {
+		return nil
+	}
+
 	for len(mailList) > 0 {
 		receiver := mailList
 		if len(mailList) > 100 {
@@ -472,14 +481,14 @@ func (m *mailApi) SendDailyDigest(mailList []string) (err error) {
 	conn := RedisHelper.Conn()
 	defer conn.Close()
 
-	subLink := m.GetSubLink()
+	settingLink := m.GetSettingLink()
 
 	mailReceiverList, err := m.getMailingList(mailList)
 	if err != nil {
 		log.Println("Get mailing list error:", err.Error())
 	}
 
-	for k, _ := range subLink {
+	for k, _ := range settingLink {
 		var mails []string
 
 		s, err := redis.Bytes(conn.Do("GET", fmt.Sprintf("dailydigest_%d", k)))
@@ -504,108 +513,208 @@ func (m *mailApi) SendDailyDigest(mailList []string) (err error) {
 	return err
 }
 
-type projectUpdateNotify struct {
-	ProjectID    int
-	ProjectTitle string
-	ProjectSlug  string
-	AuthorID     int
-	AuthorName   string
-	AuthorImage  string
-	Slug         string
-	Title        string
-	Content      string
-	Image        string
-	HasReport    bool
-	HasMemo      bool
-	SubLink      string
+type reportPublishData struct {
+	ProjectTitle     string
+	ProjectHeroImage string
+	ProjectSlug      string
+	Title            string
+	Description      string
+	Slug             string
+	SettingLink      string
 }
 
-func (m *mailApi) SendProjectUpdateMail(resource interface{}, resourceTyep string) (err error) {
-	var mailData projectUpdateNotify
-	switch resourceTyep {
-	case "report":
-		p := resource.(ReportAuthors)
-		mailData.ProjectID = p.ProjectID
-		mailData.Slug = p.Slug.String
-		mailData.Title = p.Title.String
-		mailData.Content = p.Description.String
-		mailData.Image = p.OgImage.String
-		mailData.HasReport = true
-
-		mailData.ProjectSlug = p.Project.Slug.String
-		mailData.ProjectTitle = p.Project.Title.String
-
-	case "memo":
-		m := resource.(MemoDetail)
-		mailData.ProjectID = int(m.Project.ID)
-		mailData.Slug = strconv.Itoa(m.ID)
-		mailData.Title = m.Title.String
-		mailData.Content = m.Content.String
-		mailData.HasMemo = true
-
-		mailData.AuthorID = int(m.Author.Int)
-		mailData.AuthorImage = m.Authors.ProfileImage.String
-		mailData.AuthorName = m.Authors.Nickname.String
-
-		mailData.ProjectSlug = m.Project.Slug.String
-		mailData.ProjectTitle = m.Project.Title.String
+func (m *mailApi) SendReportPublishMail(report ReportAuthors) (err error) {
+	// newReport.html
+	SettingLink := m.GetSettingLink()
+	data := reportPublishData{
+		ProjectTitle:     report.Project.Title.String,
+		ProjectSlug:      report.Project.Slug.String,
+		ProjectHeroImage: report.Project.HeroImage.String,
+		Title:            report.Report.Title.String,
+		Description:      report.Report.Description.String,
+		Slug:             report.Report.Slug.String,
 	}
 
-	subLink := m.GetSubLink()
-	templatesForRoles := make(map[int]string, 0)
-	var mailReceiverList []mailReceiver
-
-	//t := template.New("project_notifyletter.html")
-	t := template.Must(template.ParseGlob("config/*.html"))
-	for k, v := range m.GetSubLink() {
-		mailData.SubLink = v
-		buf := new(bytes.Buffer)
-		err = t.ExecuteTemplate(buf, "project_notifyletter.html", mailData)
-		s := buf.String()
-		templatesForRoles[k] = s
-	}
-
-	query := fmt.Sprintf(`
-		SELECT mail, role FROM members AS m 
-		LEFT JOIN following AS f 
-			ON m.id = f.member_id 
-		WHERE m.active = %d 
-			AND m.daily_push = %d 
-			AND f.type = %d 
-			AND f.emotion = %d 
-			AND f.target_id = %d`,
-		config.Config.Models.Members["active"],
-		config.Config.Models.MemberDailyPush["active"],
-		config.Config.Models.FollowingType["project"], 0,
-		mailData.ProjectID)
-
-	rows, err := DB.Queryx(query)
+	mailReceiverList, err := m.getProjectFollowerMailList(report.Project.ID)
 	if err != nil {
-		log.Println("Get followers of project %d error when SendProjectUpdateMail", mailData.ProjectID)
+		log.Print(err)
 		return err
 	}
-	for rows.Next() {
-		var receiver mailReceiver
-		if err = rows.StructScan(&receiver); err != nil {
-			log.Println("Scan followers of project %d error when SendProjectUpdateMail", mailData.ProjectID)
-			return err
-		}
-		mailReceiverList = append(mailReceiverList, receiver)
-	}
 
-	for k, _ := range subLink {
+	t := template.Must(template.ParseGlob("config/newReport.html"))
+	for k, v := range SettingLink {
 		var mails []string
-		s := templatesForRoles[k]
-
 		for _, receiver := range mailReceiverList {
 			if receiver.Role == k {
 				mails = append(mails, receiver.Mail)
 			}
 		}
-		err = m.sendToAll("Readr 專題內容更新", s, mails)
-	}
-	return err
 
+		if len(mails) > 0 {
+			data.SettingLink = v
+
+			buf := new(bytes.Buffer)
+			err = t.ExecuteTemplate(buf, "newReport.html", data)
+			s := buf.String()
+
+			err = m.sendToAll(fmt.Sprintf("【%s】最新報導<%s>", data.ProjectTitle, data.Title), s, mails)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+type memoPublishData struct {
+	ProjectTitle       string
+	ProjectSlug        string
+	Title              string
+	Content            string
+	PartialContent     string
+	CreatedAt          string // 2018/07/02
+	AuthorNickname     string
+	AuthorProfileImage string
+	SettingLink        string
+	UnfollowLink       string
+}
+
+func (m *mailApi) SendMemoPublishMail(memo MemoDetail) (err error) {
+	// newMemoPaid.html
+	// newMemoUnPaid.html
+	SettingLink := m.GetSettingLink()
+	abstract, _ := utils.CutAbstract(memo.Memo.Content.String, 100, func(a []rune) string {
+		return fmt.Sprintf(`<p>%s... <a href="https://www.readr.tw/series/%s/%d" target="_blank">閱讀完整內容</a><p>`, string(a), memo.Project.Slug.String, memo.Memo.ID)
+	})
+
+	data := memoPublishData{
+		ProjectTitle:       memo.Project.Project.Title.String,
+		ProjectSlug:        memo.Project.Project.Slug.String,
+		Title:              memo.Memo.Title.String,
+		Content:            memo.Memo.Content.String,
+		PartialContent:     abstract,
+		CreatedAt:          fmt.Sprintf("%d/%02d/%02d", memo.Memo.CreatedAt.Time.Year(), memo.Memo.CreatedAt.Time.Month(), memo.Memo.CreatedAt.Time.Day()),
+		AuthorNickname:     memo.Authors.Nickname.String,
+		AuthorProfileImage: fmt.Sprintf("https://www.readr.tw%s", memo.Authors.ProfileImage.String),
+	}
+
+	mailReceiverList, err := m.getProjectFollowerMailList(memo.Project.ID)
+	if err != nil {
+		log.Print(err)
+		return err
+	}
+
+	t := template.Must(template.ParseGlob("config/newMemo*.html"))
+	for k, v := range SettingLink {
+		var submails, unsubmails []string
+		for _, receiver := range mailReceiverList {
+			if receiver.Role == k {
+				if receiver.Subed {
+					submails = append(submails, receiver.Mail)
+				} else {
+					unsubmails = append(unsubmails, receiver.Mail)
+				}
+
+			}
+		}
+
+		data.SettingLink = v
+
+		if len(submails) > 0 {
+			buf := new(bytes.Buffer)
+			_ = t.ExecuteTemplate(buf, "newMemoPaid.html", data)
+			s := buf.String()
+
+			err = m.sendToAll(fmt.Sprintf("【%s】筆記更新<%s>", data.ProjectTitle, data.Title), s, submails)
+			if err != nil {
+				return err
+			}
+		}
+
+		if len(unsubmails) > 0 {
+			buf := new(bytes.Buffer)
+			_ = t.ExecuteTemplate(buf, "newMemoUnPaid.html", data)
+			s := buf.String()
+
+			err = m.sendToAll(fmt.Sprintf("【%s】筆記更新<%s>", data.ProjectTitle, data.Title), s, unsubmails)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (m *mailApi) SendFollowProjectMail(args FollowArgs) (err error) {
+	project, err := ProjectAPI.GetProject(Project{ID: int(args.Object)})
+	if err != nil {
+		log.Println("Error get project when SendFollowProjectMail: ", err)
+		return err
+	}
+	member, err := MemberAPI.GetMember("id", strconv.Itoa(int(args.Subject)))
+	if err != nil {
+		log.Println("Error get member when SendFollowProjectMail: ", err)
+		return err
+	}
+	if !member.DailyPush.Bool {
+		return nil
+	}
+
+	data := map[string]string{
+		"ProjectTitle": project.Title.String,
+		"ProjectSlug":  project.Slug.String,
+		"SettingLink":  m.GetSettingLink()[int(member.Role.Int)],
+	}
+
+	buf := new(bytes.Buffer)
+	t := template.Must(template.ParseGlob("config/toggleFollow.html"))
+	_ = t.ExecuteTemplate(buf, "toggleFollow.html", data)
+	s := buf.String()
+
+	err = m.sendToAll(fmt.Sprintf("【%s】追蹤成功", data["ProjectTitle"]), s, []string{member.Mail.String})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *mailApi) getProjectFollowerMailList(id int) (receiveres []mailReceiver, err error) {
+	query := fmt.Sprintf(`
+		SELECT mail, role, IF(p.id IS NOT NULL, true, false) as subed FROM members AS m 
+		LEFT JOIN following AS f 
+			ON m.id = f.member_id 
+		LEFT JOIN (
+			SELECT id, member_id FROM points WHERE object_type = %d AND object_id = %d
+			) AS p 
+			ON f.member_id = p.member_id 
+		WHERE m.active = %d 
+			AND m.daily_push = %d 
+			AND f.type = %d 
+			AND f.emotion = %d 
+			AND f.target_id = %d`,
+		config.Config.Models.PointType["project_memo"], id,
+		config.Config.Models.Members["active"],
+		config.Config.Models.MemberDailyPush["active"],
+		config.Config.Models.FollowingType["project"], 0,
+		id)
+
+	rows, err := DB.Queryx(query)
+	if err != nil {
+		log.Println("Get followers of project %d error when SendProjectUpdateMail", id)
+		return receiveres, err
+	}
+	for rows.Next() {
+		var receiver mailReceiver
+		if err = rows.StructScan(&receiver); err != nil {
+			log.Println("Scan followers of project %d error when SendProjectUpdateMail", id)
+			return receiveres, err
+		}
+		receiveres = append(receiveres, receiver)
+	}
+	return receiveres, err
 }
 
 func (m *mailApi) SendCECommentNotify(tpm TaggedPostMember) (err error) {

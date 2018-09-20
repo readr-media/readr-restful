@@ -87,6 +87,13 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 			switch actionType {
 			case "follow":
 				err = models.FollowingAPI.Insert(params)
+				if err == nil {
+					// Send Follow mail and Follow notification
+					// Case: If user followed a project
+					if params.Type == config.Config.Models.FollowingType["project"] {
+						go models.MailAPI.SendFollowProjectMail(params)
+					}
+				}
 			case "unfollow":
 				err = models.FollowingAPI.Delete(params)
 			default:
@@ -129,7 +136,7 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 			return
 		}
 
-		models.FollowCache.Revoke(actionType, params.Resource, params.Emotion, params.Object)
+		go models.FollowCache.Revoke(actionType, params.Resource, params.Emotion, params.Object)
 
 		c.Status(http.StatusOK)
 
