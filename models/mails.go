@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strconv"
 	"strings"
 	"time"
 
@@ -37,7 +38,7 @@ type MailInterface interface {
 
 	SendReportPublishMail(report ReportAuthors) (err error)
 	SendMemoPublishMail(memo MemoDetail) (err error)
-	SendFollowProjectMail() (err error)
+	SendFollowProjectMail(args FollowArgs) (err error)
 }
 
 type mailApi struct {
@@ -648,7 +649,37 @@ func (m *mailApi) SendMemoPublishMail(memo MemoDetail) (err error) {
 	return nil
 }
 
-func (m *mailApi) SendFollowProjectMail() (err error) {
+func (m *mailApi) SendFollowProjectMail(args FollowArgs) (err error) {
+	project, err := ProjectAPI.GetProject(Project{ID: int(args.Object)})
+	if err != nil {
+		log.Println("Error get project when SendFollowProjectMail: ", err)
+		return err
+	}
+	member, err := MemberAPI.GetMember("id", strconv.Itoa(int(args.Subject)))
+	if err != nil {
+		log.Println("Error get member when SendFollowProjectMail: ", err)
+		return err
+	}
+	if !member.DailyPush.Bool {
+		return nil
+	}
+
+	data := map[string]string{
+		"ProjectTitle": project.Title.String,
+		"ProjectSlug":  project.Slug.String,
+		"UnsubLink":    m.GetUnsubLink()[int(member.Role.Int)],
+	}
+
+	buf := new(bytes.Buffer)
+	t := template.Must(template.ParseGlob("config/toggleFollow.html"))
+	_ = t.ExecuteTemplate(buf, "toggleFollow.html", data)
+	s := buf.String()
+
+	err = m.sendToAll(fmt.Sprintf("【%s】追蹤成功", data["ProjectTitle"]), s, []string{member.Mail.String})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

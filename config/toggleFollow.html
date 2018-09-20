@@ -125,11 +125,11 @@
         <article class="content__article article">
           <h1>親愛的朋友您好：</h1>
           <div>
-            <p>謝謝你對於 READr 的文章的支持，系統已經為你持續追蹤 {{ project.title }} 系列專題。</p>
-            <p>未來當 {{ project.title }} 專題更新資訊時，我們將透過 Email 的形式與你分享第一手消息。</p>
+            <p>謝謝你對於 READr 的文章的支持，系統已經為你持續追蹤 {{index . "ProjectTitle"}} 系列專題。</p>
+            <p>未來當 {{index . "ProjectTitle"}} 專題更新資訊時，我們將透過 Email 的形式與你分享第一手消息。</p>
           </div>
           <div>
-            <p>如果想看目前追蹤文章的狀態：<a href="" target="_blank">請點我</a></p><!-- ​​link to 追蹤紀錄（目前還沒做追蹤 tag 的頁面） -->
+            <p>如果想看目前追蹤文章的狀態：<a href="https://www.readr.tw/series/{{index . "ProjectSlug"}}" target="_blank">請點我</a></p><!-- ​​link to 追蹤紀錄（目前還沒做追蹤 tag 的頁面） -->
             <p>也歡迎你追蹤更多好看好玩有意義的專題！</p>
           </div>
           <div>
@@ -154,7 +154,7 @@
             <p>
               如果你不想收到專題最新消息通知信，<br>你可以按這裡 
               <!-- 取消訂閱： ​​link to 個人通知取消訂閱（new feature in readr-site）, 取消追蹤專題： navigate to unfollow -->
-              <a href="" target="_blank" class="unfollow">取消訂閱</a>，<a href="" target="_blank" class="unfollow">取消追蹤專題</a>
+              <a href="{{index . "UnsubLink"}}" target="_blank" class="unfollow">取消訂閱</a>，<a href="https://www.readr.tw/series/{{index . "ProjectSlug"}}" target="_blank" class="unfollow">取消追蹤專題</a>
             </p>
           </div>
         </footer>
