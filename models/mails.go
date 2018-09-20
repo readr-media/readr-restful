@@ -209,7 +209,7 @@ type dailyDigest struct {
 	HasMemo      bool
 	HasPost      bool
 	HasReadrPost bool
-	SubLink      string
+	SettingLink  string
 }
 type dailyReport struct {
 	ID          int    `db:"id"`
@@ -257,7 +257,7 @@ type mailReceiver struct {
 	Subed bool   `db:"subed"`
 }
 
-func (m *mailApi) GetUnsubLink() map[int]string {
+func (m *mailApi) GetSettingLink() map[int]string {
 	return map[int]string{
 		9: "https://www.readr.tw/admin",
 		3: "https://www.readr.tw/editor",
@@ -265,12 +265,9 @@ func (m *mailApi) GetUnsubLink() map[int]string {
 		1: "https://www.readr.tw/member",
 	}
 }
-func (m *mailApi) GetUnfollowLink(id int) string {
-	return fmt.Sprintf("%d", id)
-}
 
 func (m *mailApi) GenDailyDigest() (err error) {
-	subLink := m.GetUnsubLink()
+	settingLink := m.GetSettingLink()
 	date := time.Now() //.AddDate(0, 0, -1)
 	reports, err := m.getDailyReport()
 	if err != nil {
@@ -328,8 +325,8 @@ OLP:
 	data.HasPost = len(data.Posts) > 0
 	data.HasReadrPost = len(data.ReadrPosts) > 0
 
-	for k, v := range subLink {
-		data.SubLink = v
+	for k, v := range settingLink {
+		data.SettingLink = v
 		buf := new(bytes.Buffer)
 		err = t.ExecuteTemplate(buf, "newsletter.html", data)
 		s := buf.String()
@@ -480,14 +477,14 @@ func (m *mailApi) SendDailyDigest(mailList []string) (err error) {
 	conn := RedisHelper.Conn()
 	defer conn.Close()
 
-	subLink := m.GetUnsubLink()
+	settingLink := m.GetSettingLink()
 
 	mailReceiverList, err := m.getMailingList(mailList)
 	if err != nil {
 		log.Println("Get mailing list error:", err.Error())
 	}
 
-	for k, _ := range subLink {
+	for k, _ := range settingLink {
 		var mails []string
 
 		s, err := redis.Bytes(conn.Do("GET", fmt.Sprintf("dailydigest_%d", k)))
@@ -519,13 +516,12 @@ type reportPublishData struct {
 	Title            string
 	Description      string
 	Slug             string
-	UnsubLink        string
-	UnfollowLink     string
+	SettingLink      string
 }
 
 func (m *mailApi) SendReportPublishMail(report ReportAuthors) (err error) {
 	// newReport.html
-	UnsubLink := m.GetUnsubLink()
+	SettingLink := m.GetSettingLink()
 	data := reportPublishData{
 		ProjectTitle:     report.Project.Title.String,
 		ProjectSlug:      report.Project.Slug.String,
@@ -533,7 +529,6 @@ func (m *mailApi) SendReportPublishMail(report ReportAuthors) (err error) {
 		Title:            report.Report.Title.String,
 		Description:      report.Report.Description.String,
 		Slug:             report.Report.Slug.String,
-		UnfollowLink:     m.GetUnfollowLink(report.Project.ID),
 	}
 
 	mailReceiverList, err := m.getProjectFollowerMailList(report.Project.ID)
@@ -543,7 +538,7 @@ func (m *mailApi) SendReportPublishMail(report ReportAuthors) (err error) {
 	}
 
 	t := template.Must(template.ParseGlob("config/newReport.html"))
-	for k, v := range UnsubLink {
+	for k, v := range SettingLink {
 		var mails []string
 		for _, receiver := range mailReceiverList {
 			if receiver.Role == k {
@@ -552,7 +547,7 @@ func (m *mailApi) SendReportPublishMail(report ReportAuthors) (err error) {
 		}
 
 		if len(mails) > 0 {
-			data.UnsubLink = v
+			data.SettingLink = v
 
 			buf := new(bytes.Buffer)
 			err = t.ExecuteTemplate(buf, "newReport.html", data)
@@ -577,14 +572,14 @@ type memoPublishData struct {
 	CreatedAt          string // 2018/07/02
 	AuthorNickname     string
 	AuthorProfileImage string
-	UnsubLink          string
+	SettingLink        string
 	UnfollowLink       string
 }
 
 func (m *mailApi) SendMemoPublishMail(memo MemoDetail) (err error) {
 	// newMemoPaid.html
 	// newMemoUnPaid.html
-	UnsubLink := m.GetUnsubLink()
+	SettingLink := m.GetSettingLink()
 	abstract, _ := utils.CutAbstract(memo.Memo.Content.String, 100, func(a []rune) string {
 		return fmt.Sprintf(`<p>%s... <a href="https://www.readr.tw/series/%s/%d" target="_blank">閱讀完整內容</a><p>`, string(a), memo.Project.Slug.String, memo.Memo.ID)
 	})
@@ -598,7 +593,6 @@ func (m *mailApi) SendMemoPublishMail(memo MemoDetail) (err error) {
 		CreatedAt:          fmt.Sprintf("%d/%02d/%02d", memo.Memo.CreatedAt.Time.Year(), memo.Memo.CreatedAt.Time.Month(), memo.Memo.CreatedAt.Time.Day()),
 		AuthorNickname:     memo.Authors.Nickname.String,
 		AuthorProfileImage: fmt.Sprintf("https://www.readr.tw%s", memo.Authors.ProfileImage.String),
-		UnfollowLink:       m.GetUnfollowLink(memo.Project.ID),
 	}
 
 	mailReceiverList, err := m.getProjectFollowerMailList(memo.Project.ID)
@@ -608,7 +602,7 @@ func (m *mailApi) SendMemoPublishMail(memo MemoDetail) (err error) {
 	}
 
 	t := template.Must(template.ParseGlob("config/newMemo*.html"))
-	for k, v := range UnsubLink {
+	for k, v := range SettingLink {
 		var submails, unsubmails []string
 		for _, receiver := range mailReceiverList {
 			if receiver.Role == k {
@@ -621,7 +615,7 @@ func (m *mailApi) SendMemoPublishMail(memo MemoDetail) (err error) {
 			}
 		}
 
-		data.UnsubLink = v
+		data.SettingLink = v
 
 		if len(submails) > 0 {
 			buf := new(bytes.Buffer)
@@ -667,7 +661,7 @@ func (m *mailApi) SendFollowProjectMail(args FollowArgs) (err error) {
 	data := map[string]string{
 		"ProjectTitle": project.Title.String,
 		"ProjectSlug":  project.Slug.String,
-		"UnsubLink":    m.GetUnsubLink()[int(member.Role.Int)],
+		"SettingLink":  m.GetSettingLink()[int(member.Role.Int)],
 	}
 
 	buf := new(bytes.Buffer)
