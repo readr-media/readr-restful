@@ -210,6 +210,7 @@ type dailyDigest struct {
 	HasPost      bool
 	HasReadrPost bool
 	SettingLink  string
+	UTM          string
 }
 type dailyReport struct {
 	ID          int    `db:"id"`
@@ -324,6 +325,7 @@ OLP:
 	data.HasMemo = len(data.Memos) > 0
 	data.HasPost = len(data.Posts) > 0
 	data.HasReadrPost = len(data.ReadrPosts) > 0
+	data.UTM = fmt.Sprintf("DailyDigest_%s", date.Format("20060102"))
 
 	for k, v := range settingLink {
 		data.SettingLink = v
@@ -521,6 +523,7 @@ type reportPublishData struct {
 	Description      string
 	Slug             string
 	SettingLink      string
+	UTM              string
 }
 
 func (m *mailApi) SendReportPublishMail(report ReportAuthors) (err error) {
@@ -533,6 +536,7 @@ func (m *mailApi) SendReportPublishMail(report ReportAuthors) (err error) {
 		Title:            report.Report.Title.String,
 		Description:      report.Report.Description.String,
 		Slug:             report.Report.Slug.String,
+		UTM:              fmt.Sprintf("ProjectUpdate_%s", report.Project.Slug.String),
 	}
 
 	mailReceiverList, err := m.getProjectFollowerMailList(report.Project.ID)
@@ -578,6 +582,7 @@ type memoPublishData struct {
 	AuthorProfileImage string
 	SettingLink        string
 	UnfollowLink       string
+	UTM                string
 }
 
 func (m *mailApi) SendMemoPublishMail(memo MemoDetail) (err error) {
@@ -597,6 +602,7 @@ func (m *mailApi) SendMemoPublishMail(memo MemoDetail) (err error) {
 		CreatedAt:          fmt.Sprintf("%d/%02d/%02d", memo.Memo.CreatedAt.Time.Year(), memo.Memo.CreatedAt.Time.Month(), memo.Memo.CreatedAt.Time.Day()),
 		AuthorNickname:     memo.Authors.Nickname.String,
 		AuthorProfileImage: fmt.Sprintf("https://www.readr.tw%s", memo.Authors.ProfileImage.String),
+		UTM:                fmt.Sprintf("ProjectUpdate_%s", memo.Project.Project.Slug.String),
 	}
 
 	mailReceiverList, err := m.getProjectFollowerMailList(memo.Project.ID)
@@ -666,6 +672,7 @@ func (m *mailApi) SendFollowProjectMail(args FollowArgs) (err error) {
 		"ProjectTitle": project.Title.String,
 		"ProjectSlug":  project.Slug.String,
 		"SettingLink":  m.GetSettingLink()[int(member.Role.Int)],
+		"UTM":          fmt.Sprintf("ProjectFollow_%s", project.Slug.String),
 	}
 
 	buf := new(bytes.Buffer)

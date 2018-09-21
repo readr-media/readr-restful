@@ -118,7 +118,7 @@
     <div id="mail">
       <section class="content">
         <header class="content__header header">
-          <a class="header__readr-link" href="https://www.readr.tw/" target="_blank">
+          <a class="header__readr-link" href="https://www.readr.tw/?utm_medium=newsletter&utm_campaign={{index . "UTM"}}" target="_blank">
             <img class="header__logo" src="https://www.readr.tw/assets/mail/readr-logo-email-transparent-mm.png" alt="">
           </a>
         </header>
@@ -129,7 +129,7 @@
             <p>未來當 {{index . "ProjectTitle"}} 專題更新資訊時，我們將透過 Email 的形式與你分享第一手消息。</p>
           </div>
           <div>
-            <p>如果想看目前追蹤文章的狀態：<a href="https://www.readr.tw/series/{{index . "ProjectSlug"}}" target="_blank">請點我</a></p><!-- ​​link to 追蹤紀錄（目前還沒做追蹤 tag 的頁面） -->
+            <p>如果想看目前追蹤文章的狀態：<a href="https://www.readr.tw/series/{{index . "ProjectSlug"}}?utm_medium=newsletter&utm_campaign={{index . "UTM"}}" target="_blank">請點我</a></p><!-- ​​link to 追蹤紀錄（目前還沒做追蹤 tag 的頁面） -->
             <p>也歡迎你追蹤更多好看好玩有意義的專題！</p>
           </div>
           <div>
@@ -154,7 +154,7 @@
             <p>
               如果你不想收到專題最新消息通知信，<br>你可以按這裡 
               <!-- 取消訂閱： ​​link to 個人通知取消訂閱（new feature in readr-site）, 取消追蹤專題： navigate to unfollow -->
-              <a href="{{index . "SettingLink"}}/profile-edit" target="_blank" class="unfollow">取消訂閱</a>，<a href="{{index . "SettingLink"}}/following" target="_blank" class="unfollow">取消追蹤專題</a>
+              <a href="{{index . "SettingLink"}}/profile-edit?utm_medium=newsletter&utm_campaign={{index . "UTM"}}" target="_blank" class="unfollow">取消訂閱</a>，<a href="{{index . "SettingLink"}}/records/following?utm_medium=newsletter&utm_campaign={{index . "UTM"}}" target="_blank" class="unfollow">取消追蹤專題</a>
             </p>
           </div>
         </footer>
