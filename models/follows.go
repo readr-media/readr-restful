@@ -289,11 +289,15 @@ func (g *GetFollowMapArgs) scan(rows *sqlx.Rows) (interface{}, error) {
 type GetFollowerMemberIDsArgs struct {
 	ID         int64
 	FollowType int
+	Emotions   []int
 }
 
 func (g *GetFollowerMemberIDsArgs) get() (*sqlx.Rows, error) {
 
-	rows, err := DB.Queryx(`SELECT member_id FROM following WHERE target_id = ? AND type = ?;`, g.ID, g.FollowType)
+	query, args, err := sqlx.In(`SELECT member_id FROM following WHERE target_id = ? AND type = ? AND emotion IN (?);`, g.ID, g.FollowType, g.Emotions)
+	query = DB.Rebind(query)
+
+	rows, err := DB.Queryx(query, args...)
 	if err != nil {
 		log.Printf("Error: %v get Follower for id:%d, type:%d\n", err.Error(), g.ID, g.FollowType)
 	}
