@@ -206,6 +206,10 @@ func TestRouteComments(t *testing.T) {
 		}
 	}
 
+	asserterDummy := func(resp string, tc genericTestcase, t *testing.T) {
+		return
+	}
+
 	transformPubsub := func(tc genericTestcase) genericTestcase {
 		meta := PubsubMessageMeta{
 			Subscription: "sub",
@@ -242,6 +246,13 @@ func TestRouteComments(t *testing.T) {
 			genericTestcase{"GetReportOK", "GET", "/reported_comment?reporter=[90]", ``, http.StatusOK, `{"_items":[{"comments":{"id":2,"author":92,"body":"Comment No.2","og_title":null,"og_description":null,"og_image":null,"like_amount":null,"parent_id":null,"resource":"http://dev.readr.tw/post/91","status":null,"active":1,"updated_at":null,"created_at":null,"ip":"5.6.7.8","author_nickname":"commenttest2","author_image":"pi2","author_role":3,"comment_amount":0},"reported":{"id":2,"comment_id":2,"reporter":90,"reason":null,"solved":null,"updated_at":null,"created_at":null,"ip":null}}]}`},
 		} {
 			genericDoTest(testcase, t, asserter)
+		}
+	})
+	t.Run("GetCommentCache", func(t *testing.T) {
+		for _, testcase := range []genericTestcase{
+			genericTestcase{"GetCommentCacheOK", "GET", "/comments/latest", ``, http.StatusOK, models.CommentAuthor{}},
+		} {
+			genericDoTest(testcase, t, asserterDummy)
 		}
 	})
 	t.Run("InsertComment", func(t *testing.T) {
