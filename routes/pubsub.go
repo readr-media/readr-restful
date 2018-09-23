@@ -5,6 +5,7 @@ import (
 	"html"
 	"log"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
+	"github.com/readr-media/readr-restful/utils"
 )
 
 var supportedAction = map[string]bool{
@@ -191,7 +193,7 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 			comment.Active = models.NullInt{Int: int64(config.Config.Models.Comment["active"]), Valid: true}
 			comment.Status = models.NullInt{Int: int64(config.Config.Models.CommentStatus["show"]), Valid: true}
 
-			_, err = models.CommentAPI.InsertComment(comment)
+			commentID, err := models.CommentAPI.InsertComment(comment)
 			if err != nil {
 				log.Printf("%s %s fail: %v \n", msgType, actionType, err.Error())
 				c.Status(http.StatusOK)
@@ -204,6 +206,29 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 				c.Status(http.StatusOK)
 				return
 			}
+
+			commentResType, commentResID := utils.ParseResourceInfo(comment.Resource.String)
+			if commentResType == "memo" {
+				commentMemoID, err := strconv.Atoi(commentResID)
+				if err != nil {
+					log.Println("Error parsing memoID when parsing comment resources")
+				}
+				memos, err := models.MemoAPI.GetMemos(&models.MemoGetArgs{IDs: []int64{int64(commentMemoID)}})
+				if err != nil || len(memos) > 1 {
+					log.Println("Error getting memo info when insert comment")
+				}
+				if memos[0].Project.Project.Status.Int != int64(config.Config.Models.ProjectsStatus["done"]) {
+					return
+				}
+			}
+
+			commentAuthor, err := models.CommentAPI.GetComment(int(commentID))
+			if err != nil {
+				log.Printf("get comment fail when handling comment insertion: %v \n", err.Error())
+				c.Status(http.StatusOK)
+				return
+			}
+			go models.CommentCache.Insert(commentAuthor)
 
 			c.Status(http.StatusOK)
 
