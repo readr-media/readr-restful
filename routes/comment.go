@@ -190,6 +190,15 @@ func (r *commentsHandler) GetLatestComments(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"_items": comments})
 }
 
+func (r *commentsHandler) UpdateLatestComments(c *gin.Context) {
+	err := models.CommentCache.Generate()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		return
+	}
+	c.Status(http.StatusOK)
+}
+
 func (r *commentsHandler) SetRoutes(router *gin.Engine) {
 	commentRouter := router.Group("/comment")
 	{
@@ -200,6 +209,7 @@ func (r *commentsHandler) SetRoutes(router *gin.Engine) {
 	commentsRouter := router.Group("/comments")
 	{
 		commentsRouter.GET("/latest", r.GetLatestComments)
+		commentsRouter.PUT("/latest", r.UpdateLatestComments)
 	}
 	reportcommentsRouter := router.Group("/reported_comment")
 	{

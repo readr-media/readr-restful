@@ -1,12 +1,13 @@
 package models
 
 import (
+	"fmt"
 	"log"
 
 	"encoding/json"
 
 	"github.com/garyburd/redigo/redis"
-	//"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/config"
 )
 
 type CommentCacheInterface interface {
@@ -14,6 +15,7 @@ type CommentCacheInterface interface {
 	Insert(comment CommentAuthor) (err error)
 	// Update(comment CommentAuthor) (err error)
 	// Revoke(comment_id int) (err error)
+	Generate() (err error)
 }
 
 type commentCache struct {
@@ -76,6 +78,44 @@ func (c commentCache) Update(comment CommentAuthor) (err error) {
 }
 
 func (c commentCache) Revoke(comment_id int) (err error) {
+	return nil
+}
+
+func (c commentCache) Generate() (err error) {
+	query := fmt.Sprintf(`
+		SELECT id FROM comments 
+		WHERE resource NOT IN (
+			SELECT CONCAT('%s/series/',p.slug,'/',m.memo_id) 
+			FROM memos AS m 
+				LEFT JOIN projects AS p ON p.project_id = m.project_id 
+			WHERE p.status != %d 
+		)
+		ORDER BY created_at DESC 
+		LIMIT 20;`, config.Config.DomainName, config.Config.Models.ProjectsStatus["done"])
+	rows, err := DB.Queryx(query)
+	if err != nil {
+		log.Printf("Fail to query comment indexes when updating latest comments: %v \n", err.Error())
+		return err
+	}
+
+	var ids []int
+	for rows.Next() {
+		var id int
+		if err = rows.Scan(&id); err != nil {
+			log.Printf("Fail to scan comment index when updating latest comments: %v \n", err.Error())
+			return err
+		}
+		ids = append([]int{id}, ids...)
+	}
+
+	for _, id := range ids {
+		commentAuthor, err := CommentAPI.GetComment(id)
+		if err != nil {
+			log.Printf("Fail to get comment when updating latest comments: %v \n", err.Error())
+			return err
+		}
+		CommentCache.Insert(commentAuthor)
+	}
 	return nil
 }
 
