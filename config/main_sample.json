@@ -9,8 +9,9 @@
         "host": "",
         "port": 0,
         "password": "",
-        "channels":{
-            "talk_comments": ""
+        "cache":{
+            "latest_comment_count": 0,
+            "notification_count": 0
         }
     },
     "es":{
