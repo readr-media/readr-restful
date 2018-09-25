@@ -90,8 +90,9 @@ func (c commentCache) Generate() (err error) {
 				LEFT JOIN projects AS p ON p.project_id = m.project_id 
 			WHERE p.status != %d 
 		)
+			AND active = %d AND status = %d 
 		ORDER BY created_at DESC 
-		LIMIT 20;`, config.Config.DomainName, config.Config.Models.ProjectsStatus["done"])
+		LIMIT 20;`, config.Config.DomainName, config.Config.Models.ProjectsStatus["done"], config.Config.Models.Comment["active"], config.Config.Models.CommentStatus["show"])
 	rows, err := DB.Queryx(query)
 	if err != nil {
 		log.Printf("Fail to query comment indexes when updating latest comments: %v \n", err.Error())
