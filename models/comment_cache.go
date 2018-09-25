@@ -120,4 +120,4 @@ func (c commentCache) Generate() (err error) {
 	return nil
 }
 
-var CommentCache CommentCacheInterface = commentCache{redisIndexKey: "commentcache_latest", commentCacheLimit: 10}
+var CommentCache CommentCacheInterface = commentCache{redisIndexKey: "commentcache_latest", commentCacheLimit: config.Config.Redis.Cache.LatestCommentCount}

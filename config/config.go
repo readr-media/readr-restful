@@ -20,9 +20,10 @@ type appConfig struct {
 		Host     string `mapstructure:"host"`
 		Port     int    `mapstructure:"port"`
 		Password string `mapstructure:"password"`
-		Channels struct {
-			TalkComment string `mapstructure:"talk_comments"`
-		} `mapstructure:"channels"`
+		Cache    struct {
+			LatestCommentCount int `mapstructure:"latest_comment_count"`
+			NotificationCount  int `mapstructure:"notification_count"`
+		} `mapstructure:"cache"`
 	} `mapstructure:"redis"`
 
 	ES struct {

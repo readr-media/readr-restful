@@ -10,6 +10,7 @@ import (
 
 	"github.com/garyburd/redigo/redis"
 	"github.com/jmoiron/sqlx"
+	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/utils"
 )
 
@@ -95,7 +96,7 @@ func (n Notifications) Send() {
 			}
 			conn.Send("LPUSH", redis.Args{}.Add(key).Add(msg)...)
 		}
-		conn.Send("LTRIM", redis.Args{}.Add(key).Add(0).Add(49)...)
+		conn.Send("LTRIM", redis.Args{}.Add(key).Add(0).Add(config.Config.Redis.Cache.NotificationCount-1)...)
 	}
 	if _, err := redis.Values(conn.Do("EXEC")); err != nil {
 		log.Printf("Error insert cache to redis: %v", err)
@@ -137,7 +138,7 @@ func (c *commentHandler) ReadNotifications(arg UpdateNotificationArgs) error {
 
 	key := fmt.Sprint("notify_", arg.MemberID)
 
-	res, err := redis.Values(conn.Do("LRANGE", key, "0", "49"))
+	res, err := redis.Values(conn.Do("LRANGE", key, 0, config.Config.Redis.Cache.NotificationCount-1))
 	if err != nil {
 		log.Printf("Error getting redis key: %s , %v", key, err)
 		return err
@@ -190,7 +191,7 @@ func (c *commentHandler) ReadNotifications(arg UpdateNotificationArgs) error {
 	for _, v := range CommentNotifications {
 		conn.Send("RPUSH", redis.Args{}.Add(fmt.Sprint("notify_", arg.MemberID)).Add(v)...)
 	}
-	conn.Send("LTRIM", redis.Args{}.Add(fmt.Sprint("notify_", arg.MemberID)).Add(0).Add(49)...)
+	conn.Send("LTRIM", redis.Args{}.Add(fmt.Sprint("notify_", arg.MemberID)).Add(0).Add(config.Config.Redis.Cache.NotificationCount-1)...)
 	if _, err := redis.Values(conn.Do("EXEC")); err != nil {
 		log.Printf("Error insert cache to redis: %v", err)
 		return err
@@ -226,8 +227,8 @@ func getNotificationsFromRedis(key string) (redisNs []Notification, err error) {
 	if err != nil {
 		return redisNs, err
 	}
-	if llen > 50 {
-		llen = 49
+	if llen > config.Config.Redis.Cache.NotificationCount {
+		llen = config.Config.Redis.Cache.NotificationCount - 1
 	} else {
 		llen -= 1
 	}
