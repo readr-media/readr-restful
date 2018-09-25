@@ -29,7 +29,7 @@ func (c commentCache) Obtain() (comments []CommentAuthor, err error) {
 
 	CommentCacheBytes := [][]byte{}
 
-	res, err := redis.Values(conn.Do("LRANGE", c.redisIndexKey, "0", c.commentCacheLimit))
+	res, err := redis.Values(conn.Do("LRANGE", c.redisIndexKey, "0", c.commentCacheLimit-1))
 	if err != nil {
 		log.Printf("Error getting redis key when getting comment cache: %s , %v", c.redisIndexKey, err)
 		return comments, err
@@ -63,7 +63,7 @@ func (c commentCache) Insert(comment CommentAuthor) (err error) {
 		return err
 	}
 	conn.Send("LPUSH", redis.Args{}.Add(c.redisIndexKey).Add(msg)...)
-	conn.Send("LTRIM", redis.Args{}.Add(c.redisIndexKey).Add(0).Add(c.commentCacheLimit)...)
+	conn.Send("LTRIM", redis.Args{}.Add(c.redisIndexKey).Add(0).Add(c.commentCacheLimit-1)...)
 
 	if _, err := redis.Values(conn.Do("EXEC")); err != nil {
 		log.Printf("Error insert comment cache to redis: %v", err)
@@ -120,4 +120,4 @@ func (c commentCache) Generate() (err error) {
 	return nil
 }
 
-var CommentCache CommentCacheInterface = commentCache{redisIndexKey: "commentcache_latest", commentCacheLimit: 20}
+var CommentCache CommentCacheInterface = commentCache{redisIndexKey: "commentcache_latest", commentCacheLimit: 10}
