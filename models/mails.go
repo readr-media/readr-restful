@@ -589,8 +589,8 @@ func (m *mailApi) SendMemoPublishMail(memo MemoDetail) (err error) {
 	// newMemoPaid.html
 	// newMemoUnPaid.html
 	SettingLink := m.GetSettingLink()
-	abstract, _ := utils.CutAbstract(memo.Memo.Content.String, 100, func(a []rune) string {
-		return fmt.Sprintf(`<p>%s... <a href="https://www.readr.tw/series/%s/%d" target="_blank">閱讀完整內容</a><p>`, string(a), memo.Project.Slug.String, memo.Memo.ID)
+	abstract, _ := utils.CutAbstract(memo.Memo.Content.String, 100, func(a string) string {
+		return fmt.Sprintf(`<p>%s... <a href="https://www.readr.tw/series/%s/%d" target="_blank">閱讀完整內容</a><p>`, a, memo.Project.Slug.String, memo.Memo.ID)
 	})
 
 	data := memoPublishData{

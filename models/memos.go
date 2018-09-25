@@ -339,8 +339,8 @@ func (m *memoAPI) GetMemos(args *MemoGetArgs) (memos []MemoDetail, err error) {
 		if memo.Content.Valid {
 			fulltext = memo.Content.String
 
-			abstract, _ = utils.CutAbstract(memo.Content.String, args.AbstractLength, func(abstact []rune) string {
-				return fmt.Sprintf("<p>%s</p>", string(abstract))
+			abstract, _ = utils.CutAbstract(memo.Content.String, args.AbstractLength, func(abstact string) string {
+				return fmt.Sprintf("<p>%s</p>", abstact)
 			})
 			// Default show abstract
 			memo.Content.String = abstract
