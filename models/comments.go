@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/utils"
 )
 
@@ -466,12 +467,13 @@ type CommentCount struct {
 
 func (c *commentAPI) GetCommentCountByResources(resources []string) (commentCounts []CommentCount, err error) {
 	var values []interface{}
-	var query string = "SELECT count(id) AS count, resource FROM comments GROUP BY resource"
+	var query string = ""
 
 	if len(resources) > 0 {
-		query = query + " WHERE resource in (?)"
+		query = fmt.Sprintf("SELECT count(id) AS count, resource FROM comments WHERE active = %d AND resource in (?) GROUP BY resource ", config.Config.Models.Comment["active"])
 		query, values, err = sqlx.In(query, resources)
 	} else {
+		query = fmt.Sprintf("SELECT count(id) AS count, resource FROM comments WHERE active = %d GROUP BY resource ", config.Config.Models.Comment["active"])
 		query, values, err = sqlx.In(query)
 	}
 	if err != nil {
