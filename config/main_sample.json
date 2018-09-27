@@ -51,6 +51,10 @@
             "deactive": 9,
             "active": 9
         },
+        "member_post_push":{
+            "deactive": 9,
+            "active": 9
+        },
         "posts":{
             "deactive": 9,
             "active": 9
