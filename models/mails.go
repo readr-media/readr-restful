@@ -664,7 +664,7 @@ func (m *mailApi) SendFollowProjectMail(args FollowArgs) (err error) {
 		log.Println("Error get member when SendFollowProjectMail: ", err)
 		return err
 	}
-	if !member.DailyPush.Bool {
+	if !member.PostPush.Bool {
 		return nil
 	}
 
@@ -698,13 +698,13 @@ func (m *mailApi) getProjectFollowerMailList(id int) (receiveres []mailReceiver,
 			) AS p 
 			ON f.member_id = p.member_id 
 		WHERE m.active = %d 
-			AND m.daily_push = %d 
+			AND m.post_push = %d 
 			AND f.type = %d 
 			AND f.emotion = %d 
 			AND f.target_id = %d`,
 		config.Config.Models.PointType["project_memo"], id,
 		config.Config.Models.Members["active"],
-		config.Config.Models.MemberDailyPush["active"],
+		config.Config.Models.MemberPostPush["active"],
 		config.Config.Models.FollowingType["project"], 0,
 		id)
 

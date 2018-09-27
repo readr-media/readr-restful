@@ -61,6 +61,7 @@ type appConfig struct {
 	Models struct {
 		Members               map[string]int `mapstructure:"members"`
 		MemberDailyPush       map[string]int `mapstructure:"member_daily_push"`
+		MemberPostPush        map[string]int `mapstructure:"member_post_push"`
 		Posts                 map[string]int `mapstructure:"posts"`
 		PostType              map[string]int `mapstructure:"post_type"`
 		PostPublishStatus     map[string]int `mapstructure:"post_publish_status"`
