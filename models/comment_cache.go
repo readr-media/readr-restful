@@ -19,8 +19,7 @@ type CommentCacheInterface interface {
 }
 
 type commentCache struct {
-	redisIndexKey     string
-	commentCacheLimit int
+	redisIndexKey string
 }
 
 func (c commentCache) Obtain() (comments []CommentAuthor, err error) {
@@ -29,7 +28,7 @@ func (c commentCache) Obtain() (comments []CommentAuthor, err error) {
 
 	CommentCacheBytes := [][]byte{}
 
-	res, err := redis.Values(conn.Do("LRANGE", c.redisIndexKey, "0", c.commentCacheLimit-1))
+	res, err := redis.Values(conn.Do("LRANGE", c.redisIndexKey, "0", config.Config.Redis.Cache.LatestCommentCount-1))
 	if err != nil {
 		log.Printf("Error getting redis key when getting comment cache: %s , %v", c.redisIndexKey, err)
 		return comments, err
@@ -63,7 +62,7 @@ func (c commentCache) Insert(comment CommentAuthor) (err error) {
 		return err
 	}
 	conn.Send("LPUSH", redis.Args{}.Add(c.redisIndexKey).Add(msg)...)
-	conn.Send("LTRIM", redis.Args{}.Add(c.redisIndexKey).Add(0).Add(c.commentCacheLimit-1)...)
+	conn.Send("LTRIM", redis.Args{}.Add(c.redisIndexKey).Add(0).Add(config.Config.Redis.Cache.LatestCommentCount-1)...)
 
 	if _, err := redis.Values(conn.Do("EXEC")); err != nil {
 		log.Printf("Error insert comment cache to redis: %v", err)
@@ -83,16 +82,26 @@ func (c commentCache) Revoke(comment_id int) (err error) {
 
 func (c commentCache) Generate() (err error) {
 	query := fmt.Sprintf(`
-		SELECT id FROM comments 
-		WHERE resource NOT IN (
+		SELECT c.id FROM comments as c 
+		LEFT JOIN comments as pc ON pc.id = c.parent_id
+		WHERE c.resource NOT IN (
 			SELECT CONCAT('%s/series/',p.slug,'/',m.memo_id) 
 			FROM memos AS m 
 				LEFT JOIN projects AS p ON p.project_id = m.project_id 
 			WHERE p.status != %d 
 		)
-			AND active = %d AND status = %d 
-		ORDER BY created_at DESC 
-		LIMIT 20;`, config.Config.DomainName, config.Config.Models.ProjectsStatus["done"], config.Config.Models.Comment["active"], config.Config.Models.CommentStatus["show"])
+			AND c.active = %d AND c.status = %d 
+			AND (pc.active = %d OR pc.active IS NULL) 
+		ORDER BY c.created_at DESC 
+		LIMIT 20;`,
+		config.Config.DomainName,
+		config.Config.Models.ProjectsStatus["done"],
+		config.Config.Models.Comment["active"],
+		config.Config.Models.CommentStatus["show"],
+		config.Config.Models.Comment["active"],
+	)
+
+	log.Print(query)
 	rows, err := DB.Queryx(query)
 	if err != nil {
 		log.Printf("Fail to query comment indexes when updating latest comments: %v \n", err.Error())
@@ -120,4 +129,4 @@ func (c commentCache) Generate() (err error) {
 	return nil
 }
 
-var CommentCache CommentCacheInterface = commentCache{redisIndexKey: "commentcache_latest", commentCacheLimit: config.Config.Redis.Cache.LatestCommentCount}
+var CommentCache CommentCacheInterface = commentCache{redisIndexKey: "commentcache_latest"}
