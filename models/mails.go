@@ -450,7 +450,7 @@ func (m *mailApi) htmlEscape(s string, length int) string {
 
 func (m *mailApi) sendToAll(t string, s string, mailList []string) (err error) {
 	if !config.Config.Mail.Enable {
-		return nil
+		return errors.New("Mail Service Disabled")
 	}
 	for len(mailList) > 0 {
 		receiver := mailList
@@ -486,6 +486,7 @@ func (m *mailApi) SendDailyDigest(mailList []string) (err error) {
 	mailReceiverList, err := m.getMailingList(mailList)
 	if err != nil {
 		log.Println("Get mailing list error:", err.Error())
+		return err
 	}
 
 	for k, _ := range settingLink {
@@ -509,6 +510,10 @@ func (m *mailApi) SendDailyDigest(mailList []string) (err error) {
 
 		date := time.Now()
 		err = m.sendToAll(fmt.Sprintf("Readr %d/%d 選文", int(date.Month()), date.Day()), string(s), mails)
+		if err != nil {
+			log.Println("Fail to send group mail: ", err.Error())
+			return err
+		}
 	}
 	return err
 }
