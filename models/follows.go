@@ -73,7 +73,7 @@ func (g *GetFollowingArgs) get() (*sqlx.Rows, error) {
 	}
 	// Append project's tags for each following projects
 	if g.ResourceName == "project" {
-		osql.printargs[0] = fmt.Sprintf("%s, IFNULL(tag.tags, '') AS tags", osql.printargs[0].(string))
+		osql.printargs[0] = fmt.Sprintf("%s, tag.tags AS tags", osql.printargs[0].(string))
 		osql.printargs = append(osql.printargs, fmt.Sprintf(
 			`
 		 LEFT JOIN (
@@ -130,12 +130,14 @@ func (g *GetFollowingArgs) scan(rows *sqlx.Rows) (interface{}, error) {
 			case "project":
 				var project struct {
 					Project
-					Tags       []string `json:"tags"`
-					TagString  string   `json:"-" db:"tags"`
-					FollowedAt NullTime `json:"followed_at" db:"followed_at"`
+					Tags       []string   `json:"tags"`
+					TagString  NullString `json:"-" db:"tags"`
+					FollowedAt NullTime   `json:"followed_at" db:"followed_at"`
 				}
 				err = rows.StructScan(&project)
-				project.Tags = strings.Split(project.TagString, "||")
+				if project.TagString.Valid {
+					project.Tags = strings.Split(project.TagString.String, "||")
+				}
 				followings = append(followings, project)
 			case "member":
 				var member struct {
