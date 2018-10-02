@@ -45,16 +45,17 @@ func (g *GetFollowingArgs) get() (*sqlx.Rows, error) {
 		printargs []interface{}
 	}{
 		base: `SELECT %s FROM %s AS t 
-		INNER JOIN following AS f ON t.%s = f.target_id
+		INNER JOIN following AS f ON t.%s = f.target_id %s
 		WHERE %s ORDER BY f.created_at DESC;`,
 		printargs: []interface{}{g.Table, g.PrimaryKey},
 		condition: []string{"f.type = ?", "f.member_id = ?", "f.emotion = ?"},
 		args:      []interface{}{g.FollowType, g.MemberID, 0},
 	}
+
 	if g.Mode == "id" {
 		osql.printargs = append([]interface{}{fmt.Sprint("t.", g.PrimaryKey)}, osql.printargs...)
 	} else {
-		osql.printargs = append([]interface{}{"t.*"}, osql.printargs...)
+		osql.printargs = append([]interface{}{"t.*, f.created_at AS followed_at"}, osql.printargs...)
 	}
 	if g.Active != nil {
 		for k, v := range g.Active {
@@ -69,6 +70,24 @@ func (g *GetFollowingArgs) get() (*sqlx.Rows, error) {
 		} else if g.ResourceType != "" {
 			return nil, errors.New("Invalid Post Type")
 		}
+	}
+	// Append project's tags for each following projects
+	if g.ResourceName == "project" {
+		osql.printargs[0] = fmt.Sprintf("%s, IFNULL(tag.tags, '') AS tags", osql.printargs[0].(string))
+		osql.printargs = append(osql.printargs, fmt.Sprintf(
+			`
+		 LEFT JOIN (
+			SELECT target_id, GROUP_CONCAT(t.tag_content separator '||') as tags 
+			FROM tagging 
+			LEFT JOIN tags AS t 
+				ON tagging.tag_id = t.tag_id 
+			WHERE type = %d 
+			GROUP BY target_id
+		) AS tag 
+			ON tag.target_id = t.%s
+		`, config.Config.Models.TaggingType[g.ResourceName], g.PrimaryKey))
+	} else {
+		osql.printargs = append(osql.printargs, "")
 	}
 	if len(g.TargetIDs) > 0 {
 		osql.condition = append(osql.condition, "f.target_id IN (?)")
@@ -102,27 +121,48 @@ func (g *GetFollowingArgs) scan(rows *sqlx.Rows) (interface{}, error) {
 		} else {
 			switch g.ResourceName {
 			case "post":
-				var post Post
+				var post struct {
+					Post
+					FollowedAt NullTime `json:"followed_at" db:"followed_at"`
+				}
 				err = rows.StructScan(&post)
 				followings = append(followings, post)
 			case "project":
-				var project Project
+				var project struct {
+					Project
+					Tags       []string `json:"tags"`
+					TagString  string   `json:"-" db:"tags"`
+					FollowedAt NullTime `json:"followed_at" db:"followed_at"`
+				}
 				err = rows.StructScan(&project)
+				project.Tags = strings.Split(project.TagString, "||")
 				followings = append(followings, project)
 			case "member":
-				var member Member
+				var member struct {
+					Member
+					FollowedAt NullTime `json:"followed_at" db:"followed_at"`
+				}
 				err = rows.StructScan(&member)
 				followings = append(followings, member)
 			case "memo":
-				var memo Memo
+				var memo struct {
+					Memo
+					FollowedAt NullTime `json:"followed_at" db:"followed_at"`
+				}
 				err = rows.StructScan(&memo)
 				followings = append(followings, memo)
 			case "report":
-				var report Report
+				var report struct {
+					Report
+					FollowedAt NullTime `json:"followed_at" db:"followed_at"`
+				}
 				err = rows.StructScan(&report)
 				followings = append(followings, report)
 			case "tag":
-				var tag Tag
+				var tag struct {
+					Tag
+					FollowedAt NullTime `json:"followed_at" db:"followed_at"`
+				}
 				err = rows.StructScan(&tag)
 				IDs = append(IDs, tag.ID)
 				followings = append(followings, tag)
