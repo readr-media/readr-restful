@@ -80,6 +80,7 @@ type appConfig struct {
 		FollowingType         map[string]int `mapstructure:"following_type"`
 		Emotions              map[string]int `mapstructure:"emotions"`
 		PointType             map[string]int `mapstructure:"point_type"`
+		HotTagsWeight         map[string]int `mapstructure:"hot_tags_wieght"`
 	} `mapstructure:"models"`
 
 	DomainName string `mapstructure:"domain_name"`

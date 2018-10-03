@@ -47,7 +47,7 @@
             "deactive": 9,
             "delete": 9
         },
-	"member_daily_push":{
+        "member_daily_push":{
             "deactive": 9,
             "active": 9
         },
@@ -145,6 +145,15 @@
             "project_memo": 9,
             "topup": 9,
             "gift": 9
+        },
+        "hot_tags_wieght":{
+            "click": 0,
+            "pv": 0,
+            "follow": 0,
+            "emotion": 0,
+            "comment": 0,
+            "tag_follow": 0,
+            "tagged_post": 0
         }
     },
     "domain_name": "http://www.foo.bar",

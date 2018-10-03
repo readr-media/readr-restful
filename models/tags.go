@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"sort"
 	"strconv"
 	"strings"
@@ -533,11 +534,18 @@ func (a *tagApi) GetHotTags() (tags []TagRelatedResources, error error) {
 	return result, err
 }
 
-type tagRes struct {
-	TagFollows int
-	TagScore   int
-	PostIDs    []int
-	ProjectIDs []int
+type tagStats struct {
+	TagFollows  int
+	TagScore    int
+	TaggedPosts int
+	PostIDs     []int
+	ProjectIDs  []int
+}
+
+func (t *tagStats) CalcScore() {
+	weight := config.Config.Models.HotTagsWeight
+	t.TagScore =
+		t.TagFollows*weight["tag_follow"] + t.TaggedPosts*weight["tagged_post"]
 }
 
 type sortableItem struct {
@@ -551,19 +559,45 @@ func (s sortableList) Len() int           { return len(s) }
 func (s sortableList) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
 func (s sortableList) Less(i, j int) bool { return s[i].Key > s[j].Key }
 
-type resStats struct {
-	Clicks   int
-	PageView int
-	Emotions int
-	Comments int
-	Score    int
+type tagResStats struct {
+	Clicks    int
+	PageView  int
+	Follows   int
+	Emotions  int
+	Comments  int
+	Score     int
+	NClicks   int
+	NPageView int
+}
+
+func (t *tagResStats) normalize() {
+	if t.Clicks == 0 {
+		t.NClicks = 0
+	} else {
+		t.NClicks = int(math.Ceil(math.Log10(float64(t.Clicks))))
+	}
+	if t.PageView == 0 {
+		t.NPageView = 0
+	} else {
+		t.NPageView = int(math.Ceil(math.Log10(float64(t.PageView))))
+	}
+}
+
+func (t *tagResStats) CalcScore() {
+	weight := config.Config.Models.HotTagsWeight
+	t.normalize()
+	t.Score = t.NClicks*weight["click"] +
+		t.NPageView*weight["pv"] +
+		t.Follows*weight["follow"] +
+		t.Emotions*weight["emotion"] +
+		t.Comments*weight["comment"]
 }
 
 func (a *tagApi) UpdateHotTags() error {
-	var tagResources = make(map[int]tagRes, 0)
-	var tagResourcesStats = map[string]map[int]resStats{
-		"post":    map[int]resStats{},
-		"project": map[int]resStats{},
+	var tagResources = make(map[int]tagStats, 0)
+	var tagResourcesStats = map[string]map[int]tagResStats{
+		"post":    map[int]tagResStats{},
+		"project": map[int]tagResStats{},
 	}
 
 	// Get Tag and Reources
@@ -587,28 +621,28 @@ func (a *tagApi) UpdateHotTags() error {
 				res.PostIDs = parseIntSlice(resIDs)
 				tagResources[tagID] = res
 				for _, u := range tagResources[tagID].PostIDs {
-					tagResourcesStats["post"][u] = resStats{}
+					tagResourcesStats["post"][u] = tagResStats{}
 				}
 			} else if resType == config.Config.Models.TaggingType["project"] {
 				res := tagResources[tagID]
 				res.ProjectIDs = parseIntSlice(resIDs)
 				tagResources[tagID] = res
 				for _, u := range tagResources[tagID].ProjectIDs {
-					tagResourcesStats["project"][u] = resStats{}
+					tagResourcesStats["project"][u] = tagResStats{}
 				}
 			}
 		} else {
 			if resType == config.Config.Models.TaggingType["post"] {
-				t := tagRes{PostIDs: parseIntSlice(resIDs)}
+				t := tagStats{PostIDs: parseIntSlice(resIDs)}
 				tagResources[tagID] = t
 				for _, u := range t.PostIDs {
-					tagResourcesStats["post"][u] = resStats{}
+					tagResourcesStats["post"][u] = tagResStats{}
 				}
 			} else if resType == config.Config.Models.TaggingType["project"] {
-				t := tagRes{ProjectIDs: parseIntSlice(resIDs)}
+				t := tagStats{ProjectIDs: parseIntSlice(resIDs)}
 				tagResources[tagID] = t
 				for _, u := range t.ProjectIDs {
-					tagResourcesStats["project"][u] = resStats{}
+					tagResourcesStats["project"][u] = tagResStats{}
 				}
 			}
 		}
@@ -617,9 +651,6 @@ func (a *tagApi) UpdateHotTags() error {
 	// Generate Tag-Related Resource List
 	postResourceIDs := getMapKeySlice(tagResourcesStats["post"])
 	projectResourceIDs := getMapKeySlice(tagResourcesStats["project"])
-
-	postResourceIDs64 := mapResourceIDint64(postResourceIDs)
-	projectResourceIDs64 := mapResourceIDint64(projectResourceIDs)
 
 	_, postResourceStrings := mapResourceString("post", postResourceIDs)
 	orderedProjectIDs, projectResourceStrings := mapResourceString("project", projectResourceIDs)
@@ -694,45 +725,79 @@ func (a *tagApi) UpdateHotTags() error {
 		tagResourcesStats[t][iID] = trs
 	}
 
-	// Resource Following
-	postFollowResult, err := FollowingAPI.Get(
-		&GetFollowedArgs{
-			IDs: postResourceIDs64,
-			Resource: Resource{
-				FollowType: config.Config.Models.FollowingType["post"],
-				Emotion:    0,
-			},
-		})
+	// Resource Following and Like/Dislike(post only)
+	postEmotionQuery := fmt.Sprintf(`
+		SELECT target_id, COUNT(member_id)
+		FROM following
+		WHERE type = %d AND target_id IN (?) AND emotion IN (?)
+		GROUP BY target_id;
+	`, config.Config.Models.FollowingType["post"])
+
+	postEmotionQuery, postEmotionArgs, err := sqlx.In(postEmotionQuery, postResourceIDs, []int{config.Config.Models.Emotions["like"], config.Config.Models.Emotions["dislike"]})
 	if err != nil {
-		log.Println("Fail getting followed members when updating hot tags:", err)
+		log.Println("Fail compile query for getting post follower count when updating hot tags:", err.Error())
+		return err
+	}
+	postEmotionQuery = DB.Rebind(postEmotionQuery)
+	rows, err = DB.Queryx(postEmotionQuery, postEmotionArgs...)
+	if err != nil {
+		log.Println("Fail getting post follower count when updating hot tags:", err.Error())
 		return err
 	}
 
-	projectFollowResult, err := FollowingAPI.Get(
-		&GetFollowedArgs{
-			IDs: projectResourceIDs64,
-			Resource: Resource{
-				FollowType: config.Config.Models.FollowingType["project"],
-				Emotion:    0,
-			},
-		})
+	for rows.Next() {
+		var (
+			resourceID int
+			count      int
+		)
+		err = rows.Scan(&resourceID, &count)
+		if err != nil {
+			log.Println("Fail scanning post follower count when updating hot tags:", err.Error())
+			return err
+		}
+
+		res := tagResourcesStats["post"][resourceID]
+		res.Emotions = count
+		tagResourcesStats["post"][resourceID] = res
+	}
+
+	projectEmotionQuery := fmt.Sprintf(`
+		SELECT target_id, emotion, COUNT(member_id)
+		FROM following
+		WHERE type = %d AND target_id IN (?)
+		GROUP BY target_id, emotion;
+	`, config.Config.Models.FollowingType["project"])
+
+	projectEmotionQuery, projectEmotionArgs, err := sqlx.In(projectEmotionQuery, projectResourceIDs)
 	if err != nil {
-		log.Println("Fail getting followed members when updating hot tags:", err)
+		log.Println("Fail compile query for getting project follower count when updating hot tags:", err.Error())
+		return err
+	}
+	projectEmotionQuery = DB.Rebind(projectEmotionQuery)
+	rows, err = DB.Queryx(projectEmotionQuery, projectEmotionArgs...)
+	if err != nil {
+		log.Println("Fail getting project follower count when updating hot tags:", err.Error())
 		return err
 	}
 
-	for _, v := range postFollowResult.([]FollowedCount) {
-		ResourceID := int(v.ResourceID)
-		res := tagResourcesStats["post"][ResourceID]
-		res.Emotions = v.Count
-		tagResourcesStats["post"][ResourceID] = res
-	}
-
-	for _, v := range projectFollowResult.([]FollowedCount) {
-		ResourceID := int(v.ResourceID)
-		res := tagResourcesStats["project"][ResourceID]
-		res.Emotions = v.Count
-		tagResourcesStats["project"][ResourceID] = res
+	for rows.Next() {
+		var (
+			resourceID int
+			emotion    int
+			count      int
+		)
+		err = rows.Scan(&resourceID, &emotion, &count)
+		if err != nil {
+			log.Println("Fail scanning post follower count when updating hot tags:", err.Error())
+			return err
+		}
+		res := tagResourcesStats["project"][resourceID]
+		if emotion == 0 {
+			res.Follows = count
+		} else {
+			res.Emotions = count
+		}
+		tagResourcesStats["project"][resourceID] = res
 	}
 
 	tagIDs64 := make([]int64, 0)
@@ -809,18 +874,37 @@ func (a *tagApi) UpdateHotTags() error {
 		tagResourcesStats["project"][projectID] = res
 	}
 
+	// Tagged Post Count
+	taggedPostQuery := fmt.Sprintf("SELECT tag_id, COUNT(id) FROM tagging WHERE type = %d GROUP by tag_id;", config.Config.Models.TaggingType["post"])
+	rows, err = DB.Queryx(taggedPostQuery)
+	if err != nil {
+		log.Println("Error get tagged post count when updating hottags:", err)
+		return err
+	}
+
+	for rows.Next() {
+		var tagID, count int
+		if err = rows.Scan(&tagID, &count); err != nil {
+			log.Println("Error scaning query result when updating hottags:", err)
+			return err
+		}
+		res := tagResources[tagID]
+		res.TaggedPosts = count
+		tagResources[tagID] = res
+	}
+
 	// Calculate tag score
 	for k, v := range tagResourcesStats["post"] {
-		v.Score = v.Clicks + v.PageView + v.Emotions + v.Comments
+		v.CalcScore()
 		tagResourcesStats["post"][k] = v
 	}
 	for k, v := range tagResourcesStats["project"] {
-		v.Score = v.Clicks + v.PageView + v.Emotions + v.Comments
+		v.CalcScore()
 		tagResourcesStats["project"][k] = v
 	}
 
 	for k, v := range tagResources {
-		v.TagScore += v.TagFollows
+		v.CalcScore()
 		for _, postID := range v.PostIDs {
 			v.TagScore += tagResourcesStats["post"][postID].Score
 		}
@@ -901,7 +985,7 @@ func parseIntSlice(ids string) []int {
 	return is
 }
 
-func getMapKeySlice(m map[int]resStats) []int {
+func getMapKeySlice(m map[int]tagResStats) []int {
 	ks := make([]int, len(m))
 	i := 0
 	for k := range m {
