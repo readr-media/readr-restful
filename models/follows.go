@@ -194,7 +194,19 @@ func (g *GetFollowingArgs) scan(rows *sqlx.Rows) (interface{}, error) {
 		}
 
 		for _, tag := range tagDetails {
-			followings = append(followings, tag)
+			for _, following := range followings {
+				f := following.(struct {
+					Tag
+					FollowedAt NullTime `json:"followed_at" db:"followed_at"`
+				})
+				if f.Tag.ID == tag.ID {
+					followings = append(followings, struct {
+						TagRelatedResources
+						FollowedAt NullTime `json:"followed_at"`
+					}{tag, f.FollowedAt})
+					continue
+				}
+			}
 		}
 	}
 
