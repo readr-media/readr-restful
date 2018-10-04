@@ -113,6 +113,11 @@ func (g *GetFollowingArgs) scan(rows *sqlx.Rows) (interface{}, error) {
 		IDs        []int
 	)
 
+	type TagFollowTime struct {
+		Tag
+		FollowedAt NullTime `json:"followed_at" db:"followed_at"`
+	}
+
 	for rows.Next() {
 		if g.Mode == "id" {
 			var i int
@@ -161,10 +166,7 @@ func (g *GetFollowingArgs) scan(rows *sqlx.Rows) (interface{}, error) {
 				err = rows.StructScan(&report)
 				followings = append(followings, report)
 			case "tag":
-				var tag struct {
-					Tag
-					FollowedAt NullTime `json:"followed_at" db:"followed_at"`
-				}
+				var tag TagFollowTime
 				err = rows.StructScan(&tag)
 				IDs = append(IDs, tag.ID)
 				followings = append(followings, tag)
@@ -179,7 +181,7 @@ func (g *GetFollowingArgs) scan(rows *sqlx.Rows) (interface{}, error) {
 	}
 
 	if g.ResourceName == "tag" && len(IDs) != 0 && g.Mode != "id" {
-		followings = make([]interface{}, 0)
+		followedTags := make([]interface{}, 0)
 		tagDetails, err := TagAPI.GetTags(GetTagsArgs{
 			ShowStats:     true,
 			ShowResources: true,
@@ -195,19 +197,18 @@ func (g *GetFollowingArgs) scan(rows *sqlx.Rows) (interface{}, error) {
 
 		for _, tag := range tagDetails {
 			for _, following := range followings {
-				f := following.(struct {
-					Tag
-					FollowedAt NullTime `json:"followed_at" db:"followed_at"`
-				})
-				if f.Tag.ID == tag.ID {
-					followings = append(followings, struct {
+				t := following.(TagFollowTime)
+				if t.ID == tag.ID {
+					followedTags = append(followedTags, struct {
 						TagRelatedResources
 						FollowedAt NullTime `json:"followed_at"`
-					}{tag, f.FollowedAt})
+					}{tag, t.FollowedAt})
 					continue
 				}
 			}
 		}
+
+		followings = followedTags
 	}
 
 	return followings, err
