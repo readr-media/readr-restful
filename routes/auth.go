@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/utils"
 )
@@ -142,7 +144,6 @@ func (r *authHandler) userRegister(c *gin.Context) {
 	}
 
 	if member.RegisterMode.String == "ordinary" {
-
 		if member.Password.String == "" || member.Mail.String == "" {
 			c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Request"})
 			return
@@ -166,9 +167,6 @@ func (r *authHandler) userRegister(c *gin.Context) {
 		member.MemberID = member.Mail.String
 		member.Salt = models.NullString{string(salt), true}
 		member.Password = models.NullString{string(hpw), true}
-		member.Active = models.NullInt{0, true}
-		member.Points = models.NullInt{0, true}
-		member.Role = models.NullInt{1, true}
 
 	} else {
 
@@ -178,9 +176,6 @@ func (r *authHandler) userRegister(c *gin.Context) {
 		}
 
 		member.MemberID = member.SocialID.String
-		member.Active = models.NullInt{1, true}
-		member.Points = models.NullInt{0, true}
-		member.Role = models.NullInt{1, true}
 	}
 
 	// 4. fill in data and defaults
@@ -191,6 +186,11 @@ func (r *authHandler) userRegister(c *gin.Context) {
 		return
 	}
 	member.UUID = uuid.String()
+	member.CreatedAt = models.NullTime{time.Now(), true}
+	member.UpdatedAt = models.NullTime{time.Now(), true}
+	member.Active = models.NullInt{int64(config.Config.Models.Members["active"]), true}
+	member.Points = models.NullInt{0, true}
+	member.Role = models.NullInt{1, true}
 
 	lastID, err := models.MemberAPI.InsertMember(member)
 
