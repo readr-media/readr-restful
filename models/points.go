@@ -44,7 +44,7 @@ var PointsAPI PointsInterface = new(pointsAPI)
 
 type PointsInterface interface {
 	Get(args *PointsArgs) (result []PointsProject, err error)
-	Insert(pts PointsToken) (result int, err error)
+	Insert(pts PointsToken) (result int, id int, err error)
 }
 
 type PointsArgs struct {
@@ -157,7 +157,7 @@ func (p *pointsAPI) Get(args *PointsArgs) (result []PointsProject, err error) {
 	return result, err
 }
 
-func (p *pointsAPI) Insert(pts PointsToken) (result int, err error) {
+func (p *pointsAPI) Insert(pts PointsToken) (result int, id int, err error) {
 	tags := getStructDBTags("full", pts.Points)
 
 	if pts.Points.Points < 0 && pts.Points.ObjectType == config.Config.Models.PointType["topup"] {
@@ -188,7 +188,7 @@ func (p *pointsAPI) Insert(pts PointsToken) (result int, err error) {
 
 			if err != nil {
 				log.Printf("Charge error:%v\n", err)
-				return 0, err
+				return 0, 0, err
 			}
 
 			type PaymentResp struct {
@@ -201,7 +201,7 @@ func (p *pointsAPI) Insert(pts PointsToken) (result int, err error) {
 			json.Unmarshal(body, &paymentResp)
 
 			if paymentResp.Status != 0 {
-				return 0, errors.New(fmt.Sprintf("Payment Error, Code: %d, ErrorMsg: %s, BankSatusCode: %s, BankMsg: %s",
+				return 0, 0, errors.New(fmt.Sprintf("Payment Error, Code: %d, ErrorMsg: %s, BankSatusCode: %s, BankMsg: %s",
 					paymentResp.Status, paymentResp.Message, paymentResp.BankCode, paymentResp.BankMessage))
 			}
 		}
@@ -210,7 +210,7 @@ func (p *pointsAPI) Insert(pts PointsToken) (result int, err error) {
 	tx, err := DB.Beginx()
 	if err != nil {
 		log.Printf("Fail to get sql connection: %v", err)
-		return 0, err
+		return 0, 0, err
 	}
 	// Either rollback or commit transaction
 	defer func() {
@@ -222,7 +222,7 @@ func (p *pointsAPI) Insert(pts PointsToken) (result int, err error) {
 	}()
 	// Choose the latest transaction balance
 	if err = tx.Get(&result, `SELECT points FROM members WHERE id = ?`, pts.MemberID); err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	// New Balance
 	result = result - pts.Points.Points
@@ -231,11 +231,17 @@ func (p *pointsAPI) Insert(pts PointsToken) (result int, err error) {
 	pointsU := fmt.Sprintf(`INSERT INTO points (%s) VALUES (:%s)`,
 		strings.Join(tags, ","), strings.Join(tags, ",:"))
 
-	if _, err := tx.NamedExec(pointsU, pts); err != nil {
-		return 0, err
+	inserted, err := tx.NamedExec(pointsU, pts)
+	if err != nil {
+		return 0, 0, err
 	}
+	transactionID, err := inserted.LastInsertId()
+	if err != nil {
+		return 0, 0, err
+	}
+
 	if _, err = tx.Exec(`UPDATE members SET points = ?, updated_at = ? WHERE id = ?`, result, pts.CreatedAt, pts.MemberID); err != nil {
-		return 0, err
+		return 0, 0, err
 	}
-	return result, err
+	return result, int(transactionID), err
 }

@@ -92,7 +92,7 @@ func (a *mockPointsAPI) Get(args *models.PointsArgs) (result []models.PointsProj
 	return result, err
 }
 
-func (a *mockPointsAPI) Insert(pts models.PointsToken) (result int, err error) {
+func (a *mockPointsAPI) Insert(pts models.PointsToken) (result int, id int, err error) {
 
 	args := models.PointsArgs{ID: pts.MemberID}
 	if total, err := a.Get(&args); err == nil {
@@ -102,7 +102,7 @@ func (a *mockPointsAPI) Insert(pts models.PointsToken) (result int, err error) {
 		// mockPointsDS = append(a.mockPointsDS, models.PointsProject{Points: pts, Title: models.NullString{"", false}})
 		result += pts.Points.Points
 	}
-	return result, err
+	return result, 1, err
 }
 
 type TestStep struct {
@@ -176,7 +176,7 @@ func TestRoutePoints(t *testing.T) {
 	})
 	t.Run("Insert", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"BasicPoints", "POST", `/points`, `{"member_id":1,"object_type": 2,"object_id": 1,"points": 100}`, http.StatusOK, `{"points":1000}`},
+			genericTestcase{"BasicPoints", "POST", `/points`, `{"member_id":1,"object_type": 2,"object_id": 1,"points": 100}`, http.StatusOK, `{"id":1,"points":1000}`},
 			genericTestcase{"InvalidToken", "POST", `/points`, `{"member_id":1,"object_type": 3,"object_id": 1,"points": -100}`, http.StatusBadRequest, `{"Error":"Invalid Token"}`},
 			genericTestcase{"InvalidTopupAmount", "POST", `/points`, `{"member_id":1,"object_type": 3,"points": 100, "token": "token"}`, http.StatusBadRequest, `{"Error":"Invalid Topup Amount"}`},
 			genericTestcase{"InvalidMemberInfo", "POST", `/points`, `{"member_id":1,"object_type": 3,"points": -100, "token": "token"}`, http.StatusBadRequest, `{"Error":"Invalid Payment Info"}`},
