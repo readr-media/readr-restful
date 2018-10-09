@@ -150,6 +150,20 @@ func (g *GetFollowingArgs) get() (*sqlx.Rows, error) {
 }
 
 func (g *GetFollowingArgs) scan(rows *sqlx.Rows) (result interface{}, err error) {
+
+	if g.Mode == "id" {
+		var followingIDs []int
+		for rows.Next() {
+			var f FollowingItem
+			err = rows.StructScan(&f)
+			if err != nil {
+				log.Println(fmt.Sprintf("Fail Scan Following Items: %v", err.Error()))
+			}
+			followingIDs = append(followingIDs, f.TargetID)
+		}
+		return followingIDs, nil
+	}
+
 	followingResMap := make(map[int][]FollowingItem, 0)
 	followingTypes := config.Config.Models.FollowingType
 	for rows.Next() {
