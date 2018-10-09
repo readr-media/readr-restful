@@ -16,64 +16,10 @@ type followingHandler struct{}
 
 func bindFollow(c *gin.Context) (result interface{}, err error) {
 
-	var metadata = func(resource string) (table, key string, followtype int, active map[string][]int, err error) {
-
-		method := c.Param("method")
-		switch resource {
-		case "member":
-			table = "members"
-			key = "id"
-			followtype = config.Config.Models.FollowingType["member"]
-			if method == "user" {
-				active = map[string][]int{"$in": []int{1}}
-			}
-		case "post":
-			table = "posts"
-			key = "post_id"
-			followtype = config.Config.Models.FollowingType["post"]
-			if method == "user" {
-				active = map[string][]int{"$in": []int{1}}
-			}
-		case "project":
-			table = "projects"
-			key = "project_id"
-			followtype = config.Config.Models.FollowingType["project"]
-			if method == "user" {
-				active = map[string][]int{"$in": []int{1}}
-			}
-		case "memo":
-			table = "memos"
-			key = "memo_id"
-			followtype = config.Config.Models.FollowingType["memo"]
-			if method == "user" {
-				active = map[string][]int{"$in": []int{1}}
-			}
-		case "report":
-			table = "reports"
-			key = "id"
-			followtype = config.Config.Models.FollowingType["report"]
-			if method == "user" {
-				active = map[string][]int{"$in": []int{1}}
-			}
-		case "tag":
-			table = "tags"
-			key = "tag_id"
-			if val, ok := config.Config.Models.FollowingType["tag"]; ok {
-				followtype = val
-			} else {
-				return "", "", 0, nil, errors.New("Invalid following_type: tag")
-			}
-			if method == "user" {
-				active = map[string][]int{"$in": []int{1}}
-			}
-		default:
-			return "", "", 0, nil, errors.New("Unsupported Resource")
-		}
-		return table, key, followtype, active, nil
-	}
-
 	switch c.Param("method") {
 	case "user":
+
+		// TODO: check resource name parameter
 
 		var params = &models.GetFollowingArgs{}
 		// if there is no url paramter, bind json
@@ -93,10 +39,19 @@ func bindFollow(c *gin.Context) (result interface{}, err error) {
 			}
 		}
 
-		params.Table, params.PrimaryKey, params.FollowType, params.Active, err = metadata(params.ResourceName)
+		params.Active = map[string][]int{"$in": []int{1}}
+
+		err = json.Unmarshal([]byte(params.ResourceName), &params.Resources)
 		if err != nil {
-			return nil, err
+			params.Resources = []string{params.ResourceName}
 		}
+
+		for _, resName := range params.Resources {
+			if !validateFollowType(resName) {
+				return nil, errors.New("Bad Following Type")
+			}
+		}
+
 		if params.MemberID == 0 {
 			return nil, errors.New("Bad Resource ID")
 		}
@@ -119,7 +74,7 @@ func bindFollow(c *gin.Context) (result interface{}, err error) {
 				}
 			}
 		}
-		params.Table, params.PrimaryKey, params.FollowType, _, err = metadata(params.ResourceName)
+		params.Table, params.PrimaryKey, params.FollowType, err = models.GetResourceMetadata(params.ResourceName)
 		if err != nil {
 			return nil, err
 		}
@@ -151,7 +106,7 @@ func bindFollow(c *gin.Context) (result interface{}, err error) {
 				return nil, err
 			}
 		}
-		params.Table, params.PrimaryKey, params.FollowType, _, err = metadata(params.ResourceName)
+		params.Table, params.PrimaryKey, params.FollowType, err = models.GetResourceMetadata(params.ResourceName)
 		if err != nil {
 			return nil, err
 		}
@@ -160,6 +115,13 @@ func bindFollow(c *gin.Context) (result interface{}, err error) {
 		return nil, errors.New("Unsupported Method")
 	}
 	return result, nil
+}
+
+func validateFollowType(resourceName string) bool {
+	if _, ok := config.Config.Models.FollowingType[resourceName]; !ok {
+		return false
+	}
+	return true
 }
 
 func (r *followingHandler) Get(c *gin.Context) {
@@ -192,7 +154,6 @@ func (r *followingHandler) Get(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": "Cannot Found Proper API"})
 		return
 	}
-
 	if err != nil {
 		switch err.Error() {
 		case "Unsupported Resource", "Invalid Post Type":
