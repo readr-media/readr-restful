@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"database/sql"
-	"encoding/json"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
@@ -156,35 +155,33 @@ type ProjectAuthor struct {
 	Author Stunt      `json:"author" db:"author"`
 }
 
-type ProjectAuthors struct {
-	Project
-	Tags    NullString `json:"-" db:"tags"`
-	Authors []Stunt    `json:"authors"`
+type SimpleTag struct {
+	ID      int    `json:"id"`
+	Content string `json:"text"`
 }
 
-func (t *ProjectAuthors) MarshalJSON() ([]byte, error) {
-	type PA ProjectAuthors
-	type tag struct {
-		ID      int    `json:"id"`
-		Content string `json:"text"`
-	}
-	var Tags []tag
+type ProjectAuthors struct {
+	Project
+	Tags    NullString  `json:"-" db:"tags"`
+	Authors []Stunt     `json:"authors"`
+	TagList []SimpleTag `json:"tags"`
+}
 
-	if t.Tags.Valid != false {
-		tas := strings.Split(t.Tags.String, ",")
+func (p *ProjectAuthors) formatTags() {
+	if p.Tags.Valid != false {
+		tas := strings.Split(p.Tags.String, ",")
+	OuterLoop:
 		for _, value := range tas {
 			t := strings.Split(value, ":")
 			id, _ := strconv.Atoi(t[0])
-			Tags = append(Tags, tag{ID: id, Content: t[1]})
+			for _, tag := range p.TagList {
+				if id == tag.ID {
+					continue OuterLoop
+				}
+			}
+			p.TagList = append(p.TagList, SimpleTag{ID: id, Content: t[1]})
 		}
 	}
-	return json.Marshal(&struct {
-		LastSeen []tag `json:"tags"`
-		*PA
-	}{
-		LastSeen: Tags,
-		PA:       (*PA)(t),
-	})
 }
 
 func (a *projectAPI) CountProjects(arg GetProjectArgs) (result int, err error) {
@@ -275,7 +272,6 @@ func (a *projectAPI) GetProjects(args GetProjectArgs) (result []ProjectAuthors, 
 		return result, nil
 	}
 	for _, project := range pa {
-
 		var notNullAuthor = func(in ProjectAuthor) ProjectAuthors {
 			pas := ProjectAuthors{Project: in.Project, Tags: in.Tags}
 			if project.Author != (Stunt{}) {
@@ -299,6 +295,10 @@ func (a *projectAPI) GetProjects(args GetProjectArgs) (result []ProjectAuthors, 
 					}
 				}
 			}
+		}
+		for k, pas := range result {
+			pas.formatTags()
+			result[k] = pas
 		}
 	}
 	return result, nil

@@ -295,6 +295,10 @@ func TestFollowing(t *testing.T) {
 			genericTestcase{"FollowingProjectOK", "GET", `/following/user?resource=project&id=71`, ``, http.StatusOK, nil},
 			genericTestcase{"FollowingWithTargetIDsOK", "GET", `/following/user?resource=project&id=71&target_ids=[1,2,3]`, ``, http.StatusOK, nil},
 			genericTestcase{"FollowingWithModeIDOK", "GET", `/following/user?resource=project&id=71&mode=id`, ``, http.StatusOK, nil},
+			genericTestcase{"FollowingMultipleRes", "GET", `/following/user?resource=["post", "project"]&id=71`, ``, http.StatusOK, nil},
+			genericTestcase{"FollowingMaxresultPaging", "GET", `/following/user?resource=["post", "project"]&id=71&max_result=1&page=2`, ``, http.StatusOK, nil},
+			genericTestcase{"FollowingBadID", "GET", `/following/user?resource=post&max_result=1`, ``, http.StatusBadRequest, `{"Error":"Bad Resource ID"}`},
+			genericTestcase{"FollowingBadType", "GET", `/following/user?resource=["post", "aaa"]&id=71`, ``, http.StatusBadRequest, `{"Error":"Bad Following Type"}`},
 
 			genericTestcase{"FollowedPostOK", "GET", `/following/resource?resource=post&ids=[42,84]&resource_type=news`, ``, http.StatusOK, nil},
 			genericTestcase{"FollowedPostReviewOK", "GET", `/following/resource?resource=post&ids=[42,84]&resource_type=review`, ``, http.StatusOK, nil},

@@ -14,6 +14,7 @@ import (
 	"github.com/golang-migrate/migrate/database/mysql"
 	_ "github.com/golang-migrate/migrate/source/file"
 	"github.com/jmoiron/sqlx"
+	"github.com/readr-media/readr-restful/config"
 )
 
 var DB database = database{nil}
@@ -299,4 +300,17 @@ func generateSQLStmt(mode string, tableName string, input ...interface{}) (query
 		err = nil
 	}
 	return
+}
+
+func GetResourceMetadata(resource string) (table, key string, followtype int, err error) {
+	if _, ok := config.Config.SQL.TableMeta[resource]; !ok {
+		return "", "", 0, errors.New("Unsupported Resource")
+	}
+
+	if _, ok := config.Config.Models.FollowingType[resource]; !ok {
+		return "", "", 0, errors.New("Unsupported Resource")
+	}
+
+	meta := config.Config.SQL.TableMeta[resource]
+	return meta["table_name"], meta["primary_key"], config.Config.Models.FollowingType[resource], nil
 }

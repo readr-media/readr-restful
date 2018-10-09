@@ -10,10 +10,11 @@ var Config appConfig
 
 type appConfig struct {
 	SQL struct {
-		Host     string `mapstructure:"host"`
-		Port     int    `mapstructure:"port"`
-		User     string `mapstructure:"user"`
-		Password string `mapstructure:"password"`
+		Host      string                       `mapstructure:"host"`
+		Port      int                          `mapstructure:"port"`
+		User      string                       `mapstructure:"user"`
+		Password  string                       `mapstructure:"password"`
+		TableMeta map[string]map[string]string `mapstructure:"table_meta"`
 	} `mapstructure:"sql"`
 
 	Redis struct {

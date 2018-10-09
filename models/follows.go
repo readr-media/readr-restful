@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -13,7 +14,45 @@ import (
 	"github.com/readr-media/readr-restful/config"
 )
 
-/* ================================================ Follower API ================================================ */
+type Resource struct {
+	ResourceName string `form:"resource" json:"resource"`
+	ResourceType string `form:"resource_type" json:"resource_type, omitempty"`
+	Table        string
+	PrimaryKey   string
+	FollowType   int
+	Emotion      int
+	MaxResult    int `form:"max_result"`
+	Page         int `form:"page"`
+}
+
+type FollowingSQL struct {
+	base      string
+	condition []string
+	args      []interface{}
+	printargs []interface{}
+	join      []string
+	postfixes []string
+}
+
+func (f *FollowingSQL) AppendPrintarg(arg interface{}) {
+	f.printargs = append(f.printargs, arg)
+}
+
+func (f *FollowingSQL) PrependPrintarg(arg interface{}) {
+	f.printargs = append([]interface{}{arg}, f.printargs...)
+}
+
+func (f *FollowingSQL) AppendArg(arg interface{}) {
+	f.args = append(f.args, arg)
+}
+
+func (f *FollowingSQL) AppendCondition(arg string) {
+	f.condition = append(f.condition, arg)
+}
+
+func (f *FollowingSQL) SQL() string {
+	return fmt.Sprintf(f.base, f.printargs...)
+}
 
 type FollowArgs struct {
 	Resource string
@@ -21,6 +60,15 @@ type FollowArgs struct {
 	Object   int64
 	Type     int
 	Emotion  int
+}
+
+/* ================================================ Get Following ================================================ */
+
+type FollowingItem struct {
+	Type       int         `db:"type" json:"type"`
+	TargetID   int         `db:"target_id" json:"-"`
+	FollowedAt NullTime    `db:"created_at" json:"followed_at"`
+	Item       interface{} `json:"item"`
 }
 
 type GetFollowInterface interface {
@@ -31,71 +79,67 @@ type GetFollowInterface interface {
 type GetFollowingArgs struct {
 	MemberID  int64  `form:"id" json:"id"`
 	Mode      string `form:"mode"`
+	MaxResult int    `form:"max_result"`
+	Page      int    `form:"page"`
 	TargetIDs []int
 	Active    map[string][]int
 	Resource
+	Resources []string
 }
 
 func (g *GetFollowingArgs) get() (*sqlx.Rows, error) {
-
-	var osql = struct {
-		base      string
-		condition []string
-		args      []interface{}
-		printargs []interface{}
-	}{
-		base: `SELECT %s FROM %s AS t 
-		INNER JOIN following AS f ON t.%s = f.target_id %s
-		WHERE %s ORDER BY f.created_at DESC;`,
-		printargs: []interface{}{g.Table, g.PrimaryKey},
-		condition: []string{"f.type = ?", "f.member_id = ?", "f.emotion = ?"},
-		args:      []interface{}{g.FollowType, g.MemberID, 0},
-	}
-
-	if g.Mode == "id" {
-		osql.printargs = append([]interface{}{fmt.Sprint("t.", g.PrimaryKey)}, osql.printargs...)
-	} else {
-		osql.printargs = append([]interface{}{"t.*, f.created_at AS followed_at"}, osql.printargs...)
-	}
-	if g.Active != nil {
-		for k, v := range g.Active {
-			osql.condition = append(osql.condition, fmt.Sprintf("t.active %s (?)", operatorHelper(k)))
-			osql.args = append(osql.args, v)
+	// change resource name to int type
+	followType := make([]int, 0)
+	for _, resourceName := range g.Resources {
+		ft, err := g.getFollowType(resourceName)
+		if err != nil {
+			return nil, err
 		}
+		followType = append(followType, ft)
 	}
-	if g.ResourceName == "post" {
+
+	var osql = FollowingSQL{
+		base: `SELECT f.type, f.target_id, f.created_at FROM following AS f %s 
+		WHERE %s ORDER BY f.created_at DESC %s;`,
+		printargs: []interface{}{},
+		condition: []string{"f.type IN (?)", "f.member_id = ?", "f.emotion = ?"},
+		args:      []interface{}{followType, g.MemberID, 0},
+	}
+
+	// Append post's type filter to printarg
+	if g.ResourceType != "" {
 		if val, ok := config.Config.Models.PostType[g.ResourceType]; ok {
-			osql.condition = append(osql.condition, "t.type = ?")
-			osql.args = append(osql.args, val)
+			osql.AppendPrintarg(` LEFT JOIN posts AS p ON f.target_id = p.post_id `)
+			osql.AppendCondition(fmt.Sprintf(" NOT (p.type <> ? AND f.type = %d)", config.Config.Models.FollowingType["post"]))
+			osql.AppendArg(val)
 		} else if g.ResourceType != "" {
 			return nil, errors.New("Invalid Post Type")
 		}
-	}
-	// Append project's tags for each following projects
-	if g.ResourceName == "project" {
-		osql.printargs[0] = fmt.Sprintf("%s, tag.tags AS tags", osql.printargs[0].(string))
-		osql.printargs = append(osql.printargs, fmt.Sprintf(
-			`
-		 LEFT JOIN (
-			SELECT target_id, GROUP_CONCAT(t.tag_content separator '||') as tags 
-			FROM tagging 
-			LEFT JOIN tags AS t 
-				ON tagging.tag_id = t.tag_id 
-			WHERE type = %d 
-			GROUP BY target_id
-		) AS tag 
-			ON tag.target_id = t.%s
-		`, config.Config.Models.TaggingType[g.ResourceName], g.PrimaryKey))
 	} else {
-		osql.printargs = append(osql.printargs, "")
+		osql.AppendPrintarg("")
 	}
-	if len(g.TargetIDs) > 0 {
-		osql.condition = append(osql.condition, "f.target_id IN (?)")
-		osql.args = append(osql.args, g.TargetIDs)
-	}
-	osql.printargs = append(osql.printargs, strings.Join(osql.condition, " AND "))
 
-	query, args, err := sqlx.In(fmt.Sprintf(osql.base, osql.printargs...), osql.args...)
+	if len(g.TargetIDs) > 0 {
+		osql.AppendCondition("f.target_id IN (?)")
+		osql.AppendArg(g.TargetIDs)
+	}
+
+	osql.AppendPrintarg(strings.Join(osql.condition, " AND "))
+
+	if g.MaxResult != 0 {
+		if g.Page != 0 {
+			osql.AppendPrintarg(" LIMIT ? OFFSET ? ")
+			osql.AppendArg(g.MaxResult)
+			osql.AppendArg((g.Page - 1) * g.MaxResult)
+		} else {
+			osql.AppendPrintarg(" LIMIT ? ")
+			osql.AppendArg(g.MaxResult)
+		}
+	} else {
+		osql.AppendPrintarg("")
+	}
+
+	query, args, err := sqlx.In(osql.SQL(), osql.args...)
 	query = DB.Rebind(query)
 
 	rows, err := DB.Queryx(query, args...)
@@ -105,7 +149,329 @@ func (g *GetFollowingArgs) get() (*sqlx.Rows, error) {
 	return rows, err
 }
 
-func (g *GetFollowingArgs) scan(rows *sqlx.Rows) (interface{}, error) {
+func (g *GetFollowingArgs) scan(rows *sqlx.Rows) (result interface{}, err error) {
+	followingResMap := make(map[int][]FollowingItem, 0)
+	followingTypes := config.Config.Models.FollowingType
+	for rows.Next() {
+		var f FollowingItem
+		err := rows.StructScan(&f)
+		if err != nil {
+			return nil, errors.New(fmt.Sprintf("Scan following item error: %s", err.Error()))
+		}
+		followingResMap[f.Type] = append(followingResMap[f.Type], f)
+	}
+
+	sortedList := make([]FollowingItem, 0)
+	for _, resourceName := range g.Resources {
+		resourceItems := followingResMap[followingTypes[resourceName]]
+		if len(resourceItems) > 0 {
+			p, err := g.getResourceDetails(resourceName, resourceItems)
+			if err != nil {
+				return nil, err
+			}
+			sortedList = append(sortedList, p.([]FollowingItem)...)
+		}
+	}
+
+	sort.Slice(sortedList, func(i, j int) bool {
+		if !sortedList[i].FollowedAt.Valid {
+			return false
+		}
+		if !sortedList[j].FollowedAt.Valid {
+			return true
+		}
+		return sortedList[i].FollowedAt.Time.After(sortedList[j].FollowedAt.Time)
+	})
+
+	return sortedList, err
+}
+
+func (g *GetFollowingArgs) getResourceDetails(resourceName string, resourceItems []FollowingItem) (result interface{}, err error) {
+	switch resourceName {
+	case "post":
+		return g.getPostDetails(resourceItems)
+	case "project":
+		return g.getProjectDetails(resourceItems)
+	case "member":
+		return g.getMemberDetails(resourceItems)
+	case "memo":
+		return g.getMemoDetails(resourceItems)
+	case "report":
+		return g.getReportDetails(resourceItems)
+	case "tag":
+		return g.getTagDetails(resourceItems)
+	}
+	return nil, errors.New("Unsupported Resource Name")
+}
+
+func (g *GetFollowingArgs) getPostDetails(items []FollowingItem) (result interface{}, err error) {
+	ids := make([]uint32, 0)
+	followingItems := make([]FollowingItem, 0)
+
+	for _, item := range items {
+		ids = append(ids, uint32(item.TargetID))
+	}
+
+	posts, err := PostAPI.GetPosts(&PostArgs{
+		IDs:       ids,
+		Active:    map[string][]int{"in": []int{config.Config.Models.Posts["active"]}},
+		MaxResult: uint8(len(ids)),
+		Page:      1,
+		Sorting:   "-updated_at",
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	for _, post := range posts {
+		for _, item := range items {
+			if int(post.ID) == item.TargetID {
+				followingItems = append(followingItems, FollowingItem{
+					Type:       config.Config.Models.FollowingType["post"],
+					FollowedAt: item.FollowedAt,
+					Item:       post,
+				})
+			}
+		}
+	}
+
+	return followingItems, nil
+}
+
+func (g *GetFollowingArgs) getProjectDetails(items []FollowingItem) (result interface{}, err error) {
+	ids := make([]int, 0)
+	followingItems := make([]FollowingItem, 0)
+
+	for _, item := range items {
+		ids = append(ids, item.TargetID)
+	}
+
+	projects, err := ProjectAPI.GetProjects(GetProjectArgs{
+		IDs:    ids,
+		Active: map[string][]int{"in": []int{config.Config.Models.Posts["active"]}},
+		Fields: []string{"nickname"},
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	for _, project := range projects {
+		for _, item := range items {
+			if project.ID == item.TargetID {
+				followingItems = append(followingItems, FollowingItem{
+					Type:       config.Config.Models.FollowingType["project"],
+					FollowedAt: item.FollowedAt,
+					Item:       project,
+				})
+			}
+		}
+	}
+	return followingItems, nil
+}
+
+func (g *GetFollowingArgs) getMemberDetails(items []FollowingItem) (result interface{}, err error) {
+	ids := make([]string, 0)
+	followingItems := make([]FollowingItem, 0)
+
+	for _, item := range items {
+		ids = append(ids, strconv.Itoa(item.TargetID))
+	}
+
+	members, err := MemberAPI.GetMembers(&MemberArgs{
+		IDs:       ids,
+		Active:    map[string][]int{"in": []int{config.Config.Models.Members["active"]}},
+		MaxResult: uint8(len(ids)),
+		Page:      1,
+		Sorting:   "-updated_at",
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	for _, member := range members {
+		for _, item := range items {
+			if int(member.ID) == item.TargetID {
+				followingItems = append(followingItems, FollowingItem{
+					Type:       config.Config.Models.FollowingType["member"],
+					FollowedAt: item.FollowedAt,
+					Item:       member,
+				})
+			}
+		}
+	}
+	return followingItems, nil
+}
+
+func (g *GetFollowingArgs) getMemoDetails(items []FollowingItem) (result interface{}, err error) {
+	ids := make([]int64, 0)
+	followingItems := make([]FollowingItem, 0)
+
+	for _, item := range items {
+		ids = append(ids, int64(item.TargetID))
+	}
+
+	memos, err := MemoAPI.GetMemos(&MemoGetArgs{
+		IDs:       ids,
+		Active:    map[string][]int{"in": []int{config.Config.Models.Memos["active"]}},
+		MaxResult: len(ids),
+		Page:      1,
+		Sorting:   "-updated_at",
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	for _, memo := range memos {
+		for _, item := range items {
+			if int(memo.ID) == item.TargetID {
+				followingItems = append(followingItems, FollowingItem{
+					Type:       config.Config.Models.FollowingType["memo"],
+					FollowedAt: item.FollowedAt,
+					Item:       memo,
+				})
+			}
+		}
+	}
+	return followingItems, nil
+}
+
+func (g *GetFollowingArgs) getReportDetails(items []FollowingItem) (result interface{}, err error) {
+	ids := make([]int, 0)
+	followingItems := make([]FollowingItem, 0)
+
+	for _, item := range items {
+		ids = append(ids, item.TargetID)
+	}
+
+	reports, err := ReportAPI.GetReports(GetReportArgs{
+		IDs:    ids,
+		Active: map[string][]int{"in": []int{config.Config.Models.Memos["active"]}},
+		Fields: []string{"nickname"},
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	for _, report := range reports {
+		for _, item := range items {
+			if int(report.ID) == item.TargetID {
+				followingItems = append(followingItems, FollowingItem{
+					Type:       config.Config.Models.FollowingType["report"],
+					FollowedAt: item.FollowedAt,
+					Item:       report,
+				})
+			}
+		}
+	}
+	return followingItems, nil
+}
+
+func (g *GetFollowingArgs) getTagDetails(items []FollowingItem) (result interface{}, err error) {
+	ids := make([]int, 0)
+	followingItems := make([]FollowingItem, 0)
+
+	for _, item := range items {
+		ids = append(ids, item.TargetID)
+	}
+
+	tagDetails, err := TagAPI.GetTags(GetTagsArgs{
+		ShowStats:     false,
+		ShowResources: true,
+		IDs:           ids,
+		PostFields:    sqlfields{"post_id", "publish_status", "published_at", "title", "type"},
+		ProjectFields: sqlfields{"project_id", "publish_status", "published_at", "title", "slug", "status", "hero_image"},
+		ReportFields:  sqlfields{"id", "publish_status", "published_at", "title", "hero_image", "project_id", "slug"},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, tag := range tagDetails {
+		for _, item := range items {
+			if int(tag.ID) == item.TargetID {
+				followingItems = append(followingItems, FollowingItem{
+					Type:       config.Config.Models.FollowingType["tag"],
+					FollowedAt: item.FollowedAt,
+					Item:       tag,
+				})
+			}
+		}
+	}
+	return followingItems, nil
+}
+
+/*
+func (g *GetFollowingArgs) getSingleResource() (*sqlx.Rows, error) {
+	tableName, primaryKey, followType, err := GetResourceMetadata(g.Resources[0])
+	if err != nil {
+		return nil, err
+	}
+	var osql = FollowingSQL{
+		base: `SELECT %s FROM %s AS t
+		INNER JOIN following AS f ON t.%s = f.target_id %s
+		WHERE %s ORDER BY f.created_at DESC;`,
+		printargs: []interface{}{tableName, primaryKey},
+		condition: []string{"f.type = ?", "f.member_id = ?", "f.emotion = ?"},
+		args:      []interface{}{followType, g.MemberID, 0},
+	}
+
+	if g.Mode == "id" {
+		osql.PrependPrintarg(fmt.Sprint("t.", g.PrimaryKey))
+	} else {
+		osql.PrependPrintarg("t.*, f.created_at AS followed_at")
+	}
+
+	if g.Active != nil {
+		for k, v := range g.Active {
+			osql.AppendCondition(fmt.Sprintf("t.active %s (?)", operatorHelper(k)))
+			osql.AppendArg(v)
+		}
+	}
+
+	if g.ResourceName == "post" {
+		if val, ok := config.Config.Models.PostType[g.ResourceType]; ok {
+			osql.AppendCondition("t.type = ?")
+			osql.AppendArg(val)
+		} else if g.ResourceType != "" {
+			return nil, errors.New("Invalid Post Type")
+		}
+	}
+
+	if g.ResourceName == "project" {
+		osql.printargs[0] = fmt.Sprintf("%s, tag.tags AS tags", osql.printargs[0].(string))
+		osql.AppendPrintarg(fmt.Sprintf(`
+		 LEFT JOIN (
+			SELECT target_id, GROUP_CONCAT(t.tag_content separator '||') as tags
+			FROM tagging
+			LEFT JOIN tags AS t
+				ON tagging.tag_id = t.tag_id
+			WHERE type = %d
+			GROUP BY target_id
+		) AS tag
+			ON tag.target_id = t.%s
+		`, config.Config.Models.TaggingType[g.ResourceName], primaryKey))
+	} else {
+		osql.AppendPrintarg("")
+	}
+
+	osql.AppendPrintarg(strings.Join(osql.condition, " AND "))
+
+	if len(g.TargetIDs) > 0 {
+		osql.AppendCondition("f.target_id IN (?)")
+		osql.AppendArg(g.TargetIDs)
+	}
+
+	query, args, err := sqlx.In(osql.SQL(), osql.args...)
+	query = DB.Rebind(query)
+
+	rows, err := DB.Queryx(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	return rows, err
+}
+
+func (g *GetFollowingArgs) scanSingleSource(rows *sqlx.Rows) (interface{}, error) {
 
 	var (
 		followings []interface{}
@@ -213,20 +579,30 @@ func (g *GetFollowingArgs) scan(rows *sqlx.Rows) (interface{}, error) {
 
 	return followings, err
 }
+*/
+func (g *GetFollowingArgs) getFollowType(resourceName string) (t int, err error) {
+	if val, ok := config.Config.Models.FollowingType[resourceName]; ok {
+		return val, nil
+	}
+	return t, errors.New("Unsupported Following Type")
+}
+
+/* ================================================ Get Followed ================================================ */
 
 type GetFollowedArgs struct {
 	IDs []int64 `json:"ids"`
 	Resource
 }
 
+type FollowedCount struct {
+	ResourceID int64   `json:"ResourceID"`
+	Count      int     `json:"Count"`
+	Followers  []int64 `json:"Followers"`
+}
+
 func (g *GetFollowedArgs) get() (*sqlx.Rows, error) {
 
-	var osql = struct {
-		base      string
-		condition []string
-		join      []string
-		args      []interface{}
-	}{
+	var osql = FollowingSQL{
 		base: `SELECT f.target_id, COUNT(m.id) as count, 
 		GROUP_CONCAT(m.id SEPARATOR ',') as follower FROM following as f 
 		LEFT JOIN %s WHERE %s GROUP BY f.target_id;`,
@@ -280,12 +656,7 @@ type GetFollowMapArgs struct {
 }
 
 func (g *GetFollowMapArgs) get() (*sqlx.Rows, error) {
-	var osql = struct {
-		base      string
-		condition []string
-		join      []string
-		args      []interface{}
-	}{
+	var osql = FollowingSQL{
 		base: `SELECT GROUP_CONCAT(member_resource.member_id) AS member_ids, member_resource.resource_ids
 			FROM (
 				SELECT GROUP_CONCAT(f.target_id) AS resource_ids, m.id AS member_id 
@@ -341,10 +712,17 @@ func (g *GetFollowMapArgs) scan(rows *sqlx.Rows) (interface{}, error) {
 	return list, err
 }
 
+/* ================================================ Get Follow Map ================================================ */
+
 type GetFollowerMemberIDsArgs struct {
 	ID         int64
 	FollowType int
 	Emotions   []int
+}
+
+type FollowingMapItem struct {
+	Followers   []string `json:"member_ids" db:"member_ids"`
+	ResourceIDs []string `json:"resource_ids" db:"resource_ids"`
 }
 
 func (g *GetFollowerMemberIDsArgs) get() (*sqlx.Rows, error) {
@@ -377,25 +755,7 @@ func (g *GetFollowerMemberIDsArgs) scan(rows *sqlx.Rows) (interface{}, error) {
 	return result, err
 }
 
-type Resource struct {
-	ResourceName string `form:"resource" json:"resource"`
-	ResourceType string `form:"resource_type" json:"resource_type, omitempty"`
-	Table        string
-	PrimaryKey   string
-	FollowType   int
-	Emotion      int
-}
-
-type FollowedCount struct {
-	ResourceID int64   `json:"ResourceID"`
-	Count      int     `json:"Count"`
-	Followers  []int64 `json:"Followers"`
-}
-
-type FollowingMapItem struct {
-	Followers   []string `json:"member_ids" db:"member_ids"`
-	ResourceIDs []string `json:"resource_ids" db:"resource_ids"`
-}
+/* ================================================ Following API ================================================ */
 
 type followingAPI struct{}
 
