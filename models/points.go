@@ -207,6 +207,21 @@ func (p *pointsAPI) Insert(pts PointsToken) (result int, id int, err error) {
 		}
 	}
 
+	if pts.Points.ObjectType == config.Config.Models.PointType["project"] ||
+		pts.Points.ObjectType == config.Config.Models.PointType["project_memo"] {
+		var memoPoints int
+		if err = DB.Get(&memoPoints, `SELECT memo_points FROM projects WHERE project_id = ?`, pts.ObjectID); err != nil {
+			return 0, 0, err
+		}
+		if pts.Points.ObjectType == config.Config.Models.PointType["project_memo"] {
+			pts.Points.Points = memoPoints
+		} else {
+			if pts.Points.Points < memoPoints {
+				return 0, 0, errors.New("Less than minimum points")
+			}
+		}
+	}
+
 	tx, err := DB.Beginx()
 	if err != nil {
 		log.Printf("Fail to get sql connection: %v", err)
@@ -224,6 +239,7 @@ func (p *pointsAPI) Insert(pts PointsToken) (result int, id int, err error) {
 	if err = tx.Get(&result, `SELECT points FROM members WHERE id = ?`, pts.MemberID); err != nil {
 		return 0, 0, err
 	}
+
 	// New Balance
 	result = result - pts.Points.Points
 	pts.Balance = result

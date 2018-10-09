@@ -107,7 +107,12 @@ func (r *pointsHandler) Post(c *gin.Context) {
 	}
 	points, id, err := models.PointsAPI.Insert(pts)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		switch err.Error() {
+		case "Less than minimum points":
+			c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		}
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"points": points, "id": id})
