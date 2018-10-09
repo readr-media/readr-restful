@@ -105,12 +105,12 @@ func (r *pointsHandler) Post(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Object ID"})
 		return
 	}
-	p, err := models.PointsAPI.Insert(pts)
+	points, id, err := models.PointsAPI.Insert(pts)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"points": p})
+	c.JSON(http.StatusOK, gin.H{"points": points, "id": id})
 }
 
 func (r *pointsHandler) SetRoutes(router *gin.Engine) {

@@ -65,10 +65,11 @@ type FollowArgs struct {
 /* ================================================ Get Following ================================================ */
 
 type FollowingItem struct {
-	Type       int         `db:"type" json:"type"`
-	TargetID   int         `db:"target_id" json:"-"`
-	FollowedAt NullTime    `db:"created_at" json:"followed_at"`
-	Item       interface{} `json:"item"`
+	Type         int         `db:"type" json:"-"`
+	TargetID     int         `db:"target_id" json:"-"`
+	FollowedAt   NullTime    `db:"created_at" json:"followed_at"`
+	Item         interface{} `json:"item"`
+	ResourceName string      `json:"resource"`
 }
 
 type GetFollowInterface interface {
@@ -183,7 +184,7 @@ func (g *GetFollowingArgs) scan(rows *sqlx.Rows) (result interface{}, err error)
 			if err != nil {
 				return nil, err
 			}
-			sortedList = append(sortedList, p.([]FollowingItem)...)
+			sortedList = append(sortedList, p...)
 		}
 	}
 
@@ -200,7 +201,7 @@ func (g *GetFollowingArgs) scan(rows *sqlx.Rows) (result interface{}, err error)
 	return sortedList, err
 }
 
-func (g *GetFollowingArgs) getResourceDetails(resourceName string, resourceItems []FollowingItem) (result interface{}, err error) {
+func (g *GetFollowingArgs) getResourceDetails(resourceName string, resourceItems []FollowingItem) (result []FollowingItem, err error) {
 	switch resourceName {
 	case "post":
 		return g.getPostDetails(resourceItems)
@@ -218,7 +219,7 @@ func (g *GetFollowingArgs) getResourceDetails(resourceName string, resourceItems
 	return nil, errors.New("Unsupported Resource Name")
 }
 
-func (g *GetFollowingArgs) getPostDetails(items []FollowingItem) (result interface{}, err error) {
+func (g *GetFollowingArgs) getPostDetails(items []FollowingItem) (result []FollowingItem, err error) {
 	ids := make([]uint32, 0)
 	followingItems := make([]FollowingItem, 0)
 
@@ -241,9 +242,9 @@ func (g *GetFollowingArgs) getPostDetails(items []FollowingItem) (result interfa
 		for _, item := range items {
 			if int(post.ID) == item.TargetID {
 				followingItems = append(followingItems, FollowingItem{
-					Type:       config.Config.Models.FollowingType["post"],
-					FollowedAt: item.FollowedAt,
-					Item:       post,
+					FollowedAt:   item.FollowedAt,
+					Item:         post,
+					ResourceName: "post",
 				})
 			}
 		}
@@ -252,7 +253,7 @@ func (g *GetFollowingArgs) getPostDetails(items []FollowingItem) (result interfa
 	return followingItems, nil
 }
 
-func (g *GetFollowingArgs) getProjectDetails(items []FollowingItem) (result interface{}, err error) {
+func (g *GetFollowingArgs) getProjectDetails(items []FollowingItem) (result []FollowingItem, err error) {
 	ids := make([]int, 0)
 	followingItems := make([]FollowingItem, 0)
 
@@ -273,9 +274,9 @@ func (g *GetFollowingArgs) getProjectDetails(items []FollowingItem) (result inte
 		for _, item := range items {
 			if project.ID == item.TargetID {
 				followingItems = append(followingItems, FollowingItem{
-					Type:       config.Config.Models.FollowingType["project"],
-					FollowedAt: item.FollowedAt,
-					Item:       project,
+					FollowedAt:   item.FollowedAt,
+					Item:         project,
+					ResourceName: "project",
 				})
 			}
 		}
@@ -283,7 +284,7 @@ func (g *GetFollowingArgs) getProjectDetails(items []FollowingItem) (result inte
 	return followingItems, nil
 }
 
-func (g *GetFollowingArgs) getMemberDetails(items []FollowingItem) (result interface{}, err error) {
+func (g *GetFollowingArgs) getMemberDetails(items []FollowingItem) (result []FollowingItem, err error) {
 	ids := make([]string, 0)
 	followingItems := make([]FollowingItem, 0)
 
@@ -306,9 +307,9 @@ func (g *GetFollowingArgs) getMemberDetails(items []FollowingItem) (result inter
 		for _, item := range items {
 			if int(member.ID) == item.TargetID {
 				followingItems = append(followingItems, FollowingItem{
-					Type:       config.Config.Models.FollowingType["member"],
-					FollowedAt: item.FollowedAt,
-					Item:       member,
+					FollowedAt:   item.FollowedAt,
+					Item:         member,
+					ResourceName: "member",
 				})
 			}
 		}
@@ -316,7 +317,7 @@ func (g *GetFollowingArgs) getMemberDetails(items []FollowingItem) (result inter
 	return followingItems, nil
 }
 
-func (g *GetFollowingArgs) getMemoDetails(items []FollowingItem) (result interface{}, err error) {
+func (g *GetFollowingArgs) getMemoDetails(items []FollowingItem) (result []FollowingItem, err error) {
 	ids := make([]int64, 0)
 	followingItems := make([]FollowingItem, 0)
 
@@ -339,9 +340,9 @@ func (g *GetFollowingArgs) getMemoDetails(items []FollowingItem) (result interfa
 		for _, item := range items {
 			if int(memo.ID) == item.TargetID {
 				followingItems = append(followingItems, FollowingItem{
-					Type:       config.Config.Models.FollowingType["memo"],
-					FollowedAt: item.FollowedAt,
-					Item:       memo,
+					FollowedAt:   item.FollowedAt,
+					Item:         memo,
+					ResourceName: "memo",
 				})
 			}
 		}
@@ -349,7 +350,7 @@ func (g *GetFollowingArgs) getMemoDetails(items []FollowingItem) (result interfa
 	return followingItems, nil
 }
 
-func (g *GetFollowingArgs) getReportDetails(items []FollowingItem) (result interface{}, err error) {
+func (g *GetFollowingArgs) getReportDetails(items []FollowingItem) (result []FollowingItem, err error) {
 	ids := make([]int, 0)
 	followingItems := make([]FollowingItem, 0)
 
@@ -370,9 +371,9 @@ func (g *GetFollowingArgs) getReportDetails(items []FollowingItem) (result inter
 		for _, item := range items {
 			if int(report.ID) == item.TargetID {
 				followingItems = append(followingItems, FollowingItem{
-					Type:       config.Config.Models.FollowingType["report"],
-					FollowedAt: item.FollowedAt,
-					Item:       report,
+					FollowedAt:   item.FollowedAt,
+					Item:         report,
+					ResourceName: "report",
 				})
 			}
 		}
@@ -380,7 +381,7 @@ func (g *GetFollowingArgs) getReportDetails(items []FollowingItem) (result inter
 	return followingItems, nil
 }
 
-func (g *GetFollowingArgs) getTagDetails(items []FollowingItem) (result interface{}, err error) {
+func (g *GetFollowingArgs) getTagDetails(items []FollowingItem) (result []FollowingItem, err error) {
 	ids := make([]int, 0)
 	followingItems := make([]FollowingItem, 0)
 
@@ -404,9 +405,9 @@ func (g *GetFollowingArgs) getTagDetails(items []FollowingItem) (result interfac
 		for _, item := range items {
 			if int(tag.ID) == item.TargetID {
 				followingItems = append(followingItems, FollowingItem{
-					Type:       config.Config.Models.FollowingType["tag"],
-					FollowedAt: item.FollowedAt,
-					Item:       tag,
+					FollowedAt:   item.FollowedAt,
+					Item:         tag,
+					ResourceName: "tag",
 				})
 			}
 		}
