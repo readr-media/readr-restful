@@ -212,6 +212,11 @@ type dailyDigest struct {
 	SettingLink  string
 	UTM          string
 }
+
+func (d *dailyDigest) hasContent() bool {
+	return d.HasMemo || d.HasPost || d.HasReport || d.HasReadrPost
+}
+
 type dailyReport struct {
 	ID          int    `db:"id"`
 	Title       string `db:"title"`
@@ -269,6 +274,16 @@ func (m *mailApi) GetSettingLink() map[int]string {
 
 func (m *mailApi) GenDailyDigest() (err error) {
 	settingLink := m.GetSettingLink()
+
+	conn := RedisHelper.Conn()
+	defer conn.Close()
+
+	// Delete daily mail entry in the begining.
+	// Prevents from sending old mail if mail generting takes too long or blocked.
+	for k, _ := range settingLink {
+		conn.Send("DEL", fmt.Sprintf("dailydigest_%d", k))
+	}
+
 	date := time.Now() //.AddDate(0, 0, -1)
 	reports, err := m.getDailyReport()
 	if err != nil {
@@ -328,13 +343,19 @@ OLP:
 	data.UTM = fmt.Sprintf("DailyDigest_%s", date.Format("20060102"))
 
 	for k, v := range settingLink {
-		data.SettingLink = v
-		buf := new(bytes.Buffer)
-		err = t.ExecuteTemplate(buf, "newsletter.html", data)
-		s := buf.String()
-
-		conn := RedisHelper.Conn()
-		defer conn.Close()
+		var s string
+		if data.hasContent() {
+			data.SettingLink = v
+			buf := new(bytes.Buffer)
+			err = t.ExecuteTemplate(buf, "newsletter.html", data)
+			if err != nil {
+				log.Println(fmt.Sprintf("Fail to execute template when generating daily digest: %v", err.Error()))
+				return err
+			}
+			s = buf.String()
+		} else {
+			s = ""
+		}
 		conn.Send("SET", fmt.Sprintf("dailydigest_%d", k), s)
 	}
 
@@ -502,6 +523,12 @@ func (m *mailApi) SendDailyDigest(mailList []string) (err error) {
 			}
 		}
 
+		mail_body := string(s)
+		// If no content to send, skip this sending process
+		if mail_body == "" {
+			continue
+		}
+
 		for _, receiver := range mailReceiverList {
 			if receiver.Role == k {
 				mails = append(mails, receiver.Mail)
@@ -509,7 +536,7 @@ func (m *mailApi) SendDailyDigest(mailList []string) (err error) {
 		}
 
 		date := time.Now()
-		err = m.sendToAll(fmt.Sprintf("Readr %d/%d 選文", int(date.Month()), date.Day()), string(s), mails)
+		err = m.sendToAll(fmt.Sprintf("Readr %d/%d 選文", int(date.Month()), date.Day()), mail_body, mails)
 		if err != nil {
 			log.Println("Fail to send group mail: ", err.Error())
 			return err
