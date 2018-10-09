@@ -3,7 +3,33 @@
         "host": "",
         "port": 3306,
         "user": "",
-        "password": ""
+        "password": "",
+        "table_meta": {
+            "member":{
+                "table_name": "",
+                "primary_key": ""
+            },
+            "post":{
+                "table_name": "",
+                "primary_key": ""
+            },
+            "project":{
+                "table_name": "",
+                "primary_key": ""
+            },
+            "memo":{
+                "table_name": "",
+                "primary_key": ""
+            },
+            "report":{
+                "table_name": "",
+                "primary_key": ""
+            },
+            "tag":{
+                "table_name": "",
+                "primary_key": ""
+            }
+        }
     },
     "redis":{
         "host": "",

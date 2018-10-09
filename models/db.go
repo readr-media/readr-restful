@@ -303,37 +303,14 @@ func generateSQLStmt(mode string, tableName string, input ...interface{}) (query
 }
 
 func GetResourceMetadata(resource string) (table, key string, followtype int, err error) {
-	switch resource {
-	case "member":
-		table = "members"
-		key = "id"
-		followtype = config.Config.Models.FollowingType["member"]
-	case "post":
-		table = "posts"
-		key = "post_id"
-		followtype = config.Config.Models.FollowingType["post"]
-	case "project":
-		table = "projects"
-		key = "project_id"
-		followtype = config.Config.Models.FollowingType["project"]
-	case "memo":
-		table = "memos"
-		key = "memo_id"
-		followtype = config.Config.Models.FollowingType["memo"]
-	case "report":
-		table = "reports"
-		key = "id"
-		followtype = config.Config.Models.FollowingType["report"]
-	case "tag":
-		table = "tags"
-		key = "tag_id"
-		if val, ok := config.Config.Models.FollowingType["tag"]; ok {
-			followtype = val
-		} else {
-			return "", "", 0, errors.New("Invalid following_type: tag")
-		}
-	default:
+	if _, ok := config.Config.SQL.TableMeta[resource]; !ok {
 		return "", "", 0, errors.New("Unsupported Resource")
 	}
-	return table, key, followtype, nil
+
+	if _, ok := config.Config.Models.FollowingType[resource]; !ok {
+		return "", "", 0, errors.New("Unsupported Resource")
+	}
+
+	meta := config.Config.SQL.TableMeta[resource]
+	return meta["table_name"], meta["primary_key"], config.Config.Models.FollowingType[resource], nil
 }
