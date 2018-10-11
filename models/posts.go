@@ -463,6 +463,28 @@ func (a *postAPI) UpdatePost(p Post) error {
 		// Case: Set a post to unpublished state, Delete the post from cache/searcher
 		go Algolia.DeletePost([]int{int(p.ID)})
 		go PostCache.Update(p)
+
+		if p.PublishStatus.Valid && p.PublishStatus.Int == int64(config.Config.Models.PostPublishStatus["draft"]) {
+			var isCustomEditor NullInt
+			query := `SELECT m.custom_editor FROM members AS m LEFT JOIN posts AS p ON p.author = m.id WHERE p.post_id = ?;`
+
+			err := DB.Get(&isCustomEditor, query, p.ID)
+			if err != nil {
+				log.Println("Get member flag of custom editor error: ", err.Error())
+				return err
+			}
+
+			if isCustomEditor.Valid && isCustomEditor.Int == 1 {
+				postDetail, err := a.GetPost(p.ID)
+				if err != nil {
+					log.Println("Fail to get post after updated: ", err.Error())
+					return err
+				}
+				go MailAPI.SendCECommentNotify(postDetail)
+				SlackHelper.SendCECommentNotify(postDetail)
+			}
+
+		}
 	} else if p.PublishStatus.Valid || p.Active.Valid {
 		// Case: Publish a post. Read whole post from database, then store to cache/searcher
 		// Case: Update a post.
@@ -633,17 +655,6 @@ func (a *postAPI) PublishPipeline(ids []uint32) error {
 	for _, post := range posts {
 		if post.Active.Int == int64(config.Config.Models.Posts["active"]) &&
 			post.PublishStatus.Int == int64(config.Config.Models.PostPublishStatus["publish"]) {
-
-			member, err := MemberAPI.GetMember("id", strconv.Itoa(int(post.Author.Int)))
-			if err != nil {
-				log.Println("Get author info error when doing published post pipeline.")
-				return err
-			}
-
-			if member.CustomEditor.Bool {
-				go MailAPI.SendCECommentNotify(post)
-				SlackHelper.SendCECommentNotify(post)
-			}
 
 			go NotificationGen.GeneratePostNotifications(post)
 			validPosts = append(validPosts, post)
