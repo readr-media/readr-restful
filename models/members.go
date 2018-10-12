@@ -274,7 +274,7 @@ func (a *memberAPI) InsertMember(m Member) (id int, err error) {
 		return 0, errors.New("Duplicate entry")
 	}
 
-	tags := getStructDBTags("full", Member{})
+	tags := getStructDBTags("partial", m)
 	query := fmt.Sprintf(`INSERT INTO members (%s) VALUES (:%s)`,
 		strings.Join(tags, ","), strings.Join(tags, ",:"))
 	result, err := DB.NamedExec(query, m)
