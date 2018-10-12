@@ -101,7 +101,6 @@ func (c commentCache) Generate() (err error) {
 		config.Config.Models.Comment["active"],
 	)
 
-	log.Print(query)
 	rows, err := DB.Queryx(query)
 	if err != nil {
 		log.Printf("Fail to query comment indexes when updating latest comments: %v \n", err.Error())

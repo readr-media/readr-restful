@@ -8,7 +8,9 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
+	"crypto/tls"
 	"io/ioutil"
 	"net/http"
 
@@ -26,16 +28,24 @@ type OGInfo struct {
 type ogParser struct{}
 
 func (o *ogParser) GetOGInfoFromUrl(urlStr string) (*OGInfo, error) {
-	client := &http.Client{}
+
+	tr := &http.Transport{TLSClientConfig: &tls.Config{
+		NextProtos: []string{"h1"},
+	}}
+
+	client := &http.Client{Transport: tr, Timeout: time.Duration(5 * time.Second)}
 
 	req, err := http.NewRequest("GET", urlStr, nil)
+
 	// for k, v := range OGParserHeaders {
 	for k, v := range config.Config.Crawler.Headers {
 		req.Header.Add(k, v)
 	}
+
 	if !regexp.MustCompile("\\.readr\\.tw\\/").MatchString(urlStr) {
 		req.Header.Del("Cookie")
 	}
+
 	resp, err := client.Do(req)
 
 	if err != nil {
