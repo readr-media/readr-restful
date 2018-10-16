@@ -322,13 +322,14 @@ OLM:
 
 OLP:
 	for _, p := range posts {
+		if p.AuthorID == 126 {
+			data.ReadrPosts = append(data.ReadrPosts, p)
+			continue OLP
+		}
 		for pk, pa := range data.Posts {
 			if pa.ID == p.AuthorID {
 				p.Order = len(pa.Posts) + 1
 				data.Posts[pk].Posts = append(pa.Posts, p)
-				continue OLP
-			} else if p.AuthorID == 126 {
-				data.ReadrPosts = append(data.ReadrPosts, p)
 				continue OLP
 			}
 		}
