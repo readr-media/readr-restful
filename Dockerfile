@@ -7,8 +7,7 @@ RUN mkdir /config
 ADD app /app
 ADD db_schema /db_schema
 
-ADD default/readr-restful/main.json /config/main.json
-ADD default/readr-restful/newsletter.html /config/newsletter.html
+ADD default/readr-restful /config/
 
 VOLUME /var/log
 EXPOSE 8080
