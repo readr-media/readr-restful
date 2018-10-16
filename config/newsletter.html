@@ -218,7 +218,7 @@
 <body>
   <header class='newsletter-header'>
     <div class='newsletter-header__banner'>
-      <a class='newsletter-header__link' href='https://www.readr.tw/?utm_medium=newsletter&utm_campaign={.UTM}' target='_blank'>
+      <a class='newsletter-header__link' href='https://www.readr.tw/?utm_medium=newsletter&utm_campaign={{.UTM}}' target='_blank'>
         <img class='newsletter-header__logo' src='https://www.readr.tw/assets/icons/readr-logo-backstage.png' alt='newsletter-header__logo'>
       </a>
       <p class="newsletter-header__date">{{.DateYear}}/{{.DateMonth}}/{{.DateDay}}</p>
@@ -232,7 +232,7 @@
       </header>
       {{range .Reports}}
       <article class="reports-article">
-        <a class="newsletter-content__link" href="https://www.readr.tw/project/{{.Slug}}?utm_medium=newsletter&utm_campaign={.UTM}" target="_blank">
+        <a class="newsletter-content__link" href="https://www.readr.tw/project/{{.Slug}}?utm_medium=newsletter&utm_campaign={{.UTM}}" target="_blank">
           <img class="reports-article__hero-image" src="https://www.readr.tw/{{.Image}}" alt="reports-article__hero-image">
           <div class="article-content reports-article__content">
             <h1 class="article-content__title">{{.Title}}</h1>
@@ -251,14 +251,14 @@
       {{range .Memos}}
       <div class='article-content--categorize-author'>
         <figure class="author-figure">
-          <a class="author-figure__link" href="https://www.readr.tw/profile/{{.ID}}?utm_medium=newsletter&utm_campaign={.UTM}" target="_blank">
+          <a class="author-figure__link" href="https://www.readr.tw/profile/{{.ID}}?utm_medium=newsletter&utm_campaign={{.UTM}}" target="_blank">
             <img class="author-figure__thumbnail" src="https://www.readr.tw/{{.Image}}" alt="author-figure__thumbnail">
             <figcaption class="author-figure__nickname">{{.Name}}</figcaption>
           </a>
         </figure>
         {{range .Memos}}
         <article class="memos-article">
-          <a class="newsletter-content__link" href="https://www.readr.tw/series/{{.Slug}}?utm_medium=newsletter&utm_campaign={.UTM}" target="_blank">
+          <a class="newsletter-content__link" href="https://www.readr.tw/series/{{.Slug}}?utm_medium=newsletter&utm_campaign={{.UTM}}" target="_blank">
             <div class="article-content memos-article__content">
               <h1 class="article-content__title">{{.Title}}</h1>
               <p class="article-content__description">{{.Content}}</p>
@@ -278,7 +278,7 @@
       {{range .Posts}}
       <div class='article-content--categorize-author'>
         <figure class="author-figure">
-          <a class="author-figure__link" href="https://www.readr.tw/profile/{{.ID}}?utm_medium=newsletter&utm_campaign={.UTM}" target="_blank">
+          <a class="author-figure__link" href="https://www.readr.tw/profile/{{.ID}}?utm_medium=newsletter&utm_campaign={{.UTM}}" target="_blank">
             <img class="author-figure__thumbnail" src="https://www.readr.tw/{{.Image}}" alt="author-figure__thumbnail">
             <figcaption class="author-figure__nickname">{{.Name}}</figcaption>
           </a>
@@ -288,7 +288,7 @@
           <li class="list-item">
             <h1 class="list-item__order">{{.Order}}</h1>
             <div class="list-item__content">
-              <a class="newsletter-content__link" href="https://www.readr.tw/post/{{.ID}}?utm_medium=newsletter&utm_campaign={.UTM}" target="_blank">
+              <a class="newsletter-content__link" href="https://www.readr.tw/post/{{.ID}}?utm_medium=newsletter&utm_campaign={{.UTM}}" target="_blank">
                 <article class="latest-article">
                   <div class="article-content memos-article__content">
                     <h1 class="article-content__title">{{.Title}}</h1>
@@ -319,7 +319,7 @@
       </header>
       {{range .ReadrPosts}}
       <article class='readr-article'>
-        <a class="newsletter-content__link" href="https://www.readr.tw/post/{{.ID}}?utm_medium=newsletter&utm_campaign={.UTM}" target="_blank">
+        <a class="newsletter-content__link" href="https://www.readr.tw/post/{{.ID}}?utm_medium=newsletter&utm_campaign={{.UTM}}" target="_blank">
           <div class="article-content readr-article__content">
             <h1 class="article-content__title">{{.Title}}</h1>
             <p class="article-content__description">{{.Content}}</p>

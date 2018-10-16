@@ -209,6 +209,13 @@ func (o *ogParser) getPageData(doc *goquery.Document, data interface{}) error {
 						}
 					}
 
+					if !existed && t == "og:title" {
+						if sel = doc.Find(fmt.Sprintf("title")).First(); sel.Size() > 0 {
+							existed = true
+							content = sel.Text()
+						}
+					}
+
 					if existed {
 						if fv.Type().Kind() == reflect.String {
 							fv.Set(reflect.ValueOf(content))
