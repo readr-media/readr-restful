@@ -113,13 +113,14 @@ func (a *mockMemberAPI) GetMembers(req *models.MemberArgs) (result []models.Memb
 }
 
 func (a *mockMemberAPI) GetMember(idType string, id string) (result models.Member, err error) {
-	log.Println(idType, id)
 	intID, _ := strconv.Atoi(id)
 	for _, value := range mockMemberDS {
 		if idType == "id" && value.ID == int64(intID) {
 			return value, nil
 		} else if idType == "member_id" && value.MemberID == id {
 			return value, nil
+		} else if idType == "mail" && id == "registerdupeuser@mirrormedia.mg" {
+			return models.Member{RegisterMode: models.NullString{"ordinary", true}}, nil
 		}
 	}
 	err = errors.New("User Not Found")

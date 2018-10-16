@@ -118,10 +118,27 @@ type userRegisterParams struct {
 
 func (r *authHandler) userRegister(c *gin.Context) {
 	// 1. check input: account, mode, password, role ...
-	// 2. check if user exists
 
 	params := userRegisterParams{}
 	err := c.Bind(&params)
+	if err != nil {
+		log.Println("Bind parameter error: ", err.Error())
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Request"})
+		return
+	}
+
+	switch {
+	case !validateMode(params.RegisterMode), !validateMail(params.Mail):
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Request"})
+		return
+	}
+
+	// 2. check if user exists
+	m, err := models.MemberAPI.GetMember("mail", params.Mail)
+	if err == nil || err.Error() != "User Not Found" {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "User Duplicated", "Mode": m.RegisterMode.String})
+		return
+	}
 
 	//Try to solve the problem that can't marshal password into models.Member struct
 	jsonStr, err := json.Marshal(&params)
@@ -129,6 +146,7 @@ func (r *authHandler) userRegister(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Request"})
 		return
 	}
+
 	var member models.Member
 	err = json.Unmarshal(jsonStr, &member)
 	if err != nil {
@@ -136,12 +154,6 @@ func (r *authHandler) userRegister(c *gin.Context) {
 		return
 	}
 	member.Password = models.NullString{params.Password, true}
-
-	switch {
-	case !validateMode(member.RegisterMode.String), !validateMail(member.Mail.String):
-		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Request"})
-		return
-	}
 
 	if member.RegisterMode.String == "ordinary" {
 		if member.Password.String == "" || member.Mail.String == "" {
@@ -196,9 +208,6 @@ func (r *authHandler) userRegister(c *gin.Context) {
 
 	if err != nil {
 		switch err.Error() {
-		case "Duplicate entry":
-			c.JSON(http.StatusBadRequest, gin.H{"Error": "User Duplicated"})
-			return
 		case "More Than One Rows Affected", "No Row Inserted":
 			log.Println(err.Error())
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
