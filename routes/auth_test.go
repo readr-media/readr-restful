@@ -202,8 +202,8 @@ func TestRouteRegister(t *testing.T) {
 			SocialID: ""}, RegisterCaseOut{http.StatusBadRequest, `{"Error":"Bad Request"}`}},
 		{"RegisterUserDupe", RegisterCaseIn{
 			Password: "1233211234567",
-			Mail:     "logintest1@mirrormedia.mg",
-			Mode:     "ordinary"}, RegisterCaseOut{http.StatusBadRequest, `{"Error":"User Duplicated"}`}},
+			Mail:     "registerdupeuser@mirrormedia.mg",
+			Mode:     "ordinary"}, RegisterCaseOut{http.StatusBadRequest, `{"Error":"User Duplicated","Mode":"ordinary"}`}},
 	}
 
 	for _, testcase := range TestRouteRegisterCases {
