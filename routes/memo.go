@@ -2,6 +2,7 @@ package routes
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -11,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
+	"github.com/readr-media/readr-restful/pkg/mail"
 )
 
 type memoHandler struct{}
@@ -174,7 +176,7 @@ func (r *memoHandler) Post(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Updator"})
 		}
 	}
-	err = models.MemoAPI.InsertMemo(memo)
+	lastID, err := models.MemoAPI.InsertMemo(memo)
 	if err != nil {
 		switch err.Error() {
 		case "Duplicate entry":
@@ -184,6 +186,17 @@ func (r *memoHandler) Post(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 			return
 		}
+	}
+
+	if memo.PublishStatus.Valid && memo.PublishStatus.Int == int64(config.Config.Models.MemosPublishStatus["publish"]) &&
+		memo.Active.Valid && memo.Active.Int == int64(config.Config.Models.Memos["active"]) {
+
+		r.PublishHandler([]int{lastID})
+	}
+	if memo.UpdatedBy.Valid {
+		r.UpdateHandler([]int{lastID}, memo.UpdatedBy.Int)
+	} else {
+		r.UpdateHandler([]int{lastID})
 	}
 
 	c.Status(http.StatusOK)
@@ -264,6 +277,16 @@ func (r *memoHandler) Put(c *gin.Context) {
 			return
 		}
 	}
+
+	if memo.PublishStatus.Valid || memo.Active.Valid {
+		r.PublishHandler([]int{memo.ID})
+	}
+	if memo.UpdatedBy.Valid {
+		r.UpdateHandler([]int{memo.ID}, memo.UpdatedBy.Int)
+	} else {
+		r.UpdateHandler([]int{memo.ID})
+	}
+
 	c.Status(http.StatusOK)
 }
 
@@ -282,6 +305,8 @@ func (r *memoHandler) Delete(c *gin.Context) {
 			return
 		}
 	}
+	r.UpdateHandler([]int{id})
+
 	c.Status(http.StatusOK)
 }
 
@@ -304,7 +329,6 @@ func (r *memoHandler) DeleteMany(c *gin.Context) {
 	}
 
 	params.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
-	// params.Active = models.NullInt{Int: int64(models.PostStatus["deactive"].(float64)), Valid: true}
 	params.Active = models.NullInt{Int: int64(config.Config.Models.Posts["deactive"]), Valid: true}
 
 	err = models.MemoAPI.UpdateMemos(params)
@@ -318,6 +342,13 @@ func (r *memoHandler) DeleteMany(c *gin.Context) {
 			return
 		}
 	}
+
+	if params.UpdatedBy != 0 {
+		r.UpdateHandler(params.IDs, params.UpdatedBy)
+	} else {
+		r.UpdateHandler(params.IDs)
+	}
+
 	c.Status(http.StatusOK)
 }
 
@@ -347,6 +378,92 @@ func (r *memoHandler) validateMemoSorting(sort string) bool {
 		}
 	}
 	return true
+}
+
+func (r *memoHandler) PublishHandler(ids []int) error {
+	// Redis notification
+	// Mail notification
+
+	if len(ids) == 0 {
+		return nil
+	}
+
+	memoIDs := make([]int64, 0)
+	for _, id := range ids {
+		memoIDs = append(memoIDs, int64(id))
+	}
+
+	memos, err := models.MemoAPI.GetMemos(&models.MemoGetArgs{
+		IDs:               memoIDs,
+		Active:            map[string][]int{"IN": []int{int(config.Config.Models.Memos["active"])}},
+		MemoPublishStatus: map[string][]int{"IN": []int{int(config.Config.Models.MemosPublishStatus["publish"])}},
+	})
+	if err != nil {
+		log.Println("Getting memos info fail when running publish handling process", err)
+		return err
+	}
+	if len(memos) == 0 {
+		return nil
+	}
+
+	for _, memo := range memos {
+		log.Println(memo.Project)
+		p := models.Project{ID: memo.Project.ID, UpdatedAt: models.NullTime{Time: time.Now(), Valid: true}}
+		err := models.ProjectAPI.UpdateProjects(p)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, memo := range memos {
+		go models.NotificationGen.GenerateProjectNotifications(memo, "memo")
+		go mail.MailAPI.SendMemoPublishMail(memo)
+	}
+
+	return nil
+}
+
+func (r *memoHandler) UpdateHandler(ids []int, params ...int64) error {
+	// update update time for projects
+
+	if len(ids) == 0 {
+		return nil
+	}
+
+	memoIDs := make([]int64, 0)
+	for _, id := range ids {
+		memoIDs = append(memoIDs, int64(id))
+	}
+	memos, err := models.MemoAPI.GetMemos(&models.MemoGetArgs{
+		IDs:               memoIDs,
+		Active:            map[string][]int{"IN": []int{int(config.Config.Models.Memos["active"])}},
+		MemoPublishStatus: map[string][]int{"IN": []int{int(config.Config.Models.MemosPublishStatus["publish"])}},
+	})
+	if err != nil {
+		log.Println("Getting memos info fail when running publish handling process", err)
+		return err
+	}
+	if len(memos) == 0 {
+		return nil
+	}
+
+	projectIDs := make([]int, 0)
+	for _, memo := range memos {
+		projectIDs = append(projectIDs, memo.Project.ID)
+	}
+
+	for _, projectID := range projectIDs {
+		p := models.Project{ID: projectID, UpdatedAt: models.NullTime{Time: time.Now(), Valid: true}}
+		if len(params) > 0 {
+			p.UpdatedBy = models.NullInt{Int: params[0], Valid: true}
+		}
+		err := models.ProjectAPI.UpdateProjects(p)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (r *memoHandler) SetRoutes(router *gin.Engine) {

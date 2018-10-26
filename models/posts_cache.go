@@ -245,6 +245,8 @@ func (c latestPostCache) Insert(post fullCachePost) {
 	}
 
 	conn.Send("MULTI")
+	conn.Send("DEL", redis.Args{}.Add(fmt.Sprint(c.key, "_index")))
+
 	conn.Send("HSET", redis.Args{}.Add(c.Key()).Add("1").Add(postString)...)
 	for k, v := range postCacheMap {
 		ki, err := strconv.Atoi(k)
@@ -298,7 +300,7 @@ func (c latestPostCache) SyncFromDataStorage() {
 	}
 
 	conn.Send("MULTI")
-
+	conn.Send("DEL", redis.Args{}.Add(fmt.Sprint(c.key, "_index")))
 	for _, cachePost := range fullCachePosts {
 		for postIndex, postID := range postIDs {
 			if postID == cachePost.ID {

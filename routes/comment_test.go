@@ -358,7 +358,7 @@ func TestPubsubComments(t *testing.T) {
 	for _, memo := range []models.Memo{
 		models.Memo{ID: 92, Title: models.NullString{"CommentTestDefault1", true}, Author: models.NullInt{92, true}, Project: models.NullInt{920, true}, Active: models.NullInt{1, true}},
 	} {
-		err := models.MemoAPI.InsertMemo(memo)
+		_, err := models.MemoAPI.InsertMemo(memo)
 		if err != nil {
 			log.Printf("Init memo test fail %s", err.Error())
 		}

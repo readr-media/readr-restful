@@ -15,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
+	"github.com/readr-media/readr-restful/pkg/mail"
 )
 
 type reportHandler struct {
@@ -174,7 +175,6 @@ func (r *reportHandler) Post(c *gin.Context) {
 		return
 	}
 
-	// if report.PublishStatus.Valid == true && report.PublishStatus.Int == int64(models.ReportPublishStatus["publish"].(float64)) && report.Slug.Valid == false {
 	if report.PublishStatus.Valid == true && report.PublishStatus.Int == int64(config.Config.Models.ReportsPublishStatus["publish"]) && report.Slug.Valid == false {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Must Have Slug Before Publish"})
 		return
@@ -184,7 +184,6 @@ func (r *reportHandler) Post(c *gin.Context) {
 		report.CreatedAt = models.NullTime{time.Now(), true}
 	}
 	report.UpdatedAt = models.NullTime{time.Now(), true}
-	// report.Active = models.NullInt{int64(models.ReportActive["active"].(float64)), true}
 	report.Active = models.NullInt{int64(config.Config.Models.Reports["active"]), true}
 
 	lastID, err := models.ReportAPI.InsertReport(report)
@@ -198,6 +197,16 @@ func (r *reportHandler) Post(c *gin.Context) {
 			return
 		}
 	}
+
+	if report.PublishStatus.Valid && report.PublishStatus.Int == int64(config.Config.Models.ReportsPublishStatus["publish"]) {
+		r.PublishHandler([]int{lastID})
+		if report.UpdatedBy.Valid {
+			r.UpdateHandler([]int{lastID}, report.UpdatedBy.Int)
+		} else {
+			r.UpdateHandler([]int{lastID})
+		}
+	}
+
 	resp := map[string]int{"last_id": lastID}
 	c.JSON(http.StatusOK, gin.H{"_items": resp})
 }
@@ -273,6 +282,24 @@ func (r *reportHandler) Put(c *gin.Context) {
 			return
 		}
 	}
+
+	if (report.PublishStatus.Valid && report.PublishStatus.Int != int64(config.Config.Models.ReportsPublishStatus["publish"])) ||
+		(report.Active.Valid && report.Active.Int != int64(config.Config.Models.Reports["active"])) {
+		// Case: Set a report to unpublished state, Delete the report from cache/searcher
+		go models.Algolia.DeleteReport([]int{report.ID})
+	} else if report.PublishStatus.Valid || report.Active.Valid {
+		// Case: Publish a report or update a report.
+		if report.PublishStatus.Int == int64(config.Config.Models.ReportsPublishStatus["publish"]) ||
+			report.Active.Int == int64(config.Config.Models.Reports["active"]) {
+			r.PublishHandler([]int{report.ID})
+			if report.UpdatedBy.Valid {
+				r.UpdateHandler([]int{report.ID}, report.UpdatedBy.Int)
+			} else {
+				r.UpdateHandler([]int{report.ID})
+			}
+		}
+
+	}
 	c.Status(http.StatusOK)
 }
 
@@ -296,6 +323,9 @@ func (r *reportHandler) Delete(c *gin.Context) {
 			return
 		}
 	}
+
+	go models.Algolia.DeleteReport([]int{id})
+
 	c.Status(http.StatusOK)
 }
 
@@ -355,6 +385,91 @@ func (r *reportHandler) PutAuthors(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 		return
 	}
+}
+
+func (r *reportHandler) PublishHandler(ids []int) error {
+	// Redis notification
+	// Mail notification
+
+	if len(ids) == 0 {
+		return nil
+	}
+
+	args := models.GetReportArgs{
+		IDs:                 ids,
+		Active:              map[string][]int{"IN": []int{int(config.Config.Models.Reports["active"])}},
+		ReportPublishStatus: map[string][]int{"IN": []int{int(config.Config.Models.ReportsPublishStatus["publish"])}},
+	}
+	args.Fields = args.FullAuthorTags()
+
+	reports, err := models.ReportAPI.GetReports(args)
+	if err != nil {
+		log.Println("Getting reports info fail when running publish handling process", err)
+		return err
+	}
+	if len(reports) == 0 {
+		return nil
+	}
+
+	for _, report := range reports {
+		p := models.Project{ID: report.ProjectID, UpdatedAt: models.NullTime{Time: time.Now(), Valid: true}}
+		if report.UpdatedBy.Valid {
+			p.UpdatedBy = report.UpdatedBy
+		}
+		err := models.ProjectAPI.UpdateProjects(p)
+		if err != nil {
+			return err
+		}
+	}
+
+	go models.Algolia.InsertReport(reports)
+	for _, report := range reports {
+		go models.NotificationGen.GenerateProjectNotifications(report, "report")
+		go mail.MailAPI.SendReportPublishMail(report)
+	}
+
+	return nil
+}
+
+func (r *reportHandler) UpdateHandler(ids []int, params ...int64) error {
+	// update update time for projects
+
+	if len(ids) == 0 {
+		return nil
+	}
+
+	args := models.GetReportArgs{
+		IDs:                 ids,
+		Active:              map[string][]int{"IN": []int{int(config.Config.Models.Reports["active"])}},
+		ReportPublishStatus: map[string][]int{"IN": []int{int(config.Config.Models.ReportsPublishStatus["publish"])}},
+	}
+	args.Fields = args.FullAuthorTags()
+
+	reports, err := models.ReportAPI.GetReports(args)
+	if err != nil {
+		log.Println("Getting reports info fail when running publish handling process", err)
+		return err
+	}
+	if len(reports) == 0 {
+		return nil
+	}
+
+	projectIDs := make([]int, 0)
+	for _, report := range reports {
+		projectIDs = append(projectIDs, report.Project.ID)
+	}
+
+	for _, projectID := range projectIDs {
+		p := models.Project{ID: projectID, UpdatedAt: models.NullTime{Time: time.Now(), Valid: true}}
+		if len(params) > 0 {
+			p.UpdatedBy = models.NullInt{Int: params[0], Valid: true}
+		}
+		err := models.ProjectAPI.UpdateProjects(p)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (r *reportHandler) SetRoutes(router *gin.Engine) {

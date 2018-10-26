@@ -247,11 +247,14 @@ func (a *mockPostAPI) Hot() (result []models.HotPost, err error) {
 	return result, err
 }
 
-func (a *mockPostAPI) SchedulePublish() error {
-	return nil
+func (a *mockPostAPI) SchedulePublish() ([]uint32, error) {
+	return nil, nil
 }
 func (a *mockPostAPI) PublishPipeline(ids []uint32) error {
 	return nil
+}
+func (a *mockPostAPI) GetPostAuthor(id uint32) (member models.Member, err error) {
+	return member, nil
 }
 
 func TestRoutePost(t *testing.T) {

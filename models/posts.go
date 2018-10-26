@@ -57,8 +57,8 @@ type PostInterface interface {
 	UpdatePost(p Post) error
 	Count(req *PostArgs) (result int, err error)
 	Hot() (result []HotPost, err error)
-	SchedulePublish() error
-	PublishPipeline(ids []uint32) error
+	SchedulePublish() (ids []uint32, err error)
+	GetPostAuthor(id uint32) (member Member, err error)
 }
 
 // PostTags is the wrap for NullString used especially in TaggedPostMember
@@ -457,45 +457,6 @@ func (a *postAPI) UpdatePost(p Post) error {
 		return errors.New("Post Not Found")
 	}
 
-	// if (p.PublishStatus.Valid == true && p.PublishStatus.Int != int64(PostPublishStatus["publish"].(float64))) || (p.Active.Valid == true && p.Active.Int != int64(PostStatus["active"].(float64))) {
-	if (p.PublishStatus.Valid && p.PublishStatus.Int != int64(config.Config.Models.PostPublishStatus["publish"])) ||
-		(p.Active.Valid && p.Active.Int != int64(config.Config.Models.Posts["active"])) {
-		// Case: Set a post to unpublished state, Delete the post from cache/searcher
-		go Algolia.DeletePost([]int{int(p.ID)})
-		go PostCache.Update(p)
-
-		if p.PublishStatus.Valid && p.PublishStatus.Int == int64(config.Config.Models.PostPublishStatus["draft"]) {
-			var isCustomEditor NullInt
-			query := `SELECT m.custom_editor FROM members AS m LEFT JOIN posts AS p ON p.author = m.id WHERE p.post_id = ?;`
-
-			err := DB.Get(&isCustomEditor, query, p.ID)
-			if err != nil {
-				log.Println("Get member flag of custom editor error: ", err.Error())
-				return err
-			}
-
-			if isCustomEditor.Valid && isCustomEditor.Int == 1 {
-				postDetail, err := a.GetPost(p.ID)
-				if err != nil {
-					log.Println("Fail to get post after updated: ", err.Error())
-					return err
-				}
-				go MailAPI.SendCECommentNotify(postDetail)
-				SlackHelper.SendCECommentNotify(postDetail)
-			}
-
-		}
-	} else if p.PublishStatus.Valid || p.Active.Valid {
-		// Case: Publish a post. Read whole post from database, then store to cache/searcher
-		// Case: Update a post.
-		err := a.PublishPipeline([]uint32{p.ID})
-		if err != nil {
-			log.Println("Handling publish pipeline fail when update all posts", err)
-			return err
-		}
-	} else {
-		go PostCache.Update(p)
-	}
 	return err
 }
 
@@ -540,27 +501,6 @@ func (a *postAPI) UpdateAll(req PostUpdateArgs) error {
 		return errors.New("More Rows Affected")
 	} else if rowCnt == 0 {
 		return errors.New("Posts Not Found")
-	}
-
-	// if (req.PublishStatus.Valid == true && req.PublishStatus.Int != int64(PostPublishStatus["publish"].(float64))) || (req.Active.Valid == true && req.Active.Int != int64(PostStatus["active"].(float64))) {
-	if (req.PublishStatus.Valid && req.PublishStatus.Int != int64(config.Config.Models.PostPublishStatus["publish"])) ||
-		(req.Active.Valid && req.Active.Int != int64(config.Config.Models.Posts["active"])) {
-		// Case: Set a post to unpublished state, Delete the post from cache/searcher
-		go Algolia.DeletePost(req.IDs)
-		go PostCache.UpdateAll(req)
-	} else if req.Active.Valid || req.PublishStatus.Valid {
-		// Case: Publish posts. Read those post from database, then store to cache/searcher
-		ids := make([]uint32, 0)
-		for _, id := range req.IDs {
-			ids = append(ids, uint32(id))
-		}
-		err := a.PublishPipeline(ids)
-		if err != nil {
-			log.Println("Handling publish pipeline fail when update all posts", err)
-			return err
-		}
-	} else {
-		go PostCache.UpdateAll(req)
 	}
 
 	return nil
@@ -610,12 +550,12 @@ func (a *postAPI) Hot() (result []HotPost, err error) {
 	return result, err
 }
 
-func (a *postAPI) SchedulePublish() error {
-	ids := make([]uint32, 0)
+func (a *postAPI) SchedulePublish() (ids []uint32, err error) {
+	ids = make([]uint32, 0)
 	rows, err := DB.Queryx("SELECT post_id FROM posts WHERE publish_status=3 AND published_at <= cast(now() as datetime);")
 	if err != nil {
 		log.Println("Getting post error when schedule publishing posts", err)
-		return err
+		return nil, err
 	}
 
 	for rows.Next() {
@@ -626,42 +566,25 @@ func (a *postAPI) SchedulePublish() error {
 		ids = append(ids, i)
 	}
 
+	if len(ids) == 0 {
+		return ids, err
+	}
+
 	_, err = DB.Exec("UPDATE posts SET publish_status=2 WHERE publish_status=3 AND published_at <= cast(now() as datetime);")
 	if err != nil {
 		log.Println("Schedul publishing posts fail", err)
-		return err
+		return nil, err
 	}
 
-	a.PublishPipeline(ids)
-
-	return nil
+	return ids, nil
 }
 
-func (a *postAPI) PublishPipeline(ids []uint32) error {
-	// Insert to Algolia / Redis PostCache / Redis notification
-	// Send notify mail / slack message
+func (a *postAPI) GetPostAuthor(id uint32) (member Member, err error) {
+	query := `SELECT m.* FROM members AS m LEFT JOIN posts AS p ON p.author = m.id WHERE p.post_id = ?;`
 
-	if len(ids) == 0 {
-		return nil
-	}
-
-	posts, err := a.GetPosts(NewPostArgs(func(arg *PostArgs) { arg.IDs = ids }))
+	err = DB.Get(&member, query, id)
 	if err != nil {
-		log.Println("Getting posts info fail when running publish pipeline", err)
-		return err
+		return member, err
 	}
-
-	validPosts := make([]TaggedPostMember, 0)
-	for _, post := range posts {
-		if post.Active.Int == int64(config.Config.Models.Posts["active"]) &&
-			post.PublishStatus.Int == int64(config.Config.Models.PostPublishStatus["publish"]) {
-
-			go NotificationGen.GeneratePostNotifications(post)
-			validPosts = append(validPosts, post)
-		}
-	}
-	go PostCache.SyncFromDataStorage()
-	go Algolia.InsertPost(validPosts)
-
-	return nil
+	return member, nil
 }
