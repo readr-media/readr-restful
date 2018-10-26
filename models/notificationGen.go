@@ -12,6 +12,12 @@ import (
 
 type notificationGenerator struct{}
 
+type NotificationGenInterface interface {
+	GenerateCommentNotifications(comment InsertCommentArgs) (err error)
+	GenerateProjectNotifications(resource interface{}, resourceTyep string) (err error)
+	GeneratePostNotifications(p TaggedPostMember) (err error)
+}
+
 func (c *notificationGenerator) getFollowers(resourceID int, resourceType int, emotion []int) (followers []int, err error) {
 	fInterface, err := FollowingAPI.Get(&GetFollowerMemberIDsArgs{int64(resourceID), resourceType, emotion})
 	if err != nil {
@@ -39,7 +45,7 @@ func (c *notificationGenerator) mergeFollowerSlices(a []int, b []int) (r []int) 
 	return r
 }
 
-func (c *notificationGenerator) GenerateCommentNotifications(comment InsertCommentArgs) (err error) {
+func (c notificationGenerator) GenerateCommentNotifications(comment InsertCommentArgs) (err error) {
 	ns := Notifications{}
 	resourceID := int(comment.ResourceID.Int)
 	resourceName := comment.ResourceName.String
@@ -340,7 +346,7 @@ func (c *notificationGenerator) GenerateCommentNotifications(comment InsertComme
 	return err
 }
 
-func (c *notificationGenerator) GenerateProjectNotifications(resource interface{}, resourceTyep string) (err error) { //memo, report, project
+func (c notificationGenerator) GenerateProjectNotifications(resource interface{}, resourceTyep string) (err error) { //memo, report, project
 	ns := Notifications{}
 
 	switch resourceTyep {
@@ -437,7 +443,7 @@ func (c *notificationGenerator) GenerateProjectNotifications(resource interface{
 	return err
 }
 
-func (c *notificationGenerator) GeneratePostNotifications(p TaggedPostMember) (err error) {
+func (c notificationGenerator) GeneratePostNotifications(p TaggedPostMember) (err error) {
 	ns := Notifications{}
 
 	authorInfo, err := MemberAPI.GetMember("ID", strconv.Itoa(int(p.Author.Int)))
@@ -514,4 +520,4 @@ func (c *notificationGenerator) generateTagNotifications(p Project, eventType st
 	return err
 }
 
-var NotificationGen notificationGenerator = notificationGenerator{}
+var NotificationGen NotificationGenInterface = notificationGenerator{}

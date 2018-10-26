@@ -1,4 +1,4 @@
-package models
+package mail
 
 import (
 	"bytes"
@@ -9,11 +9,13 @@ import (
 	"strings"
 	"time"
 
+	"encoding/json"
 	"text/template"
 
 	"github.com/garyburd/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/utils"
 	"gopkg.in/gomail.v2"
 )
@@ -28,26 +30,19 @@ type MailArgs struct {
 }
 
 type MailInterface interface {
-	SetDialer(dialer gomail.Dialer)
 	Send(args MailArgs) (err error)
-	SendUpdateNote(args GetFollowMapArgs) (err error)
-	SendUpdateNoteAllResource(args GetFollowMapArgs) (err error)
+	SendUpdateNote(args models.GetFollowMapArgs) (err error)
+	SendUpdateNoteAllResource(args models.GetFollowMapArgs) (err error)
 	GenDailyDigest() (err error)
 	SendDailyDigest(receiver []string) (err error)
-	SendCECommentNotify(tmp TaggedPostMember) (err error)
+	SendCECommentNotify(tmp models.TaggedPostMember) (err error)
 
-	SendReportPublishMail(report ReportAuthors) (err error)
-	SendMemoPublishMail(memo MemoDetail) (err error)
-	SendFollowProjectMail(args FollowArgs) (err error)
+	SendReportPublishMail(report models.ReportAuthors) (err error)
+	SendMemoPublishMail(memo models.MemoDetail) (err error)
+	SendFollowProjectMail(args models.FollowArgs) (err error)
 }
 
-type mailApi struct {
-	Dialer gomail.Dialer
-}
-
-func (m *mailApi) SetDialer(dialer gomail.Dialer) {
-	m.Dialer = dialer
-}
+type mailApi struct{}
 
 func (m *mailApi) Send(args MailArgs) (err error) {
 	receivers := make([]mailReceiver, 0)
@@ -65,32 +60,46 @@ func (m *mailApi) Send(args MailArgs) (err error) {
 	}
 
 	msg := gomail.NewMessage()
-	msg.SetHeader("From", msg.FormatAddress(config.Config.Mail.User, config.Config.Mail.UserName))
-	msg.SetHeader("To", filteredReceivers...)
-	msg.SetHeader("Cc", args.CC...)
-	msg.SetHeader("Bcc", args.BCC...)
-	msg.SetHeader("Subject", args.Subject)
-	msg.SetBody("text/html", args.Payload)
+	reqBody, _ := json.Marshal(map[string]interface{}{
+		"user":     config.Config.Mail.User,
+		"password": config.Config.Mail.Password,
+		"from":     msg.FormatAddress(config.Config.Mail.User, config.Config.Mail.UserName),
+		"to":       filteredReceivers,
+		"cc":       args.CC,
+		"bcc":      args.BCC,
+		"subject":  args.Subject,
+		"body":     args.Payload,
+	})
 
-	if err = m.Dialer.DialAndSend(msg); err != nil {
-		fmt.Println(err.Error())
+	resp, body, err := utils.HTTPRequest("POST", config.Config.Mail.Host,
+		map[string]string{}, reqBody)
+
+	if err != nil {
+		log.Printf("Send mail error: %v\n", err)
+		return err
 	}
+
+	if resp.StatusCode != 200 {
+		log.Println("Send mail error: %v, status_code: %v", body, resp.StatusCode)
+		return errors.New(string(body))
+	}
+
 	return err
 }
 
-func (m *mailApi) SendUpdateNote(args GetFollowMapArgs) (err error) {
+func (m *mailApi) SendUpdateNote(args models.GetFollowMapArgs) (err error) {
 
-	mapInterface, err := FollowingAPI.Get(&args)
+	mapInterface, err := models.FollowingAPI.Get(&args)
 	if err != nil {
 		return err
 	}
-	followingMap, ok := mapInterface.([]FollowingMapItem)
+	followingMap, ok := mapInterface.([]models.FollowingMapItem)
 	if !ok {
-		log.Println("Error assert mapInterface @ SendIpdateNote ")
+		log.Println("Error assert mapInterface @ SendUpdateNote ")
 	}
 	var (
 		follower_index = make(map[string][]string)
-		follower_info  = make(map[string]Member)
+		follower_info  = make(map[string]models.Member)
 		followers_list []string
 	)
 
@@ -105,7 +114,7 @@ func (m *mailApi) SendUpdateNote(args GetFollowMapArgs) (err error) {
 		return nil
 	}
 
-	members, err := MemberAPI.GetMembers(&MemberArgs{IDs: followers_list, Sorting: "member_id", MaxResult: uint8(len(followers_list)), Page: 1})
+	members, err := models.MemberAPI.GetMembers(&models.MemberArgs{IDs: followers_list, Sorting: "member_id", MaxResult: uint8(len(followers_list)), Page: 1})
 	if err != nil {
 		log.Println(err.Error())
 		return err
@@ -129,22 +138,22 @@ func (m *mailApi) SendUpdateNote(args GetFollowMapArgs) (err error) {
 	return nil
 }
 
-func (m *mailApi) SendUpdateNoteAllResource(args GetFollowMapArgs) (err error) {
+func (m *mailApi) SendUpdateNoteAllResource(args models.GetFollowMapArgs) (err error) {
 
 	var (
 		follower_reverse_index = make(map[string][]string)
 		follower_index         = make(map[string]map[string][]string)
 		follower_group_index   = make(map[string]map[string][]string)
-		follower_info          = make(map[string]Member)
+		follower_info          = make(map[string]models.Member)
 		//resource_list          = make(map[string][]string)
 		followers_list []string
 	)
 	for _, t := range []string{"member", "post", "project"} {
-		mapInterface, err := FollowingAPI.Get(&GetFollowMapArgs{Resource: Resource{ResourceName: t}, UpdateAfter: args.UpdateAfter})
+		mapInterface, err := models.FollowingAPI.Get(&models.GetFollowMapArgs{Resource: models.Resource{ResourceName: t}, UpdateAfter: args.UpdateAfter})
 		if err != nil {
 			return err
 		}
-		followingMap, ok := mapInterface.([]FollowingMapItem)
+		followingMap, ok := mapInterface.([]models.FollowingMapItem)
 		if !ok {
 			log.Println("Error assert mapInterface @ SendIpdateNote ")
 		}
@@ -163,7 +172,7 @@ func (m *mailApi) SendUpdateNoteAllResource(args GetFollowMapArgs) (err error) {
 		return nil
 	}
 
-	members, err := MemberAPI.GetMembers(&MemberArgs{IDs: followers_list, Sorting: "member_id", MaxResult: uint8(len(followers_list)), Page: 1})
+	members, err := models.MemberAPI.GetMembers(&models.MemberArgs{IDs: followers_list, Sorting: "member_id", MaxResult: uint8(len(followers_list)), Page: 1})
 	if err != nil {
 		log.Println(err.Error())
 		return err
@@ -210,7 +219,8 @@ type dailyDigest struct {
 	HasPost      bool
 	HasReadrPost bool
 	SettingLink  string
-	UTM          string
+	MailID       string
+	CampaignID   string
 }
 
 func (d *dailyDigest) hasContent() bool {
@@ -275,7 +285,7 @@ func (m *mailApi) GetSettingLink() map[int]string {
 func (m *mailApi) GenDailyDigest() (err error) {
 	settingLink := m.GetSettingLink()
 
-	conn := RedisHelper.Conn()
+	conn := models.RedisHelper.Conn()
 	defer conn.Close()
 
 	// Delete daily mail entry in the begining.
@@ -341,7 +351,8 @@ OLP:
 	data.HasMemo = len(data.Memos) > 0
 	data.HasPost = len(data.Posts) > 0
 	data.HasReadrPost = len(data.ReadrPosts) > 0
-	data.UTM = fmt.Sprintf("DailyDigest_%s", date.Format("20060102"))
+	data.MailID = fmt.Sprintf("DailyDigest_%s", date.Format("20060102"))
+	data.CampaignID = "DailyDigest"
 
 	for k, v := range settingLink {
 		var s string
@@ -366,7 +377,7 @@ OLP:
 func (m *mailApi) getDailyReport() (reports []dailyReport, err error) {
 
 	query := fmt.Sprintf("SELECT id, title, hero_image, description, slug FROM reports WHERE published_at > (NOW() - INTERVAL 1 DAY) AND active = %d AND publish_status = %d;", config.Config.Models.Reports["active"], config.Config.Models.ReportsPublishStatus["publish"])
-	rows, err := DB.Queryx(query)
+	rows, err := models.DB.Queryx(query)
 	for rows.Next() {
 		var report dailyReport
 		if err = rows.StructScan(&report); err != nil {
@@ -382,7 +393,7 @@ func (m *mailApi) getDailyReport() (reports []dailyReport, err error) {
 func (m *mailApi) getDailyMemo() (memos []dailyMemo, err error) {
 
 	query := fmt.Sprintf("SELECT m.memo_id AS id, m.title AS title, m.content AS content, p.slug AS slug, e.id AS author_id, e.nickname AS author, e.profile_image AS image FROM memos AS m LEFT JOIN members AS e ON m.author = e.id LEFT JOIN projects AS p ON p.project_id = m.project_id WHERE m.published_at > (NOW() - INTERVAL 1 DAY) AND m.active = %d AND m.publish_status = %d;", config.Config.Models.Memos["active"], config.Config.Models.MemosPublishStatus["publish"])
-	rows, err := DB.Queryx(query)
+	rows, err := models.DB.Queryx(query)
 	for rows.Next() {
 		var memo dailyMemo
 		if err = rows.StructScan(&memo); err != nil {
@@ -398,7 +409,7 @@ func (m *mailApi) getDailyMemo() (memos []dailyMemo, err error) {
 func (m *mailApi) getDailyPost() (posts []dailyPost, err error) {
 
 	query := fmt.Sprintf(`SELECT p.post_id AS id, p.title AS title, p.content AS content, IFNULL(p.link, "") AS link, IFNULL(p.link_title, "") AS link_title, IFNULL(p.link_image, "") AS link_image, m.id AS author_id, m.nickname AS author, IFNULL(m.profile_image, "") AS image FROM posts AS p LEFT JOIN members AS m ON p.author = m.id WHERE p.published_at > (NOW() - INTERVAL 1 DAY) AND p.active = %d AND p.publish_status = %d;`, config.Config.Models.Posts["active"], config.Config.Models.PostPublishStatus["publish"])
-	rows, err := DB.Queryx(query)
+	rows, err := models.DB.Queryx(query)
 	for rows.Next() {
 		var post dailyPost
 		if err = rows.StructScan(&post); err != nil {
@@ -443,11 +454,11 @@ func (m *mailApi) getMailingList(listArgs ...interface{}) (list []mailReceiver, 
 			return list, err
 		}
 
-		query = DB.Rebind(query)
-		rows, err = DB.Queryx(query, args...)
+		query = models.DB.Rebind(query)
+		rows, err = models.DB.Queryx(query, args...)
 	} else {
 		query := fmt.Sprintf("SELECT mail, role FROM members WHERE active = %d AND daily_push = %d", config.Config.Models.Members["active"], config.Config.Models.MemberDailyPush["active"])
-		rows, err = DB.Queryx(query)
+		rows, err = models.DB.Queryx(query)
 	}
 	for rows.Next() {
 		var receiver mailReceiver
@@ -500,7 +511,7 @@ func (m *mailApi) sendToAll(t string, s string, mailList []string) (err error) {
 }
 
 func (m *mailApi) SendDailyDigest(mailList []string) (err error) {
-	conn := RedisHelper.Conn()
+	conn := models.RedisHelper.Conn()
 	defer conn.Close()
 
 	settingLink := m.GetSettingLink()
@@ -554,10 +565,10 @@ type reportPublishData struct {
 	Description      string
 	Slug             string
 	SettingLink      string
-	UTM              string
+	MailID           string
 }
 
-func (m *mailApi) SendReportPublishMail(report ReportAuthors) (err error) {
+func (m *mailApi) SendReportPublishMail(report models.ReportAuthors) (err error) {
 	// newReport.html
 	SettingLink := m.GetSettingLink()
 	data := reportPublishData{
@@ -567,7 +578,7 @@ func (m *mailApi) SendReportPublishMail(report ReportAuthors) (err error) {
 		Title:            report.Report.Title.String,
 		Description:      report.Report.Description.String,
 		Slug:             report.Report.Slug.String,
-		UTM:              fmt.Sprintf("ProjectUpdate_%s", report.Project.Slug.String),
+		MailID:           fmt.Sprintf("ProjectUpdate_%s", report.Project.Slug.String),
 	}
 
 	mailReceiverList, err := m.getProjectFollowerMailList(report.Project.ID)
@@ -613,10 +624,10 @@ type memoPublishData struct {
 	AuthorProfileImage string
 	SettingLink        string
 	UnfollowLink       string
-	UTM                string
+	MailID             string
 }
 
-func (m *mailApi) SendMemoPublishMail(memo MemoDetail) (err error) {
+func (m *mailApi) SendMemoPublishMail(memo models.MemoDetail) (err error) {
 	// newMemoPaid.html
 	// newMemoUnPaid.html
 	SettingLink := m.GetSettingLink()
@@ -633,7 +644,7 @@ func (m *mailApi) SendMemoPublishMail(memo MemoDetail) (err error) {
 		CreatedAt:          fmt.Sprintf("%d/%02d/%02d", memo.Memo.CreatedAt.Time.Year(), memo.Memo.CreatedAt.Time.Month(), memo.Memo.CreatedAt.Time.Day()),
 		AuthorNickname:     memo.Authors.Nickname.String,
 		AuthorProfileImage: fmt.Sprintf("https://www.readr.tw%s", memo.Authors.ProfileImage.String),
-		UTM:                fmt.Sprintf("ProjectUpdate_%s", memo.Project.Project.Slug.String),
+		MailID:             fmt.Sprintf("ProjectUpdate_%s", memo.Project.Project.Slug.String),
 	}
 
 	mailReceiverList, err := m.getProjectFollowerMailList(memo.Project.ID)
@@ -684,13 +695,13 @@ func (m *mailApi) SendMemoPublishMail(memo MemoDetail) (err error) {
 	return nil
 }
 
-func (m *mailApi) SendFollowProjectMail(args FollowArgs) (err error) {
-	project, err := ProjectAPI.GetProject(Project{ID: int(args.Object)})
+func (m *mailApi) SendFollowProjectMail(args models.FollowArgs) (err error) {
+	project, err := models.ProjectAPI.GetProject(models.Project{ID: int(args.Object)})
 	if err != nil {
 		log.Println("Error get project when SendFollowProjectMail: ", err)
 		return err
 	}
-	member, err := MemberAPI.GetMember("id", strconv.Itoa(int(args.Subject)))
+	member, err := models.MemberAPI.GetMember("id", strconv.Itoa(int(args.Subject)))
 	if err != nil {
 		log.Println("Error get member when SendFollowProjectMail: ", err)
 		return err
@@ -703,7 +714,7 @@ func (m *mailApi) SendFollowProjectMail(args FollowArgs) (err error) {
 		"ProjectTitle": project.Title.String,
 		"ProjectSlug":  project.Slug.String,
 		"SettingLink":  m.GetSettingLink()[int(member.Role.Int)],
-		"UTM":          fmt.Sprintf("ProjectFollow_%s", project.Slug.String),
+		"MailID":       fmt.Sprintf("ProjectFollow_%s", project.Slug.String),
 	}
 
 	buf := new(bytes.Buffer)
@@ -739,7 +750,7 @@ func (m *mailApi) getProjectFollowerMailList(id int) (receiveres []mailReceiver,
 		config.Config.Models.FollowingType["project"], 0,
 		id)
 
-	rows, err := DB.Queryx(query)
+	rows, err := models.DB.Queryx(query)
 	if err != nil {
 		log.Println("Get followers of project %d error when SendProjectUpdateMail", id)
 		return receiveres, err
@@ -755,7 +766,7 @@ func (m *mailApi) getProjectFollowerMailList(id int) (receiveres []mailReceiver,
 	return receiveres, err
 }
 
-func (m *mailApi) SendCECommentNotify(tpm TaggedPostMember) (err error) {
+func (m *mailApi) SendCECommentNotify(tpm models.TaggedPostMember) (err error) {
 	t, err := template.New("CEComment_notify").Parse(`
 		客座總編 <strong>{{.Member.Nickname.String}}</strong> 已發布一篇新評論：<strong>{{.Post.Title.String}}</strong> <br>
 		新聞連結： <strong>{{.Post.Link.String}}</strong> <br>

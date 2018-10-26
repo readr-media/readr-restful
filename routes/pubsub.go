@@ -16,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
+	"github.com/readr-media/readr-restful/pkg/mail"
 	"github.com/readr-media/readr-restful/utils"
 )
 
@@ -93,7 +94,7 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 					// Send Follow mail and Follow notification
 					// Case: If user followed a project
 					if params.Type == config.Config.Models.FollowingType["project"] {
-						go models.MailAPI.SendFollowProjectMail(params)
+						go mail.MailAPI.SendFollowProjectMail(params)
 					}
 				}
 			case "unfollow":

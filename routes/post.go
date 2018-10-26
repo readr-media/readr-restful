@@ -2,6 +2,7 @@ package routes
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -11,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
+	"github.com/readr-media/readr-restful/pkg/mail"
 )
 
 type taggedPost struct {
@@ -151,8 +153,11 @@ func (r *postHandler) Post(c *gin.Context) {
 		} else {
 			c.JSON(http.StatusBadRequest, gin.H{"Error": "Neither updated_by or author is valid"})
 		}
-
 	}
+	if post.PublishStatus.Valid && post.PublishStatus.Int == int64(config.Config.Models.PostPublishStatus["publish"]) && !post.PublishedAt.Valid {
+		post.PublishedAt = models.NullTime{Time: time.Now(), Valid: true}
+	}
+
 	postID, err := models.PostAPI.InsertPost(post.Post)
 	if err != nil {
 		switch err.Error() {
@@ -176,7 +181,7 @@ func (r *postHandler) Post(c *gin.Context) {
 	// Only do the pipeline when it's published
 	if (!post.Active.Valid || post.Active.Int != int64(config.Config.Models.Posts["deactive"])) &&
 		(post.PublishStatus.Valid && post.PublishStatus.Int == int64(config.Config.Models.PostPublishStatus["publish"])) {
-		models.PostAPI.PublishPipeline([]uint32{uint32(postID)})
+		r.PublishPipeline([]uint32{uint32(postID)})
 	}
 	c.Status(http.StatusOK)
 }
@@ -199,6 +204,9 @@ func (r *postHandler) Put(c *gin.Context) {
 	if post.CreatedAt.Valid {
 		post.CreatedAt.Time = time.Time{}
 		post.CreatedAt.Valid = false
+	}
+	if post.PublishStatus.Valid && post.PublishStatus.Int == int64(config.Config.Models.PostPublishStatus["publish"]) && !post.PublishedAt.Valid {
+		post.PublishedAt = models.NullTime{Time: time.Now(), Valid: true}
 	}
 	post.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
 
@@ -230,6 +238,41 @@ func (r *postHandler) Put(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 			return
 		}
+	}
+
+	if (post.PublishStatus.Valid && post.PublishStatus.Int != int64(config.Config.Models.PostPublishStatus["publish"])) ||
+		(post.Active.Valid && post.Active.Int != int64(config.Config.Models.Posts["active"])) {
+		// Case: Set a post to unpublished state, Delete the post from cache/searcher
+		go models.Algolia.DeletePost([]int{int(post.ID)})
+		go models.PostCache.Update(post.Post)
+
+		if post.PublishStatus.Valid && post.PublishStatus.Int == int64(config.Config.Models.PostPublishStatus["draft"]) {
+			m, err := models.PostAPI.GetPostAuthor(post.ID)
+			if err != nil {
+				log.Println("Get post author error: ", err.Error())
+				return
+			}
+			if m.CustomEditor.Valid && m.CustomEditor.Bool == true {
+				postDetail, err := models.PostAPI.GetPost(post.ID)
+				if err != nil {
+					log.Println("Fail to get post after updated: ", err.Error())
+					return
+				}
+				go mail.MailAPI.SendCECommentNotify(postDetail)
+				models.SlackHelper.SendCECommentNotify(postDetail)
+			}
+
+		}
+	} else if post.PublishStatus.Valid || post.Active.Valid {
+		// Case: Publish a post. Read whole post from database, then store to cache/searcher
+		// Case: Update a post.
+		err := r.PublishPipeline([]uint32{post.ID})
+		if err != nil {
+			log.Println("Handling publish pipeline fail when update all posts", err)
+			return
+		}
+	} else {
+		go models.PostCache.Update(post.Post)
 	}
 
 	c.Status(http.StatusOK)
@@ -274,6 +317,10 @@ func (r *postHandler) DeleteAll(c *gin.Context) {
 			return
 		}
 	}
+
+	go models.Algolia.DeletePost(params.IDs)
+	go models.PostCache.UpdateAll(params)
+
 	c.Status(http.StatusOK)
 }
 
@@ -320,7 +367,16 @@ func (r *postHandler) PublishAll(c *gin.Context) {
 			return
 		}
 	}
-	c.Status(http.StatusOK)
+
+	publishedIDs := make([]uint32, 0)
+	for _, id := range payload.IDs {
+		publishedIDs = append(publishedIDs, uint32(id))
+	}
+	err = r.PublishPipeline(publishedIDs)
+	if err != nil {
+		log.Println("Handling publish pipeline fail when update all posts", err)
+		return
+	}
 }
 
 func (r *postHandler) Count(c *gin.Context) {
@@ -363,6 +419,35 @@ func (r *postHandler) validatePostSorting(sort string) bool {
 		}
 	}
 	return true
+}
+
+func (r *postHandler) PublishPipeline(ids []uint32) error {
+	// Insert to Algolia / Redis PostCache / Redis notification
+	// Send notify mail / slack message
+
+	if len(ids) == 0 {
+		return nil
+	}
+
+	posts, err := models.PostAPI.GetPosts(models.NewPostArgs(func(arg *models.PostArgs) { arg.IDs = ids }))
+	if err != nil {
+		log.Println("Getting posts info fail when running publish pipeline", err)
+		return err
+	}
+
+	validPosts := make([]models.TaggedPostMember, 0)
+	for _, post := range posts {
+		if post.Active.Int == int64(config.Config.Models.Posts["active"]) &&
+			post.PublishStatus.Int == int64(config.Config.Models.PostPublishStatus["publish"]) {
+
+			go models.NotificationGen.GeneratePostNotifications(post)
+			validPosts = append(validPosts, post)
+		}
+	}
+	go models.PostCache.SyncFromDataStorage()
+	go models.Algolia.InsertPost(validPosts)
+
+	return nil
 }
 
 func (r *postHandler) SetRoutes(router *gin.Engine) {

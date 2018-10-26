@@ -15,6 +15,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
+	"github.com/readr-media/readr-restful/pkg/mail"
 )
 
 // func init() {
@@ -82,9 +83,10 @@ func TestMain(m *testing.M) {
 	models.PermissionAPI = new(mockPermissionAPI)
 	models.TagAPI = new(mockTagAPI)
 	models.MemoAPI = new(mockMemoAPI)
-	models.MailAPI = new(mockMailAPI)
+	mail.MailAPI = new(MockMailAPI)
 	models.ReportAPI = new(mockReportAPI)
 	models.PointsAPI = new(mockPointsAPI)
+	models.NotificationGen = new(mockNotificationGenerator)
 
 	models.FollowCache = new(mockFollowCache)
 	//models.CommentCache = new(mockCommentCache)
@@ -219,6 +221,34 @@ var mockPostDS = []models.Post{
 }
 
 var mockPermissionDS = []models.Permission{}
+
+// Mocks Objects for External Service Controllers
+type mockNotificationGenerator struct{}
+
+func (m mockNotificationGenerator) GenerateCommentNotifications(comment models.InsertCommentArgs) (err error) {
+	return nil
+}
+func (m mockNotificationGenerator) GenerateProjectNotifications(resource interface{}, resourceTyep string) (err error) {
+	return nil
+}
+func (m mockNotificationGenerator) GeneratePostNotifications(p models.TaggedPostMember) (err error) {
+	return nil
+}
+
+type mockMailAPI struct{}
+
+func (m *mockMailAPI) Send(args mail.MailArgs) (err error)                                { return nil }
+func (m *mockMailAPI) SendUpdateNote(args models.GetFollowMapArgs) (err error)            { return nil }
+func (m *mockMailAPI) SendUpdateNoteAllResource(args models.GetFollowMapArgs) (err error) { return nil }
+func (m *mockMailAPI) GenDailyDigest() (err error)                                        { return err }
+func (m *mockMailAPI) SendDailyDigest(s []string) (err error)                             { return err }
+func (m *mockMailAPI) SendProjectUpdateMail(resource interface{}, resourceTyep string) (err error) {
+	return err
+}
+func (m *mockMailAPI) SendCECommentNotify(tmp models.TaggedPostMember) (err error)   { return nil }
+func (m *mockMailAPI) SendReportPublishMail(report models.ReportAuthors) (err error) { return nil }
+func (m *mockMailAPI) SendMemoPublishMail(memo models.MemoDetail) (err error)        { return nil }
+func (m *mockMailAPI) SendFollowProjectMail(args models.FollowArgs) (err error)      { return nil }
 
 // func getRouter() *gin.Engine {
 // 	r := gin.Default()

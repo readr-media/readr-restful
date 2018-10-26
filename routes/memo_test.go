@@ -102,18 +102,18 @@ func (m *mockMemoAPI) GetMemos(args *models.MemoGetArgs) (memos []models.MemoDet
 	}
 	return []models.MemoDetail{}, nil
 }
-func (m *mockMemoAPI) InsertMemo(memo models.Memo) (err error) {
+func (m *mockMemoAPI) InsertMemo(memo models.Memo) (lastID int, err error) {
 	if memo.ID == 0 {
 		memo.ID = len(mockMemoDS) + 1
 	}
 	for _, v := range mockMemoDS {
 		if v.ID == memo.ID {
-			return errors.New("Duplicate entry")
+			return 0, errors.New("Duplicate entry")
 		}
 	}
 	mockMemoDS = append(mockMemoDS, memo)
 
-	return nil
+	return len(mockMemoDS), nil
 }
 func (m *mockMemoAPI) UpdateMemo(memo models.Memo) (err error) {
 	for _, v := range mockMemoDS {
@@ -143,7 +143,7 @@ func TestRouteMemos(t *testing.T) {
 		models.Memo{Title: models.NullString{"MemoTestDefault3", true}, Author: models.NullInt{131, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}},
 		models.Memo{Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullInt{135, true}, Project: models.NullInt{422, true}, Active: models.NullInt{1, true}},
 	} {
-		err := models.MemoAPI.InsertMemo(memo)
+		_, err := models.MemoAPI.InsertMemo(memo)
 		if err != nil {
 			log.Printf("Init memo test fail %s", err.Error())
 		}
