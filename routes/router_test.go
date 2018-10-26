@@ -83,7 +83,7 @@ func TestMain(m *testing.M) {
 	models.PermissionAPI = new(mockPermissionAPI)
 	models.TagAPI = new(mockTagAPI)
 	models.MemoAPI = new(mockMemoAPI)
-	mail.MailAPI = new(MockMailAPI)
+	mail.MailAPI = new(mockMailAPI)
 	models.ReportAPI = new(mockReportAPI)
 	models.PointsAPI = new(mockPointsAPI)
 	models.NotificationGen = new(mockNotificationGenerator)
