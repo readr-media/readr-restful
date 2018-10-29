@@ -27,6 +27,7 @@ type MailArgs struct {
 	Subject  string   `json:"subject"`
 	Payload  string   `json:"content"`
 	Type     string   `json:"type"`
+	Bulk     bool
 }
 
 type MailInterface interface {
@@ -69,6 +70,7 @@ func (m *mailApi) Send(args MailArgs) (err error) {
 		"bcc":      args.BCC,
 		"subject":  args.Subject,
 		"body":     args.Payload,
+		"bulk":     args.Bulk,
 	})
 
 	resp, body, err := utils.HTTPRequest("POST", config.Config.Mail.Host,
@@ -498,6 +500,7 @@ func (m *mailApi) sendToAll(t string, s string, mailList []string) (err error) {
 			Subject: t,
 			Payload: s,
 			BCC:     receiver,
+			Bulk:    true,
 		}
 		err = m.Send(args)
 		if err != nil {
