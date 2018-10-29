@@ -13,18 +13,30 @@ pipeline:
       *{{build.author}}* give *{{build.branch}}* a little push.
     when:
       event: [push]
-      branch: [master, dev]
+      branch: [master, dev, stage]
 
   get_config:
     image: gcr.io/mirrormedia-1470651750304/drone-cloud-sdk:latest
     secrets: [google_credentials]
     commands:
-    - gcloud source repos clone default default
-    - cp default/readr-restful/main.json config/main.json
-    - cp default/readr-restful/*.html config/
+    - gcloud source repos clone default ../default
+    - cp ../default/readr-restful/main.json ./config/main.json
+    - cp ../default/readr-restful/*.html ./config/
     when:
       event: [push]
-      branch: [master, dev]
+      branch: [dev]
+
+  get_stage_config:
+    image: gcr.io/mirrormedia-1470651750304/drone-cloud-sdk:latest
+    secrets: [google_credentials]
+    commands:
+    - gcloud source repos clone default ../default
+    - cp ../default/readr-restful/production/main.json ./config/main.json
+    - cp ../default/readr-restful/production/.kube.yml ./.kube.yml
+    - cp ../default/readr-restful/*.html ./config/
+    when:
+      event: [push]
+      branch: [stage]
 
   builds:
     image: golang:1.9-alpine
@@ -32,20 +44,18 @@ pipeline:
     - apk update
     - apk add git make
     - make build-alpine
-    # - go get github.com/robfig/cron
-    # - go get github.com/garyburd/redigo/redis
-    # - go get github.com/gin-gonic/gin
-    # - go get github.com/readr-media/readr-restful/models
-    # - go get github.com/go-sql-driver/mysql
-    # - go get github.com/jmoiron/sqlx
-    # - go get github.com/spf13/viper
-    # - go get golang.org/x/crypto/scrypt
-    # - go get gopkg.in/gomail.v2
-    # - go test -v -cover
-    # - env GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -a -o app main.go
     when:
       event: [push]
-      branch: [master, dev]
+      branch: dev
+
+  build_stage:
+    image: golang:1.9-alpine
+    commands:
+    - apk add --update git make
+    - make build-stage
+    when:
+      event: push
+      branch: stage
 
   publish:
     image: plugins/gcr
@@ -56,7 +66,7 @@ pipeline:
     secrets: [google_credentials]
     when:
       event: [push]
-      branch: [master, dev]
+      branch: [master, dev, stage]
 
   deploy_dev:
     image: nytimes/drone-gke:develop
@@ -77,6 +87,26 @@ pipeline:
       event: [push]
       branch: dev
 
+  deploy_stage:
+    image: nytimes/drone-gke:develop
+    zone: asia-east1-a
+    cluster: prod-readr
+    namespace: default
+    # For debugging
+    dry_run: false
+    verbose: true
+    secrets:
+      - source: google_credentials
+        target: token
+    vars:
+      image: gcr.io/mirrormedia-1470651750304/${DRONE_REPO_NAME}:${DRONE_COMMIT_AUTHOR}_${DRONE_BUILD_NUMBER}
+      app: readr-restful
+      tier: backend-stage
+      branch: stage
+    when:
+      event: [push]
+      branch: stage
+
   finish_slack:
     image: plugins/slack
     channel: jenkins
@@ -86,7 +116,7 @@ pipeline:
     when:
       status: [success, failure]
       event: [push]
-      branch: [master, dev]
+      branch: [master, dev, stage]
     template: >
       {{#success build.status}}
         Build<${DRONE_BUILD_LINK}|#{{build.number}}> *success* ${DRONE_REPO_NAME}:${DRONE_COMMIT_AUTHOR}_${DRONE_BUILD_NUMBER} was well served.
