@@ -346,12 +346,6 @@ func (a *reportAPI) InsertReport(p Report) (lastID int, err error) {
 
 func (a *reportAPI) UpdateReport(p Report) error {
 	tags := getStructDBTags("partial", p)
-	for k, v := range tags {
-		if v == "project_id" {
-			tags = append(tags[:k], tags[k+1:]...)
-			break
-		}
-	}
 	fields := makeFieldString("update", `%s = :%s`, tags)
 	query := fmt.Sprintf(`UPDATE reports SET %s WHERE id = :id`, strings.Join(fields, ", "))
 	result, err := DB.NamedExec(query, p)
