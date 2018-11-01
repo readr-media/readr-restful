@@ -144,7 +144,7 @@ func (r *postHandler) Post(c *gin.Context) {
 		post.Active = models.NullInt{int64(config.Config.Models.Posts["active"]), true}
 	}
 	if !post.PublishStatus.Valid {
-		post.PublishStatus = models.NullInt{int64(config.Config.Models.PostPublishStatus["draft"]), true}
+		post.PublishStatus = models.NullInt{int64(config.Config.Models.PostPublishStatus["pending"]), true}
 	}
 	if !post.UpdatedBy.Valid {
 		if post.Author.Valid {
@@ -246,7 +246,7 @@ func (r *postHandler) Put(c *gin.Context) {
 		go models.Algolia.DeletePost([]int{int(post.ID)})
 		go models.PostCache.Update(post.Post)
 
-		if post.PublishStatus.Valid && post.PublishStatus.Int == int64(config.Config.Models.PostPublishStatus["draft"]) {
+		if post.PublishStatus.Valid && post.PublishStatus.Int == int64(config.Config.Models.PostPublishStatus["pending"]) {
 			m, err := models.PostAPI.GetPostAuthor(post.ID)
 			if err != nil {
 				log.Println("Get post author error: ", err.Error())
