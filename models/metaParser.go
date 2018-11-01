@@ -46,6 +46,11 @@ func (o *ogParser) GetOGInfoFromUrl(urlStr string) (*OGInfo, error) {
 		req.Header.Del("Cookie")
 	}
 
+	if regexp.MustCompile("\\.youtube\\.com\\/").MatchString(urlStr) {
+		req.Header.Del("User-Agent")
+		req.Header.Add("User-Agent", "facebookexternalhit/1.1")
+	}
+
 	resp, err := client.Do(req)
 
 	if err != nil {
