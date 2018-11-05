@@ -89,7 +89,9 @@
             "review": 9,
             "news": 9,
             "video": 9,
-            "live": 9
+            "live": 9,
+            "report": 9,
+            "memo": 9
         },
         "post_publish_status":{
             "unpublish": 9,
@@ -182,6 +184,7 @@
             "tagged_post": 0
         }
     },
+    "readr_id": 0,
     "domain_name": "http://www.foo.bar",
     "payment_service": {
         "partner_key": "",

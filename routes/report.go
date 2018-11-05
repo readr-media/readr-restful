@@ -16,6 +16,7 @@ import (
 	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/pkg/mail"
+	"github.com/readr-media/readr-restful/utils"
 )
 
 type reportHandler struct {
@@ -298,7 +299,8 @@ func (r *reportHandler) Put(c *gin.Context) {
 				r.UpdateHandler([]int{report.ID})
 			}
 		}
-
+	} else {
+		r.UpdateHandler([]int{report.ID})
 	}
 	c.Status(http.StatusOK)
 }
@@ -426,6 +428,7 @@ func (r *reportHandler) PublishHandler(ids []int) error {
 	for _, report := range reports {
 		go models.NotificationGen.GenerateProjectNotifications(report, "report")
 		go mail.MailAPI.SendReportPublishMail(report)
+		go r.insertReportPost(report)
 	}
 
 	return nil
@@ -454,22 +457,93 @@ func (r *reportHandler) UpdateHandler(ids []int, params ...int64) error {
 		return nil
 	}
 
-	projectIDs := make([]int, 0)
 	for _, report := range reports {
-		projectIDs = append(projectIDs, report.Project.ID)
-	}
-
-	for _, projectID := range projectIDs {
-		p := models.Project{ID: projectID, UpdatedAt: models.NullTime{Time: time.Now(), Valid: true}}
+		p := models.Project{ID: report.Project.ID, UpdatedAt: models.NullTime{Time: time.Now(), Valid: true}}
 		if len(params) > 0 {
 			p.UpdatedBy = models.NullInt{Int: params[0], Valid: true}
 		}
-		err := models.ProjectAPI.UpdateProjects(p)
-		if err != nil {
-			return err
-		}
+		go models.ProjectAPI.UpdateProjects(p)
+		go r.updateReportPost(report)
 	}
 	return nil
+}
+
+func (r *reportHandler) insertReportPost(report models.ReportAuthors) {
+	linkUrl := utils.GenerateResourceInfo("report", report.ID, report.Slug.String)
+	posts, err := r.getPostByReportUrl(linkUrl)
+	if err != nil {
+		fmt.Printf("Fail to fetching post by link %s, error occored: %v", linkUrl, err.Error())
+		return
+	}
+	if len(posts) > 0 {
+		fmt.Printf("Fail to insert a report post: %s, duplicated", linkUrl)
+		return
+	}
+	_, err = models.PostAPI.InsertPost(models.Post{
+		Type:          models.NullInt{int64(config.Config.Models.PostType["report"]), true},
+		Title:         report.Report.Title,
+		Content:       report.Report.Description,
+		Link:          models.NullString{linkUrl, true},
+		LinkTitle:     report.Report.Title,
+		LinkImage:     report.Report.HeroImage,
+		OgTitle:       report.Report.OgTitle,
+		OgDescription: report.Report.OgDescription,
+		OgImage:       report.Report.OgImage,
+		Active:        models.NullInt{int64(config.Config.Models.Posts["active"]), true},
+		PublishStatus: models.NullInt{int64(config.Config.Models.PostPublishStatus["publish"]), true},
+		Author:        models.NullInt{int64(config.Config.ReadrID), true},
+		CreatedAt:     models.NullTime{Time: time.Now(), Valid: true},
+		UpdatedAt:     models.NullTime{Time: time.Now(), Valid: true},
+		PublishedAt:   models.NullTime{Time: time.Now(), Valid: true},
+	})
+	if err != nil {
+		fmt.Printf("Fail to isnert post for new report %s , error: %v", linkUrl, err.Error())
+		return
+	}
+}
+
+func (r *reportHandler) updateReportPost(report models.ReportAuthors) {
+	linkUrl := utils.GenerateResourceInfo("report", report.ID, report.Slug.String)
+	posts, err := r.getPostByReportUrl(linkUrl)
+	if err != nil {
+		fmt.Printf("Fail to fetching post by link %s, error occored: %v", linkUrl, err.Error())
+		return
+	}
+	if len(posts) == 0 {
+		fmt.Printf("Fail to update a report post: %s, post not exist", linkUrl)
+		return
+	}
+	err = models.PostAPI.UpdatePost(models.Post{
+		ID:            uint32(posts[0].Post.ID),
+		Title:         report.Report.Title,
+		Content:       report.Report.Description,
+		LinkImage:     report.Report.HeroImage,
+		OgTitle:       report.Report.OgTitle,
+		OgDescription: report.Report.OgDescription,
+		OgImage:       report.Report.OgImage,
+		Active:        models.NullInt{int64(config.Config.Models.Posts["active"]), true},
+		PublishStatus: models.NullInt{int64(config.Config.Models.PostPublishStatus["publish"]), true},
+		UpdatedAt:     models.NullTime{Time: time.Now(), Valid: true},
+		UpdatedBy:     models.NullInt{int64(config.Config.ReadrID), true},
+	})
+	if err != nil {
+		fmt.Printf("Fail to update post for report %s , error: %v", linkUrl, err.Error())
+		return
+	}
+}
+
+func (r *reportHandler) getPostByReportUrl(linkUrl string) ([]models.TaggedPostMember, error) {
+	return models.PostAPI.GetPosts(&models.PostArgs{
+		Type:      map[string][]int{"in": []int{config.Config.Models.PostType["report"]}},
+		Sorting:   "updated_at",
+		Page:      1,
+		MaxResult: 1,
+		Filter: models.Filter{
+			Field:     "link",
+			Operator:  "=",
+			Condition: linkUrl,
+		},
+	})
 }
 
 func (r *reportHandler) SetRoutes(router *gin.Engine) {
