@@ -57,6 +57,7 @@ type MemoGetArgs struct {
 	MemberID             int64            `form:"member_id"`
 	AbstractLength       int64            `form:"abstract_length"`
 	IDs                  []int64
+	IsAdmin              bool
 }
 
 func (p *MemoGetArgs) Default() (result *MemoGetArgs) {
@@ -279,6 +280,10 @@ func (m *memoAPI) GetMemos(args *MemoGetArgs) (memos []MemoDetail, err error) {
 
 	if len(roleResult) > 0 && roleResult[0].Role.Valid {
 		isAdmin = (roleResult[0].Role.Int == 9)
+	}
+
+	if args.IsAdmin {
+		isAdmin = true
 	}
 
 	projectTags := getStructDBTags("full", Project{})

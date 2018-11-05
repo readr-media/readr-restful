@@ -2,6 +2,7 @@ package routes
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"regexp"
@@ -13,6 +14,7 @@ import (
 	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/pkg/mail"
+	"github.com/readr-media/readr-restful/utils"
 )
 
 type memoHandler struct{}
@@ -397,6 +399,7 @@ func (r *memoHandler) PublishHandler(ids []int) error {
 		IDs:               memoIDs,
 		Active:            map[string][]int{"IN": []int{int(config.Config.Models.Memos["active"])}},
 		MemoPublishStatus: map[string][]int{"IN": []int{int(config.Config.Models.MemosPublishStatus["publish"])}},
+		IsAdmin:           true, // to not get abstract
 	})
 	if err != nil {
 		log.Println("Getting memos info fail when running publish handling process", err)
@@ -407,7 +410,6 @@ func (r *memoHandler) PublishHandler(ids []int) error {
 	}
 
 	for _, memo := range memos {
-		log.Println(memo.Project)
 		p := models.Project{ID: memo.Project.ID, UpdatedAt: models.NullTime{Time: time.Now(), Valid: true}}
 		err := models.ProjectAPI.UpdateProjects(p)
 		if err != nil {
@@ -418,6 +420,7 @@ func (r *memoHandler) PublishHandler(ids []int) error {
 	for _, memo := range memos {
 		go models.NotificationGen.GenerateProjectNotifications(memo, "memo")
 		go mail.MailAPI.SendMemoPublishMail(memo)
+		go r.insertMemoPost(memo)
 	}
 
 	return nil
@@ -438,6 +441,7 @@ func (r *memoHandler) UpdateHandler(ids []int, params ...int64) error {
 		IDs:               memoIDs,
 		Active:            map[string][]int{"IN": []int{int(config.Config.Models.Memos["active"])}},
 		MemoPublishStatus: map[string][]int{"IN": []int{int(config.Config.Models.MemosPublishStatus["publish"])}},
+		IsAdmin:           true, // to not get abstract
 	})
 	if err != nil {
 		log.Println("Getting memos info fail when running publish handling process", err)
@@ -447,23 +451,88 @@ func (r *memoHandler) UpdateHandler(ids []int, params ...int64) error {
 		return nil
 	}
 
-	projectIDs := make([]int, 0)
 	for _, memo := range memos {
-		projectIDs = append(projectIDs, memo.Project.ID)
-	}
-
-	for _, projectID := range projectIDs {
-		p := models.Project{ID: projectID, UpdatedAt: models.NullTime{Time: time.Now(), Valid: true}}
+		p := models.Project{ID: memo.Project.ID, UpdatedAt: models.NullTime{Time: time.Now(), Valid: true}}
 		if len(params) > 0 {
 			p.UpdatedBy = models.NullInt{Int: params[0], Valid: true}
 		}
-		err := models.ProjectAPI.UpdateProjects(p)
-		if err != nil {
-			return err
-		}
+		go models.ProjectAPI.UpdateProjects(p)
+		go r.updateMemoPost(memo)
 	}
 
 	return nil
+}
+
+func (r *memoHandler) insertMemoPost(memo models.MemoDetail) {
+	linkUrl := utils.GenerateResourceInfo("memo", memo.Memo.ID, memo.Project.Slug.String)
+	posts, err := r.getPostByMemoUrl(linkUrl)
+	if err != nil {
+		fmt.Printf("Fail to fetching post by link %s, error occored: %v", linkUrl, err.Error())
+		return
+	}
+	if len(posts) > 0 {
+		fmt.Printf("Fail to insert a memo post: %s, duplicated", linkUrl)
+		return
+	}
+	log.Println("insert post, content ...", memo.Memo.Content)
+	_, err = models.PostAPI.InsertPost(models.Post{
+		Type:          models.NullInt{int64(config.Config.Models.PostType["report"]), true},
+		Title:         memo.Memo.Title,
+		Content:       memo.Memo.Content,
+		Link:          models.NullString{linkUrl, true},
+		LinkTitle:     memo.Memo.Title,
+		LinkImage:     models.NullString{"", true},
+		Active:        models.NullInt{int64(config.Config.Models.Posts["active"]), true},
+		PublishStatus: models.NullInt{int64(config.Config.Models.PostPublishStatus["publish"]), true},
+		Author:        models.NullInt{int64(config.Config.ReadrID), true},
+		CreatedAt:     models.NullTime{Time: time.Now(), Valid: true},
+		UpdatedAt:     models.NullTime{Time: time.Now(), Valid: true},
+		PublishedAt:   models.NullTime{Time: time.Now(), Valid: true},
+	})
+	if err != nil {
+		fmt.Printf("Fail to isnert post for new memo %s , error: %v", linkUrl, err.Error())
+		return
+	}
+}
+
+func (r *memoHandler) updateMemoPost(memo models.MemoDetail) {
+	linkUrl := utils.GenerateResourceInfo("memo", memo.Memo.ID, memo.Project.Slug.String)
+	posts, err := r.getPostByMemoUrl(linkUrl)
+	if err != nil {
+		fmt.Printf("Fail to fetching post by link %s, error occored: %v", linkUrl, err.Error())
+		return
+	}
+	if len(posts) == 0 {
+		fmt.Printf("Fail to update a memo post: %s, post not exist", linkUrl)
+		return
+	}
+	err = models.PostAPI.UpdatePost(models.Post{
+		ID:            uint32(posts[0].Post.ID),
+		Title:         memo.Memo.Title,
+		Content:       memo.Memo.Content,
+		Active:        models.NullInt{int64(config.Config.Models.Posts["active"]), true},
+		PublishStatus: models.NullInt{int64(config.Config.Models.PostPublishStatus["publish"]), true},
+		UpdatedAt:     models.NullTime{Time: time.Now(), Valid: true},
+		UpdatedBy:     models.NullInt{int64(config.Config.ReadrID), true},
+	})
+	if err != nil {
+		fmt.Printf("Fail to update post for memo %s , error: %v", linkUrl, err.Error())
+		return
+	}
+}
+
+func (r *memoHandler) getPostByMemoUrl(linkUrl string) ([]models.TaggedPostMember, error) {
+	return models.PostAPI.GetPosts(&models.PostArgs{
+		Type:      map[string][]int{"in": []int{config.Config.Models.PostType["report"]}},
+		Sorting:   "updated_at",
+		Page:      1,
+		MaxResult: 1,
+		Filter: models.Filter{
+			Field:     "link",
+			Operator:  "=",
+			Condition: linkUrl,
+		},
+	})
 }
 
 func (r *memoHandler) SetRoutes(router *gin.Engine) {
