@@ -399,7 +399,7 @@ func (r *memoHandler) PublishHandler(ids []int) error {
 		IDs:               memoIDs,
 		Active:            map[string][]int{"IN": []int{int(config.Config.Models.Memos["active"])}},
 		MemoPublishStatus: map[string][]int{"IN": []int{int(config.Config.Models.MemosPublishStatus["publish"])}},
-		IsAdmin:           true, // to not get abstract
+		AbstractLength:    20,
 	})
 	if err != nil {
 		log.Println("Getting memos info fail when running publish handling process", err)
@@ -441,7 +441,7 @@ func (r *memoHandler) UpdateHandler(ids []int, params ...int64) error {
 		IDs:               memoIDs,
 		Active:            map[string][]int{"IN": []int{int(config.Config.Models.Memos["active"])}},
 		MemoPublishStatus: map[string][]int{"IN": []int{int(config.Config.Models.MemosPublishStatus["publish"])}},
-		IsAdmin:           true, // to not get abstract
+		AbstractLength:    20,
 	})
 	if err != nil {
 		log.Println("Getting memos info fail when running publish handling process", err)
@@ -476,7 +476,7 @@ func (r *memoHandler) insertMemoPost(memo models.MemoDetail) {
 	}
 	log.Println("insert post, content ...", memo.Memo.Content)
 	_, err = models.PostAPI.InsertPost(models.Post{
-		Type:          models.NullInt{int64(config.Config.Models.PostType["report"]), true},
+		Type:          models.NullInt{int64(config.Config.Models.PostType["memo"]), true},
 		Title:         memo.Memo.Title,
 		Content:       memo.Memo.Content,
 		Link:          models.NullString{linkUrl, true},
@@ -523,7 +523,7 @@ func (r *memoHandler) updateMemoPost(memo models.MemoDetail) {
 
 func (r *memoHandler) getPostByMemoUrl(linkUrl string) ([]models.TaggedPostMember, error) {
 	return models.PostAPI.GetPosts(&models.PostArgs{
-		Type:      map[string][]int{"in": []int{config.Config.Models.PostType["report"]}},
+		Type:      map[string][]int{"in": []int{config.Config.Models.PostType["memo"]}},
 		Sorting:   "updated_at",
 		Page:      1,
 		MaxResult: 1,
