@@ -91,69 +91,14 @@ func (a *mockPostAPI) GetPosts(args *models.PostArgs) (result []models.TaggedPos
 	return result, err
 }
 
-// func (a *mockPostAPI) GetPosts(args models.PostArgs) ([]models.PostMember, error) {
-
-// 	var (
-// 		result    []models.PostMember
-// 		author    models.Member
-// 		updatedBy models.UpdatedBy
-// 		err       error
-// 	)
-// 	if len(mockPostDS) == 0 {
-// 		err = errors.New("Posts Not Found")
-// 		return result, err
-// 	}
-
-// 	// Create new copy of mockPostDS in case mockPostDS order is messed up by sort
-// 	sortedMockPostDS := make([]models.Post, len(mockPostDS))
-// 	copy(sortedMockPostDS, mockPostDS)
-
-// 	switch args.Sorting {
-// 	// ascending
-// 	case "updated_at":
-// 		sort.SliceStable(sortedMockPostDS, func(i, j int) bool {
-// 			return sortedMockPostDS[i].UpdatedAt.Before(sortedMockPostDS[j].UpdatedAt)
-// 		})
-// 	// descending, newer
-// 	case "-updated_at":
-// 		sort.SliceStable(sortedMockPostDS, func(i, j int) bool {
-// 			return sortedMockPostDS[i].UpdatedAt.After(sortedMockPostDS[j].UpdatedAt)
-// 		})
-// 	}
-
-// 	if args.MaxResult < uint8(len(sortedMockPostDS)) {
-// 		sortedMockPostDS = sortedMockPostDS[(args.Page-1)*uint16(args.MaxResult) : args.Page*uint16(args.MaxResult)]
-// 	}
-
-// 	for _, sortedpost := range sortedMockPostDS {
-// 		for _, member := range mockMemberDS {
-// 			if sortedpost.Author.Valid && member.ID == sortedpost.Author.String {
-// 				author = member
-// 			}
-// 			if sortedpost.UpdatedBy.Valid && member.ID == sortedpost.UpdatedBy.String {
-// 				updatedBy = models.UpdatedBy(member)
-// 			}
-// 		}
-// 		result = append(result, models.PostMember{Post: sortedpost, Member: author, UpdatedBy: updatedBy})
-// 		// Clear up temp struct before next loop
-// 		author = models.Member{}
-// 		updatedBy = models.MemberBasic{}
-// 	}
-
-// 	if result != nil {
-// 		err = nil
-// 	}
-// 	return result, err
-// }
-
-func (a *mockPostAPI) GetPost(id uint32) (models.TaggedPostMember, error) {
+func (a *mockPostAPI) GetPost(id uint32, args *models.PostArgs) (models.TaggedPostMember, error) {
 	var (
 		result models.TaggedPostMember
 	)
 
 	err := errors.New("Post Not Found")
 	for _, value := range a.mockPostDS {
-		if value.PostMember.Post.ID == id {
+		if value.Post.ID == id {
 			result = value
 			err = nil
 			break
@@ -172,7 +117,7 @@ func (a *mockPostAPI) InsertPost(p models.Post) (int, error) {
 		id = 1
 	}
 	p.ID = id
-	tpm.PostMember.Post = p
+	tpm.Post = p
 	a.mockPostDS = append(a.mockPostDS, tpm)
 	return int(p.ID), nil
 }
@@ -262,10 +207,10 @@ func TestRoutePost(t *testing.T) {
 	var postTest mockPostAPI
 
 	posts := []models.TaggedPostMember{
-		{PostMember: models.PostMember{Post: mockPostDS[0], Member: memberToBasic(mockMembers[0]), UpdatedBy: memberToBasic(mockMembers[0])}},
-		{PostMember: models.PostMember{Post: mockPostDS[1], Member: memberToBasic(mockMembers[1]), UpdatedBy: models.MemberBasic{}}},
-		{PostMember: models.PostMember{Post: mockPostDS[2], Member: memberToBasic(mockMembers[2]), UpdatedBy: models.MemberBasic{}}},
-		{PostMember: models.PostMember{Post: mockPostDS[3], Member: memberToBasic(mockMembers[2]), UpdatedBy: models.MemberBasic{}}},
+		{Post: mockPostDS[0], Member: memberToBasic(mockMembers[0]), UpdatedBy: memberToBasic(mockMembers[0])},
+		{Post: mockPostDS[1], Member: memberToBasic(mockMembers[1]), UpdatedBy: &models.MemberBasic{}},
+		{Post: mockPostDS[2], Member: memberToBasic(mockMembers[2]), UpdatedBy: &models.MemberBasic{}},
+		{Post: mockPostDS[3], Member: memberToBasic(mockMembers[2]), UpdatedBy: &models.MemberBasic{}},
 	}
 
 	teststep := []TestStep{
@@ -291,6 +236,8 @@ func TestRoutePost(t *testing.T) {
 					[]models.TaggedPostMember{}},
 				genericTestcase{"Type", "GET", `/posts?type={"$in":[1,2]}`, ``, http.StatusOK,
 					[]models.TaggedPostMember{posts[3], posts[1], posts[0]}},
+				genericTestcase{"ShowDetails", "GET", `/posts?show_author=true&show_updater=true&show_tag=true&show_comment=true`, ``, http.StatusOK,
+					[]models.TaggedPostMember{posts[3], posts[1], posts[0], posts[2]}},
 			},
 		},
 		TestStep{
@@ -402,9 +349,9 @@ func TestRoutePost(t *testing.T) {
 			// Exact same length
 			if len(Response.Items) != 0 && len(expected) != 0 {
 				for i := range expected {
-					if (Response.Items[i].PostMember.Post.ID != expected[i].PostMember.Post.ID) ||
-						(Response.Items[i].PostMember.Member != expected[i].PostMember.Member) ||
-						(Response.Items[i].PostMember.UpdatedBy != expected[i].PostMember.UpdatedBy) {
+					if (Response.Items[i].Post.ID != expected[i].Post.ID) ||
+						(Response.Items[i].Member.ID != expected[i].Member.ID) ||
+						(Response.Items[i].UpdatedBy.ID != expected[i].UpdatedBy.ID) {
 						t.Errorf("%s, %vth round expect to get \n%v\n , but get \n%v\n", tc.name, i, expected[i], Response.Items[i])
 					}
 				}
@@ -433,8 +380,8 @@ type ExpectResp struct {
 	err      string
 }
 
-func memberToBasic(m models.Member) (result models.MemberBasic) {
-	result = models.MemberBasic{
+func memberToBasic(m models.Member) (result *models.MemberBasic) {
+	result = &models.MemberBasic{
 		ID:           m.ID,
 		Nickname:     m.Nickname,
 		ProfileImage: m.ProfileImage,

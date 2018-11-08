@@ -64,8 +64,7 @@ func (r *postHandler) bindQuery(c *gin.Context, args *models.PostArgs) (err erro
 }
 
 func (r *postHandler) GetAll(c *gin.Context) {
-	var args = &models.PostArgs{}
-	args = args.Default()
+	var args = models.NewPostArgs()
 	if err := r.bindQuery(c, args); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
@@ -82,8 +81,7 @@ func (r *postHandler) GetAll(c *gin.Context) {
 }
 
 func (r *postHandler) GetActivePosts(c *gin.Context) {
-	var args = &models.PostArgs{}
-	args = args.Default()
+	var args = models.NewPostArgs()
 	if err := r.bindQuery(c, args); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
@@ -102,7 +100,17 @@ func (r *postHandler) Get(c *gin.Context) {
 
 	iduint64, _ := strconv.ParseUint(c.Param("id"), 10, 32)
 	id := uint32(iduint64)
-	post, err := models.PostAPI.GetPost(id)
+
+	var args = models.NewPostArgs()
+	if err := r.bindQuery(c, args); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
+	}
+	if args.Active == nil {
+		args.DefaultActive()
+	}
+
+	post, err := models.PostAPI.GetPost(id, args)
 
 	if err != nil {
 		switch err.Error() {
@@ -253,7 +261,9 @@ func (r *postHandler) Put(c *gin.Context) {
 				return
 			}
 			if m.CustomEditor.Valid && m.CustomEditor.Bool == true {
-				postDetail, err := models.PostAPI.GetPost(post.ID)
+				postDetail, err := models.PostAPI.GetPost(post.ID, &models.PostArgs{
+					ShowAuthor: true,
+				})
 				if err != nil {
 					log.Println("Fail to get post after updated: ", err.Error())
 					return
@@ -429,7 +439,13 @@ func (r *postHandler) PublishPipeline(ids []uint32) error {
 		return nil
 	}
 
-	posts, err := models.PostAPI.GetPosts(models.NewPostArgs(func(arg *models.PostArgs) { arg.IDs = ids }))
+	posts, err := models.PostAPI.GetPosts(models.NewPostArgs(func(arg *models.PostArgs) {
+		arg.IDs = ids
+		arg.ShowAuthor = true
+		arg.ShowCommment = true
+		arg.ShowTag = true
+		arg.ShowUpdater = true
+	}))
 	if err != nil {
 		log.Println("Getting posts info fail when running publish pipeline", err)
 		return err
