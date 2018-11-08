@@ -475,7 +475,7 @@ func (r *memoHandler) insertMemoPost(memo models.MemoDetail) {
 		return
 	}
 	log.Println("insert post, content ...", memo.Memo.Content)
-	_, err = models.PostAPI.InsertPost(models.Post{
+	postID, err := models.PostAPI.InsertPost(models.Post{
 		Type:          models.NullInt{int64(config.Config.Models.PostType["memo"]), true},
 		Title:         memo.Memo.Title,
 		Content:       memo.Memo.Content,
@@ -493,6 +493,8 @@ func (r *memoHandler) insertMemoPost(memo models.MemoDetail) {
 		fmt.Printf("Fail to isnert post for new memo %s , error: %v", linkUrl, err.Error())
 		return
 	}
+
+	go PostHandler.PublishPipeline([]uint32{uint32(postID)})
 }
 
 func (r *memoHandler) updateMemoPost(memo models.MemoDetail) {
@@ -510,8 +512,8 @@ func (r *memoHandler) updateMemoPost(memo models.MemoDetail) {
 		ID:            uint32(posts[0].Post.ID),
 		Title:         memo.Memo.Title,
 		Content:       memo.Memo.Content,
-		Active:        models.NullInt{int64(config.Config.Models.Posts["active"]), true},
-		PublishStatus: models.NullInt{int64(config.Config.Models.PostPublishStatus["publish"]), true},
+		Active:        memo.Memo.Active,
+		PublishStatus: memo.Memo.PublishStatus,
 		UpdatedAt:     models.NullTime{Time: time.Now(), Valid: true},
 		UpdatedBy:     models.NullInt{int64(config.Config.ReadrID), true},
 	})

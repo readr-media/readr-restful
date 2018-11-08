@@ -479,7 +479,7 @@ func (r *reportHandler) insertReportPost(report models.ReportAuthors) {
 		fmt.Printf("Fail to insert a report post: %s, duplicated", linkUrl)
 		return
 	}
-	_, err = models.PostAPI.InsertPost(models.Post{
+	postID, err := models.PostAPI.InsertPost(models.Post{
 		Type:          models.NullInt{int64(config.Config.Models.PostType["report"]), true},
 		Title:         report.Report.Title,
 		Content:       report.Report.Description,
@@ -500,6 +500,7 @@ func (r *reportHandler) insertReportPost(report models.ReportAuthors) {
 		fmt.Printf("Fail to isnert post for new report %s , error: %v", linkUrl, err.Error())
 		return
 	}
+	go PostHandler.PublishPipeline([]uint32{uint32(postID)})
 }
 
 func (r *reportHandler) updateReportPost(report models.ReportAuthors) {
@@ -521,8 +522,8 @@ func (r *reportHandler) updateReportPost(report models.ReportAuthors) {
 		OgTitle:       report.Report.OgTitle,
 		OgDescription: report.Report.OgDescription,
 		OgImage:       report.Report.OgImage,
-		Active:        models.NullInt{int64(config.Config.Models.Posts["active"]), true},
-		PublishStatus: models.NullInt{int64(config.Config.Models.PostPublishStatus["publish"]), true},
+		Active:        report.Report.Active,
+		PublishStatus: report.Report.PublishStatus,
 		UpdatedAt:     models.NullTime{Time: time.Now(), Valid: true},
 		UpdatedBy:     models.NullInt{int64(config.Config.ReadrID), true},
 	})

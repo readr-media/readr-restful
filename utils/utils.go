@@ -137,7 +137,7 @@ func CutAbstract(html string, length int64, formatter func(abstract string) stri
 	}
 	content := doc.Find("p:not(:has(img))").First().Text()
 	abstract := []rune(content)
-	abstract = abstract[:int(math.Min(float64(len(content)), float64(length)))]
+	abstract = abstract[:int(math.Min(float64(len(abstract)), float64(length)))]
 	result = formatter(string(abstract))
 	return result, nil
 }
