@@ -496,7 +496,12 @@ func (t *tagApi) UpdateTagging(resourceType int, targetID int, tagIDs []int) err
 	//If post tag updated, Write to new post data to search feed
 
 	if resourceType == config.Config.Models.TaggingType["post"] {
-		post, err := PostAPI.GetPost(uint32(targetID))
+		post, err := PostAPI.GetPost(uint32(targetID), &PostArgs{
+			ShowAuthor:   true,
+			ShowUpdater:  true,
+			ShowTag:      true,
+			ShowCommment: true,
+		})
 		if err != nil {
 			return err
 		}
@@ -1127,6 +1132,10 @@ func (t *tagApi) GetPostReport(args *GetPostReportArgs) (results []LastPNRInterf
 			args.IDs = pl
 			args.Filter = in.Filter
 			args.Active = map[string][]int{"$nin": []int{config.Config.Models.Reports["deactive"]}}
+			args.ShowAuthor = true
+			args.ShowCommment = true
+			args.ShowTag = true
+			args.ShowUpdater = true
 		}
 	}
 

@@ -5,18 +5,16 @@ import (
 	"log"
 	"sort"
 	"strconv"
-	"strings"
 
 	"encoding/json"
 
 	"github.com/garyburd/redigo/redis"
 	"github.com/readr-media/readr-restful/config"
-	"github.com/readr-media/readr-restful/utils"
 )
 
 type postCacheType interface {
 	Key() string
-	Insert(post fullCachePost)
+	Insert(post TaggedPostMember)
 	SyncFromDataStorage()
 }
 
@@ -24,57 +22,18 @@ type postCache struct {
 	caches []postCacheType
 }
 
-// fullCachePost holds the full fields a post cached should have.
-// There should be Author, Comment, Post, and Tag now.
-type fullCachePost struct {
-	*TaggedPostMember
-	HeadComments []CommentAuthor `json:"comments" db:"comments"`
-}
+func assembleCachePost(postIDs []uint32) (posts []TaggedPostMember, err error) {
 
-func assembleCachePost(postIDs []uint32) (posts []fullCachePost, err error) {
-
-	postArgs := &PostArgs{}
-	postArgs = postArgs.Default()
-	postArgs.IDs = postIDs
-
-	targetPosts, err := PostAPI.GetPosts(postArgs)
+	posts, err = PostAPI.GetPosts(&PostArgs{
+		IDs:          postIDs,
+		ShowAuthor:   true,
+		ShowCommment: true,
+		ShowTag:      true,
+		ShowUpdater:  true,
+	})
 	if err != nil {
 		log.Printf("postCache failed to get posts:%v in Insert phase, %v\n", postIDs, err)
-		return []fullCachePost{}, err
-	}
-
-	setIntraMax := func(max int) func(*GetCommentArgs) {
-		return func(arg *GetCommentArgs) {
-			arg.IntraMax = max
-		}
-	}
-	setResource := func(postIDs []uint32) func(*GetCommentArgs) {
-		return func(arg *GetCommentArgs) {
-			for _, postID := range postIDs {
-				commentResource := utils.GenerateResourceInfo("post", int(postID), "")
-				arg.Resource = append(arg.Resource, commentResource)
-			}
-		}
-	}
-	args, err := NewGetCommentArgs(setIntraMax(2), setResource(postArgs.IDs))
-	if err != nil {
-		log.Printf("AssembleCachePost Error:%s\n", err.Error())
-	}
-	commentsFromTargetPosts, err := CommentAPI.GetComments(args)
-	if err != nil {
-		log.Printf("AssembleCachePost get comments error:%s\n", err.Error())
-	}
-
-	for _, targetPost := range targetPosts {
-		tpm := targetPost
-		post := fullCachePost{TaggedPostMember: &tpm}
-		for _, comment := range commentsFromTargetPosts {
-			commentResourceID, _ := strconv.ParseUint(strings.TrimPrefix(comment.Resource.String, fmt.Sprintf("%s/post/", config.Config.DomainName)), 10, 32)
-			if post.ID == uint32(commentResourceID) {
-				post.HeadComments = append(post.HeadComments, comment)
-			}
-		}
-		posts = append(posts, post)
+		return posts, err
 	}
 
 	return posts, nil
@@ -228,7 +187,7 @@ func (c latestPostCache) Key() string {
 	return c.key
 }
 
-func (c latestPostCache) Insert(post fullCachePost) {
+func (c latestPostCache) Insert(post TaggedPostMember) {
 	conn := RedisHelper.Conn()
 	defer conn.Close()
 
@@ -353,7 +312,7 @@ func (c hottestPostCache) Key() string {
 	return c.key
 }
 
-func (c hottestPostCache) Insert(post fullCachePost) {
+func (c hottestPostCache) Insert(post TaggedPostMember) {
 	return
 }
 

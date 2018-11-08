@@ -228,11 +228,15 @@ func (g *GetFollowingArgs) getPostDetails(items []FollowingItem) (result []Follo
 	}
 
 	posts, err := PostAPI.GetPosts(&PostArgs{
-		IDs:       ids,
-		Active:    map[string][]int{"in": []int{config.Config.Models.Posts["active"]}},
-		MaxResult: uint8(len(ids)),
-		Page:      1,
-		Sorting:   "-updated_at",
+		IDs:          ids,
+		Active:       map[string][]int{"in": []int{config.Config.Models.Posts["active"]}},
+		MaxResult:    uint8(len(ids)),
+		Page:         1,
+		Sorting:      "-updated_at",
+		ShowAuthor:   true,
+		ShowCommment: true,
+		ShowTag:      true,
+		ShowUpdater:  true,
 	})
 
 	if err != nil {

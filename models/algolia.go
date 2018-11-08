@@ -92,14 +92,14 @@ func (a *algolia) insertResource(tpmsi interface{}, resource_name string) (err e
 			return errors.New("Invalid Data Format")
 		}
 		for _, tpm := range tpms {
-			if tpm.PostMember.Post.ID == 0 {
+			if tpm.Post.ID == 0 {
 				return errors.New("Post Has No ID")
 			}
-			o := a.extractStruct(tpm.PostMember.Post)
-			o["objectID"] = fmt.Sprintf("%s_%s", a.objectTypes[resource_name], fmt.Sprint(tpm.PostMember.Post.ID))
+			o := a.extractStruct(tpm.Post)
+			o["objectID"] = fmt.Sprintf("%s_%s", a.objectTypes[resource_name], fmt.Sprint(tpm.Post.ID))
 			o["objectType"] = a.objectTypes[resource_name]
-			o["author"] = a.extractStruct(tpm.PostMember.Member)
-			o["updated_by"] = a.extractStruct(tpm.PostMember.UpdatedBy)
+			o["author"] = a.extractStruct(tpm.Member)
+			o["updated_by"] = a.extractStruct(tpm.UpdatedBy)
 			if tpm.Tags.Valid {
 				tags := []int{}
 				for _, tag := range strings.Split(tpm.Tags.String, ",") {
@@ -171,6 +171,9 @@ func (a *algolia) deleteResource(post_ids []int, resource_name string) (err erro
 func (a *algolia) extractStruct(input interface{}) (o algoliasearch.Object) {
 	o = algoliasearch.Object{}
 	tpm_value := reflect.ValueOf(input)
+	if tpm_value.Kind() == reflect.Ptr {
+		tpm_value = tpm_value.Elem()
+	}
 	for i := 0; i < tpm_value.NumField(); i++ {
 		name := tpm_value.Type().Field(i).Tag.Get("json")
 		if name == "-" {

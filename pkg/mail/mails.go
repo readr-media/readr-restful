@@ -223,6 +223,8 @@ type dailyDigest struct {
 	SettingLink  string
 	MailID       string
 	CampaignID   string
+	APIDomain    string
+	PreviewText  string
 }
 
 func (d *dailyDigest) hasContent() bool {
@@ -317,7 +319,7 @@ func (m *mailApi) GenDailyDigest() (err error) {
 	//t = template.Must(t.ParseFiles("config/newsletter.html"))
 	t := template.Must(template.ParseGlob("config/*.html"))
 
-	data := dailyDigest{DateDay: date.Day(), DateMonth: int(date.Month()), DateYear: date.Year()}
+	data := dailyDigest{DateDay: date.Day(), DateMonth: int(date.Month()), DateYear: date.Year(), APIDomain: config.Config.DomainName}
 
 	data.Reports = reports
 
@@ -410,7 +412,22 @@ func (m *mailApi) getDailyMemo() (memos []dailyMemo, err error) {
 
 func (m *mailApi) getDailyPost() (posts []dailyPost, err error) {
 
-	query := fmt.Sprintf(`SELECT p.post_id AS id, p.title AS title, p.content AS content, IFNULL(p.link, "") AS link, IFNULL(p.link_title, "") AS link_title, IFNULL(p.link_image, "") AS link_image, m.id AS author_id, m.nickname AS author, IFNULL(m.profile_image, "") AS image FROM posts AS p LEFT JOIN members AS m ON p.author = m.id WHERE p.published_at > (NOW() - INTERVAL 1 DAY) AND p.active = %d AND p.publish_status = %d;`, config.Config.Models.Posts["active"], config.Config.Models.PostPublishStatus["publish"])
+	query := fmt.Sprintf(`
+		SELECT p.post_id AS id, p.title AS title, p.content AS content, 
+			IFNULL(p.link, "") AS link, 
+			IFNULL(p.link_title, "") AS link_title, 
+			IFNULL(p.link_image, "") AS link_image, 
+			m.id AS author_id, m.nickname AS author, 
+			IFNULL(m.profile_image, "") AS image 
+		FROM posts AS p 
+		LEFT JOIN members AS m ON p.author = m.id 
+		WHERE p.published_at > (NOW() - INTERVAL 1 DAY) 
+			AND p.active = %d AND p.publish_status = %d 
+			AND p.type IN (%d, %d);`,
+		config.Config.Models.Posts["active"],
+		config.Config.Models.PostPublishStatus["publish"],
+		config.Config.Models.PostType["review"],
+		config.Config.Models.PostType["news"])
 	rows, err := models.DB.Queryx(query)
 	for rows.Next() {
 		var post dailyPost

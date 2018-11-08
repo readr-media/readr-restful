@@ -13,6 +13,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/utils"
 )
 
 // Post could use json:"omitempty" tag to ignore null field
@@ -51,7 +52,7 @@ var PostAPI PostInterface = new(postAPI)
 type PostInterface interface {
 	DeletePost(id uint32) error
 	GetPosts(args *PostArgs) (result []TaggedPostMember, err error)
-	GetPost(id uint32) (TaggedPostMember, error)
+	GetPost(id uint32, args *PostArgs) (TaggedPostMember, error)
 	InsertPost(p Post) (int, error)
 	UpdateAll(req PostUpdateArgs) error
 	UpdatePost(p Post) error
@@ -87,8 +88,11 @@ func (pt PostTags) MarshalJSON() ([]byte, error) {
 }
 
 type TaggedPostMember struct {
-	PostMember
-	Tags PostTags `json:"tags" db:"tags"`
+	Post
+	Member    *MemberBasic    `json:"author,omitempty" db:"author"`
+	UpdatedBy *MemberBasic    `json:"updated_by,omitempty" db:"updated_by"`
+	Tags      PostTags        `json:"tags,omitempty" db:"tags"`
+	Comment   []CommentAuthor `json:"comments,omitempty"`
 }
 
 // ------------ ↓↓↓ Requirement to satisfy LastPNRInterface  ↓↓↓ ------------
@@ -125,45 +129,6 @@ type HotPost struct {
 	AuthorProfileImage NullString `json:"author_profileImage" redis:"author_profileImage"`
 }
 
-// func (t *TaggedPostMember) MarshalJSON() ([]byte, error) {
-// 	type TPM TaggedPostMember
-// 	type tag struct {
-// 		ID      int    `json:"id"`
-// 		Content string `json:"text"`
-// 	}
-// 	var Tags []tag
-
-// 	if t.Tags.Valid != false {
-// 		tas := strings.Split(t.Tags.String, ",")
-// 		for _, value := range tas {
-// 			t := strings.Split(value, ":")
-// 			id, _ := strconv.Atoi(t[0])
-// 			Tags = append(Tags, tag{ID: id, Content: t[1]})
-// 		}
-// 	}
-// 	return json.Marshal(&struct {
-// 		LastSeen []tag `json:"tags"`
-// 		*TPM
-// 	}{
-// 		LastSeen: Tags,
-// 		TPM:      (*TPM)(t),
-// 	})
-// }
-
-// Currently not used. Need to be modified
-// func (t *TaggedPostMember) UnmarshalJSON(text []byte) error {
-// 	if err := json.Unmarshal(text, *t); err != nil {
-// 		return err
-// 	}
-// 	if t.PostMember.Member.ID != 0 {
-// 		t.PostMember.Post.Author = NullInt{Int: t.PostMember.Member.ID, Valid: true}
-// 	}
-// 	if t.PostMember.UpdatedBy.ID != 0 {
-// 		t.PostMember.Post.UpdatedBy = NullInt{Int: t.PostMember.UpdatedBy.ID, Valid: true}
-// 	}
-// 	return nil
-// }
-
 // UpdatedBy wraps Member for embedded field updated_by
 // in the usage of anonymous struct in PostMember
 type MemberBasic struct {
@@ -173,13 +138,6 @@ type MemberBasic struct {
 	ProfileImage NullString `json:"profile_image" db:"profile_image"`
 	Description  NullString `json:"description" db:"description"`
 	Role         NullInt    `json:"role" db:"role"`
-}
-
-// type UpdatedBy Member
-type PostMember struct {
-	Post
-	Member    MemberBasic `json:"author" db:"author"`
-	UpdatedBy MemberBasic `json:"updated_by" db:"updated_by"`
 }
 
 type PostUpdateArgs struct {
@@ -228,13 +186,16 @@ type PostArgs struct {
 	MaxResult     uint8              `form:"max_result"`
 	Page          uint16             `form:"page"`
 	Sorting       string             `form:"sort"`
+	IDs           []uint32           `form:"ids"`
 	Active        map[string][]int   `form:"active"`
 	PublishStatus map[string][]int   `form:"publish_status"`
 	Author        map[string][]int64 `form:"author"`
 	Type          map[string][]int   `form:"type"`
-	IDs           []uint32           `form:"ids"`
-
-	Filter Filter
+	ShowTag       bool               `form:"show_tag"`
+	ShowAuthor    bool               `form:"show_author"`
+	ShowUpdater   bool               `form:"show_updater"`
+	ShowCommment  bool               `form:"show_comment"`
+	Filter        Filter
 }
 
 // NewPostArgs return a PostArgs struct with default settings,
@@ -303,40 +264,34 @@ func (p *PostArgs) parse() (restricts string, values []interface{}) {
 	return restricts, values
 }
 
+func (p *PostArgs) parseResultLimit() (restricts string, values []interface{}) {
+
+	if p.Sorting != "" {
+		restricts = fmt.Sprintf("%s ORDER BY %s", restricts, orderByHelper(p.Sorting))
+	}
+
+	if p.MaxResult > 0 {
+		restricts = fmt.Sprintf("%s LIMIT ?", restricts)
+		values = append(values, p.MaxResult)
+		if p.Page > 0 {
+			restricts = fmt.Sprintf("%s OFFSET ?", restricts)
+			values = append(values, (p.Page-1)*uint16(p.MaxResult))
+		}
+	}
+	return restricts, values
+}
+
 func (a *postAPI) GetPosts(req *PostArgs) (result []TaggedPostMember, err error) {
 
-	restricts, values := req.parse()
-	tags := getStructDBTags("full", MemberBasic{})
-	authorField := makeFieldString("get", `author.%s "author.%s"`, tags)
-	updatedByField := makeFieldString("get", `updated_by.%s "updated_by.%s"`, tags)
-
-	authorIDQuery := strings.Split(authorField[0], " ")
-	authorField[0] = fmt.Sprintf(`IFNULL(%s, 0) %s`, authorIDQuery[0], authorIDQuery[1])
-	updatedByIDQuery := strings.Split(updatedByField[0], " ")
-	updatedByField[0] = fmt.Sprintf(`IFNULL(%s, 0) %s`, updatedByIDQuery[0], updatedByIDQuery[1])
-	query := fmt.Sprintf(`SELECT posts.*, %s, %s, t.tags as tags  FROM posts
-		LEFT JOIN members AS author ON posts.author = author.id
-		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.id
-		LEFT JOIN (
-			SELECT pt.target_id as post_id, GROUP_CONCAT(CONCAT(t.tag_id, ":", t.tag_content) SEPARATOR ',') as tags
-			FROM tagging as pt LEFT JOIN tags as t ON t.tag_id = pt.tag_id WHERE pt.type=%d 
-			GROUP BY pt.target_id
-		) AS t ON t.post_id = posts.post_id
-		WHERE %s `,
-		strings.Join(authorField, ","), strings.Join(updatedByField, ","), config.Config.Models.TaggingType["post"], restricts)
-
+	query, args := a.buildGetQuery(req)
 	// To give adaptability to where clauses, have to use ... operator here
 	// Therefore split query into two parts, assembling them after sqlx.Rebind
-	query, args, err := sqlx.In(query, values...)
+	query, args, err = sqlx.In(query, args...)
 	if err != nil {
 		return nil, err
 	}
 	query = DB.Rebind(query)
 
-	// Attach the order part to query with expanded amounts of placeholder.
-	// Append limit and offset to args slice
-	query = query + fmt.Sprintf(`ORDER BY %s LIMIT ? OFFSET ?`, orderByHelper(req.Sorting))
-	args = append(args, req.MaxResult, (req.Page-1)*uint16(req.MaxResult))
 	rows, err := DB.Queryx(query, args...)
 	if err != nil {
 		return nil, err
@@ -349,34 +304,38 @@ func (a *postAPI) GetPosts(req *PostArgs) (result []TaggedPostMember, err error)
 		}
 		result = append(result, singlePost)
 	}
+
+	if req.ShowCommment {
+		postIDs := make([]int, 0)
+		for _, v := range result {
+			postIDs = append(postIDs, int(v.Post.ID))
+		}
+		comments, err := a.fetchPostComments(postIDs)
+		if err != nil {
+			return result, err
+		}
+		for k, v := range result {
+			result[k].Comment = comments[int(v.Post.ID)]
+		}
+	}
+
 	return result, err
 }
 
-func (a *postAPI) GetPost(id uint32) (TaggedPostMember, error) {
+func (a *postAPI) GetPost(id uint32, req *PostArgs) (post TaggedPostMember, err error) {
 
-	post := TaggedPostMember{}
-	tags := getStructDBTags("full", MemberBasic{})
-	author := makeFieldString("get", `author.%s "author.%s"`, tags)
-	updatedBy := makeFieldString("get", `updated_by.%s "updated_by.%s"`, tags)
+	req.IDs = []uint32{id}
+	req.MaxResult = 1
+	query, args := a.buildGetQuery(req)
 
-	authorIDQuery := strings.Split(author[0], " ")
-	author[0] = fmt.Sprintf(`IFNULL(%s, 0) %s`, authorIDQuery[0], authorIDQuery[1])
-	updatedByIDQuery := strings.Split(updatedBy[0], " ")
-	updatedBy[0] = fmt.Sprintf(`IFNULL(%s, 0) %s`, updatedByIDQuery[0], updatedByIDQuery[1])
-
-	query := fmt.Sprintf(`SELECT posts.*, %s, %s, t.tags as tags FROM posts
-		LEFT JOIN members AS author ON posts.author = author.id 
-		LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.id 
-		LEFT JOIN (
-			SELECT pt.target_id as post_id, GROUP_CONCAT(CONCAT(t.tag_id, ":", t.tag_content) SEPARATOR ',') as tags 
-			FROM tagging as pt LEFT JOIN tags as t ON t.tag_id = pt.tag_id 
-			GROUP BY pt.target_id
-		) AS t ON t.post_id = posts.post_id WHERE posts.post_id = ?`,
-		strings.Join(author, ","), strings.Join(updatedBy, ","))
-
-	err := DB.Get(&post, query, id)
+	query, args, err = sqlx.In(query, args...)
 	if err != nil {
-		log.Println(err.Error())
+		return post, err
+	}
+	query = DB.Rebind(query)
+
+	err = DB.Get(&post, query, args...)
+	if err != nil {
 		switch {
 		case err == sql.ErrNoRows:
 			err = errors.New("Post Not Found")
@@ -388,7 +347,89 @@ func (a *postAPI) GetPost(id uint32) (TaggedPostMember, error) {
 			err = nil
 		}
 	}
+
+	comments, err := a.fetchPostComments([]int{int(post.Post.ID)})
+	if err != nil {
+		return post, err
+	}
+	post.Comment = comments[int(post.Post.ID)]
+
 	return post, err
+}
+
+func (a *postAPI) fetchPostComments(ids []int) (comments map[int][]CommentAuthor, err error) {
+	comments = make(map[int][]CommentAuthor, 0)
+	resources := make([]string, 0)
+	for _, id := range ids {
+		resources = append(resources, utils.GenerateResourceInfo("post", id, ""))
+	}
+	commentSet, err := CommentAPI.GetComments(&GetCommentArgs{
+		IntraMax: 2,
+		Resource: resources,
+		Sorting:  "-updated_at",
+	})
+	for _, comment := range commentSet {
+		_, postIDString := utils.ParseResourceInfo(comment.Resource.String)
+		postID, err := strconv.Atoi(postIDString)
+		if err != nil {
+			return comments, err
+		}
+		comments[postID] = append(comments[postID], comment)
+	}
+	return comments, err
+}
+
+func (a *postAPI) buildGetQuery(req *PostArgs) (query string, values []interface{}) {
+	memberDBTags := getStructDBTags("full", MemberBasic{})
+	selectedFields := []string{"posts.*"}
+	joinedTables := make([]string, 0)
+	var joinedTableString, restricts string
+
+	if req.ShowAuthor {
+		authorField := makeFieldString("get", `author.%s "author.%s"`, memberDBTags)
+		authorIDQuery := strings.Split(authorField[0], " ")
+		authorField[0] = fmt.Sprintf(`IFNULL(%s, 0) %s`, authorIDQuery[0], authorIDQuery[1])
+		selectedFields = append(selectedFields, authorField...)
+		joinedTables = append(joinedTables, `LEFT JOIN members AS author ON posts.author = author.id`)
+	}
+
+	if req.ShowUpdater {
+		updatedByField := makeFieldString("get", `updated_by.%s "updated_by.%s"`, memberDBTags)
+		updatedByIDQuery := strings.Split(updatedByField[0], " ")
+		updatedByField[0] = fmt.Sprintf(`IFNULL(%s, 0) %s`, updatedByIDQuery[0], updatedByIDQuery[1])
+		selectedFields = append(selectedFields, updatedByField...)
+		joinedTables = append(joinedTables, `LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.id`)
+	}
+
+	if req.ShowTag {
+		selectedFields = append(selectedFields, "t.tags as tags")
+		joinedTables = append(joinedTables, fmt.Sprintf(`
+		LEFT JOIN (
+			SELECT pt.target_id as post_id, 
+				GROUP_CONCAT(CONCAT(t.tag_id, ":", t.tag_content) SEPARATOR ',') as tags
+			FROM tagging as pt LEFT JOIN tags as t ON t.tag_id = pt.tag_id WHERE pt.type=%d 
+			GROUP BY pt.target_id
+		) AS t ON t.post_id = posts.post_id
+		`, config.Config.Models.TaggingType["post"]))
+	}
+
+	if len(joinedTables) > 0 {
+		joinedTableString = strings.Join(joinedTables, " ")
+	}
+
+	restricts, restrictVals := req.parse()
+	resultLimit, resultLimitVals := req.parseResultLimit()
+	values = append(values, restrictVals...)
+	values = append(values, resultLimitVals...)
+
+	query = fmt.Sprintf(`
+		SELECT %s FROM posts %s WHERE %s `,
+		strings.Join(selectedFields, ","),
+		joinedTableString,
+		restricts+resultLimit,
+	)
+
+	return query, values
 }
 
 func (a *postAPI) InsertPost(p Post) (int, error) {
@@ -419,22 +460,6 @@ func (a *postAPI) InsertPost(p Post) (int, error) {
 		return 0, err
 	}
 
-	// // Only insert a post when it's published
-	// if !p.Active.Valid || p.Active.Int != int64(config.Config.Models.Posts["deactive"]) {
-	// 	if p.PublishStatus.Valid && p.PublishStatus.Int == int64(config.Config.Models.PostPublishStatus["publish"]) {
-	// 		if p.ID == 0 {
-	// 			p.ID = uint32(lastID)
-	// 		}
-	// 		go PostCache.Insert(p)
-	// 		// Write to new post data to search feed
-	// 		post, err := PostAPI.GetPost(p.ID)
-	// 		if err != nil {
-	// 			return 0, err
-	// 		}
-	// 		go Algolia.InsertPost([]TaggedPostMember{post})
-	// 		go NotificationGen.GeneratePostNotifications(post)
-	// 	}
-	// }
 	return int(lastID), err
 }
 
