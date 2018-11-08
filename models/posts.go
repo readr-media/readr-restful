@@ -187,14 +187,14 @@ type PostArgs struct {
 	Page          uint16             `form:"page"`
 	Sorting       string             `form:"sort"`
 	IDs           []uint32           `form:"ids"`
-	Active        map[string][]int   `form:"active"`
-	PublishStatus map[string][]int   `form:"publish_status"`
-	Author        map[string][]int64 `form:"author"`
-	Type          map[string][]int   `form:"type"`
 	ShowTag       bool               `form:"show_tag"`
 	ShowAuthor    bool               `form:"show_author"`
 	ShowUpdater   bool               `form:"show_updater"`
 	ShowCommment  bool               `form:"show_comment"`
+	Active        map[string][]int   `form:"active"`
+	PublishStatus map[string][]int   `form:"publish_status"`
+	Author        map[string][]int64 `form:"author"`
+	Type          map[string][]int   `form:"type"`
 	Filter        Filter
 }
 
