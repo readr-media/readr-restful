@@ -366,7 +366,7 @@ func (a *postAPI) fetchPostComments(ids []int) (comments map[int][]CommentAuthor
 	commentSet, err := CommentAPI.GetComments(&GetCommentArgs{
 		IntraMax: 2,
 		Resource: resources,
-		Sorting:  "-updated_at",
+		Sorting:  "-created_at",
 	})
 	for _, comment := range commentSet {
 		_, postIDString := utils.ParseResourceInfo(comment.Resource.String)
