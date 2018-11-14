@@ -295,7 +295,6 @@ func (c *commentAPI) InsertComment(comment InsertCommentArgs) (id int64, err err
 	tags := getStructDBTags("full", Comment{})
 	query := fmt.Sprintf(`INSERT INTO comments (%s) VALUES (:%s)`,
 		strings.Join(tags, ","), strings.Join(tags, ",:"))
-
 	query = strings.Replace(query, ":ip", "INET_ATON(:ip)", 1)
 	result, err := DB.NamedExec(query, comment)
 	if err != nil {
@@ -320,7 +319,7 @@ func (c *commentAPI) InsertComment(comment InsertCommentArgs) (id int64, err err
 	}
 
 	comment.ID = id
-	NotificationGen.GenerateCommentNotifications(comment)
+	go NotificationGen.GenerateCommentNotifications(comment)
 
 	return id, err
 }
