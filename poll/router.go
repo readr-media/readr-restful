@@ -13,7 +13,7 @@ type router struct{}
 // it could return polls with corresponding choices
 func (r *router) GetPolls(c *gin.Context) {
 
-	filter, err := SetGetPollsFilter(BindQuery(c))
+	filter, err := SetListPollsFilter(BindListPollsFilter(c))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
@@ -133,6 +133,28 @@ func (r *router) PutChoices(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+func (r *router) GetPicks(c *gin.Context) {
+	filter, err := SetListPicksFilter(BindListPicksFilter(c))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
+	}
+	picks, err := PickData.Get(filter)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"_items": picks})
+}
+
+func (r *router) InsertPicks(c *gin.Context) {
+	c.Status(http.StatusCreated)
+}
+
+func (r *router) UpdatePicks(c *gin.Context) {
+	c.Status(http.StatusNoContent)
+}
+
 func (r *router) SetRoutes(router *gin.Engine) {
 
 	v2 := router.Group("/v2/polls")
@@ -144,6 +166,10 @@ func (r *router) SetRoutes(router *gin.Engine) {
 		v2.GET("/:id/choices", r.GetChoices)
 		v2.POST("/:id/choices", r.InsertChoices)
 		v2.PUT("/:id/choices", r.PutChoices)
+
+		v2.GET("/:id/picks", r.GetPicks)
+		v2.POST("/:id/picks", r.InsertPicks)
+		v2.PUT("/:id/picks", r.UpdatePicks)
 	}
 }
 
