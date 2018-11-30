@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -18,7 +19,7 @@ type Poll struct {
 	Title       models.NullString `json:"title" db:"title"`
 	Description models.NullString `json:"description" db:"description"`
 	TotalVote   int64             `json:"total_vote" db:"total_vote"`
-	Frequency   models.NullString `json:"frequency" db:"frequency"`
+	Frequency   models.NullInt    `json:"frequency" db:"frequency"`
 	StartAt     models.NullTime   `json:"start_at" db:"start_at"`
 	EndAt       models.NullTime   `json:"end_at" db:"end_at"`
 	MaxChoice   int64             `json:"max_choice" db:"max_choice"`
@@ -45,13 +46,14 @@ type Choice struct {
 	UpdatedBy  models.NullInt    `json:"updated_by" db:"updated_by"`
 }
 
-// ChosenChoice is the mapping struct for table polls_chosen choice
+// ChosenChoice is the mapping struct for table polls_chosen_choice
 // to record the choosing history for every users
 type ChosenChoice struct {
 	ID        int64           `json:"id" db:"id"`
 	MemberID  int64           `json:"member_id" db:"member_id"`
 	PollID    int64           `json:"poll_id" db:"poll_id"`
 	ChoiceID  int64           `json:"choice_id" db:"choice_id"`
+	Active    int64           `json:"active" db:"active"`
 	CreatedAt models.NullTime `json:"created_at" db:"created_at"`
 }
 
@@ -63,7 +65,7 @@ type ChoicesEmbeddedPoll struct {
 }
 
 type pollInterface interface {
-	Get(filters *GetPollsFilter) (polls []ChoicesEmbeddedPoll, err error)
+	Get(filters *ListPollsFilter) (polls []ChoicesEmbeddedPoll, err error)
 	Insert(p ChoicesEmbeddedPoll) (err error)
 	Update(poll Poll) (err error)
 }
@@ -77,6 +79,14 @@ type choiceInterface interface {
 }
 
 type choiceData struct{}
+
+type pickInterface interface {
+	Get(filter *ListPicksFilter) (picks []ChosenChoice, err error)
+	Insert(pick ChosenChoice) (err error)
+	Update(pick ChosenChoice) (err error)
+}
+
+type pickData struct{}
 
 // GetStructTags is designed to be a public function aiming at future reuse.
 // It is also designed to be a variadic function.
@@ -221,7 +231,7 @@ func (s *SQLO) GenFields() string {
 	return strings.Join(results, ", ")
 }
 
-func (s *SQLO) SQL() string {
+func (s *SQLO) SQL() (query string, args []interface{}, err error) {
 
 	base := bytes.NewBufferString(fmt.Sprintf("SELECT %s FROM %s", s.GenFields(), s.table))
 	for _, join := range s.join {
@@ -229,10 +239,14 @@ func (s *SQLO) SQL() string {
 	}
 	if len(s.where) > 0 {
 		base.WriteString(" WHERE")
-	}
-	for _, condition := range s.where {
-		base.WriteString(condition.statement)
-		s.args = append(s.args, condition.variable)
+		for i, condition := range s.where {
+			if i != 0 {
+				base.WriteString(" AND")
+			}
+			base.WriteString(" ")
+			base.WriteString(condition.statement)
+			s.args = append(s.args, condition.variable)
+		}
 	}
 	if s.orderby != "" {
 		base.WriteString(s.orderby)
@@ -241,7 +255,12 @@ func (s *SQLO) SQL() string {
 		base.WriteString(s.pagination)
 	}
 	base.WriteString(";")
-	return base.String()
+	query, args, err = sqlx.In(base.String(), s.args...)
+	if err != nil {
+		return "", nil, err
+	}
+	query = models.DB.Rebind(query)
+	return query, args, err
 }
 
 func NewSQLO(options ...func(*SQLO)) *SQLO {
@@ -252,13 +271,18 @@ func NewSQLO(options ...func(*SQLO)) *SQLO {
 	return &so
 }
 
-func (p *pollData) Get(filter *GetPollsFilter) (polls []ChoicesEmbeddedPoll, err error) {
+func (p *pollData) Get(filter *ListPollsFilter) (polls []ChoicesEmbeddedPoll, err error) {
 
 	osql := NewSQLO(func(s *SQLO) {
 		s.table = "polls"
 		s.fields = append(s.fields, sqlfield{table: "polls", pattern: `%s.%s`, fields: []string{"*"}})
 	}, filter.Parse())
-	rows, err := models.DB.Queryx(osql.SQL(), osql.args...)
+	query, args, err := osql.SQL()
+	fmt.Printf("sql query:%s, args:%v\n", query, args)
+
+	rows, err := models.DB.Queryx(query, args...)
+
+	//rows, err := models.DB.Queryx(osql.SQL(), osql.args...)
 	if err != nil {
 		log.Println(err.Error())
 		return nil, err
@@ -458,6 +482,34 @@ func (c *choiceData) Update(choices []Choice) (err error) {
 	return nil
 }
 
+func (s *pickData) Get(filter *ListPicksFilter) (picks []ChosenChoice, err error) {
+
+	osql := NewSQLO(func(s *SQLO) {
+		s.table = "polls_chosen_choice"
+		s.fields = append(s.fields, sqlfield{table: "polls_chosen_choice", pattern: `%s.%s`, fields: []string{"*"}})
+	}, filter.Parse())
+	// fmt.Printf("SQL query:%s\n,SQL arguments:%v\n", osql.SQL(), osql.args)
+	// rows, err := models.DB.Queryx(osql.SQL(), osql.args...)
+	query, args, err := osql.SQL()
+	if err != nil {
+		return nil, err
+	}
+	err = models.DB.Select(&picks, query, args...)
+	if err != nil {
+		log.Printf("Failed to get picks from database:%s\n", err.Error())
+		return nil, err
+	}
+	return picks, nil
+}
+
+func (s *pickData) Insert(pick ChosenChoice) (err error) {
+	return nil
+}
+
+func (s *pickData) Update(pick ChosenChoice) (err error) {
+	return nil
+}
+
 // PollData is the pointer instance of pollData struct, which implements pollInterface
 // It provides data layer abstraction
 var PollData = new(pollData)
@@ -465,3 +517,7 @@ var PollData = new(pollData)
 // ChoiceData is the pointer instance of choiceData struct, which implements choiceInterface,
 // to provide choice database abstraction
 var ChoiceData = new(choiceData)
+
+// PickData is the pointer instance of pickData struct, which implements pickInterface,
+// to provide pick database abstraction
+var PickData = new(pickData)
