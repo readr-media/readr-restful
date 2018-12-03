@@ -267,6 +267,7 @@ func TestRoutePost(t *testing.T) {
 				// post_id will not repeat now
 				// genericTestcase{"Existing", "POST", "/post", `{"author":1}`, http.StatusBadRequest, `{"Error":"Post ID Already Taken"}`},
 				genericTestcase{"WithTags", "POST", `/post`, `{"author":53,"title":"Why so serious?", "tags":[1,2]}`, http.StatusOK, ``},
+				genericTestcase{"WithPost", "POST", `/post`, `{"author":1,"title":"Why so serious?", "type":4, "project_id":"100001"}`, http.StatusOK, ``},
 			},
 		},
 		TestStep{
@@ -280,6 +281,7 @@ func TestRoutePost(t *testing.T) {
 				genericTestcase{"UpdateTags", "PUT", `/post`, `{"id":1, "tags":[5,3], "updated_by":1}`, http.StatusOK, ``},
 				// UpdateSchedule the same with UpdateTags, need to be changed or confirmed
 				genericTestcase{"DeleteTags", "PUT", `/post`, `{"id":1, "tags":[], "updated_by":1}`, http.StatusOK, ``},
+				genericTestcase{"UpdateProjectID", "PUT", `/post`, `{"id":1, "author":1, "project_id":100002}`, http.StatusOK, ``},
 			},
 		},
 		TestStep{

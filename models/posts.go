@@ -43,6 +43,10 @@ type Post struct {
 	VideoID         NullString `json:"video_id" db:"video_id" redis:"video_id"`
 	VideoViews      NullInt    `json:"video_views" db:"video_views" redis:"video_views"`
 	PublishStatus   NullInt    `json:"publish_status" db:"publish_status" redis:"publish_status"`
+	ProjectID       NullInt    `json:"project_id" db:"project_id" redis:"project_id"`
+	Order           NullInt    `json:"post_order" db:"post_order" redis:"post_order"`
+	HeroImage       NullString `json:"hero_image" db:"hero_image" redis:"hero_image"`
+	Slug            NullString `json:"slug" db:"slug" redis:"slug"`
 }
 
 type postAPI struct{}

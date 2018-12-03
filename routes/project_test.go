@@ -129,6 +129,10 @@ func (a *mockProjectAPI) GetProjects(args models.GetProjectArgs) (result []model
 	}, nil
 }
 
+func (a *mockProjectAPI) GetContents(id int, args models.GetProjectArgs) (result []interface{}, err error) {
+	return nil, err
+}
+
 func (a *mockProjectAPI) InsertProject(p models.Project) error {
 	for _, project := range mockProjectDS {
 		if p.ID == project.ID {
@@ -342,6 +346,16 @@ func TestRouteProjects(t *testing.T) {
 				},
 			}},
 			genericTestcase{"GetProjectWithAuthorsInvalidFields", "GET", `/project/list?fields=["cat"]`, ``, http.StatusBadRequest, `{"Error":"Invalid Fields"}`},
+		}
+		for _, tc := range testcases {
+			genericDoTest(tc, t, asserter)
+		}
+	})
+	t.Run("GetProjectContents", func(t *testing.T) {
+		testcases := []genericTestcase{
+			genericTestcase{"GetContents", "GET", `/project/contents/unknown`, ``, http.StatusBadRequest, `{"Error":"ID Must Be Integer"}`},
+			genericTestcase{"GetContentsWithMemberID", "GET", `/project/contents/1000020?member_id=101`, ``, http.StatusOK, `{"_items":null}`},
+			genericTestcase{"GetContentsWithPageAndMaxresult", "GET", `/project/contents/1000020?max_result=10&page=2`, ``, http.StatusOK, `{"_items":null}`},
 		}
 		for _, tc := range testcases {
 			genericDoTest(tc, t, asserter)
