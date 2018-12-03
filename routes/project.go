@@ -152,6 +152,25 @@ func (r *projectHandler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"_items": projects})
 }
 
+func (r *projectHandler) GetContents(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "ID Must Be Integer"})
+		return
+	}
+
+	var args = &models.GetProjectArgs{}
+	c.ShouldBindQuery(args)
+
+	result, err := models.ProjectAPI.GetContents(id, *args)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"_items": result})
+}
+
 func (r *projectHandler) Post(c *gin.Context) {
 
 	project := taggedProject{}
@@ -292,6 +311,7 @@ func (r *projectHandler) SetRoutes(router *gin.Engine) {
 	{
 		projectRouter.GET("/count", r.Count)
 		projectRouter.GET("/list", r.Get)
+		projectRouter.GET("/contents/:id", r.GetContents)
 		projectRouter.POST("", r.Post)
 		projectRouter.PUT("", r.Put)
 		projectRouter.DELETE("/:id", r.Delete)

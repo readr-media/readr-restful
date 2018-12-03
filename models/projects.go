@@ -47,6 +47,7 @@ type ProjectAPIInterface interface {
 	DeleteProjects(p Project) error
 	GetProject(p Project) (Project, error)
 	GetProjects(args GetProjectArgs) ([]ProjectAuthors, error)
+	GetContents(id int, args GetProjectArgs) ([]interface{}, error)
 	InsertProject(p Project) error
 	UpdateProjects(p Project) error
 	SchedulePublish() error
@@ -66,6 +67,8 @@ type GetProjectArgs struct {
 	MaxResult int    `form:"max_result" json:"max_result"`
 	Page      int    `form:"page" json:"page"`
 	Sorting   string `form:"sort" json:"sort"`
+	// For determining to show memo abstract or not
+	MemberID int64 `form:"member_id"`
 
 	Fields sqlfields `form:"fields"`
 }
@@ -165,6 +168,16 @@ type ProjectAuthors struct {
 	Tags    NullString  `json:"-" db:"tags"`
 	Authors []Stunt     `json:"authors"`
 	TagList []SimpleTag `json:"tags"`
+}
+
+type TypedMemo struct {
+	Type int `json:"type"`
+	MemoDetail
+}
+
+type TypedReport struct {
+	Type int `json:"type"`
+	ReportAuthors
 }
 
 func (p *ProjectAuthors) formatTags() {
@@ -301,6 +314,120 @@ func (a *projectAPI) GetProjects(args GetProjectArgs) (result []ProjectAuthors, 
 			result[k] = pas
 		}
 	}
+	return result, nil
+}
+
+func (a *projectAPI) GetContents(id int, args GetProjectArgs) (result []interface{}, err error) {
+
+	if args.MaxResult == 0 {
+		args.MaxResult = 10
+	}
+	if args.Page == 0 {
+		args.Page = 1
+	}
+	result = make([]interface{}, 0)
+
+	query := fmt.Sprintf(`
+		SELECT r.id, r.type FROM (
+			SELECT post_id AS id, created_at, "post" AS type FROM posts WHERE active = %[1]d AND publish_status = %[2]d AND project_id = %[7]d
+			UNION
+			SELECT memo_id, created_at, "memo" FROM memos WHERE active = %[3]d AND publish_status = %[4]d AND project_id = %[7]d
+			UNION
+			SELECT id, created_at, "report" FROM reports WHERE active = %[5]d AND publish_status = %[6]d AND project_id = %[7]d
+		) as r ORDER BY r.created_at LIMIT %[8]d OFFSET %[9]d;`,
+		config.Config.Models.Posts["active"],
+		config.Config.Models.PostPublishStatus["publish"],
+		config.Config.Models.Memos["active"],
+		config.Config.Models.MemosPublishStatus["publish"],
+		config.Config.Models.Reports["active"],
+		config.Config.Models.ReportsPublishStatus["publish"],
+		id, args.MaxResult, (args.Page-1)*(args.MaxResult))
+
+	var orderedList []struct {
+		ID   int    `db:"id"`
+		Type string `db:"type"`
+	}
+
+	if err = DB.Select(&orderedList, query); err != nil {
+		log.Println(err.Error())
+		return result, err
+	}
+
+	var postIDs []uint32
+	var memoIDs []int64
+	var reportIDs []int
+	var posts []TaggedPostMember
+	var memos []MemoDetail
+	var reports []ReportAuthors
+
+	for _, v := range orderedList {
+		switch v.Type {
+		case "post":
+			postIDs = append(postIDs, uint32(v.ID))
+		case "memo":
+			memoIDs = append(memoIDs, int64(v.ID))
+		case "report":
+			reportIDs = append(reportIDs, v.ID)
+		}
+	}
+
+	if len(postIDs) > 0 {
+		posts, err = PostAPI.GetPosts(&PostArgs{
+			MaxResult:    uint8(args.MaxResult),
+			IDs:          postIDs,
+			ShowAuthor:   true,
+			ShowCommment: true,
+			ShowTag:      true,
+		})
+		if err != nil {
+			return result, err
+		}
+	}
+	if len(memoIDs) > 0 {
+		memos, err = MemoAPI.GetMemos(&MemoGetArgs{
+			MaxResult:      args.MaxResult,
+			IDs:            memoIDs,
+			MemberID:       args.MemberID,
+			AbstractLength: 20,
+		})
+		if err != nil {
+			return result, err
+		}
+	}
+	if len(reportIDs) > 0 {
+		reports, err = ReportAPI.GetReports(GetReportArgs{
+			MaxResult: args.MaxResult,
+			Fields:    []string{"nickname"},
+			IDs:       reportIDs,
+		})
+		if err != nil {
+			return result, err
+		}
+	}
+
+	for _, v := range orderedList {
+		switch v.Type {
+		case "post":
+			for _, item := range posts {
+				if v.ID == int(item.Post.ID) {
+					result = append(result, item)
+				}
+			}
+		case "memo":
+			for _, item := range memos {
+				if v.ID == item.Memo.ID {
+					result = append(result, TypedMemo{config.Config.Models.PostType["memo"], item})
+				}
+			}
+		case "report":
+			for _, item := range reports {
+				if v.ID == int(item.ID) {
+					result = append(result, TypedReport{config.Config.Models.PostType["report"], item})
+				}
+			}
+		}
+	}
+
 	return result, nil
 }
 
