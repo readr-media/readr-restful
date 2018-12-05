@@ -329,12 +329,12 @@ func (a *projectAPI) GetContents(id int, args GetProjectArgs) (result []interfac
 
 	query := fmt.Sprintf(`
 		SELECT r.id, r.type FROM (
-			SELECT post_id AS id, created_at, "post" AS type FROM posts WHERE active = %[1]d AND publish_status = %[2]d AND project_id = %[7]d
+			SELECT post_id AS id, updated_at, "post" AS type FROM posts WHERE active = %[1]d AND publish_status = %[2]d AND project_id = %[7]d
 			UNION
-			SELECT memo_id, created_at, "memo" FROM memos WHERE active = %[3]d AND publish_status = %[4]d AND project_id = %[7]d
+			SELECT memo_id, updated_at, "memo" FROM memos WHERE active = %[3]d AND publish_status = %[4]d AND project_id = %[7]d
 			UNION
-			SELECT id, created_at, "report" FROM reports WHERE active = %[5]d AND publish_status = %[6]d AND project_id = %[7]d
-		) as r ORDER BY r.created_at LIMIT %[8]d OFFSET %[9]d;`,
+			SELECT id, updated_at, "report" FROM reports WHERE active = %[5]d AND publish_status = %[6]d AND project_id = %[7]d
+		) as r ORDER BY r.updated_at DESC LIMIT %[8]d OFFSET %[9]d;`,
 		config.Config.Models.Posts["active"],
 		config.Config.Models.PostPublishStatus["publish"],
 		config.Config.Models.Memos["active"],
