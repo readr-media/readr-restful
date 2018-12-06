@@ -1,8 +1,11 @@
 package poll
 
 import (
+	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -155,6 +158,55 @@ func (r *router) UpdatePicks(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// PubsubMessage hosts the message body of Google Pub/Sub
+type PubsubMessage struct {
+	ID   string            `json:"messageId"`
+	Body []byte            `json:"data"`
+	Attr map[string]string `json:"attributes"`
+}
+
+// PubsubData is total message format of Google Pub/Sub
+type PubsubData struct {
+	Subscription string `json:"subscription"`
+	Message      PubsubMessage
+}
+
+func (r *router) Push(c *gin.Context) {
+
+	defer c.Status(http.StatusOK)
+
+	var (
+		input PubsubData
+		pick  ChosenChoice
+		err   error
+	)
+	c.ShouldBindJSON(&input)
+	action := input.Message.Attr["action"]
+	if err = json.Unmarshal(input.Message.Body, &pick); err != nil {
+		log.Printf("Fail to parse %s message: %s\n", action, err.Error())
+		return
+	}
+	if !pick.CreatedAt.Valid {
+		pick.CreatedAt.Time = time.Now()
+		pick.CreatedAt.Valid = true
+	}
+	switch action {
+	case "insert":
+		if err := PickData.Insert(pick); err != nil {
+			log.Printf("Insert error:%s\n", err.Error())
+			return
+		}
+	case "update":
+		if err := PickData.Update(pick); err != nil {
+			log.Printf("Update error:%s\n", err.Error())
+			return
+		}
+	default:
+		log.Println("Pubsub Message Action Not Support", action)
+		return
+	}
+}
+
 func (r *router) SetRoutes(router *gin.Engine) {
 
 	v2 := router.Group("/v2/polls")
@@ -170,7 +222,12 @@ func (r *router) SetRoutes(router *gin.Engine) {
 		v2.GET("/:id/picks", r.GetPicks)
 		v2.POST("/:id/picks", r.InsertPicks)
 		v2.PUT("/:id/picks", r.UpdatePicks)
+
 	}
+	// "/v2/polls/pubsub" collides with "/v2/polls/:id"
+	// It's natural restriction with httprouter. It might be solved in v2
+	// Now use "/v2/pubsub/polls/" to avoid collision
+	router.POST("/v2/pubsub/polls", r.Push)
 }
 
 // Router is the single routing instance used in registration in routes/routes.go

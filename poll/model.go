@@ -53,7 +53,7 @@ type ChosenChoice struct {
 	MemberID  int64           `json:"member_id" db:"member_id"`
 	PollID    int64           `json:"poll_id" db:"poll_id"`
 	ChoiceID  int64           `json:"choice_id" db:"choice_id"`
-	Active    int64           `json:"active" db:"active"`
+	Active    bool            `json:"active" db:"active"`
 	CreatedAt models.NullTime `json:"created_at" db:"created_at"`
 }
 
@@ -143,6 +143,8 @@ FindTags:
 				if fieldValue.FieldByName("Valid").Bool() {
 					columns = append(columns, tag)
 				}
+			case "bool":
+				columns = append(columns, tag)
 			default:
 				fmt.Println("unrecognised format: ", value.Field(i).Type())
 			}
@@ -278,11 +280,8 @@ func (p *pollData) Get(filter *ListPollsFilter) (polls []ChoicesEmbeddedPoll, er
 		s.fields = append(s.fields, sqlfield{table: "polls", pattern: `%s.%s`, fields: []string{"*"}})
 	}, filter.Parse())
 	query, args, err := osql.SQL()
-	fmt.Printf("sql query:%s, args:%v\n", query, args)
 
 	rows, err := models.DB.Queryx(query, args...)
-
-	//rows, err := models.DB.Queryx(osql.SQL(), osql.args...)
 	if err != nil {
 		log.Println(err.Error())
 		return nil, err
@@ -488,8 +487,6 @@ func (s *pickData) Get(filter *ListPicksFilter) (picks []ChosenChoice, err error
 		s.table = "polls_chosen_choice"
 		s.fields = append(s.fields, sqlfield{table: "polls_chosen_choice", pattern: `%s.%s`, fields: []string{"*"}})
 	}, filter.Parse())
-	// fmt.Printf("SQL query:%s\n,SQL arguments:%v\n", osql.SQL(), osql.args)
-	// rows, err := models.DB.Queryx(osql.SQL(), osql.args...)
 	query, args, err := osql.SQL()
 	if err != nil {
 		return nil, err
@@ -503,10 +500,52 @@ func (s *pickData) Get(filter *ListPicksFilter) (picks []ChosenChoice, err error
 }
 
 func (s *pickData) Insert(pick ChosenChoice) (err error) {
+
+	pickTags := GetStructTags("full", "db", ChosenChoice{})
+	pickQ := fmt.Sprintf(`INSERT INTO polls_chosen_choice (%s) VALUES (:%s)`,
+		strings.Join(pickTags, ", "), strings.Join(pickTags, ", :"))
+
+	tx, err := models.DB.Beginx()
+	if err != nil {
+		log.Printf("Fail to get sql connection: %v\n", err)
+		return err
+	}
+	// Either rollback or commit transaction
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+			return
+		}
+		err = tx.Commit()
+	}()
+
+	if _, err = tx.NamedExec(pickQ, pick); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(`UPDATE polls_choices SET total_vote = total_vote + 1 WHERE id = ?;`, pick.ChoiceID); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(`UPDATE polls SET total_vote = total_vote + 1 WHERE id = ?;`, pick.PollID); err != nil {
+		return err
+	}
 	return nil
 }
 
 func (s *pickData) Update(pick ChosenChoice) (err error) {
+
+	pickTags := GetStructTags("non-null", "db", pick)
+	pickFields := func(tags []string) string {
+		var temp []string
+		for _, tag := range tags {
+			temp = append(temp, fmt.Sprintf(`%s = :%s`, tag, tag))
+		}
+		return strings.Join(temp, ", ")
+	}(pickTags)
+	query := fmt.Sprintf(`UPDATE polls_chosen_choice SET %s WHERE id = :id`, pickFields)
+	if _, err := models.DB.NamedExec(query, pick); err != nil {
+		log.Fatal(err)
+		return err
+	}
 	return nil
 }
 
