@@ -30,7 +30,7 @@ func GetResourceTableInfo(resource string) (tableName string, idName string) {
 		tableName = "memos"
 		idName = "memo_id"
 	case "report":
-		tableName = "memos"
+		tableName = "reports"
 		idName = "id"
 	case "tag":
 		tableName = "tags"
