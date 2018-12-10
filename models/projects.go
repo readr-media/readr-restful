@@ -171,7 +171,7 @@ type ProjectAuthors struct {
 }
 
 type TypedMemo struct {
-	Type int `json:"type"`
+	Type int `json:"content_type"`
 	MemoDetail
 }
 
