@@ -24,7 +24,7 @@ type Poll struct {
 	EndAt       models.NullTime   `json:"end_at" db:"end_at"`
 	MaxChoice   int64             `json:"max_choice" db:"max_choice"`
 	Changeable  int64             `json:"changeable" db:"changeable"`
-	PublishedAt models.NullInt    `json:"published_at" db:"published_at"`
+	PublishedAt models.NullTime   `json:"published_at" db:"published_at"`
 	CreatedAt   models.NullTime   `json:"created_at" db:"created_at"`
 	CreatedBy   models.NullInt    `json:"created_by" db:"created_by"`
 	UpdatedAt   models.NullTime   `json:"updated_at" db:"updated_at"`
