@@ -16,7 +16,16 @@ type router struct{}
 // it could return polls with corresponding choices
 func (r *router) GetPolls(c *gin.Context) {
 
-	filter, err := SetListPollsFilter(BindListPollsFilter(c))
+	defaultFilter := func(f *ListPollsFilter) (err error) {
+		f.MaxResult = 20
+		f.Page = 1
+		f.Sort = "-created_at"
+		var defaultActive int64 = 1
+		f.Active = &defaultActive
+
+		return nil
+	}
+	filter, err := SetListPollsFilter(defaultFilter, BindListPollsFilter(c))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return

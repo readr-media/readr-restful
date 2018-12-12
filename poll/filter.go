@@ -75,7 +75,7 @@ type ListPollsFilter struct {
 	Embed     string `form:"embed"`
 
 	Status  string `form:"status"`
-	Active  int64  `form:"active"`
+	Active  *int64 `form:"active,omitempty"`
 	StartAt string `form:"start_at"`
 	IDS     string `form:"ids"`
 }
@@ -102,7 +102,9 @@ func (f *ListPollsFilter) Parse() func(s *SQLO) {
 		}
 		// active should be labeled with "polls.active", since all three tables have the column "active"
 		// It could be ambiguous for MySQL for placing simple active here
-		s.where = append(s.where, sqlsv{statement: "polls.active = ?", variable: f.Active})
+		if f.Active != nil {
+			s.where = append(s.where, sqlsv{statement: "polls.active = ?", variable: *f.Active})
+		}
 		if f.Embed != "" {
 			embedded := strings.Split(f.Embed, ",")
 
@@ -152,7 +154,9 @@ func (f *ListPollsFilter) Parse() func(s *SQLO) {
 // Default values are MaxResult = 20, Page = 1, OrderBy = -updated_at
 func SetListPollsFilter(options ...func(*ListPollsFilter) (err error)) (*ListPollsFilter, error) {
 
-	args := ListPollsFilter{MaxResult: 20, Page: 1, Sort: "-created_at", Active: 1}
+	//var defaultActive int64 = 1
+	//args := ListPollsFilter{MaxResult: 20, Page: 1, Sort: "-created_at", Active: &defaultActive}
+	var args ListPollsFilter
 
 	for _, option := range options {
 		if err := option(&args); err != nil {
