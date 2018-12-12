@@ -177,6 +177,8 @@ FieldLoop:
 			results = append(results, fmt.Sprintf(sf.pattern, sf.table, f, sf.table, f))
 		case `%s.%s`:
 			results = append(results, fmt.Sprintf(sf.pattern, sf.table, f))
+		case `%s`:
+			results = append(results, fmt.Sprintf(sf.pattern, f))
 		default:
 			fmt.Printf("could not parse:%s\n", sf.pattern)
 		}
@@ -256,7 +258,7 @@ func (s *SQLO) SQL() (query string, args []interface{}, err error) {
 	if s.pagination != "" {
 		base.WriteString(s.pagination)
 	}
-	base.WriteString(";")
+	//base.WriteString(";")
 	query, args, err = sqlx.In(base.String(), s.args...)
 	if err != nil {
 		return "", nil, err
@@ -275,11 +277,32 @@ func NewSQLO(options ...func(*SQLO)) *SQLO {
 
 func (p *pollData) Get(filter *ListPollsFilter) (polls []ChoicesEmbeddedPoll, err error) {
 
-	osql := NewSQLO(func(s *SQLO) {
+	// Use original filter to generate sub selection
+	subFilter := new(ListPollsFilter)
+	*subFilter = *filter
+	subFilter.Embed = ""
+	subselect := NewSQLO(func(s *SQLO) {
 		s.table = "polls"
+		s.fields = append(s.fields, sqlfield{pattern: `%s`, fields: []string{"*"}})
+	}, subFilter.Parse())
+	subQuery, subArgs, err := subselect.SQL()
+	if err != nil {
+		log.Printf("Error parsing sub query for poll")
+		return nil, err
+	}
+	// Use only Embed to generate join
+	mainFilter := new(ListPollsFilter)
+	mainFilter.Embed = filter.Embed
+	osql := NewSQLO(func(s *SQLO) {
+		s.table = fmt.Sprintf("(%s) AS polls", subQuery)
 		s.fields = append(s.fields, sqlfield{table: "polls", pattern: `%s.%s`, fields: []string{"*"}})
-	}, filter.Parse())
+	}, mainFilter.Parse())
 	query, args, err := osql.SQL()
+	if err != nil {
+		log.Printf("Error parsing main query for poll")
+		return nil, err
+	}
+	args = append(args, subArgs...)
 
 	rows, err := models.DB.Queryx(query, args...)
 	if err != nil {
