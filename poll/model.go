@@ -514,6 +514,8 @@ func (s *pickData) Get(filter *ListPicksFilter) (picks []ChosenChoice, err error
 		s.fields = append(s.fields, sqlfield{table: "polls_chosen_choice", pattern: `%s.%s`, fields: []string{"*"}})
 	}, filter.Parse())
 	query, args, err := osql.SQL()
+	// fmt.Printf("SQL query:%s,\nargs:%v\n", query, args)
+
 	if err != nil {
 		return nil, err
 	}

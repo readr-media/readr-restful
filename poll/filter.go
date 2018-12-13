@@ -2,10 +2,10 @@ package poll
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"regexp"
-	"strconv"
 	"strings"
 	"time"
 
@@ -189,8 +189,8 @@ func BindListPollsFilter(c *gin.Context) func(*ListPollsFilter) error {
 }
 
 type ListPicksFilter struct {
-	PollID    int64
-	Member    int64  `form:"member"`
+	PollID    string `form:"poll_id"`
+	MemberID  int64  `form:"member_id"`
 	Active    int64  `form:"active"`
 	CreatedAt string `form:"created_at"`
 }
@@ -210,8 +210,8 @@ func BindListPicksFilter(c *gin.Context) func(*ListPicksFilter) error {
 		if err = c.ShouldBindQuery(f); err != nil {
 			fmt.Println(err.Error())
 		}
-		if c.Param("id") != "" {
-			f.PollID, _ = strconv.ParseInt(c.Param("id"), 10, 64)
+		if c.Param("id") != "list" {
+			return errors.New("Invalid route variable")
 		}
 		return err
 	}
@@ -221,19 +221,32 @@ func (f *ListPicksFilter) Parse() func(s *SQLO) {
 	return func(s *SQLO) {
 		s.where = append(s.where, sqlsv{statement: "active = ?", variable: f.Active})
 
-		if f.PollID != 0 {
-			s.where = append(s.where, sqlsv{statement: "poll_id = ?", variable: f.PollID})
+		if f.PollID != "" {
+			condition, value, err := ParamsParser(f.PollID, "comma-separated")
+			if err != nil {
+				log.Printf(err.Error())
+				return
+			}
+			i := 0
+			for i < len(condition) {
+				s.where = append(s.where, sqlsv{statement: fmt.Sprintf("poll_id %s (?)", OperatorParser(condition[i])), variable: value[i]})
+				i++
+			}
 		}
-
-		if f.Member != 0 {
-			s.where = append(s.where, sqlsv{statement: "member_id = ?", variable: f.Member})
+		if f.MemberID != 0 {
+			s.where = append(s.where, sqlsv{statement: "member_id = ?", variable: f.MemberID})
 		}
-		// Parse format like: created_at=gte:2018-11-22, lt:2018-11-24
+		// Parse format like: created_at=gte:2018-11-22, lt:2018-11-2
 		if f.CreatedAt != "" {
-			cutter := regexp.MustCompile(`\s*(?P<operator>gte|gt|lte|lt|eq|neq)\s*:(?P<data>[0-9-]+)`)
-			cutted := cutter.FindAllStringSubmatch(f.CreatedAt, -1)
-			for _, filter := range cutted {
-				s.where = append(s.where, sqlsv{statement: fmt.Sprintf("created_at %s ?", OperatorParser(filter[1])), variable: filter[2]})
+			condition, value, err := ParamsParser(f.CreatedAt, "datetime")
+			if err != nil {
+				log.Printf(err.Error())
+				return
+			}
+			i := 0
+			for i < len(condition) {
+				s.where = append(s.where, sqlsv{statement: fmt.Sprintf("created_at %s ?", OperatorParser(condition[i])), variable: value[i]})
+				i++
 			}
 		}
 	}
