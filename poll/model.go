@@ -61,7 +61,8 @@ type ChosenChoice struct {
 // Corresponding choices are embedded in the return values
 type ChoicesEmbeddedPoll struct {
 	Poll
-	Choices []Choice `json:"choices,omitempty" db:"choices"`
+	CreatedBy models.Stunt `json:"created_by" db:"created_by"`
+	Choices   []Choice     `json:"choices,omitempty" db:"choices"`
 }
 
 type pollInterface interface {
@@ -303,6 +304,7 @@ func (p *pollData) Get(filter *ListPollsFilter) (polls []ChoicesEmbeddedPoll, er
 		return nil, err
 	}
 	args = append(args, subArgs...)
+	// fmt.Printf("sql query:%s\n, args:%v\n", query, args)
 
 	rows, err := models.DB.Queryx(query, args...)
 	if err != nil {
@@ -314,7 +316,8 @@ ScanLoop:
 		// Corresponding struct for joined table
 		var poll struct {
 			Poll
-			Choice `db:"choice"`
+			CreatedBy models.Stunt `db:"created_by"`
+			Choice    `db:"choice"`
 		}
 		if err = rows.StructScan(&poll); err != nil {
 			log.Fatal("Error scan polls\n", err)
@@ -331,9 +334,9 @@ ScanLoop:
 		}
 		// Poll id not existing. Create new poll for this id
 		if poll.Choice.ID != 0 {
-			polls = append(polls, ChoicesEmbeddedPoll{Poll: poll.Poll, Choices: []Choice{poll.Choice}})
+			polls = append(polls, ChoicesEmbeddedPoll{Poll: poll.Poll, CreatedBy: poll.CreatedBy, Choices: []Choice{poll.Choice}})
 		} else {
-			polls = append(polls, ChoicesEmbeddedPoll{Poll: poll.Poll})
+			polls = append(polls, ChoicesEmbeddedPoll{Poll: poll.Poll, CreatedBy: poll.CreatedBy})
 		}
 	}
 	return polls, err

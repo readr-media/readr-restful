@@ -107,6 +107,7 @@ func (f *ListPollsFilter) Parse() func(s *SQLO) {
 		}
 		if f.Embed != "" {
 			embedded := strings.Split(f.Embed, ",")
+			var embedCreator bool
 
 			for _, field := range embedded {
 				if field == "choices" {
@@ -114,6 +115,16 @@ func (f *ListPollsFilter) Parse() func(s *SQLO) {
 					s.join = append(s.join, " LEFT JOIN polls_choices AS choice ON polls.id = choice.poll_id")
 					s.fields = append(s.fields, sqlfield{table: "choice", pattern: `%s.%s "%s.%s"`, fields: GetStructTags("full", "db", Choice{})})
 				}
+				if field == "created_by" {
+					s.join = append(s.join, " LEFT JOIN members AS created_by ON polls.created_by = created_by.id")
+					s.fields = append(s.fields, sqlfield{table: "created_by", pattern: `%s.%s "%s.%s"`, fields: []string{"nickname"}})
+					embedCreator = true
+				}
+			}
+			// If created_by is not denoted as embedded explicitly, manually select created_by id to get valid created_by id
+			if !embedCreator {
+				s.join = append(s.join, " LEFT JOIN members AS created_by ON polls.created_by = created_by.id")
+				s.fields = append(s.fields, sqlfield{table: "created_by", pattern: `%s.%s "%s.%s"`, fields: []string{"id"}})
 			}
 		}
 		if f.MaxResult != 0 && f.Page > 0 {
