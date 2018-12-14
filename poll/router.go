@@ -2,6 +2,7 @@ package poll
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -148,7 +149,12 @@ func (r *router) PutChoices(c *gin.Context) {
 func (r *router) GetPicks(c *gin.Context) {
 	filter, err := SetListPicksFilter(BindListPicksFilter(c))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		switch err.Error() {
+		case "Invalid route variable":
+			c.JSON(http.StatusBadRequest, gin.H{"Error": fmt.Sprintf("%s. Use /polls/list/picks", err.Error())})
+		default:
+			c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		}
 		return
 	}
 	picks, err := PickData.Get(filter)
