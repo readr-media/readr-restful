@@ -117,7 +117,6 @@ FindTags:
 
 			for _, f := range skipFields {
 				if tag == f {
-					fmt.Printf("Found skip fields %s!\n", f)
 					continue FindTags
 				}
 			}
@@ -376,7 +375,7 @@ func (p *pollData) Insert(poll ChoicesEmbeddedPoll) (err error) {
 		return err
 	}
 	if len(poll.Choices) > 0 {
-		choiceTags := GetStructTags("full", "db", Choice{})
+		choiceTags := GetStructTags("full", "db", Choice{}, []string{"total_vote", "created_at", "updated_at"})
 
 		choiceQ := fmt.Sprintf(`INSERT INTO polls_choices (%s) VALUES (:%s)`,
 			strings.Join(choiceTags, ","), strings.Join(choiceTags, ",:"))
@@ -441,7 +440,8 @@ func RepeatString(target string, times int, delimiter string) (result string) {
 
 func (c *choiceData) Insert(choices []Choice) (err error) {
 
-	choiceTags := GetStructTags("full", "db", Choice{})
+	// Rule out total_vote, created_at and updated_by because they are NOT NULL and have default values
+	choiceTags := GetStructTags("full", "db", Choice{}, []string{"total_vote", "created_at", "updated_at"})
 
 	choiceQ := fmt.Sprintf(`INSERT INTO polls_choices (%s) VALUES (:%s)`,
 		strings.Join(choiceTags, ", "), strings.Join(choiceTags, ", :"))
@@ -570,9 +570,35 @@ func (s *pickData) Update(pick ChosenChoice) (err error) {
 		return strings.Join(temp, ", ")
 	}(pickTags)
 	query := fmt.Sprintf(`UPDATE polls_chosen_choice SET %s WHERE id = :id`, pickFields)
-	if _, err := models.DB.NamedExec(query, pick); err != nil {
+
+	tx, err := models.DB.Beginx()
+	if err != nil {
+		log.Printf("Fail to get sql connection: %v\n", err)
+		return err
+	}
+	// Either rollback or commit transaction
+	defer func() {
+		if err != nil {
+			tx.Rollback()
+			return
+		}
+		err = tx.Commit()
+	}()
+
+	if _, err := tx.NamedExec(query, pick); err != nil {
 		log.Fatal(err)
 		return err
+	}
+
+	// If set picks to not active(in effect delete), minus total_vote for poll and polls_choices
+	if pick.Active {
+
+		if _, err = tx.Exec(`UPDATE polls_choices SET total_vote = total_vote - 1 WHERE id = ?;`, pick.ChoiceID); err != nil {
+			return err
+		}
+		if _, err = tx.Exec(`UPDATE polls SET total_vote = total_vote - 1 WHERE id = ?;`, pick.PollID); err != nil {
+			return err
+		}
 	}
 	return nil
 }
