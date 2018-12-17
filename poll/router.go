@@ -188,13 +188,20 @@ type PubsubData struct {
 
 func (r *router) Push(c *gin.Context) {
 
-	defer c.Status(http.StatusOK)
-
 	var (
 		input PubsubData
 		pick  ChosenChoice
 		err   error
 	)
+
+	defer func() {
+		if err != nil {
+			c.Status(http.StatusBadRequest)
+		} else {
+			c.Status(http.StatusOK)
+		}
+	}()
+
 	c.ShouldBindJSON(&input)
 	action := input.Message.Attr["action"]
 	if err = json.Unmarshal(input.Message.Body, &pick); err != nil {
@@ -207,12 +214,12 @@ func (r *router) Push(c *gin.Context) {
 	}
 	switch action {
 	case "insert":
-		if err := PickData.Insert(pick); err != nil {
+		if err = PickData.Insert(pick); err != nil {
 			log.Printf("Insert error:%s\n", err.Error())
 			return
 		}
 	case "update":
-		if err := PickData.Update(pick); err != nil {
+		if err = PickData.Update(pick); err != nil {
 			log.Printf("Update error:%s\n", err.Error())
 			return
 		}
