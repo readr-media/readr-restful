@@ -591,7 +591,7 @@ func (s *pickData) Update(pick ChosenChoice) (err error) {
 	}
 
 	// If set picks to not active(in effect delete), minus total_vote for poll and polls_choices
-	if pick.Active {
+	if !pick.Active {
 
 		if _, err = tx.Exec(`UPDATE polls_choices SET total_vote = total_vote - 1 WHERE id = ?;`, pick.ChoiceID); err != nil {
 			return err
