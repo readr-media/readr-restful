@@ -57,17 +57,24 @@ type ChosenChoice struct {
 	CreatedAt models.NullTime `json:"created_at" db:"created_at"`
 }
 
-// ChoicesEmbeddedPoll is a single complete poll struct
-// Corresponding choices are embedded in the return values
-type ChoicesEmbeddedPoll struct {
+// PollSerializer is a single complete poll struct
+// used for JSON output.
+// Probable embed field, created_by and choices are prsented
+type PollSerializer struct {
 	Poll
 	CreatedBy models.Stunt `json:"created_by" db:"created_by"`
 	Choices   []Choice     `json:"choices,omitempty" db:"choices"`
 }
 
+// PollDeserializer is used for polls input Unmarschalling
+type PollDeserializer struct {
+	Poll
+	Choices []Choice `json:"choices,omitempty" db:"choices"`
+}
+
 type pollInterface interface {
-	Get(filters *ListPollsFilter) (polls []ChoicesEmbeddedPoll, err error)
-	Insert(p ChoicesEmbeddedPoll) (err error)
+	Get(filters *ListPollsFilter) (polls []PollSerializer, err error)
+	Insert(p PollDeserializer) (err error)
 	Update(poll Poll) (err error)
 }
 
@@ -275,7 +282,7 @@ func NewSQLO(options ...func(*SQLO)) *SQLO {
 	return &so
 }
 
-func (p *pollData) Get(filter *ListPollsFilter) (polls []ChoicesEmbeddedPoll, err error) {
+func (p *pollData) Get(filter *ListPollsFilter) (polls []PollSerializer, err error) {
 
 	// Use original filter to generate sub selection
 	subFilter := new(ListPollsFilter)
@@ -333,9 +340,9 @@ ScanLoop:
 		}
 		// Poll id not existing. Create new poll for this id
 		if poll.Choice.ID != 0 {
-			polls = append(polls, ChoicesEmbeddedPoll{Poll: poll.Poll, CreatedBy: poll.CreatedBy, Choices: []Choice{poll.Choice}})
+			polls = append(polls, PollSerializer{Poll: poll.Poll, CreatedBy: poll.CreatedBy, Choices: []Choice{poll.Choice}})
 		} else {
-			polls = append(polls, ChoicesEmbeddedPoll{Poll: poll.Poll, CreatedBy: poll.CreatedBy})
+			polls = append(polls, PollSerializer{Poll: poll.Poll, CreatedBy: poll.CreatedBy})
 		}
 	}
 	return polls, err
@@ -345,7 +352,7 @@ ScanLoop:
 // This poll could have attached choices, which will be also inserted as well.
 // Insert does not allow empty poll with choices, you have to insert poll first.
 // If it's needed to insert new choice, use choice api instead.
-func (p *pollData) Insert(poll ChoicesEmbeddedPoll) (err error) {
+func (p *pollData) Insert(poll PollDeserializer) (err error) {
 
 	pollTags := GetStructTags("full", "db", Poll{})
 	tx, err := models.DB.Beginx()

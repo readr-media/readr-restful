@@ -43,7 +43,7 @@ func (r *router) GetPolls(c *gin.Context) {
 // and create new poll using input data
 func (r *router) PostPolls(c *gin.Context) {
 
-	poll := ChoicesEmbeddedPoll{}
+	poll := PollDeserializer{}
 	if err := c.Bind(&poll); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
