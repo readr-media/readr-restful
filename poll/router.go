@@ -43,7 +43,7 @@ func (r *router) GetPolls(c *gin.Context) {
 // and create new poll using input data
 func (r *router) PostPolls(c *gin.Context) {
 
-	poll := ChoicesEmbeddedPoll{}
+	poll := PollDeserializer{}
 	if err := c.Bind(&poll); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
@@ -186,6 +186,20 @@ type PubsubData struct {
 	Message      PubsubMessage
 }
 
+// Push accepts message from Google Pub/Sub in format:
+// {
+//   "message": {
+//     "attributes": {
+//       "action": "insert/update"
+//     },
+//     "data": "{"id":1, "member_id": 1, "poll_id": 1, "choice_id":3, "active": true}"
+//     "message_id": "136969346945"
+//   },
+//   "subscription": "projects/myproject/subscriptions/mysubscription"
+// }
+//
+// According to "action" in attributes, Push will call corresponding functions in models.go
+// and execute insert/update for each picks.
 func (r *router) Push(c *gin.Context) {
 
 	var (
