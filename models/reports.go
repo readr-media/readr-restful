@@ -15,24 +15,34 @@ import (
 )
 
 type Report struct {
-	ID            int        `json:"id" db:"id"`
-	CreatedAt     NullTime   `json:"created_at" db:"created_at"`
-	LikeAmount    NullInt    `json:"like_amount" db:"like_amount"`
-	CommentAmount NullInt    `json:"comment_amount" db:"comment_amount"`
-	Title         NullString `json:"title" db:"title"`
-	Description   NullString `json:"description" db:"description"`
-	HeroImage     NullString `json:"hero_image" db:"hero_image"`
-	OgTitle       NullString `json:"og_title" db:"og_title"`
-	OgDescription NullString `json:"og_description" db:"og_description"`
-	OgImage       NullString `json:"og_image" db:"og_image"`
-	Active        NullInt    `json:"active" db:"active"`
-	ProjectID     int        `json:"project_id" db:"project_id"`
-	UpdatedAt     NullTime   `json:"updated_at" db:"updated_at"`
-	UpdatedBy     NullInt    `json:"updated_by" db:"updated_by"`
-	PublishedAt   NullTime   `json:"published_at" db:"published_at"`
-	Slug          NullString `json:"slug" db:"slug"`
-	Views         NullInt    `json:"views" db:"views"`
-	PublishStatus NullInt    `json:"publish_status" db:"publish_status"`
+	ID              uint32     `json:"id" db:"post_id" redis:"post_id"`
+	Author          NullInt    `json:"author" db:"author" redis:"author"`
+	CreatedAt       NullTime   `json:"created_at" db:"created_at" redis:"created_at"`
+	LikeAmount      NullInt    `json:"like_amount" db:"like_amount" redis:"like_amount"`
+	CommentAmount   NullInt    `json:"comment_amount" db:"comment_amount" redis:"comment_amount"`
+	Title           NullString `json:"title" db:"title" redis:"title"`
+	Subtitle        NullString `json:"subtitle" db:"subtitle" redis:"subtitle"`
+	Content         NullString `json:"content" db:"content" redis:"content"` //change from "description"
+	Type            NullInt    `json:"type" db:"type" redis:"type"`
+	Link            NullString `json:"link" db:"link" redis:"link"`
+	OgTitle         NullString `json:"og_title" db:"og_title" redis:"og_title"`
+	OgDescription   NullString `json:"og_description" db:"og_description" redis:"og_description"`
+	OgImage         NullString `json:"og_image" db:"og_image" redis:"og_image"`
+	Active          NullInt    `json:"active" db:"active" redis:"active"`
+	UpdatedAt       NullTime   `json:"updated_at" db:"updated_at" redis:"updated_at"`
+	UpdatedBy       NullInt    `json:"updated_by" db:"updated_by" redis:"updated_by"`
+	PublishedAt     NullTime   `json:"published_at" db:"published_at" redis:"published_at"`
+	LinkTitle       NullString `json:"link_title" db:"link_title" redis:"link_title"`
+	LinkDescription NullString `json:"link_description" db:"link_description" redis:"link_description"`
+	LinkImage       NullString `json:"link_image" db:"link_image" redis:"link_image"`
+	LinkName        NullString `json:"link_name" db:"link_name" redis:"link_name"`
+	VideoID         NullString `json:"video_id" db:"video_id" redis:"video_id"`
+	VideoViews      NullInt    `json:"video_views" db:"video_views" redis:"video_views"`
+	PublishStatus   NullInt    `json:"publish_status" db:"publish_status" redis:"publish_status"`
+	ProjectID       NullInt    `json:"project_id" db:"project_id" redis:"project_id"`
+	Order           NullInt    `json:"post_order" db:"post_order" redis:"post_order"`
+	HeroImage       NullString `json:"hero_image" db:"hero_image" redis:"hero_image"`
+	Slug            NullString `json:"slug" db:"slug" redis:"slug"`
 }
 
 type reportAPI struct{}
@@ -91,16 +101,17 @@ func (g *GetReportArgs) DefaultActive() {
 
 func (p *GetReportArgs) parse() (restricts string, values []interface{}) {
 	where := make([]string, 0)
+	where = append(where, fmt.Sprintf("%s %s %d", "posts.type", "=", config.Config.Models.PostType["report"]))
 
 	if p.Active != nil {
 		for k, v := range p.Active {
-			where = append(where, fmt.Sprintf("%s %s (?)", "reports.active", operatorHelper(k)))
+			where = append(where, fmt.Sprintf("%s %s (?)", "posts.active", operatorHelper(k)))
 			values = append(values, v)
 		}
 	}
 	if p.ReportPublishStatus != nil {
 		for k, v := range p.ReportPublishStatus {
-			where = append(where, fmt.Sprintf("%s %s (?)", "reports.publish_status", operatorHelper(k)))
+			where = append(where, fmt.Sprintf("%s %s (?)", "posts.publish_status", operatorHelper(k)))
 			values = append(values, v)
 		}
 	}
@@ -111,11 +122,11 @@ func (p *GetReportArgs) parse() (restricts string, values []interface{}) {
 		}
 	}
 	if len(p.IDs) != 0 {
-		where = append(where, fmt.Sprintf("%s %s (?)", "reports.id", operatorHelper("in")))
+		where = append(where, fmt.Sprintf("%s %s (?)", "posts.post_id", operatorHelper("in")))
 		values = append(values, p.IDs)
 	}
 	if len(p.Slugs) != 0 {
-		where = append(where, fmt.Sprintf("%s %s (?)", "reports.slug", operatorHelper("in")))
+		where = append(where, fmt.Sprintf("%s %s (?)", "posts.slug", operatorHelper("in")))
 		values = append(values, p.Slugs)
 	}
 	if len(p.ProjectSlugs) != 0 {
@@ -123,18 +134,19 @@ func (p *GetReportArgs) parse() (restricts string, values []interface{}) {
 		values = append(values, p.ProjectSlugs)
 	}
 	if len(p.Project) > 0 {
-		where = append(where, fmt.Sprintf("%s IN (?)", "reports.project_id"))
+		where = append(where, fmt.Sprintf("%s IN (?)", "posts.project_id"))
 		values = append(values, p.Project)
 	}
 	if p.Keyword != "" {
 		p.Keyword = fmt.Sprintf("%s%s%s", "%", p.Keyword, "%")
-		where = append(where, "(reports.title LIKE ? OR reports.id LIKE ?)")
+		where = append(where, "(posts.title LIKE ? OR posts.post_id LIKE ?)")
 		values = append(values, p.Keyword, p.Keyword)
 	}
 	if p.Filter != (Filter{}) {
-		where = append(where, fmt.Sprintf("reports.%s %s ?", p.Filter.Field, p.Filter.Operator))
+		where = append(where, fmt.Sprintf("posts.%s %s ?", p.Filter.Field, p.Filter.Operator))
 		values = append(values, p.Filter.Condition)
 	}
+
 	if len(where) > 1 {
 		restricts = strings.Join(where, " AND ")
 	} else if len(where) == 1 {
@@ -147,7 +159,7 @@ func (p *GetReportArgs) parseLimit() (limit map[string]string, values []interfac
 	restricts := make([]string, 0)
 	limit = make(map[string]string, 2)
 	if p.Sorting != "" {
-		restricts = append(restricts, fmt.Sprintf("ORDER BY %s%s", "reports.", orderByHelper(p.Sorting)))
+		restricts = append(restricts, fmt.Sprintf("ORDER BY %s%s", "posts.", orderByHelper(p.Sorting)))
 		limit["order"] = fmt.Sprintf("ORDER BY %s", orderByHelper(p.Sorting))
 	}
 	if p.MaxResult != 0 {
@@ -210,7 +222,7 @@ type ReportAuthor struct {
 
 func (a *reportAPI) CountReports(arg GetReportArgs) (result int, err error) {
 	restricts, values := arg.parse()
-	query := fmt.Sprintf(`SELECT COUNT(id) FROM reports LEFT JOIN projects AS projects ON projects.project_id = reports.project_id WHERE %s`, restricts)
+	query := fmt.Sprintf(`SELECT COUNT(posts.post_id) FROM posts LEFT JOIN projects AS projects ON projects.project_id = posts.project_id WHERE %s`, restricts)
 
 	query, args, err := sqlx.In(query, values...)
 	if err != nil {
@@ -231,7 +243,7 @@ func (a *reportAPI) CountReports(arg GetReportArgs) (result int, err error) {
 
 func (a *reportAPI) GetReport(p Report) (Report, error) {
 	report := Report{}
-	err := DB.QueryRowx("SELECT * FROM reports WHERE id = ?", p.ID).StructScan(&report)
+	err := DB.QueryRowx("SELECT * FROM posts WHERE post_id = ?", p.ID).StructScan(&report)
 	switch {
 	case err == sql.ErrNoRows:
 		err = errors.New("Report Not Found")
@@ -263,7 +275,7 @@ func (a *reportAPI) GetReports(args GetReportArgs) (result []ReportAuthors, err 
 	projectField[0] = fmt.Sprintf(`IFNULL(%s, 0) %s`, projectIDQuery[0], projectIDQuery[1])
 	projectField[5] = fmt.Sprintf(`IFNULL(%s, 0) %s`, projectPostQuery[0], projectPostQuery[1])
 
-	query := fmt.Sprintf("SELECT reports.*, %s, %s FROM (SELECT reports.* FROM reports LEFT JOIN projects AS projects ON projects.project_id = reports.project_id %s %s) AS reports LEFT JOIN report_authors ra ON reports.id = ra.report_id LEFT JOIN members author ON ra.author_id = author.id LEFT JOIN projects ON reports.project_id = projects.project_id %s;",
+	query := fmt.Sprintf("SELECT posts.*, %s, %s FROM (SELECT posts.* FROM posts LEFT JOIN projects AS projects ON projects.project_id = posts.project_id %s %s) AS posts LEFT JOIN report_authors ra ON posts.post_id = ra.report_id LEFT JOIN members author ON ra.author_id = author.id LEFT JOIN projects ON posts.project_id = projects.project_id %s;",
 		args.Fields.GetFields(`author.%s "author.%s"`), strings.Join(projectField, ","), restricts, limit["full"], limit["order"])
 
 	query, values, err = sqlx.In(query, values...)
@@ -313,7 +325,9 @@ func (a *reportAPI) GetReports(args GetReportArgs) (result []ReportAuthors, err 
 
 func (a *reportAPI) InsertReport(p Report) (lastID int, err error) {
 
-	query, _ := generateSQLStmt("insert", "reports", p)
+	p.Type = NullInt{int64(config.Config.Models.PostType["report"]), true}
+
+	query, _ := generateSQLStmt("insert", "posts", p)
 	result, err := DB.NamedExec(query, p)
 
 	if err != nil {
@@ -338,7 +352,7 @@ func (a *reportAPI) InsertReport(p Report) (lastID int, err error) {
 	}
 	lastID = int(lastid)
 	if p.ID == 0 {
-		p.ID = int(lastID)
+		p.ID = uint32(lastID)
 	}
 
 	return int(lastID), nil
@@ -347,7 +361,7 @@ func (a *reportAPI) InsertReport(p Report) (lastID int, err error) {
 func (a *reportAPI) UpdateReport(p Report) error {
 	tags := getStructDBTags("partial", p)
 	fields := makeFieldString("update", `%s = :%s`, tags)
-	query := fmt.Sprintf(`UPDATE reports SET %s WHERE id = :id`, strings.Join(fields, ", "))
+	query := fmt.Sprintf(`UPDATE posts SET %s WHERE post_id = :post_id`, strings.Join(fields, ", "))
 	result, err := DB.NamedExec(query, p)
 
 	if err != nil {
@@ -365,7 +379,7 @@ func (a *reportAPI) UpdateReport(p Report) error {
 
 func (a *reportAPI) DeleteReport(p Report) error {
 
-	result, err := DB.NamedExec("UPDATE reports SET active = 0 WHERE id = :id", p)
+	result, err := DB.NamedExec("UPDATE posts SET active = 0 WHERE post_id = :post_id", p)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -454,7 +468,7 @@ func (a *reportAPI) UpdateAuthors(reportID int, authorIDs []int) (err error) {
 
 func (a *reportAPI) SchedulePublish() (ids []int, err error) {
 
-	rows, err := DB.Queryx("SELECT id FROM reports WHERE publish_status=3 AND published_at <= cast(now() as datetime);")
+	rows, err := DB.Queryx(fmt.Sprintf("SELECT id FROM reports WHERE publish_status=3 AND published_at <= cast(now() as datetime) AND type = %d;", config.Config.Models.PostType["report"]))
 	if err != nil {
 		log.Println("Getting report error when schedule publishing reports", err)
 		return ids, err
@@ -468,7 +482,7 @@ func (a *reportAPI) SchedulePublish() (ids []int, err error) {
 		ids = append(ids, i)
 	}
 
-	_, err = DB.Exec("UPDATE reports SET publish_status=2 WHERE publish_status=3 AND published_at <= cast(now() as datetime);")
+	_, err = DB.Exec(fmt.Sprintf("UPDATE reports SET publish_status=2 WHERE publish_status=3 AND published_at <= cast(now() as datetime) AND type = %d;", config.Config.Models.PostType["report"]))
 	if err != nil {
 		return ids, err
 	}

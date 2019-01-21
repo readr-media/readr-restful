@@ -106,7 +106,6 @@ func (g *GetFollowingArgs) get() (*sqlx.Rows, error) {
 		condition: []string{"f.type IN (?)", "f.member_id = ?", "f.emotion = ?"},
 		args:      []interface{}{followType, g.MemberID, 0},
 	}
-
 	// Append post's type filter to printarg
 	if g.ResourceType != "" {
 		if val, ok := config.Config.Models.PostType[g.ResourceType]; ok {
@@ -139,7 +138,6 @@ func (g *GetFollowingArgs) get() (*sqlx.Rows, error) {
 	} else {
 		osql.AppendPrintarg("")
 	}
-
 	query, args, err := sqlx.In(osql.SQL(), osql.args...)
 	query = DB.Rebind(query)
 
@@ -629,13 +627,11 @@ func (g *GetFollowedArgs) get() (*sqlx.Rows, error) {
 		join:      []string{"members AS m ON f.member_id = m.id"},
 		args:      []interface{}{g.IDs, g.FollowType, g.Emotion},
 	}
-
 	query, args, err := sqlx.In(fmt.Sprintf(osql.base, strings.Join(osql.join, " LEFT JOIN "), strings.Join(osql.condition, " AND ")), osql.args...)
 	if err != nil {
 		return nil, err
 	}
 	query = DB.Rebind(query)
-
 	return DB.Queryx(query, args...)
 }
 
@@ -668,6 +664,8 @@ func (g *GetFollowedArgs) scan(rows *sqlx.Rows) (interface{}, error) {
 	}
 	return followed, err
 }
+
+/* ================================================ Get Follow Map ================================================ */
 
 type GetFollowMapArgs struct {
 	UpdateAfter time.Time `form:"updated_after" json:"updated_after"`
@@ -730,8 +728,6 @@ func (g *GetFollowMapArgs) scan(rows *sqlx.Rows) (interface{}, error) {
 	}
 	return list, err
 }
-
-/* ================================================ Get Follow Map ================================================ */
 
 type GetFollowerMemberIDsArgs struct {
 	ID         int64
@@ -841,7 +837,6 @@ func (f *followingAPI) Update(params FollowArgs) (err error) {
 }
 
 func (f *followingAPI) Delete(params FollowArgs) (err error) {
-
 	query := `DELETE FROM following WHERE member_id = ? AND target_id = ? AND type = ? AND emotion = ?;`
 	_, err = DB.Exec(query, params.Subject, params.Object, params.Type, params.Emotion)
 	if err != nil {

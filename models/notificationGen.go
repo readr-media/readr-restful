@@ -201,14 +201,14 @@ func (c notificationGenerator) GenerateCommentNotifications(comment InsertCommen
 		if err != nil {
 			log.Println("Error get memo", resourceID, err.Error())
 		}
-		project, err := ProjectAPI.GetProject(Project{ID: int(memo.Project.Int)})
+		project, err := ProjectAPI.GetProject(Project{ID: int(memo.ProjectID.Int)})
 		if err != nil {
-			log.Println("Error get project", memo.Project.Int, err.Error())
+			log.Println("Error get project", memo.ProjectID.Int, err.Error())
 		}
 
-		projectFollowers, err := c.getFollowers(int(memo.Project.Int), config.Config.Models.FollowingType["project"], []int{0})
+		projectFollowers, err := c.getFollowers(int(memo.ProjectID.Int), config.Config.Models.FollowingType["project"], []int{0})
 		if err != nil {
-			log.Println("Error get project followers", memo.Project.Int, err.Error())
+			log.Println("Error get project followers", memo.ProjectID.Int, err.Error())
 		}
 		memoFollowers, err := c.getFollowers(resourceID, config.Config.Models.FollowingType["memo"],
 			[]int{config.Config.Models.Emotions["like"], config.Config.Models.Emotions["dislike"]})
@@ -266,11 +266,11 @@ func (c notificationGenerator) GenerateCommentNotifications(comment InsertCommen
 		break
 
 	case "report":
-		report, err := ReportAPI.GetReport(Report{ID: resourceID})
+		report, err := ReportAPI.GetReport(Report{ID: uint32(resourceID)})
 		if err != nil {
 			log.Println("Error get memo", resourceID, err.Error())
 		}
-		projectFollowers, err := c.getFollowers(report.ProjectID, config.Config.Models.FollowingType["project"], []int{0})
+		projectFollowers, err := c.getFollowers(int(report.ProjectID.Int), config.Config.Models.FollowingType["project"], []int{0})
 		if err != nil {
 			log.Println("Error get project followers", report.ProjectID, err.Error())
 		}
@@ -390,12 +390,12 @@ func (c notificationGenerator) GenerateProjectNotifications(resource interface{}
 		eventType := "follow_project_report"
 		tagEventType := "follow_tag_report"
 
-		projectFollowers, err := c.getFollowers(r.ProjectID, config.Config.Models.FollowingType["project"], []int{0})
+		projectFollowers, err := c.getFollowers(int(r.ProjectID.Int), config.Config.Models.FollowingType["project"], []int{0})
 		if err != nil {
 			log.Println("Error get project followers", r.ProjectID, err.Error())
 		}
 
-		project, err := ProjectAPI.GetProject(Project{ID: r.ProjectID})
+		project, err := ProjectAPI.GetProject(Project{ID: int(r.ProjectID.Int)})
 		if err != nil {
 			log.Println("Error get project", r.ProjectID, err.Error())
 		}
@@ -404,7 +404,7 @@ func (c notificationGenerator) GenerateProjectNotifications(resource interface{}
 
 		for _, v := range projectFollowers {
 			n := NewNotification(eventType, v)
-			n.SubjectID = strconv.Itoa(r.ID)
+			n.SubjectID = strconv.Itoa(int(r.ID))
 			n.Nickname = r.Title.String
 			n.ProfileImage = project.HeroImage.String
 			n.ObjectName = project.Title.String
@@ -428,7 +428,7 @@ func (c notificationGenerator) GenerateProjectNotifications(resource interface{}
 
 		for _, v := range projectFollowers {
 			n := NewNotification(eventType, v)
-			n.SubjectID = strconv.Itoa(m.ID)
+			n.SubjectID = strconv.Itoa(int(m.ID))
 			n.Nickname = m.Title.String
 			n.ProfileImage = m.Project.HeroImage.String
 			n.ObjectName = m.Project.Title.String

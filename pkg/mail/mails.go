@@ -317,7 +317,7 @@ func (m *mailApi) GenDailyDigest() (err error) {
 
 	//t := template.New("newsletter.html")
 	//t = template.Must(t.ParseFiles("config/newsletter.html"))
-	t := template.Must(template.ParseGlob("config/*.html"))
+	t := template.Must(template.ParseGlob(fmt.Sprintf("%s/*.html", config.Config.Mail.TemplatePath)))
 
 	data := dailyDigest{DateDay: date.Day(), DateMonth: int(date.Month()), DateYear: date.Year(), APIDomain: config.Config.DomainName}
 
@@ -380,7 +380,7 @@ OLP:
 
 func (m *mailApi) getDailyReport() (reports []dailyReport, err error) {
 
-	query := fmt.Sprintf("SELECT id, title, hero_image, description, slug FROM reports WHERE published_at > (NOW() - INTERVAL 1 DAY) AND active = %d AND publish_status = %d;", config.Config.Models.Reports["active"], config.Config.Models.ReportsPublishStatus["publish"])
+	query := fmt.Sprintf("SELECT post_id, title, hero_image, content, slug FROM posts WHERE published_at > (NOW() - INTERVAL 1 DAY) AND active = %d AND publish_status = %d AND type = %d;", config.Config.Models.Reports["active"], config.Config.Models.ReportsPublishStatus["publish"], config.Config.Models.PostType["report"])
 	rows, err := models.DB.Queryx(query)
 	for rows.Next() {
 		var report dailyReport
@@ -396,7 +396,7 @@ func (m *mailApi) getDailyReport() (reports []dailyReport, err error) {
 
 func (m *mailApi) getDailyMemo() (memos []dailyMemo, err error) {
 
-	query := fmt.Sprintf("SELECT m.memo_id AS id, m.title AS title, m.content AS content, p.slug AS slug, e.id AS author_id, e.nickname AS author, e.profile_image AS image FROM memos AS m LEFT JOIN members AS e ON m.author = e.id LEFT JOIN projects AS p ON p.project_id = m.project_id WHERE m.published_at > (NOW() - INTERVAL 1 DAY) AND m.active = %d AND m.publish_status = %d;", config.Config.Models.Memos["active"], config.Config.Models.MemosPublishStatus["publish"])
+	query := fmt.Sprintf("SELECT p.post_id AS id, p.title AS title, p.content AS content, p.slug AS slug, e.id AS author_id, e.nickname AS author, e.profile_image AS image FROM posts AS p LEFT JOIN members AS e ON m.author = e.id WHERE p.published_at > (NOW() - INTERVAL 1 DAY) AND p.active = %d AND p.publish_status = %d AND p.type = ;", config.Config.Models.Posts["active"], config.Config.Models.PostPublishStatus["publish"], config.Config.Models.PostType["report"])
 	rows, err := models.DB.Queryx(query)
 	for rows.Next() {
 		var memo dailyMemo
@@ -596,7 +596,7 @@ func (m *mailApi) SendReportPublishMail(report models.ReportAuthors) (err error)
 		ProjectSlug:      report.Project.Slug.String,
 		ProjectHeroImage: report.Project.HeroImage.String,
 		Title:            report.Report.Title.String,
-		Description:      report.Report.Description.String,
+		Description:      report.Report.Content.String,
 		Slug:             report.Report.Slug.String,
 		MailID:           fmt.Sprintf("ProjectUpdate_%s", report.Project.Slug.String),
 	}
@@ -607,7 +607,7 @@ func (m *mailApi) SendReportPublishMail(report models.ReportAuthors) (err error)
 		return err
 	}
 
-	t := template.Must(template.ParseGlob("config/newReport.html"))
+	t := template.Must(template.ParseGlob(fmt.Sprintf("%s/newReport.html", config.Config.Mail.TemplatePath)))
 	for k, v := range SettingLink {
 		var mails []string
 		for _, receiver := range mailReceiverList {
@@ -673,7 +673,7 @@ func (m *mailApi) SendMemoPublishMail(memo models.MemoDetail) (err error) {
 		return err
 	}
 
-	t := template.Must(template.ParseGlob("config/newMemo*.html"))
+	t := template.Must(template.ParseGlob(fmt.Sprintf("%s/newMemo*.html", config.Config.Mail.TemplatePath)))
 	for k, v := range SettingLink {
 		var submails, unsubmails []string
 		for _, receiver := range mailReceiverList {
@@ -738,7 +738,7 @@ func (m *mailApi) SendFollowProjectMail(args models.FollowArgs) (err error) {
 	}
 
 	buf := new(bytes.Buffer)
-	t := template.Must(template.ParseGlob("config/toggleFollow.html"))
+	t := template.Must(template.ParseGlob(fmt.Sprintf("%s/toggleFollow.html", config.Config.Mail.TemplatePath)))
 	_ = t.ExecuteTemplate(buf, "toggleFollow.html", data)
 	s := buf.String()
 

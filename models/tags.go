@@ -277,10 +277,12 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []TagRelatedResources, err erro
 			SELECT tg.tag_id, %s 
 			FROM tagging AS tg 
 			LEFT JOIN posts AS p ON p.post_id = tg.target_id 
-			WHERE tg.type = %d AND tg.tag_id IN (?) AND p.active = %d`,
+			WHERE tg.type = %d AND tg.tag_id IN (?) AND p.active = %d AND p.type IN (%d, %d);`,
 			args.PostFields.GetFields(`p.%s "post.%s"`),
 			config.Config.Models.TaggingType["post"],
 			config.Config.Models.Posts["active"],
+			config.Config.Models.PostType["review"],
+			config.Config.Models.PostType["news"],
 		)
 		relatedPostQuery, relatedPostArgs, err := sqlx.In(relatedPostQuery, tag_ids)
 		if err != nil {
@@ -349,12 +351,13 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []TagRelatedResources, err erro
 			SELECT tg.tag_id, %s 
 			FROM tagging AS tg 
 			LEFT JOIN projects ON projects.project_id = tg.target_id 
-			LEFT JOIN reports AS p ON p.project_id = projects.project_id 
-			WHERE tg.type = %d AND tg.tag_id IN (?) AND p.active = %d 
+			LEFT JOIN posts AS p ON p.project_id = projects.project_id 
+			WHERE tg.type = %d AND tg.tag_id IN (?) AND p.active = %d AND p.type = %d 
 			ORDER BY p.published_at DESC`,
 			args.ReportFields.GetFields(`p.%s "report.%s"`),
 			config.Config.Models.TaggingType["project"],
 			config.Config.Models.Reports["active"],
+			config.Config.Models.PostType["report"],
 		)
 		relatedReportQuery, relatedReportArgs, err := sqlx.In(relatedReportQuery, tag_ids)
 		if err != nil {
@@ -371,7 +374,7 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []TagRelatedResources, err erro
 			var tp tagReport
 			err = rows.StructScan(&tp)
 			if err != nil {
-				log.Fatalln("Error scan TagPost when getting Tags", err)
+				log.Fatalln("Error scan TagReport when getting Tags", err)
 				return nil, err
 			}
 			for k, v := range tags {
@@ -944,7 +947,7 @@ func (a *tagApi) UpdateHotTags() error {
 		IDs:           tagIDs,
 		PostFields:    sqlfields{"post_id", "publish_status", "published_at", "title", "type"},
 		ProjectFields: sqlfields{"project_id", "publish_status", "published_at", "title", "slug", "status", "hero_image"},
-		ReportFields:  sqlfields{"id", "publish_status", "published_at", "title", "hero_image", "project_id", "slug"},
+		ReportFields:  sqlfields{"post_id", "publish_status", "published_at", "title", "hero_image", "project_id", "slug"},
 	})
 	if err != nil {
 		log.Println("Error getting tag info when updating hottags:", err)

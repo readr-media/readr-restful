@@ -39,7 +39,7 @@ type CommentAuthor struct {
 
 type ReportedComment struct {
 	ID        int64      `json:"id" db:"id"`
-	CommentID int64      `json:"comment_id" db:"comment_id"`
+	CommentID NullInt    `json:"comment_id" db:"comment_id"`
 	Reporter  NullInt    `json:"reporter" db:"reporter"`
 	Reason    NullString `json:"reason" db:"reason"`
 	Solved    NullInt    `json:"solved" db:"solved"`
@@ -133,6 +133,18 @@ func (p *GetCommentArgs) parse() (tableName, restricts string, values []interfac
 		values = append(values, p.Parent)
 	}
 
+	if p.Page == 0 {
+		p.Page = 1
+	}
+
+	if p.MaxResult == 0 {
+		p.MaxResult = 20
+	}
+
+	if p.Sorting == "" {
+		p.Sorting = "-updated_at"
+	}
+
 	where = append(where, "comments.active=1")
 
 	if len(where) > 1 {
@@ -178,6 +190,18 @@ func (p *GetReportedCommentArgs) parse() (restricts string, values []interface{}
 	if len(p.Reporter) != 0 {
 		where = append(where, fmt.Sprintf("%s %s (?)", "comments_reported.reporter", operatorHelper("in")))
 		values = append(values, p.Reporter)
+	}
+
+	if p.Page == 0 {
+		p.Page = 1
+	}
+
+	if p.MaxResult == 0 {
+		p.MaxResult = 20
+	}
+
+	if p.Sorting == "" {
+		p.Sorting = "-updated_at"
 	}
 
 	if len(where) > 1 {

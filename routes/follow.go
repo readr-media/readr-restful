@@ -95,22 +95,24 @@ func bindFollow(c *gin.Context) (result interface{}, err error) {
 			}
 		}
 		result = params
-	case "map":
-		var params = &models.GetFollowMapArgs{}
-		if c.Query("resource") == "" && c.Query("id") == "" {
-			if err = c.ShouldBindJSON(params); err != nil {
+	/*
+		case "map":
+			var params = &models.GetFollowMapArgs{}
+			if c.Query("resource") == "" && c.Query("id") == "" {
+				if err = c.ShouldBindJSON(params); err != nil {
+					return nil, err
+				}
+			} else {
+				if err = c.Bind(params); err != nil {
+					return nil, err
+				}
+			}
+			params.Table, params.PrimaryKey, params.FollowType, err = models.GetResourceMetadata(params.ResourceName)
+			if err != nil {
 				return nil, err
 			}
-		} else {
-			if err = c.Bind(params); err != nil {
-				return nil, err
-			}
-		}
-		params.Table, params.PrimaryKey, params.FollowType, err = models.GetResourceMetadata(params.ResourceName)
-		if err != nil {
-			return nil, err
-		}
-		result = params
+			result = params
+	*/
 	default:
 		return nil, errors.New("Unsupported Method")
 	}
@@ -148,8 +150,10 @@ func (r *followingHandler) Get(c *gin.Context) {
 		if err == nil {
 			models.FollowCache.Update(*input, result.([]models.FollowedCount))
 		}
-	case *models.GetFollowMapArgs:
-		result, err = models.FollowingAPI.Get(input)
+	/*
+		case *models.GetFollowMapArgs:
+			result, err = models.FollowingAPI.Get(input)
+	*/
 	default:
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": "Cannot Found Proper API"})
 		return

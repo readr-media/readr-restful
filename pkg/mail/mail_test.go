@@ -98,11 +98,13 @@ func TestRouteEmail(t *testing.T) {
 
 	t.Run("SendEmail", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
+		/*
 			genericTestcase{"SendMailOK", "POST", "/mail", SendEmailCaseIn{Receiver: []string{"yychen@mirrormedia.mg"}, Subject: "RecvTestSuccess", Payload: "<b>HTML</b> payload"}, http.StatusOK, ``},
 			genericTestcase{"SendMailCC", "POST", "/mail", SendEmailCaseIn{Receiver: []string{"yychen@mirrormedia.mg"}, CC: []string{"cyu2197@gmail.com"}, Subject: "CCTestSuccess", Payload: "<b>HTML</b> payload"}, http.StatusOK, ``},
 			genericTestcase{"SendMailBCC", "POST", "/mail", SendEmailCaseIn{Receiver: []string{"cyu2197@gmail.com"}, BCC: []string{"yychen@mirrormedia.mg"}, Subject: "BCCTestSuccess", Payload: "<b>HTML</b> payload"}, http.StatusOK, ``},
 			genericTestcase{"SendMail2RecvOK", "POST", "/mail", SendEmailCaseIn{Receiver: []string{"yychen@mirrormedia.mg"}, Subject: "RecvTestSuccess", Payload: "<b>HTML</b> payload"}, http.StatusOK, ``},
 			genericTestcase{"SendMailNoRecv", "POST", "/mail", SendEmailCaseIn{Receiver: []string{"yychen@mirrormedia.mg"}, Subject: "RecvTestSuccess", Payload: "<b>HTML</b> payload"}, http.StatusOK, ``},
+		*/
 		} {
 			genericDoTest(server, testcase, t, asserter)
 		}

@@ -16,7 +16,6 @@ import (
 	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/pkg/mail"
-	"github.com/readr-media/readr-restful/utils"
 )
 
 type reportHandler struct {
@@ -96,7 +95,13 @@ func (r *reportHandler) bindQuery(c *gin.Context, args *models.GetReportArgs) (e
 	}
 
 	if c.Query("sort") != "" && r.validateReportSorting(c.Query("sort")) {
-		args.Sorting = c.Query("sort")
+		sortingString := c.Query("sort")
+		for _, v := range strings.Split(sortingString, ",") {
+			if v == "id" {
+				sortingString = strings.Replace(sortingString, "id", "post_id", -1)
+			}
+		}
+		args.Sorting = sortingString
 	}
 
 	if c.Query("keyword") != "" {
@@ -171,7 +176,7 @@ func (r *reportHandler) Post(c *gin.Context) {
 	}
 
 	// Pre-request test
-	if report.Title.Valid == false {
+	if !report.Title.Valid {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Report"})
 		return
 	}
@@ -186,6 +191,23 @@ func (r *reportHandler) Post(c *gin.Context) {
 	}
 	report.UpdatedAt = models.NullTime{time.Now(), true}
 	report.Active = models.NullInt{int64(config.Config.Models.Reports["active"]), true}
+
+	args := models.GetReportArgs{
+		MaxResult: 1,
+		Slugs:     []string{report.Slug.String},
+		Active:    map[string][]int{"in": []int{1}},
+	}
+	args.Fields = args.FullAuthorTags()
+	result, err := models.ReportAPI.GetReports(args)
+	if err != nil {
+		if err.Error() != "Not Found" {
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
+			return
+		}
+	} else if err == nil && len(result) > 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Duplicate Slug"})
+		return
+	}
 
 	lastID, err := models.ReportAPI.InsertReport(report)
 	if err != nil {
@@ -227,6 +249,11 @@ func (r *reportHandler) Put(c *gin.Context) {
 	}
 
 	if report.Active.Valid == true && !r.validateReportStatus(report.Active.Int) {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Parameter"})
+		return
+	}
+
+	if report.PublishStatus.Valid == true && !r.validateReportPublishStatus(report.PublishStatus.Int) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Parameter"})
 		return
 	}
@@ -279,6 +306,7 @@ func (r *reportHandler) Put(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"Error": "Report Not Found"})
 			return
 		default:
+			log.Println(err.Error())
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
 			return
 		}
@@ -287,20 +315,20 @@ func (r *reportHandler) Put(c *gin.Context) {
 	if (report.PublishStatus.Valid && report.PublishStatus.Int != int64(config.Config.Models.ReportsPublishStatus["publish"])) ||
 		(report.Active.Valid && report.Active.Int != int64(config.Config.Models.Reports["active"])) {
 		// Case: Set a report to unpublished state, Delete the report from cache/searcher
-		go models.Algolia.DeleteReport([]int{report.ID})
+		go models.Algolia.DeleteReport([]int{int(report.ID)})
 	} else if report.PublishStatus.Valid || report.Active.Valid {
 		// Case: Publish a report or update a report.
 		if report.PublishStatus.Int == int64(config.Config.Models.ReportsPublishStatus["publish"]) ||
 			report.Active.Int == int64(config.Config.Models.Reports["active"]) {
-			r.PublishHandler([]int{report.ID})
+			r.PublishHandler([]int{int(report.ID)})
 			if report.UpdatedBy.Valid {
-				r.UpdateHandler([]int{report.ID}, report.UpdatedBy.Int)
+				r.UpdateHandler([]int{int(report.ID)}, report.UpdatedBy.Int)
 			} else {
-				r.UpdateHandler([]int{report.ID})
+				r.UpdateHandler([]int{int(report.ID)})
 			}
 		}
 	} else {
-		r.UpdateHandler([]int{report.ID})
+		r.UpdateHandler([]int{int(report.ID)})
 	}
 	c.Status(http.StatusOK)
 }
@@ -312,7 +340,7 @@ func (r *reportHandler) Delete(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "ID Must Be Integer"})
 		return
 	}
-	input := models.Report{ID: id}
+	input := models.Report{ID: uint32(id)}
 	err = models.ReportAPI.DeleteReport(input)
 
 	if err != nil {
@@ -414,7 +442,7 @@ func (r *reportHandler) PublishHandler(ids []int) error {
 	}
 
 	for _, report := range reports {
-		p := models.Project{ID: report.ProjectID, UpdatedAt: models.NullTime{Time: time.Now(), Valid: true}}
+		p := models.Project{ID: int(report.ProjectID.Int), UpdatedAt: models.NullTime{Time: time.Now(), Valid: true}}
 		if report.UpdatedBy.Valid {
 			p.UpdatedBy = report.UpdatedBy
 		}
@@ -428,7 +456,6 @@ func (r *reportHandler) PublishHandler(ids []int) error {
 	for _, report := range reports {
 		go models.NotificationGen.GenerateProjectNotifications(report, "report")
 		go mail.MailAPI.SendReportPublishMail(report)
-		go r.insertReportPost(report)
 	}
 
 	return nil
@@ -463,88 +490,8 @@ func (r *reportHandler) UpdateHandler(ids []int, params ...int64) error {
 			p.UpdatedBy = models.NullInt{Int: params[0], Valid: true}
 		}
 		go models.ProjectAPI.UpdateProjects(p)
-		go r.updateReportPost(report)
 	}
 	return nil
-}
-
-func (r *reportHandler) insertReportPost(report models.ReportAuthors) {
-	linkUrl := utils.GenerateResourceInfo("report", report.ID, report.Slug.String)
-	posts, err := r.getPostByReportUrl(linkUrl)
-	if err != nil {
-		fmt.Printf("Fail to fetching post by link %s, error occored: %v", linkUrl, err.Error())
-		return
-	}
-	if len(posts) > 0 {
-		fmt.Printf("Fail to insert a report post: %s, duplicated", linkUrl)
-		return
-	}
-	postID, err := models.PostAPI.InsertPost(models.Post{
-		Type:          models.NullInt{int64(config.Config.Models.PostType["report"]), true},
-		Title:         report.Report.Title,
-		Content:       report.Report.Description,
-		Link:          models.NullString{linkUrl, true},
-		LinkTitle:     report.Report.Title,
-		LinkImage:     report.Report.HeroImage,
-		OgTitle:       report.Report.OgTitle,
-		OgDescription: report.Report.OgDescription,
-		OgImage:       report.Report.OgImage,
-		Active:        models.NullInt{int64(config.Config.Models.Posts["active"]), true},
-		PublishStatus: models.NullInt{int64(config.Config.Models.PostPublishStatus["publish"]), true},
-		Author:        models.NullInt{int64(config.Config.ReadrID), true},
-		CreatedAt:     models.NullTime{Time: time.Now(), Valid: true},
-		UpdatedAt:     models.NullTime{Time: time.Now(), Valid: true},
-		PublishedAt:   models.NullTime{Time: time.Now(), Valid: true},
-	})
-	if err != nil {
-		fmt.Printf("Fail to isnert post for new report %s , error: %v", linkUrl, err.Error())
-		return
-	}
-	go PostHandler.PublishPipeline([]uint32{uint32(postID)})
-}
-
-func (r *reportHandler) updateReportPost(report models.ReportAuthors) {
-	linkUrl := utils.GenerateResourceInfo("report", report.ID, report.Slug.String)
-	posts, err := r.getPostByReportUrl(linkUrl)
-	if err != nil {
-		fmt.Printf("Fail to fetching post by link %s, error occored: %v", linkUrl, err.Error())
-		return
-	}
-	if len(posts) == 0 {
-		fmt.Printf("Fail to update a report post: %s, post not exist", linkUrl)
-		return
-	}
-	err = models.PostAPI.UpdatePost(models.Post{
-		ID:            uint32(posts[0].Post.ID),
-		Title:         report.Report.Title,
-		Content:       report.Report.Description,
-		LinkImage:     report.Report.HeroImage,
-		OgTitle:       report.Report.OgTitle,
-		OgDescription: report.Report.OgDescription,
-		OgImage:       report.Report.OgImage,
-		Active:        report.Report.Active,
-		PublishStatus: report.Report.PublishStatus,
-		UpdatedAt:     models.NullTime{Time: time.Now(), Valid: true},
-		UpdatedBy:     models.NullInt{int64(config.Config.ReadrID), true},
-	})
-	if err != nil {
-		fmt.Printf("Fail to update post for report %s , error: %v", linkUrl, err.Error())
-		return
-	}
-}
-
-func (r *reportHandler) getPostByReportUrl(linkUrl string) ([]models.TaggedPostMember, error) {
-	return models.PostAPI.GetPosts(&models.PostArgs{
-		Type:      map[string][]int{"in": []int{config.Config.Models.PostType["report"]}},
-		Sorting:   "updated_at",
-		Page:      1,
-		MaxResult: 1,
-		Filter: models.Filter{
-			Field:     "link",
-			Operator:  "=",
-			Condition: linkUrl,
-		},
-	})
 }
 
 func (r *reportHandler) SetRoutes(router *gin.Engine) {
@@ -574,9 +521,19 @@ func (r *reportHandler) validateReportStatus(i int64) bool {
 	}
 	return false
 }
+func (r *reportHandler) validateReportPublishStatus(i int64) bool {
+	// for _, v := range models.ReportActive {
+	for _, v := range config.Config.Models.ReportsPublishStatus {
+		// if i == int64(v.(float64)) {
+		if i == int64(v) {
+			return true
+		}
+	}
+	return false
+}
 func (r *reportHandler) validateReportSorting(sort string) bool {
 	for _, v := range strings.Split(sort, ",") {
-		if matched, err := regexp.MatchString("-?(updated_at|published_at|id|slug|views|comment_amount)", v); err != nil || !matched {
+		if matched, err := regexp.MatchString("-?(updated_at|published_at|id|slug|comment_amount)", v); err != nil || !matched {
 			return false
 		}
 	}
