@@ -10,11 +10,12 @@ var Config appConfig
 
 type appConfig struct {
 	SQL struct {
-		Host      string                       `mapstructure:"host"`
-		Port      int                          `mapstructure:"port"`
-		User      string                       `mapstructure:"user"`
-		Password  string                       `mapstructure:"password"`
-		TableMeta map[string]map[string]string `mapstructure:"table_meta"`
+		Host       string                       `mapstructure:"host"`
+		Port       int                          `mapstructure:"port"`
+		User       string                       `mapstructure:"user"`
+		Password   string                       `mapstructure:"password"`
+		SchemaPath string                       `mapstructure:"schema_path"`
+		TableMeta  map[string]map[string]string `mapstructure:"table_meta"`
 	} `mapstructure:"sql"`
 
 	Redis struct {
@@ -37,13 +38,14 @@ type appConfig struct {
 	} `mapstructure:"crawler"`
 
 	Mail struct {
-		Host     string `mapstructure:"host"`
-		Port     int    `mapstructure:"port"`
-		User     string `mapstructure:"user"`
-		Password string `mapstructure:"password"`
-		UserName string `mapstructure:"user_name"`
-		DevTeam  string `mapstructure:"dev_team"`
-		Enable   bool   `mapstructure:"enable"`
+		Host         string `mapstructure:"host"`
+		Port         int    `mapstructure:"port"`
+		User         string `mapstructure:"user"`
+		Password     string `mapstructure:"password"`
+		UserName     string `mapstructure:"user_name"`
+		DevTeam      string `mapstructure:"dev_team"`
+		Enable       bool   `mapstructure:"enable"`
+		TemplatePath string `mapstructure:"template_path"`
 	} `mapstructure:"mail"`
 
 	SearchFeed struct {

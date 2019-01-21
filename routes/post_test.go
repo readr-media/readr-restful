@@ -246,10 +246,6 @@ func TestRoutePost(t *testing.T) {
 			teardown: func() { postTest.teardown() },
 			register: &postTest,
 			cases: []genericTestcase{
-				genericTestcase{"UpdatedAtDescending", "GET", `/posts`, ``, http.StatusOK,
-					[]models.TaggedPostMember{
-						posts[3], posts[1], posts[0], posts[2],
-					}},
 				genericTestcase{"Current", "GET", `/post/1`, ``, http.StatusOK,
 					[]models.TaggedPostMember{posts[0]}},
 				genericTestcase{"NotExisted", "GET", `/post/3`, `{"Error":"Post Not Found"}`, http.StatusNotFound,

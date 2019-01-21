@@ -2,7 +2,6 @@ package routes
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"regexp"
@@ -14,7 +13,6 @@ import (
 	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/pkg/mail"
-	"github.com/readr-media/readr-restful/utils"
 )
 
 type memoHandler struct{}
@@ -69,7 +67,15 @@ func (r *memoHandler) bindQuery(c *gin.Context, args *models.MemoGetArgs) (err e
 	}
 
 	if c.Query("sort") != "" && r.validateMemoSorting(c.Query("sort")) {
-		args.Sorting = c.Query("sort")
+		sortingString := c.Query("sort")
+		for _, v := range strings.Split(sortingString, ",") {
+			if v == "memo_id" {
+				sortingString = strings.Replace(sortingString, "memo_id", "post_id", -1)
+			} else if v == "id" {
+				sortingString = strings.Replace(sortingString, "id", "post_id", -1)
+			}
+		}
+		args.Sorting = sortingString
 	}
 
 	if c.Query("keyword") != "" {
@@ -153,7 +159,7 @@ func (r *memoHandler) Post(c *gin.Context) {
 		return
 	}
 
-	if !memo.Project.Valid {
+	if !memo.ProjectID.Valid {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Project"})
 		return
 	}
@@ -214,7 +220,7 @@ func (r *memoHandler) Put(c *gin.Context) {
 		return
 	}
 	if memo.PublishStatus.Valid {
-		result, err := models.MemoAPI.GetMemo(memo.ID)
+		result, err := models.MemoAPI.GetMemo(int(memo.ID))
 		if err != nil {
 			switch err.Error() {
 			case "Not Found":
@@ -281,12 +287,12 @@ func (r *memoHandler) Put(c *gin.Context) {
 	}
 
 	if memo.PublishStatus.Valid || memo.Active.Valid {
-		r.PublishHandler([]int{memo.ID})
+		r.PublishHandler([]int{int(memo.ID)})
 	}
 	if memo.UpdatedBy.Valid {
-		r.UpdateHandler([]int{memo.ID}, memo.UpdatedBy.Int)
+		r.UpdateHandler([]int{int(memo.ID)}, memo.UpdatedBy.Int)
 	} else {
-		r.UpdateHandler([]int{memo.ID})
+		r.UpdateHandler([]int{int(memo.ID)})
 	}
 
 	c.Status(http.StatusOK)
@@ -295,7 +301,7 @@ func (r *memoHandler) Put(c *gin.Context) {
 func (r *memoHandler) Delete(c *gin.Context) {
 
 	id, _ := strconv.Atoi(c.Param("id"))
-	err := models.MemoAPI.UpdateMemo(models.Memo{ID: id, Active: models.NullInt{0, true}})
+	err := models.MemoAPI.UpdateMemo(models.Memo{ID: uint32(id), Active: models.NullInt{0, true}})
 
 	if err != nil {
 		switch err.Error() {
@@ -375,7 +381,7 @@ func (r *memoHandler) Count(c *gin.Context) {
 
 func (r *memoHandler) validateMemoSorting(sort string) bool {
 	for _, v := range strings.Split(sort, ",") {
-		if matched, err := regexp.MatchString("-?(created_at|updated_at|published_at|memo_id|comment_amount|author|project_id|memo_order)", v); err != nil || !matched {
+		if matched, err := regexp.MatchString("-?(created_at|updated_at|published_at|id|memo_id|comment_amount|author|project_id|memo_order)", v); err != nil || !matched {
 			return false
 		}
 	}
@@ -420,7 +426,6 @@ func (r *memoHandler) PublishHandler(ids []int) error {
 	for _, memo := range memos {
 		go models.NotificationGen.GenerateProjectNotifications(memo, "memo")
 		go mail.MailAPI.SendMemoPublishMail(memo)
-		go r.insertMemoPost(memo)
 	}
 
 	return nil
@@ -457,84 +462,9 @@ func (r *memoHandler) UpdateHandler(ids []int, params ...int64) error {
 			p.UpdatedBy = models.NullInt{Int: params[0], Valid: true}
 		}
 		go models.ProjectAPI.UpdateProjects(p)
-		go r.updateMemoPost(memo)
 	}
 
 	return nil
-}
-
-func (r *memoHandler) insertMemoPost(memo models.MemoDetail) {
-	linkUrl := utils.GenerateResourceInfo("memo", memo.Memo.ID, memo.Project.Slug.String)
-	posts, err := r.getPostByMemoUrl(linkUrl)
-	if err != nil {
-		fmt.Printf("Fail to fetching post by link %s, error occored: %v", linkUrl, err.Error())
-		return
-	}
-	if len(posts) > 0 {
-		fmt.Printf("Fail to insert a memo post: %s, duplicated", linkUrl)
-		return
-	}
-	log.Println("insert post, content ...", memo.Memo.Content)
-	postID, err := models.PostAPI.InsertPost(models.Post{
-		Type:          models.NullInt{int64(config.Config.Models.PostType["memo"]), true},
-		Title:         memo.Memo.Title,
-		Content:       memo.Memo.Content,
-		Link:          models.NullString{linkUrl, true},
-		LinkTitle:     memo.Memo.Title,
-		LinkImage:     models.NullString{"", true},
-		Active:        models.NullInt{int64(config.Config.Models.Posts["active"]), true},
-		PublishStatus: models.NullInt{int64(config.Config.Models.PostPublishStatus["publish"]), true},
-		Author:        models.NullInt{int64(config.Config.ReadrID), true},
-		CreatedAt:     models.NullTime{Time: time.Now(), Valid: true},
-		UpdatedAt:     models.NullTime{Time: time.Now(), Valid: true},
-		PublishedAt:   models.NullTime{Time: time.Now(), Valid: true},
-	})
-	if err != nil {
-		fmt.Printf("Fail to isnert post for new memo %s , error: %v", linkUrl, err.Error())
-		return
-	}
-
-	go PostHandler.PublishPipeline([]uint32{uint32(postID)})
-}
-
-func (r *memoHandler) updateMemoPost(memo models.MemoDetail) {
-	linkUrl := utils.GenerateResourceInfo("memo", memo.Memo.ID, memo.Project.Slug.String)
-	posts, err := r.getPostByMemoUrl(linkUrl)
-	if err != nil {
-		fmt.Printf("Fail to fetching post by link %s, error occored: %v", linkUrl, err.Error())
-		return
-	}
-	if len(posts) == 0 {
-		fmt.Printf("Fail to update a memo post: %s, post not exist", linkUrl)
-		return
-	}
-	err = models.PostAPI.UpdatePost(models.Post{
-		ID:            uint32(posts[0].Post.ID),
-		Title:         memo.Memo.Title,
-		Content:       memo.Memo.Content,
-		Active:        memo.Memo.Active,
-		PublishStatus: memo.Memo.PublishStatus,
-		UpdatedAt:     models.NullTime{Time: time.Now(), Valid: true},
-		UpdatedBy:     models.NullInt{int64(config.Config.ReadrID), true},
-	})
-	if err != nil {
-		fmt.Printf("Fail to update post for memo %s , error: %v", linkUrl, err.Error())
-		return
-	}
-}
-
-func (r *memoHandler) getPostByMemoUrl(linkUrl string) ([]models.TaggedPostMember, error) {
-	return models.PostAPI.GetPosts(&models.PostArgs{
-		Type:      map[string][]int{"in": []int{config.Config.Models.PostType["memo"]}},
-		Sorting:   "updated_at",
-		Page:      1,
-		MaxResult: 1,
-		Filter: models.Filter{
-			Field:     "link",
-			Operator:  "=",
-			Condition: linkUrl,
-		},
-	})
 }
 
 func (r *memoHandler) SetRoutes(router *gin.Engine) {

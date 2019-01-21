@@ -153,6 +153,7 @@ func (r *redisHelper) getOrderedHashes(keysTemplate string, quantity int) (resul
 	return result, err
 }
 
+/*
 func (r *redisHelper) GetHotPosts(keysTemplate string, quantity int) (result []HotPost, err error) {
 	res, err := r.getOrderedHashes(keysTemplate, quantity)
 	if err != nil {
@@ -174,6 +175,7 @@ func (r *redisHelper) GetHotPosts(keysTemplate string, quantity int) (result []H
 
 	return result, err
 }
+*/
 
 func (r *redisHelper) GetHotTags(keysTemplate string, quantity int) (result []TagRelatedResources, err error) {
 	conn := r.Conn()

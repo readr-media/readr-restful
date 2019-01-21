@@ -88,6 +88,7 @@ func (r *commentsHandler) GetComment(c *gin.Context) {
 			return
 		}
 	}
+
 	c.JSON(http.StatusOK, gin.H{"_items": result})
 }
 
@@ -132,7 +133,7 @@ func (r *commentsHandler) PostRC(c *gin.Context) {
 		return
 	}
 
-	if report.CommentID == 0 || !report.Reporter.Valid {
+	if report.CommentID.Int == 0 || !report.Reporter.Valid {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Missing Required Parameters."})
 	}
 

@@ -38,7 +38,7 @@ func Connect(dbURI string) {
 		log.Fatalf("migrate fail to use db instance:%v\n", err)
 	}
 	m, err := migrate.NewWithDatabaseInstance(
-		"file://db_schema",
+		config.Config.SQL.SchemaPath,
 		"mysql",
 		driver,
 	)
@@ -243,7 +243,7 @@ func generateSQLStmt(mode string, tableName string, input ...interface{}) (query
 			field := u.Field(i).Interface()
 			// Get table id and set it to idName
 			if tag.Get("json") == "id" {
-				fmt.Printf("%s field = %v\n", u.Field(i).Type(), field)
+				// fmt.Printf("%s field = %v\n", u.Field(i).Type(), field)
 				idName = tag.Get("db")
 			}
 

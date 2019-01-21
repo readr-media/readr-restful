@@ -63,8 +63,8 @@ func (c *mockCommentAPI) GetReportedComments(args *models.GetReportedCommentArgs
 	}
 
 	var mockReports = []models.ReportedComment{
-		models.ReportedComment{ID: 1, CommentID: 2, Reporter: models.NullInt{92, true}, IP: models.NullString{"1.2.3.4", true}},
-		models.ReportedComment{ID: 2, CommentID: 2, Reporter: models.NullInt{90, true}},
+		models.ReportedComment{ID: 1, CommentID: models.NullInt{2, true}, Reporter: models.NullInt{92, true}, IP: models.NullString{"1.2.3.4", true}},
+		models.ReportedComment{ID: 2, CommentID: models.NullInt{2, true}, Reporter: models.NullInt{90, true}},
 	}
 
 	switch len(args.Reporter) {
@@ -113,8 +113,8 @@ func TestRouteComments(t *testing.T) {
 	}
 
 	var mockReports = []models.ReportedComment{
-		models.ReportedComment{ID: 1, CommentID: 2, Reporter: models.NullInt{92, true}, IP: models.NullString{"1.2.3.4", true}},
-		models.ReportedComment{ID: 2, CommentID: 2, Reporter: models.NullInt{90, true}},
+		models.ReportedComment{ID: 1, CommentID: models.NullInt{2, true}, Reporter: models.NullInt{92, true}, IP: models.NullString{"1.2.3.4", true}},
+		models.ReportedComment{ID: 2, CommentID: models.NullInt{2, true}, Reporter: models.NullInt{90, true}},
 	}
 
 	for _, params := range []models.Member{
@@ -267,11 +267,11 @@ func TestRouteComments(t *testing.T) {
 	})
 	t.Run("InsertCommentWithUrl", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"InsertCommentWithUrlOK", "post", "/comment", `{"body":"https://developers.facebook.com/","resource":"http://dev.readr.tw/post/90","author":91,"resource_name":"post","resource_id":90}`, http.StatusOK, ``},
-			//genericTestcase{"InsertCommentWithUnicodeOK", "post", "/comment", `{"body":"https://medium.com/@evonneyifangtsai/短評xdite參選台北市長-84b391b3bfae","resource":"http://dev.readr.tw/post/90","author":91}`, http.StatusOK, ``},
-			//genericTestcase{"InsertCommentWithMultipleUrlOK", "post", "/comment", `{"body":"https://www.readr.tw/post/274 http://news.ltn.com.tw/news/focus/paper/1191781","resource":"http://dev.readr.tw/post/90","author":91}`, http.StatusOK, ``},
-			//genericTestcase{"PutCommentWithUrlOK", "put", "/comment", `{"id": 1, "body":"https://medium.com/@evonneyifangtsai/"}`, http.StatusOK, ``},
-			//genericTestcase{"InsertCommentWithSpaceOK", "post", "/comment", `{"body":"https://developers.facebook.com/ index","resource":"http://dev.readr.tw/post/90","author":91}`, http.StatusOK, ``},
+		//genericTestcase{"InsertCommentWithUrlOK", "post", "/comment", `{"body":"https://developers.facebook.com/","resource":"http://dev.readr.tw/post/90","author":91,"resource_name":"post","resource_id":90}`, http.StatusOK, ``},
+		//genericTestcase{"InsertCommentWithUnicodeOK", "post", "/comment", `{"body":"https://medium.com/@evonneyifangtsai/短評xdite參選台北市長-84b391b3bfae","resource":"http://dev.readr.tw/post/90","author":91}`, http.StatusOK, ``},
+		//genericTestcase{"InsertCommentWithMultipleUrlOK", "post", "/comment", `{"body":"https://www.readr.tw/post/274 http://news.ltn.com.tw/news/focus/paper/1191781","resource":"http://dev.readr.tw/post/90","author":91}`, http.StatusOK, ``},
+		//genericTestcase{"PutCommentWithUrlOK", "put", "/comment", `{"id": 1, "body":"https://medium.com/@evonneyifangtsai/"}`, http.StatusOK, ``},
+		//genericTestcase{"InsertCommentWithSpaceOK", "post", "/comment", `{"body":"https://developers.facebook.com/ index","resource":"http://dev.readr.tw/post/90","author":91}`, http.StatusOK, ``},
 		} {
 			genericDoTest(transformPubsub(testcase), t, asserter)
 		}
@@ -356,7 +356,7 @@ func TestPubsubComments(t *testing.T) {
 	}
 
 	for _, memo := range []models.Memo{
-		models.Memo{ID: 92, Title: models.NullString{"CommentTestDefault1", true}, Author: models.NullInt{92, true}, Project: models.NullInt{920, true}, Active: models.NullInt{1, true}},
+		models.Memo{ID: 92, Title: models.NullString{"CommentTestDefault1", true}, Author: models.NullInt{92, true}, ProjectID: models.NullInt{920, true}, Active: models.NullInt{1, true}},
 	} {
 		_, err := models.MemoAPI.InsertMemo(memo)
 		if err != nil {

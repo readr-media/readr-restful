@@ -4,6 +4,7 @@
         "port": 3306,
         "user": "",
         "password": "",
+        "schema_path": "file://db_schema",
         "table_meta": {
             "member":{
                 "table_name": "",
@@ -54,7 +55,8 @@
         "password": "",
         "user_name": "",
         "dev_team": "",
-        "enable": false
+        "enable": false,
+        "template_path": ""
     },
     "search_feed":{
         "app_id": "",
@@ -153,8 +155,8 @@
             "schedule": 9
         },
         "tagging_type": {
-            "post": 1,
-            "project": 2
+            "post": 9,
+            "project": 9
         },
         "following_type": {
             "member": 9,
@@ -165,6 +167,7 @@
             "tag": 9
         },
         "emotions":{
+            "follow": 9,
             "like": 9,
             "dislike": 9
         },

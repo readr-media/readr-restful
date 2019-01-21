@@ -15,7 +15,7 @@ import (
 
 // var MemoStatus map[string]interface{}
 // var MemoPublishStatus map[string]interface{}
-
+/*
 type Memo struct {
 	ID            int        `json:"id" db:"memo_id"`
 	CreatedAt     NullTime   `json:"created_at" db:"created_at"`
@@ -31,6 +31,37 @@ type Memo struct {
 	PublishedAt   NullTime   `json:"published_at" db:"published_at"`
 	PublishStatus NullInt    `json:"publish_status" db:"publish_status"`
 	Order         NullInt    `json:"memo_order" db:"memo_order"`
+}
+*/
+type Memo struct {
+	ID              uint32     `json:"id" db:"post_id" redis:"post_id"`
+	Author          NullInt    `json:"author" db:"author" redis:"author"`
+	CreatedAt       NullTime   `json:"created_at" db:"created_at" redis:"created_at"`
+	LikeAmount      NullInt    `json:"like_amount" db:"like_amount" redis:"like_amount"`
+	CommentAmount   NullInt    `json:"comment_amount" db:"comment_amount" redis:"comment_amount"`
+	Title           NullString `json:"title" db:"title" redis:"title"`
+	Subtitle        NullString `json:"subtitle" db:"subtitle" redis:"subtitle"`
+	Content         NullString `json:"content" db:"content" redis:"content"`
+	Type            NullInt    `json:"type" db:"type" redis:"type"`
+	Link            NullString `json:"link" db:"link" redis:"link"`
+	OgTitle         NullString `json:"og_title" db:"og_title" redis:"og_title"`
+	OgDescription   NullString `json:"og_description" db:"og_description" redis:"og_description"`
+	OgImage         NullString `json:"og_image" db:"og_image" redis:"og_image"`
+	Active          NullInt    `json:"active" db:"active" redis:"active"`
+	UpdatedAt       NullTime   `json:"updated_at" db:"updated_at" redis:"updated_at"`
+	UpdatedBy       NullInt    `json:"updated_by" db:"updated_by" redis:"updated_by"`
+	PublishedAt     NullTime   `json:"published_at" db:"published_at" redis:"published_at"`
+	LinkTitle       NullString `json:"link_title" db:"link_title" redis:"link_title"`
+	LinkDescription NullString `json:"link_description" db:"link_description" redis:"link_description"`
+	LinkImage       NullString `json:"link_image" db:"link_image" redis:"link_image"`
+	LinkName        NullString `json:"link_name" db:"link_name" redis:"link_name"`
+	VideoID         NullString `json:"video_id" db:"video_id" redis:"video_id"`
+	VideoViews      NullInt    `json:"video_views" db:"video_views" redis:"video_views"`
+	PublishStatus   NullInt    `json:"publish_status" db:"publish_status" redis:"publish_status"`
+	ProjectID       NullInt    `json:"project_id" db:"project_id" redis:"project_id"`
+	Order           NullInt    `json:"post_order" db:"post_order" redis:"post_order"`
+	HeroImage       NullString `json:"hero_image" db:"hero_image" redis:"hero_image"`
+	Slug            NullString `json:"slug" db:"slug" redis:"slug"`
 }
 
 type MemoInterface interface {
@@ -70,7 +101,7 @@ func (p *MemoGetArgs) DefaultActive() {
 }
 
 func (p *MemoGetArgs) Validate() bool {
-	if matched, err := regexp.MatchString("-?(updated_at|created_at|published_at|memo_id|author|project_id|memo_order)", p.Sorting); err != nil || !matched {
+	if matched, err := regexp.MatchString("-?(updated_at|created_at|published_at|post_id|author|project_id|post_order)", p.Sorting); err != nil || !matched {
 		return false
 	}
 	return true
@@ -79,18 +110,19 @@ func (p *MemoGetArgs) Validate() bool {
 func (p *MemoGetArgs) parse() (restricts string, values []interface{}) {
 
 	where := make([]string, 0)
+	where = append(where, fmt.Sprintf("%s %s %d", "posts.type", "=", config.Config.Models.PostType["memo"]))
 	// if p.MemoPublishStatus == nil && p.ProjectPublishStatus == nil && p.Active == nil && len(p.Author) == 0 && len(p.Project) == 0 {
 	// 	return "", nil
 	// }
 	if p.Active != nil {
 		for k, v := range p.Active {
-			where = append(where, fmt.Sprintf("%s %s (?)", "memos.active", operatorHelper(k)))
+			where = append(where, fmt.Sprintf("%s %s (?)", "posts.active", operatorHelper(k)))
 			values = append(values, v)
 		}
 	}
 	if p.MemoPublishStatus != nil {
 		for k, v := range p.MemoPublishStatus {
-			where = append(where, fmt.Sprintf("%s %s (?)", "memos.publish_status", operatorHelper(k)))
+			where = append(where, fmt.Sprintf("%s %s (?)", "posts.publish_status", operatorHelper(k)))
 			values = append(values, v)
 		}
 	}
@@ -101,24 +133,24 @@ func (p *MemoGetArgs) parse() (restricts string, values []interface{}) {
 		}
 	}
 	if len(p.Author) > 0 {
-		where = append(where, fmt.Sprintf("%s IN (?)", "memos.author"))
+		where = append(where, fmt.Sprintf("%s IN (?)", "posts.author"))
 		values = append(values, p.Author)
 	}
 	if len(p.Project) > 0 {
-		where = append(where, fmt.Sprintf("%s IN (?)", "memos.project_id"))
+		where = append(where, fmt.Sprintf("%s IN (?)", "posts.project_id"))
 		values = append(values, p.Project)
 	}
 	if len(p.Slugs) > 0 {
-		where = append(where, fmt.Sprintf("%s IN (?)", "project.slug"))
+		where = append(where, fmt.Sprintf("%s IN (?)", "posts.slug"))
 		values = append(values, p.Slugs)
 	}
 	if len(p.IDs) > 0 {
-		where = append(where, fmt.Sprintf("%s IN (?)", "memos.memo_id"))
+		where = append(where, fmt.Sprintf("%s IN (?)", "posts.post_id"))
 		values = append(values, p.IDs)
 	}
 	if p.Keyword != "" {
 		p.Keyword = fmt.Sprintf("%s%s%s", "%", p.Keyword, "%")
-		where = append(where, "(memos.title LIKE ? OR memos.memo_id LIKE ?)")
+		where = append(where, "(posts.title LIKE ? OR posts.post_id LIKE ?)")
 		values = append(values, p.Keyword, p.Keyword)
 	}
 
@@ -135,7 +167,7 @@ func (p *MemoGetArgs) parseLimit() (limit map[string]string, values []interface{
 	restricts := make([]string, 0)
 	limit = make(map[string]string, 2)
 	if p.Sorting != "" {
-		restricts = append(restricts, fmt.Sprintf("ORDER BY %s%s", "memos.", orderByHelper(p.Sorting)))
+		restricts = append(restricts, fmt.Sprintf("ORDER BY %s%s", "posts.", orderByHelper(p.Sorting)))
 		limit["order"] = fmt.Sprintf("ORDER BY %s", orderByHelper(p.Sorting))
 	}
 	if p.MaxResult != 0 {
@@ -204,13 +236,14 @@ type memoAPI struct{}
 func (m *memoAPI) CountMemos(args *MemoGetArgs) (result int, err error) {
 
 	restricts, values := args.parse()
-	query := fmt.Sprintf(`SELECT COUNT(memo_id) FROM memos LEFT JOIN projects AS project ON project.project_id = memos.project_id %s`, restricts)
+	query := fmt.Sprintf(`SELECT COUNT(posts.post_id) FROM posts LEFT JOIN projects AS project ON project.project_id = posts.project_id %s`, restricts)
 
 	query, sqlArgs, err := sqlx.In(query, values...)
 	if err != nil {
 		return 0, err
 	}
 	query = DB.Rebind(query)
+
 	count, err := DB.Queryx(query, sqlArgs...)
 	if err != nil {
 		return 0, err
@@ -225,7 +258,7 @@ func (m *memoAPI) CountMemos(args *MemoGetArgs) (result int, err error) {
 
 func (m *memoAPI) GetMemo(id int) (memo Memo, err error) {
 
-	err = DB.Get(&memo, `SELECT * FROM memos WHERE memo_id = ?;`, id)
+	err = DB.Get(&memo, `SELECT * FROM posts WHERE post_id = ?;`, id)
 
 	if err != nil {
 		log.Println(err.Error())
@@ -308,10 +341,10 @@ func (m *memoAPI) GetMemos(args *MemoGetArgs) (memos []MemoDetail, err error) {
 	values = append(values, largs...)
 
 	rawQuery := fmt.Sprintf(`
-		SELECT memos.*, %s, %s FROM 
-		(SELECT memos.* FROM memos LEFT JOIN projects AS project ON project.project_id = memos.project_id %s %s) AS memos 
-		LEFT JOIN members AS author ON author.id = memos.author 
-		LEFT JOIN projects AS project ON project.project_id = memos.project_id %s;`,
+		SELECT posts.*, %s, %s FROM 
+		(SELECT posts.* FROM posts LEFT JOIN projects AS project ON project.project_id = posts.project_id %s %s) AS posts 
+		LEFT JOIN members AS author ON author.id = posts.author 
+		LEFT JOIN projects AS project ON project.project_id = posts.project_id %s;`,
 		strings.Join(projectField, ","), strings.Join(memberField, ","), restricts, limit["full"], limit["order"])
 
 	query, sqlArgs, err := sqlx.In(rawQuery, values...)
@@ -376,8 +409,10 @@ func (m *memoAPI) GetMemos(args *MemoGetArgs) (memos []MemoDetail, err error) {
 
 func (m *memoAPI) InsertMemo(memo Memo) (lastID int, err error) {
 
+	memo.Type = NullInt{int64(config.Config.Models.PostType["memo"]), true}
+
 	tags := getStructDBTags("full", Memo{})
-	query := fmt.Sprintf(`INSERT INTO memos (%s) VALUES (:%s)`,
+	query := fmt.Sprintf(`INSERT INTO posts (%s) VALUES (:%s)`,
 		strings.Join(tags, ","), strings.Join(tags, ",:"))
 
 	result, err := DB.NamedExec(query, memo)
@@ -403,7 +438,7 @@ func (m *memoAPI) InsertMemo(memo Memo) (lastID int, err error) {
 	}
 	lastID = int(lastid)
 	if memo.ID == 0 {
-		memo.ID = int(lastID)
+		memo.ID = uint32(lastID)
 	}
 
 	return lastID, err
@@ -413,7 +448,7 @@ func (m *memoAPI) UpdateMemo(memo Memo) (err error) {
 
 	tags := getStructDBTags("partial", memo)
 	fields := makeFieldString("update", `%s = :%s`, tags)
-	query := fmt.Sprintf(`UPDATE memos SET %s WHERE memo_id = :memo_id`,
+	query := fmt.Sprintf(`UPDATE posts SET %s WHERE post_id = :post_id`,
 		strings.Join(fields, ", "))
 
 	result, err := DB.NamedExec(query, memo)
@@ -434,9 +469,9 @@ func (m *memoAPI) UpdateMemo(memo Memo) (err error) {
 func (m *memoAPI) UpdateMemos(args MemoUpdateArgs) (err error) {
 
 	updateQuery, updateArgs := args.parse()
-	updateQuery = fmt.Sprintf("UPDATE memos SET %s ", updateQuery)
+	updateQuery = fmt.Sprintf("UPDATE posts SET %s ", updateQuery)
 
-	restrictQuery, restrictArgs, err := sqlx.In(`WHERE memo_id IN (?)`, args.IDs)
+	restrictQuery, restrictArgs, err := sqlx.In(`WHERE post_id IN (?)`, args.IDs)
 	if err != nil {
 		return err
 	}
@@ -459,9 +494,9 @@ func (m *memoAPI) UpdateMemos(args MemoUpdateArgs) (err error) {
 
 func (m *memoAPI) SchedulePublish() (ids []int, err error) {
 
-	rows, err := DB.Queryx("SELECT memo_id FROM memos WHERE publish_status=3 AND published_at <= cast(now() as datetime);")
+	rows, err := DB.Queryx(fmt.Sprintf("SELECT post_id FROM posts WHERE publish_status=3 AND published_at <= cast(now() as datetime) AND type = %d;;", config.Config.Models.PostType["memo"]))
 	if err != nil {
-		log.Println("Getting memo error when schedule publishing memos", err)
+		log.Println("Getting posts error when schedule publishing memos", err)
 		return ids, err
 	}
 
@@ -473,7 +508,7 @@ func (m *memoAPI) SchedulePublish() (ids []int, err error) {
 		ids = append(ids, i)
 	}
 
-	_, err = DB.Exec("UPDATE memos SET publish_status=2 WHERE publish_status=3 AND published_at <= cast(now() as datetime);")
+	_, err = DB.Exec(fmt.Sprintf("UPDATE posts SET publish_status=2 WHERE publish_status=3 AND published_at <= cast(now() as datetime) AND type = %d;", config.Config.Models.PostType["memo"]))
 	if err != nil {
 		return ids, err
 	}

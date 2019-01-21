@@ -2,13 +2,11 @@ package mail
 
 import (
 	"log"
-	"regexp"
 
 	"encoding/json"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/readr-media/readr-restful/models"
 )
 
 type router struct{}
@@ -32,6 +30,7 @@ func (r *router) sendMail(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
+/*
 func (r *router) updateNote(c *gin.Context) {
 
 	args := models.GetFollowMapArgs{}
@@ -60,7 +59,7 @@ func (r *router) updateNote(c *gin.Context) {
 
 	c.Status(http.StatusOK)
 }
-
+*/
 func (r *router) GenDailyDigest(c *gin.Context) {
 
 	err := MailAPI.GenDailyDigest()

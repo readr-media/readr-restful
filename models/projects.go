@@ -170,16 +170,6 @@ type ProjectAuthors struct {
 	TagList []SimpleTag `json:"tags"`
 }
 
-type TypedMemo struct {
-	Type int `json:"content_type"`
-	MemoDetail
-}
-
-type TypedReport struct {
-	Type int `json:"type"`
-	ReportAuthors
-}
-
 func (p *ProjectAuthors) formatTags() {
 	if p.Tags.Valid != false {
 		tas := strings.Split(p.Tags.String, ",")
@@ -254,18 +244,18 @@ func (a *projectAPI) GetProjects(args GetProjectArgs) (result []ProjectAuthors, 
 			GROUP BY pt.target_id
 			) AS t ON t.project_id = projects.project_id
 		LEFT JOIN ( 
-			SELECT memos.author AS author_id, memos.project_id AS project_id 
-			FROM memos 
+			SELECT posts.author AS author_id, posts.project_id AS project_id FROM posts WHERE posts.type=%d
 			UNION 
-			SELECT author_id, reports.project_id 
-			FROM report_authors 
-			LEFT JOIN reports ON reports.id = report_authors.report_id 
+			SELECT author_id, posts.project_id FROM report_authors 
+			LEFT JOIN posts ON posts.post_id = report_authors.report_id WHERE posts.type=%d
 			) AS pa ON projects.project_id = pa.project_id 
 		LEFT JOIN members author ON pa.author_id = author.id %s;`,
 		args.Fields.GetFields(`author.%s "author.%s"`),
 		restricts,
 		limit["full"],
 		config.Config.Models.TaggingType["project"],
+		config.Config.Models.PostType["memo"],
+		config.Config.Models.PostType["report"],
 		limit["order"])
 
 	query, values, err = sqlx.In(query, values...)
@@ -329,19 +319,18 @@ func (a *projectAPI) GetContents(id int, args GetProjectArgs) (result []interfac
 
 	query := fmt.Sprintf(`
 		SELECT r.id, r.type FROM (
-			SELECT post_id AS id, updated_at, "post" AS type FROM posts WHERE active = %[1]d AND publish_status = %[2]d AND project_id = %[7]d
-			UNION
-			SELECT memo_id, updated_at, "memo" FROM memos WHERE active = %[3]d AND publish_status = %[4]d AND project_id = %[7]d
-			UNION
-			SELECT id, updated_at, "report" FROM reports WHERE active = %[5]d AND publish_status = %[6]d AND project_id = %[7]d
-		) as r ORDER BY r.updated_at DESC LIMIT %[8]d OFFSET %[9]d;`,
+			SELECT post_id AS id, updated_at, CASE type WHEN 4 THEN 'report' WHEN 5 THEN 'memo' ELSE 'post' END AS type 
+			FROM posts 
+			WHERE active = %d AND publish_status = %d AND project_id = %d AND type IN (%d, %d, %d, %d) 
+		) as r ORDER BY r.updated_at DESC LIMIT %d OFFSET %d;`,
 		config.Config.Models.Posts["active"],
 		config.Config.Models.PostPublishStatus["publish"],
-		config.Config.Models.Memos["active"],
-		config.Config.Models.MemosPublishStatus["publish"],
-		config.Config.Models.Reports["active"],
-		config.Config.Models.ReportsPublishStatus["publish"],
-		id, args.MaxResult, (args.Page-1)*(args.MaxResult))
+		id,
+		config.Config.Models.PostType["review"],
+		config.Config.Models.PostType["news"],
+		config.Config.Models.PostType["memo"],
+		config.Config.Models.PostType["report"],
+		args.MaxResult, (args.Page-1)*(args.MaxResult))
 
 	var orderedList []struct {
 		ID   int    `db:"id"`
@@ -415,14 +404,14 @@ func (a *projectAPI) GetContents(id int, args GetProjectArgs) (result []interfac
 			}
 		case "memo":
 			for _, item := range memos {
-				if v.ID == item.Memo.ID {
-					result = append(result, TypedMemo{config.Config.Models.PostType["memo"], item})
+				if v.ID == int(item.ID) {
+					result = append(result, item)
 				}
 			}
 		case "report":
 			for _, item := range reports {
 				if v.ID == int(item.ID) {
-					result = append(result, TypedReport{config.Config.Models.PostType["report"], item})
+					result = append(result, item)
 				}
 			}
 		}

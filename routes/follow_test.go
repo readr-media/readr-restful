@@ -312,13 +312,14 @@ func TestFollowing(t *testing.T) {
 			genericTestcase{"FollowedPostStringID", "GET", `/following/resource?resource=post&ids=[unintegerable]`, ``, http.StatusBadRequest, `{"Error":"Bad Resource ID"}`},
 			genericTestcase{"FollowedProjectStringID", "GET", `/following/resource?resource=project&ids=[unintegerable]`, ``, http.StatusBadRequest, `{"Error":"Bad Resource ID"}`},
 			genericTestcase{"FollowedProjectInvalidEmotion", "GET", `/following/resource?resource=project&ids=[42,84]&resource_type=review&emotion=angry`, ``, http.StatusBadRequest, `{"Error":"Unsupported Emotion"}`},
-
-			genericTestcase{"FollowMapPostOK", "GET", `/following/map?resource=post`, ``, http.StatusOK, nil},
-			genericTestcase{"FollowMapPostReviewOK", "GET", `/following/map?resource=post&resource_type=review`, ``, http.StatusOK, nil},
-			genericTestcase{"GetFollowMapPostNewsOK", "GET", `/following/map?resource=post&resource_type=news`, ``, http.StatusOK, nil},
-			genericTestcase{"GetFollowMapResourceUnknown", "GET", `/following/map?resource=unknown source&resource_type=news`, ``, http.StatusBadRequest, `{"Error":"Unsupported Resource"}`},
-			genericTestcase{"GetFollowMapMemberOK", "GET", `/following/map?resource=member`, ``, http.StatusOK, nil},
-			genericTestcase{"GetFollowMapProjectOK", "GET", `/following/map?resource=project`, ``, http.StatusOK, nil},
+			/*
+				genericTestcase{"FollowMapPostOK", "GET", `/following/map?resource=post`, ``, http.StatusOK, nil},
+				genericTestcase{"FollowMapPostReviewOK", "GET", `/following/map?resource=post&resource_type=review`, ``, http.StatusOK, nil},
+				genericTestcase{"GetFollowMapPostNewsOK", "GET", `/following/map?resource=post&resource_type=news`, ``, http.StatusOK, nil},
+				genericTestcase{"GetFollowMapResourceUnknown", "GET", `/following/map?resource=unknown source&resource_type=news`, ``, http.StatusBadRequest, `{"Error":"Unsupported Resource"}`},
+				genericTestcase{"GetFollowMapMemberOK", "GET", `/following/map?resource=member`, ``, http.StatusOK, nil},
+				genericTestcase{"GetFollowMapProjectOK", "GET", `/following/map?resource=project`, ``, http.StatusOK, nil},
+			*/
 		} {
 			genericDoTest(testcase, t, nil)
 		}

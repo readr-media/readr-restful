@@ -26,6 +26,7 @@ type Post struct {
 	LikeAmount      NullInt    `json:"like_amount" db:"like_amount" redis:"like_amount"`
 	CommentAmount   NullInt    `json:"comment_amount" db:"comment_amount" redis:"comment_amount"`
 	Title           NullString `json:"title" db:"title" redis:"title"`
+	Subtitle        NullString `json:"subtitle" db:"subtitle" redis:"subtitle"`
 	Content         NullString `json:"content" db:"content" redis:"content"`
 	Type            NullInt    `json:"type" db:"type" redis:"type"`
 	Link            NullString `json:"link" db:"link" redis:"link"`
@@ -61,7 +62,7 @@ type PostInterface interface {
 	UpdateAll(req PostUpdateArgs) error
 	UpdatePost(p Post) error
 	Count(req *PostArgs) (result int, err error)
-	Hot() (result []HotPost, err error)
+	//Hot() (result []HotPost, err error)
 	SchedulePublish() (ids []uint32, err error)
 	GetPostAuthor(id uint32) (member Member, err error)
 }
@@ -251,6 +252,14 @@ func (p *PostArgs) parse() (restricts string, values []interface{}) {
 			where = append(where, fmt.Sprintf("%s %s (?)", "posts.type", operatorHelper(k)))
 			values = append(values, v)
 		}
+	} else {
+		where = append(where, "posts.type IN (?)")
+		values = append(values, []int{
+			config.Config.Models.PostType["review"],
+			config.Config.Models.PostType["news"],
+			config.Config.Models.PostType["video"],
+			config.Config.Models.PostType["live"],
+		})
 	}
 	if p.IDs != nil {
 		where = append(where, fmt.Sprintf("%s %s (?)", "posts.post_id", "IN"))
@@ -570,6 +579,7 @@ func (a *postAPI) Count(req *PostArgs) (result int, err error) {
 	return result, err
 }
 
+/*
 func (a *postAPI) Hot() (result []HotPost, err error) {
 	result, err = RedisHelper.GetHotPosts("postcache_hot_%d", 20)
 	if err != nil {
@@ -578,10 +588,17 @@ func (a *postAPI) Hot() (result []HotPost, err error) {
 	}
 	return result, err
 }
+*/
 
 func (a *postAPI) SchedulePublish() (ids []uint32, err error) {
 	ids = make([]uint32, 0)
-	rows, err := DB.Queryx("SELECT post_id FROM posts WHERE publish_status=3 AND published_at <= cast(now() as datetime);")
+	rows, err := DB.Queryx(fmt.Sprintf("SELECT post_id FROM posts WHERE publish_status=%d AND type in (%d,%d,%d,%d) AND published_at <= cast(now() as datetime);",
+		config.Config.Models.PostPublishStatus["schedule"],
+		config.Config.Models.PostType["review"],
+		config.Config.Models.PostType["news"],
+		config.Config.Models.PostType["video"],
+		config.Config.Models.PostType["live"],
+	))
 	if err != nil {
 		log.Println("Getting post error when schedule publishing posts", err)
 		return nil, err
@@ -599,7 +616,14 @@ func (a *postAPI) SchedulePublish() (ids []uint32, err error) {
 		return ids, err
 	}
 
-	_, err = DB.Exec("UPDATE posts SET publish_status=2 WHERE publish_status=3 AND published_at <= cast(now() as datetime);")
+	_, err = DB.Exec(fmt.Sprintf("UPDATE posts SET publish_status=%d WHERE publish_status=%d AND type in (%d,%d,%d,%d) AND published_at <= cast(now() as datetime);",
+		config.Config.Models.PostPublishStatus["publish"],
+		config.Config.Models.PostPublishStatus["schedule"],
+		config.Config.Models.PostType["review"],
+		config.Config.Models.PostType["news"],
+		config.Config.Models.PostType["video"],
+		config.Config.Models.PostType["live"],
+	))
 	if err != nil {
 		log.Println("Schedul publishing posts fail", err)
 		return nil, err
