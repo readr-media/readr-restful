@@ -184,7 +184,7 @@ func (a *assetAPI) GetAssets(args *GetAssetArgs) (result []Asset, err error) {
 
 func (m *assetAPI) Insert(asset Asset) (lastID int64, err error) {
 
-	tags := getStructDBTags("partial", asset)
+	tags := getStructDBTags(asset)
 	query := fmt.Sprintf(`INSERT INTO assets (%s) VALUES (:%s)`,
 		strings.Join(tags, ","), strings.Join(tags, ",:"))
 
@@ -215,8 +215,8 @@ func (m *assetAPI) Insert(asset Asset) (lastID int64, err error) {
 
 func (m *assetAPI) Update(asset Asset) (err error) {
 
-	tags := getStructDBTags("partial", asset)
-	fields := makeFieldString("update", `%s = :%s`, tags)
+	tags := getStructDBTags(asset)
+	fields := makeFieldString(`%s = :%s`, tags)
 	query := fmt.Sprintf(`UPDATE assets SET %s WHERE id = :id`,
 		strings.Join(fields, ", "))
 
@@ -235,73 +235,46 @@ func (m *assetAPI) Update(asset Asset) (err error) {
 	return err
 }
 
-func getStructDBTags(mode string, input interface{}) []string {
+func getStructDBTags(input interface{}) []string {
 	columns := make([]string, 0)
 	u := reflect.ValueOf(input)
 	for i := 0; i < u.NumField(); i++ {
 		tag := u.Type().Field(i).Tag
-		if mode == "full" {
-			columns = append(columns, tag.Get("db"))
-		} else if mode == "partial" {
-			field := u.Field(i).Interface()
+		field := u.Field(i).Interface()
 
-			switch field := field.(type) {
-			case string:
-				if field != "" {
-					columns = append(columns, tag.Get("db"))
-				}
-			// Could not put NullString, NullTime in one case
-			case models.NullString:
-				if field.Valid {
-					columns = append(columns, tag.Get("db"))
-				}
-			case models.NullTime:
-				if field.Valid {
-					columns = append(columns, tag.Get("db"))
-				}
-			case models.NullInt:
-				if field.Valid {
-					columns = append(columns, tag.Get("db"))
-				}
-			case models.NullBool:
-				if field.Valid {
-					columns = append(columns, tag.Get("db"))
-				}
-			case bool, int, uint32, int64:
+		switch field := field.(type) {
+		case string:
+			if field != "" {
 				columns = append(columns, tag.Get("db"))
-			default:
-				fmt.Println("unrecognised format: ", u.Field(i).Type())
 			}
+		case models.NullString:
+			if field.Valid {
+				columns = append(columns, tag.Get("db"))
+			}
+		case models.NullTime:
+			if field.Valid {
+				columns = append(columns, tag.Get("db"))
+			}
+		case models.NullInt:
+			if field.Valid {
+				columns = append(columns, tag.Get("db"))
+			}
+		case models.NullBool:
+			if field.Valid {
+				columns = append(columns, tag.Get("db"))
+			}
+		case bool, int, uint32, int64:
+			columns = append(columns, tag.Get("db"))
+		default:
+			fmt.Println("unrecognised format: ", u.Field(i).Type())
 		}
 	}
 	return columns
 }
 
-func makeFieldString(mode string, pattern string, tags []string) (result []string) {
-	switch mode {
-	case "get":
-		for _, field := range tags {
-			result = append(result, fmt.Sprintf(pattern, field, field))
-		}
-	case "update":
-		for _, value := range tags {
-			result = append(result, fmt.Sprintf(pattern, value, value))
-		}
-	/*
-		Case "general" is created for all use scenerio
-		Just pass in pattern string and all the tags we want to format,
-		it could automatically generate corresponding amount of single tag according to counts of %s in pattern.
-		It could be used to replace both case "get" and "update".
-		We could take down mode argument and other switch cases for future refactor of makeFieldString.
-	*/
-	case "general":
-		for _, field := range tags {
-			fields := make([]interface{}, strings.Count(pattern, "%s"))
-			for i := range fields {
-				fields[i] = field
-			}
-			result = append(result, fmt.Sprintf(pattern, fields...))
-		}
+func makeFieldString(pattern string, tags []string) (result []string) {
+	for _, value := range tags {
+		result = append(result, fmt.Sprintf(pattern, value, value))
 	}
 	return result
 }
