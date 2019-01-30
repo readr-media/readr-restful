@@ -2,6 +2,7 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/readr-media/readr-restful/pkg/asset"
 	"github.com/readr-media/readr-restful/pkg/mail"
 	"github.com/readr-media/readr-restful/poll"
 )
@@ -12,10 +13,10 @@ type RouterHandler interface {
 
 func SetRoutes(router *gin.Engine) {
 	for _, h := range []RouterHandler{
+		&asset.Router,
 		&AuthHandler,
 		&CommentsHandler,
 		&FollowingHandler,
-		//&MailHandler,
 		&mail.Router,
 		&MemberHandler,
 		&MemoHandler,
