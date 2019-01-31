@@ -62,6 +62,7 @@ type appConfig struct {
 	} `mapstructure:"straats"`
 
 	Models struct {
+		Assets                map[string]int `mapstructure:"assets"`
 		Members               map[string]int `mapstructure:"members"`
 		MemberDailyPush       map[string]int `mapstructure:"member_daily_push"`
 		MemberPostPush        map[string]int `mapstructure:"member_post_push"`

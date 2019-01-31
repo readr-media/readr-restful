@@ -70,6 +70,10 @@
         "api_server": ""
     },
     "models":{
+        "assets":{
+            "active": 9,
+            "deactive": 9
+        },
         "members":{
             "active": 9,
             "deactive": 9,
