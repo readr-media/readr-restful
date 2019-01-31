@@ -226,13 +226,13 @@ func TestFollowing(t *testing.T) {
 	t.Run("GetFollowings", func(t *testing.T) {
 		defer init()()
 		for _, tc := range []genericRequestTestcase{
-			genericRequestTestcase{"FollowingPostOK", "GET", `/following/user?resource=post&id=1`, ``, http.StatusOK, ``, []interface{}{[]routes.PubsubFollowMsgBody{mockedFollowings[2], mockedFollowings[3]}}},
+			genericRequestTestcase{"FollowingPostOK", "GET", `/following/user?resource=post&id=1`, ``, http.StatusOK, ``, []interface{}{[]routes.PubsubFollowMsgBody{mockedFollowings[3], mockedFollowings[2]}}},
 			genericRequestTestcase{"FollowingPostReviewOK", "GET", `/following/user?resource=post&resource_type=review&id=1`, ``, http.StatusOK, ``, []interface{}{[]routes.PubsubFollowMsgBody{mockedFollowings[2]}}},
 			genericRequestTestcase{"FollowingPostNewsOK", "GET", `/following/user?resource=memo&id=1`, ``, http.StatusOK, ``, []interface{}{[]routes.PubsubFollowMsgBody{mockedFollowings[3]}}},
 			genericRequestTestcase{"FollowingProjectOK", "GET", `/following/user?resource=project&id=1`, ``, http.StatusOK, ``, []interface{}{[]routes.PubsubFollowMsgBody{mockedFollowings[5]}}},
 			genericRequestTestcase{"FollowingWithTargetIDsOK", "GET", `/following/user?resource=project&id=1&target_ids=[1,2,3]`, ``, http.StatusOK, ``, []interface{}{[]routes.PubsubFollowMsgBody{mockedFollowings[5]}}},
 			genericRequestTestcase{"FollowingWithModeIDOK", "GET", `/following/user?resource=project&id=1&mode=id`, ``, http.StatusOK, `{"_items":[2]}`, nil},
-			genericRequestTestcase{"FollowingMultipleRes", "GET", `/following/user?resource=["post", "project"]&id=1`, ``, http.StatusOK, ``, []interface{}{[]routes.PubsubFollowMsgBody{mockedFollowings[2], mockedFollowings[3], mockedFollowings[5]}}},
+			genericRequestTestcase{"FollowingMultipleRes", "GET", `/following/user?resource=["post", "project"]&id=1`, ``, http.StatusOK, ``, []interface{}{[]routes.PubsubFollowMsgBody{mockedFollowings[3], mockedFollowings[2], mockedFollowings[5]}}},
 			genericRequestTestcase{"FollowingMaxresultPaging", "GET", `/following/user?resource=["post", "project"]&id=1&max_result=1&page=2`, ``, http.StatusOK, ``, []interface{}{[]routes.PubsubFollowMsgBody{mockedFollowings[3]}}},
 			genericRequestTestcase{"FollowingBadID", "GET", `/following/user?resource=post&max_result=1`, ``, http.StatusBadRequest, `{"Error":"Bad Resource ID"}`, nil},
 			genericRequestTestcase{"FollowingBadType", "GET", `/following/user?resource=["post", "aaa"]&id=1`, ``, http.StatusBadRequest, `{"Error":"Bad Following Type"}`, nil},

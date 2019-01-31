@@ -55,11 +55,14 @@ func (r *postHandler) bindQuery(c *gin.Context, args *models.PostArgs) (err erro
 			return err
 		}
 	}
-
 	if c.Query("sort") != "" && r.validatePostSorting(c.Query("sort")) {
 		args.Sorting = c.Query("sort")
 	}
-
+	if c.Query("ids") != "" {
+		if err = json.Unmarshal([]byte(c.Query("ids")), &args.IDs); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 

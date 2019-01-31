@@ -30,6 +30,7 @@ func assembleCachePost(postIDs []uint32) (posts []TaggedPostMember, err error) {
 		ShowCommment: true,
 		ShowTag:      true,
 		ShowUpdater:  true,
+		ShowProject:  true,
 	})
 	if err != nil {
 		log.Printf("postCache failed to get posts:%v in Insert phase, %v\n", postIDs, err)
@@ -243,18 +244,15 @@ func (c latestPostCache) SyncFromDataStorage() {
 
 	var postIDs []uint32
 	err := DB.Select(&postIDs, fmt.Sprintf(`
-		SELECT post_id FROM posts WHERE active=%d AND publish_status=%d AND type IN (%d,%d,%d,%d) ORDER BY published_at DESC LIMIT 20;`,
+		SELECT post_id FROM posts WHERE active=%d AND publish_status=%d ORDER BY published_at DESC LIMIT 20;`,
 		config.Config.Models.Posts["active"],
 		config.Config.Models.PostPublishStatus["publish"],
-		config.Config.Models.PostType["review"],
-		config.Config.Models.PostType["news"],
-		config.Config.Models.PostType["video"],
-		config.Config.Models.PostType["live"],
 	))
 	if err != nil {
 		log.Println(err.Error())
 		return
 	}
+
 	fullCachePosts, err := assembleCachePost(postIDs)
 	if err != nil {
 		fmt.Println("Error getting cache post when updating hot posts. PostIDs:", postIDs)
@@ -333,15 +331,11 @@ func (c hottestPostCache) SyncFromDataStorage() {
 			FROM following 
 			WHERE type = %d GROUP BY target_id
 		) AS f ON f.target_id = p.post_id 
-		WHERE p.active =%d AND p.publish_status=%d AND p.type IN (%d, %d, %d, %d)
+		WHERE p.active =%d AND p.publish_status=%d
 		`,
 		config.Config.Models.FollowingType["post"],
 		config.Config.Models.Posts["active"],
 		config.Config.Models.PostPublishStatus["publish"],
-		config.Config.Models.PostType["review"],
-		config.Config.Models.PostType["news"],
-		config.Config.Models.PostType["video"],
-		config.Config.Models.PostType["live"],
 	)
 	rows, err := DB.Queryx(query)
 	if err != nil {

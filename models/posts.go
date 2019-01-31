@@ -98,6 +98,7 @@ type TaggedPostMember struct {
 	UpdatedBy *MemberBasic    `json:"updated_by,omitempty" db:"updated_by"`
 	Tags      PostTags        `json:"tags,omitempty" db:"tags"`
 	Comment   []CommentAuthor `json:"comments,omitempty"`
+	Project   *ProjectBasic   `json:"project,omitempty" db:"project"`
 }
 
 // ------------ ↓↓↓ Requirement to satisfy LastPNRInterface  ↓↓↓ ------------
@@ -143,6 +144,17 @@ type MemberBasic struct {
 	ProfileImage NullString `json:"profile_image" db:"profile_image"`
 	Description  NullString `json:"description" db:"description"`
 	Role         NullInt    `json:"role" db:"role"`
+}
+
+type ProjectBasic struct {
+	ID            NullInt    `json:"id" db:"project_id"`
+	HeroImage     NullString `json:"hero_image" db:"hero_image"`
+	Title         NullString `json:"title" db:"title"`
+	Description   NullString `json:"description" db:"description"`
+	OgTitle       NullString `json:"og_title" db:"og_title"`
+	OgDescription NullString `json:"og_description" db:"og_description"`
+	OgImage       NullString `json:"og_image" db:"og_image"`
+	Slug          NullString `json:"slug" db:"slug" redis:"slug"`
 }
 
 type PostUpdateArgs struct {
@@ -191,11 +203,12 @@ type PostArgs struct {
 	MaxResult     uint8              `form:"max_result"`
 	Page          uint16             `form:"page"`
 	Sorting       string             `form:"sort"`
-	IDs           []uint32           `form:"ids"`
 	ShowTag       bool               `form:"show_tag"`
 	ShowAuthor    bool               `form:"show_author"`
 	ShowUpdater   bool               `form:"show_updater"`
+	ShowProject   bool               `form:"show_project"`
 	ShowCommment  bool               `form:"show_comment"`
+	IDs           []uint32           `form:"ids"`
 	Active        map[string][]int   `form:"active"`
 	PublishStatus map[string][]int   `form:"publish_status"`
 	Author        map[string][]int64 `form:"author"`
@@ -252,7 +265,7 @@ func (p *PostArgs) parse() (restricts string, values []interface{}) {
 			where = append(where, fmt.Sprintf("%s %s (?)", "posts.type", operatorHelper(k)))
 			values = append(values, v)
 		}
-	} else {
+	} /* else {
 		where = append(where, "posts.type IN (?)")
 		values = append(values, []int{
 			config.Config.Models.PostType["review"],
@@ -260,7 +273,7 @@ func (p *PostArgs) parse() (restricts string, values []interface{}) {
 			config.Config.Models.PostType["video"],
 			config.Config.Models.PostType["live"],
 		})
-	}
+	}*/
 	if p.IDs != nil {
 		where = append(where, fmt.Sprintf("%s %s (?)", "posts.post_id", "IN"))
 		values = append(values, p.IDs)
@@ -270,9 +283,9 @@ func (p *PostArgs) parse() (restricts string, values []interface{}) {
 		values = append(values, p.Filter.Condition)
 	}
 	if len(where) > 1 {
-		restricts = strings.Join(where, " AND ")
+		restricts = fmt.Sprintf("WHERE %s", strings.Join(where, " AND "))
 	} else if len(where) == 1 {
-		restricts = where[0]
+		restricts = fmt.Sprintf("WHERE %s", where[0])
 	}
 	return restricts, values
 }
@@ -414,6 +427,15 @@ func (a *postAPI) buildGetQuery(req *PostArgs) (query string, values []interface
 		joinedTables = append(joinedTables, `LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.id`)
 	}
 
+	if req.ShowProject {
+		projectDBTags := getStructDBTags("full", ProjectBasic{})
+		projectField := makeFieldString("get", `project.%s "project.%s"`, projectDBTags)
+		projectIDQuery := strings.Split(projectField[0], " ")
+		projectField[0] = fmt.Sprintf(`IFNULL(%s, 0) %s`, projectIDQuery[0], projectIDQuery[1])
+		selectedFields = append(selectedFields, projectField...)
+		joinedTables = append(joinedTables, `LEFT JOIN projects AS project ON posts.project_id = project.project_id`)
+	}
+
 	if req.ShowTag {
 		selectedFields = append(selectedFields, "t.tags as tags")
 		joinedTables = append(joinedTables, fmt.Sprintf(`
@@ -436,7 +458,7 @@ func (a *postAPI) buildGetQuery(req *PostArgs) (query string, values []interface
 	values = append(values, resultLimitVals...)
 
 	query = fmt.Sprintf(`
-		SELECT %s FROM posts %s WHERE %s `,
+		SELECT %s FROM posts %s %s `,
 		strings.Join(selectedFields, ","),
 		joinedTableString,
 		restricts+resultLimit,
@@ -559,7 +581,7 @@ func (a *postAPI) Count(req *PostArgs) (result int, err error) {
 	} else {
 
 		restricts, values := req.parse()
-		query := fmt.Sprintf(`SELECT COUNT(*) FROM (SELECT post_id FROM posts WHERE %s) AS subquery`, restricts)
+		query := fmt.Sprintf(`SELECT COUNT(*) FROM (SELECT post_id FROM posts %s) AS subquery`, restricts)
 
 		query, args, err := sqlx.In(query, values...)
 		if err != nil {

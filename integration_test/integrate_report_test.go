@@ -161,7 +161,7 @@ func TestReport(t *testing.T) {
 				[]interface{}{[]models.Post{mockedPosts[2], mockedPosts[0]}},
 			},
 			genericRequestTestcase{"GetReportWithMultipleSorting", "GET", `/report/list?sort=-slug,id`, ``, http.StatusOK, ``,
-				[]interface{}{[]models.Post{mockedPosts[0], mockedPosts[1], mockedPosts[2]}},
+				[]interface{}{[]models.Post{mockedPosts[2], mockedPosts[1], mockedPosts[0]}},
 			},
 			genericRequestTestcase{"GetReportKeywordMatchTitle", "GET", `/report/list?keyword=03&active={"$in":[0,1]}`, ``, http.StatusOK, ``,
 				[]interface{}{[]models.Post{mockedPosts[2]}},

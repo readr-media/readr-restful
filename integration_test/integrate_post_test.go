@@ -97,7 +97,7 @@ func TestPost(t *testing.T) {
 			genericRequestTestcase{"GetPostOK", "GET", `/post/1`, ``, http.StatusOK, ``, []interface{}{[]models.Post{
 				mockedPosts[0],
 			}}},
-			genericRequestTestcase{"NotExisted", "GET", `/post/3`, `{"Error":"Post Not Found"}`, http.StatusNotFound, `{"Error":"Post Not Found"}`, nil},
+			genericRequestTestcase{"NotExisted", "GET", `/post/12345`, `{"Error":"Post Not Found"}`, http.StatusNotFound, `{"Error":"Post Not Found"}`, nil},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
 				code, resp := genericDoRequest(tc, t)
@@ -111,7 +111,6 @@ func TestPost(t *testing.T) {
 					if err != nil {
 						t.Errorf("%s, Unexpected result body: %v", resp)
 					}
-
 					var expected []models.Post = tc.misc[0].([]models.Post)
 					assertIntHelper(t, tc.name, "result length", len(expected), len(Response.Items))
 					for i, r := range Response.Items {
