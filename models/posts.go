@@ -330,7 +330,6 @@ func (a *postAPI) GetPosts(req *PostArgs) (result []TaggedPostMember, err error)
 		}
 		result = append(result, singlePost)
 	}
-
 	if req.ShowCommment {
 		postIDs := make([]int, 0)
 		for _, v := range result {
@@ -383,26 +382,77 @@ func (a *postAPI) GetPost(id uint32, req *PostArgs) (post TaggedPostMember, err 
 	return post, err
 }
 
+type postCommentResource struct {
+	ID       int        `db:"post_id"`
+	Type     NullInt    `db:"type"`
+	Slug     NullString `db:"slug"`
+	Resource string     `db:"-"`
+}
+
 func (a *postAPI) fetchPostComments(ids []int) (comments map[int][]CommentAuthor, err error) {
+	postResources, err := a.fetchPostCommentResource(ids)
+	if err != nil {
+		fmt.Printf("Failed fetch slugs according to post, %s", err.Error())
+		return comments, err
+	}
+
 	comments = make(map[int][]CommentAuthor, 0)
 	resources := make([]string, 0)
-	for _, id := range ids {
-		resources = append(resources, utils.GenerateResourceInfo("post", id, ""))
+	for i, postResource := range postResources {
+		var typeName string
+		switch int(postResource.Type.Int) {
+		case config.Config.Models.PostType["memo"]:
+			typeName = "memo"
+		case config.Config.Models.PostType["report"]:
+			typeName = "report"
+		default:
+			typeName = "post"
+		}
+		resourceString := utils.GenerateResourceInfo(typeName, postResource.ID, postResource.Slug.String)
+		postResources[i].Resource = resourceString
+		resources = append(resources, resourceString)
 	}
 	commentSet, err := CommentAPI.GetComments(&GetCommentArgs{
 		IntraMax: 2,
 		Resource: resources,
 		Sorting:  "-created_at",
 	})
+
 	for _, comment := range commentSet {
-		_, postIDString := utils.ParseResourceInfo(comment.Resource.String)
-		postID, err := strconv.Atoi(postIDString)
-		if err != nil {
-			return comments, err
+		for _, postResource := range postResources {
+			if postResource.Resource == comment.Resource.String {
+				comments[postResource.ID] = append(comments[postResource.ID], comment)
+				break
+			}
 		}
-		comments[postID] = append(comments[postID], comment)
 	}
 	return comments, err
+}
+
+func (a *postAPI) fetchPostCommentResource(ids []int) (result []postCommentResource, err error) {
+	query := fmt.Sprintf(`
+		SELECT posts.post_id as post_id, posts.type as type, CASE posts.type WHEN %d THEN projects.slug ELSE posts.slug END as slug FROM posts 
+		LEFT JOIN projects ON posts.project_id = projects.project_id 
+		WHERE posts.post_id IN (?);`, config.Config.Models.PostType["memo"])
+
+	query, args, err := sqlx.In(query, ids)
+	if err != nil {
+		return []postCommentResource{}, err
+	}
+	query = DB.Rebind(query)
+
+	rows, err := DB.Queryx(query, args...)
+	if err != nil {
+		return []postCommentResource{}, err
+	}
+	for rows.Next() {
+		var pcr postCommentResource
+		if err = rows.StructScan(&pcr); err != nil {
+			return []postCommentResource{}, err
+		}
+		result = append(result, pcr)
+	}
+	return result, err
 }
 
 func (a *postAPI) buildGetQuery(req *PostArgs) (query string, values []interface{}) {
