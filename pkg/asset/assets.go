@@ -14,14 +14,19 @@ import (
 )
 
 type Asset struct {
-	ID          int64             `json:"id" db:"id"`
-	Active      models.NullInt    `json:"active" db:"active"`
-	CreatedAt   models.NullTime   `json:"created_at" db:"created_at"`
-	CreatedBy   models.NullInt    `json:"created_by" db:"created_by"`
-	UpdatedAt   models.NullTime   `json:"updated_at" db:"updated_at"`
-	UpdatedBy   models.NullInt    `json:"updated_by" db:"updated_by"`
-	ContentType models.NullString `json:"content_type" db:"content_type"`
-	URL         models.NullString `json:"url" db:"url"`
+	ID            int64             `json:"id" db:"id"`
+	Active        models.NullInt    `json:"active" db:"active"`
+	CreatedAt     models.NullTime   `json:"created_at" db:"created_at"`
+	CreatedBy     models.NullInt    `json:"created_by" db:"created_by"`
+	UpdatedAt     models.NullTime   `json:"updated_at" db:"updated_at"`
+	UpdatedBy     models.NullInt    `json:"updated_by" db:"updated_by"`
+	Destination   models.NullString `json:"destination" db:"destination"`
+	FileType      models.NullString `json:"file_type" db:"file_type"`
+	FileName      models.NullString `json:"file_name" db:"file_name"`
+	FileExtension models.NullString `json:"file_extension" db:"file_extension"`
+	Title         models.NullString `json:"title" db:"title"`
+	AssetType     models.NullInt    `json:"asset_type" db:"asset_type"`
+	Copyright     models.NullInt    `json:"copyright" db:"copyright"`
 }
 
 type GetAssetArgs struct {
@@ -260,6 +265,10 @@ func getStructDBTags(input interface{}) []string {
 				columns = append(columns, tag.Get("db"))
 			}
 		case models.NullBool:
+			if field.Valid {
+				columns = append(columns, tag.Get("db"))
+			}
+		case models.NullIntSlice:
 			if field.Valid {
 				columns = append(columns, tag.Get("db"))
 			}

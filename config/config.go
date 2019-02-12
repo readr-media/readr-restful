@@ -63,6 +63,8 @@ type appConfig struct {
 
 	Models struct {
 		Assets                map[string]int `mapstructure:"assets"`
+		AssetType             map[string]int `mapstructure:"asset_type"`
+		AssetCopyright        map[string]int `mapstructure:"asset_copyright"`
 		Members               map[string]int `mapstructure:"members"`
 		MemberDailyPush       map[string]int `mapstructure:"member_daily_push"`
 		MemberPostPush        map[string]int `mapstructure:"member_post_push"`

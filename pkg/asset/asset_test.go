@@ -172,7 +172,11 @@ func TestRouteAsset(t *testing.T) {
 			init:     func() { assetTest.setup() },
 			teardown: func() { assetTest.teardown() },
 			cases: []genericTestcase{
-				genericTestcase{"InsertOK", "POST", `/asset`, `{"id":1,"content_type":"image"}`, http.StatusOK, ``},
+				genericTestcase{"InsertOK", "POST", `/asset`, `{"id":1,"content_type":"image","asset_type":1,"destination":"url"}`, http.StatusOK, ``},
+				genericTestcase{"MissingDestination", "POST", `/asset`, `{"id":1,"asset_type":1}`, http.StatusBadRequest, `{"Error":"Missing Destination"}`},
+				genericTestcase{"MissingAssetType", "POST", `/asset`, `{"id":1,"destination":"url"}`, http.StatusBadRequest, `{"Error":"Missing AssetType"}`},
+				genericTestcase{"InvalidAssetType", "POST", `/asset`, `{"id":1,"destination":"url","asset_type":4}`, http.StatusBadRequest, `{"Error":"Invalid Parameter"}`},
+				genericTestcase{"InvalidCopyright", "POST", `/asset`, `{"id":1,"asset_type":1,"destination":"url","copyright":9}`, http.StatusBadRequest, `{"Error":"Invalid Parameter"}`},
 			},
 		},
 		TestStep{
@@ -183,6 +187,8 @@ func TestRouteAsset(t *testing.T) {
 				genericTestcase{"UpdateOK", "PUT", `/asset`, `{"id":1,"content_type":"text","updated_by":1}`, http.StatusOK, ``},
 				genericTestcase{"UpdateWithouotUpdater", "PUT", `/asset`, `{"id":1,"content_type":"text"}`, http.StatusBadRequest, `{"Error":"Neither updated_by or author is valid"}`},
 				genericTestcase{"NotFound", "PUT", `/asset`, `{"id":12345,"content_type":"text","updated_by":1}`, http.StatusNotFound, `{"Error":"Assets Not Found"}`},
+				genericTestcase{"InvalidAssetType", "POST", `/asset`, `{"id":1,"asset_type":4}`, http.StatusBadRequest, `{"Error":"Missing Destination"}`},
+				genericTestcase{"InvalidCopyright", "POST", `/asset`, `{"id":1,"asset_copyright":4}`, http.StatusBadRequest, `{"Error":"Missing Destination"}`},
 			},
 		},
 	}
