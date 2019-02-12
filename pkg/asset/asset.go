@@ -13,6 +13,11 @@ import (
 	"github.com/readr-media/readr-restful/models"
 )
 
+type taggedAsset struct {
+	Asset
+	Tags models.NullIntSlice `json:"tags" db:"tags"`
+}
+
 type router struct{}
 
 func (r *router) bindQuery(c *gin.Context, args *GetAssetArgs) (err error) {
@@ -113,7 +118,7 @@ func (r *router) Get(c *gin.Context) {
 }
 
 func (r *router) Post(c *gin.Context) {
-	asset := Asset{}
+	asset := taggedAsset{}
 
 	err := c.Bind(&asset)
 	if err != nil {
@@ -128,18 +133,30 @@ func (r *router) Post(c *gin.Context) {
 	if !asset.Active.Valid {
 		asset.Active = models.NullInt{int64(config.Config.Models.Assets["active"]), true}
 	}
-	/*	TODO: IS updader nessassiry
-		if !post.UpdatedBy.Valid {
-			if post.Author.Valid {
-				post.UpdatedBy.Int = post.Author.Int
-				post.UpdatedBy.Valid = true
-			} else {
-				c.JSON(http.StatusBadRequest, gin.H{"Error": "Neither updated_by or author is valid"})
-			}
-		}
-	*/
 
-	_, err = AssetAPI.Insert(asset)
+	if !asset.Destination.Valid {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Missing Destination"})
+		return
+	}
+
+	if asset.AssetType.Valid {
+		if !r.validateEnums(int(asset.AssetType.Int), config.Config.Models.AssetType) {
+			c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Parameter"})
+			return
+		}
+	} else {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Missing AssetType"})
+		return
+	}
+
+	if asset.Copyright.Valid {
+		if !r.validateEnums(int(asset.Copyright.Int), config.Config.Models.AssetCopyright) {
+			c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Parameter"})
+			return
+		}
+	}
+
+	assetID, err := AssetAPI.Insert(asset.Asset)
 	if err != nil {
 		switch err.Error() {
 		case "Duplicate entry":
@@ -151,11 +168,19 @@ func (r *router) Post(c *gin.Context) {
 		}
 	}
 
+	if asset.Tags.Valid {
+		err = models.TagAPI.UpdateTagging(config.Config.Models.TaggingType["asset"], int(assetID), asset.Tags.Slice)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+			return
+		}
+	}
+
 	c.Status(http.StatusOK)
 }
 
 func (r *router) Put(c *gin.Context) {
-	asset := Asset{}
+	asset := taggedAsset{}
 
 	err := c.ShouldBindJSON(&asset)
 	if err != nil {
@@ -174,24 +199,36 @@ func (r *router) Put(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Neither updated_by or author is valid"})
 		return
 	}
-	/*	TODO: IS updader nessassiry
-		if !post.UpdatedBy.Valid {
-			if post.Author.Valid {
-				post.UpdatedBy.Int = post.Author.Int
-				post.UpdatedBy.Valid = true
-			} else {
-				c.JSON(http.StatusBadRequest, gin.H{"Error": "Neither updated_by or author is valid"})
-			}
-		}
-	*/
 
-	err = AssetAPI.Update(asset)
+	if asset.AssetType.Valid {
+		if !r.validateEnums(int(asset.AssetType.Int), config.Config.Models.AssetType) {
+			c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Parameter"})
+			return
+		}
+	}
+
+	if asset.Copyright.Valid {
+		if !r.validateEnums(int(asset.Copyright.Int), config.Config.Models.AssetCopyright) {
+			c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Parameter"})
+			return
+		}
+	}
+
+	err = AssetAPI.Update(asset.Asset)
 	if err != nil {
 		switch err.Error() {
 		case "Assets Not Found":
 			c.JSON(http.StatusNotFound, gin.H{"Error": "Assets Not Found"})
 			return
 		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+			return
+		}
+	}
+
+	if asset.Tags.Valid {
+		err = models.TagAPI.UpdateTagging(config.Config.Models.TaggingType["asset"], int(asset.ID), asset.Tags.Slice)
+		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 			return
 		}
@@ -207,6 +244,16 @@ func (r *router) validateSorting(sort string) bool {
 		}
 	}
 	return true
+}
+
+func (r *router) validateEnums(value int, enums map[string]int) bool {
+	for _, v := range enums {
+		if value == v {
+			return true
+			break
+		}
+	}
+	return false
 }
 
 func (r *router) SetRoutes(router *gin.Engine) {
