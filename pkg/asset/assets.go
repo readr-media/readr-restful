@@ -30,12 +30,13 @@ type Asset struct {
 }
 
 type GetAssetArgs struct {
-	MaxResult   uint8            `form:"max_result"`
-	Page        uint16           `form:"page"`
-	Sorting     string           `form:"sort"`
-	IDs         []uint32         `form:"ids"`
-	Active      map[string][]int `form:"active"`
-	ContentType []string         `form:"content_type"`
+	MaxResult uint8            `form:"max_result"`
+	Page      uint16           `form:"page"`
+	Sorting   string           `form:"sort"`
+	IDs       []uint32         `form:"ids"`
+	AssetType []int            `form:"asset_type"`
+	FileType  []string         `form:"file_type"`
+	Active    map[string][]int `form:"active"`
 }
 
 func NewAssetArgs() *GetAssetArgs {
@@ -55,9 +56,13 @@ func (a *GetAssetArgs) parseCondition() (restricts string, values []interface{})
 			values = append(values, v)
 		}
 	}
-	if a.ContentType != nil {
-		where = append(where, fmt.Sprintf("%s %s (?)", "assets.content_type", "IN"))
-		values = append(values, a.ContentType)
+	if a.AssetType != nil {
+		where = append(where, fmt.Sprintf("%s %s (?)", "assets.asset_type", "IN"))
+		values = append(values, a.AssetType)
+	}
+	if a.FileType != nil {
+		where = append(where, fmt.Sprintf("%s %s (?)", "assets.file_type", "IN"))
+		values = append(values, a.FileType)
 	}
 	if a.IDs != nil {
 		where = append(where, fmt.Sprintf("%s %s (?)", "assets.id", "IN"))

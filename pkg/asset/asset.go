@@ -32,8 +32,13 @@ func (r *router) bindQuery(c *gin.Context, args *GetAssetArgs) (err error) {
 			}
 		}
 	}
-	if c.Query("content_type") != "" {
-		if err = json.Unmarshal([]byte(c.Query("content_type")), &args.ContentType); err != nil {
+	if c.Query("file_type") != "" {
+		if err = json.Unmarshal([]byte(c.Query("file_type")), &args.FileType); err != nil {
+			return err
+		}
+	}
+	if c.Query("asset_type") != "" {
+		if err = json.Unmarshal([]byte(c.Query("asset_type")), &args.AssetType); err != nil {
 			return err
 		}
 	}
@@ -239,7 +244,7 @@ func (r *router) Put(c *gin.Context) {
 
 func (r *router) validateSorting(sort string) bool {
 	for _, v := range strings.Split(sort, ",") {
-		if matched, err := regexp.MatchString("-?(updated_at|created_at|content_type)", v); err != nil || !matched {
+		if matched, err := regexp.MatchString("-?(updated_at|created_at|file_type)", v); err != nil || !matched {
 			return false
 		}
 	}
