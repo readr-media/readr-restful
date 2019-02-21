@@ -382,6 +382,9 @@ func (m *mailApi) getDailyReport() (reports []dailyReport, err error) {
 
 	query := fmt.Sprintf("SELECT post_id, title, hero_image, content, slug FROM posts WHERE published_at > (NOW() - INTERVAL 1 DAY) AND active = %d AND publish_status = %d AND type = %d;", config.Config.Models.Reports["active"], config.Config.Models.ReportsPublishStatus["publish"], config.Config.Models.PostType["report"])
 	rows, err := models.DB.Queryx(query)
+	if err != nil {
+		return nil, errors.New("Get Daily Report Error")
+	}
 	for rows.Next() {
 		var report dailyReport
 		if err = rows.StructScan(&report); err != nil {
@@ -396,8 +399,11 @@ func (m *mailApi) getDailyReport() (reports []dailyReport, err error) {
 
 func (m *mailApi) getDailyMemo() (memos []dailyMemo, err error) {
 
-	query := fmt.Sprintf("SELECT p.post_id AS id, p.title AS title, p.content AS content, p.slug AS slug, e.id AS author_id, e.nickname AS author, e.profile_image AS image FROM posts AS p LEFT JOIN members AS e ON m.author = e.id WHERE p.published_at > (NOW() - INTERVAL 1 DAY) AND p.active = %d AND p.publish_status = %d AND p.type = ;", config.Config.Models.Posts["active"], config.Config.Models.PostPublishStatus["publish"], config.Config.Models.PostType["report"])
+	query := fmt.Sprintf("SELECT p.post_id AS id, p.title AS title, p.content AS content, p.slug AS slug, e.id AS author_id, e.nickname AS author, e.profile_image AS image FROM posts AS p LEFT JOIN members AS e ON p.author = e.id WHERE p.published_at > (NOW() - INTERVAL 1 DAY) AND p.active = %d AND p.publish_status = %d AND p.type = %d;", config.Config.Models.Posts["active"], config.Config.Models.PostPublishStatus["publish"], config.Config.Models.PostType["memo"])
 	rows, err := models.DB.Queryx(query)
+	if err != nil {
+		return nil, errors.New("Get Daily Memo Error")
+	}
 	for rows.Next() {
 		var memo dailyMemo
 		if err = rows.StructScan(&memo); err != nil {
@@ -429,6 +435,9 @@ func (m *mailApi) getDailyPost() (posts []dailyPost, err error) {
 		config.Config.Models.PostType["review"],
 		config.Config.Models.PostType["news"])
 	rows, err := models.DB.Queryx(query)
+	if err != nil {
+		return nil, errors.New("Get Daily Post Error")
+	}
 	for rows.Next() {
 		var post dailyPost
 		if err = rows.StructScan(&post); err != nil {
