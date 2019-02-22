@@ -459,10 +459,10 @@ func (a *projectAPI) InsertProject(p Project) error {
 		arg.Page = 1
 		projects, err := ProjectAPI.GetProjects(arg)
 		if err != nil {
-			log.Printf("Error When Getting Project to Insert to Algolia: %v", err.Error())
+			log.Printf("Error When Getting Project to Insert to SearchFeed: %v", err.Error())
 			return nil
 		}
-		go Algolia.InsertProject(projects)
+		go SearchFeed.InsertProject(projects)
 	}
 
 	return nil
@@ -486,7 +486,7 @@ func (a *projectAPI) UpdateProjects(p Project) error {
 	if (p.PublishStatus.Valid && p.PublishStatus.Int != int64(config.Config.Models.ProjectsPublishStatus["publish"])) ||
 		(p.Active.Valid == true && p.Active.Int != int64(config.Config.Models.ProjectsActive["active"])) {
 		// Case: Set a project to unpublished state, Delete the project from cache/searcher
-		go Algolia.DeleteProject([]int{p.ID})
+		go SearchFeed.DeleteProject([]int{p.ID})
 	} else if p.PublishStatus.Valid || p.Active.Valid {
 		// Case: Publish a project or update a project.
 		// Read whole project from database, then store to cache/searcher.
@@ -498,13 +498,13 @@ func (a *projectAPI) UpdateProjects(p Project) error {
 		arg.Page = 1
 		projects, err := ProjectAPI.GetProjects(arg)
 		if err != nil {
-			log.Printf("Error When Getting Project to Insert to Algolia: %v", err.Error())
+			log.Printf("Error When Getting Project to Insert to SearchFeed: %v", err.Error())
 			return nil
 		}
 
 		if projects[0].PublishStatus.Int == int64(config.Config.Models.ProjectsPublishStatus["publish"]) &&
 			projects[0].Active.Int == int64(config.Config.Models.ProjectsActive["active"]) {
-			go Algolia.InsertProject(projects)
+			go SearchFeed.InsertProject(projects)
 		}
 	}
 
@@ -536,7 +536,7 @@ func (a *projectAPI) DeleteProjects(p Project) error {
 		return errors.New("Project Not Found")
 	}
 
-	go Algolia.DeleteProject([]int{p.ID})
+	go SearchFeed.DeleteProject([]int{p.ID})
 
 	return err
 }

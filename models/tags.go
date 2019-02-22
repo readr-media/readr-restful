@@ -500,15 +500,14 @@ func (t *tagApi) UpdateTagging(resourceType int, targetID int, tagIDs []int) err
 
 	if resourceType == config.Config.Models.TaggingType["post"] {
 		post, err := PostAPI.GetPost(uint32(targetID), &PostArgs{
-			ShowAuthor:   true,
-			ShowUpdater:  true,
-			ShowTag:      true,
-			ShowCommment: true,
+			ShowAuthor:  true,
+			ShowUpdater: true,
+			ShowTag:     true,
 		})
 		if err != nil {
 			return err
 		}
-		go Algolia.InsertPost([]TaggedPostMember{post})
+		go SearchFeed.InsertPost([]TaggedPostMember{post})
 	}
 
 	return nil

@@ -53,8 +53,8 @@ func main() {
 	// Set postcache settings
 	models.InitPostCache()
 
-	// Init Algolia
-	models.Algolia.Init()
+	// Init SearchFeed
+	models.SearchFeed.Init()
 
 	// Set gin routings
 	routes.SetRoutes(router)

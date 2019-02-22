@@ -254,7 +254,7 @@ func (r *postHandler) Put(c *gin.Context) {
 	if (post.PublishStatus.Valid && post.PublishStatus.Int != int64(config.Config.Models.PostPublishStatus["publish"])) ||
 		(post.Active.Valid && post.Active.Int != int64(config.Config.Models.Posts["active"])) {
 		// Case: Set a post to unpublished state, Delete the post from cache/searcher
-		go models.Algolia.DeletePost([]int{int(post.ID)})
+		go models.SearchFeed.DeletePost([]int{int(post.ID)})
 		go models.PostCache.Update(post.Post)
 
 		if post.PublishStatus.Valid && post.PublishStatus.Int == int64(config.Config.Models.PostPublishStatus["pending"]) {
@@ -331,7 +331,7 @@ func (r *postHandler) DeleteAll(c *gin.Context) {
 		}
 	}
 
-	go models.Algolia.DeletePost(params.IDs)
+	go models.SearchFeed.DeletePost(params.IDs)
 	go models.PostCache.UpdateAll(params)
 
 	c.Status(http.StatusOK)
@@ -437,7 +437,7 @@ func (r *postHandler) validatePostSorting(sort string) bool {
 }
 
 func (r *postHandler) PublishPipeline(ids []uint32) error {
-	// Insert to Algolia / Redis PostCache / Redis notification
+	// Insert to SearchFeed / Redis PostCache / Redis notification
 	// Send notify mail / slack message
 
 	if len(ids) == 0 {
@@ -466,7 +466,7 @@ func (r *postHandler) PublishPipeline(ids []uint32) error {
 		}
 	}
 	go models.PostCache.SyncFromDataStorage()
-	go models.Algolia.InsertPost(validPosts)
+	go models.SearchFeed.InsertPost(validPosts)
 
 	return nil
 }

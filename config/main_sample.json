@@ -59,8 +59,7 @@
         "template_path": ""
     },
     "search_feed":{
-        "app_id": "",
-        "app_key": "",
+        "host": "",
         "index_name": "",
         "max_retry": 0
     },
@@ -73,6 +72,16 @@
         "assets":{
             "active": 9,
             "deactive": 9
+        },
+        "asset_type":{
+            "image": 9,
+            "video": 9,
+            "audio": 9
+        },
+        "asset_copyright":{
+            "copyright": 9,
+            "cc": 9,
+            "cc-by-sa3": 9
         },
         "members":{
             "active": 9,
@@ -160,7 +169,8 @@
         },
         "tagging_type": {
             "post": 9,
-            "project": 9
+            "project": 9,
+            "asset": 9
         },
         "following_type": {
             "member": 9,

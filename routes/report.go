@@ -315,7 +315,7 @@ func (r *reportHandler) Put(c *gin.Context) {
 	if (report.PublishStatus.Valid && report.PublishStatus.Int != int64(config.Config.Models.ReportsPublishStatus["publish"])) ||
 		(report.Active.Valid && report.Active.Int != int64(config.Config.Models.Reports["active"])) {
 		// Case: Set a report to unpublished state, Delete the report from cache/searcher
-		go models.Algolia.DeleteReport([]int{int(report.ID)})
+		// go models.Algolia.DeleteReport([]int{int(report.ID)})
 	} else if report.PublishStatus.Valid || report.Active.Valid {
 		// Case: Publish a report or update a report.
 		if report.PublishStatus.Int == int64(config.Config.Models.ReportsPublishStatus["publish"]) ||
@@ -353,8 +353,7 @@ func (r *reportHandler) Delete(c *gin.Context) {
 			return
 		}
 	}
-
-	go models.Algolia.DeleteReport([]int{id})
+	// go models.Algolia.DeleteReport([]int{id})
 
 	c.Status(http.StatusOK)
 }
@@ -451,8 +450,7 @@ func (r *reportHandler) PublishHandler(ids []int) error {
 			return err
 		}
 	}
-
-	go models.Algolia.InsertReport(reports)
+	// go models.Algolia.InsertReport(reports)
 	for _, report := range reports {
 		go models.NotificationGen.GenerateProjectNotifications(report, "report")
 		go mail.MailAPI.SendReportPublishMail(report)

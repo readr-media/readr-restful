@@ -49,8 +49,7 @@ type appConfig struct {
 	} `mapstructure:"mail"`
 
 	SearchFeed struct {
-		AppID     string `mapstructure:"app_id"`
-		AppKey    string `mapstructure:"app_key"`
+		Host      string `mapstructure:"host"`
 		IndexName string `mapstructure:"index_name"`
 		MaxRetry  int    `mapstructure:"max_retry"`
 	} `mapstructure:"search_feed"`

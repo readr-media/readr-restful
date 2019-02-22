@@ -585,7 +585,7 @@ func (a *postAPI) DeletePost(id uint32) error {
 	}
 
 	go PostCache.Delete(id)
-	go Algolia.DeletePost([]int{int(id)})
+	go SearchFeed.DeletePost([]int{int(id)})
 
 	return err
 }
