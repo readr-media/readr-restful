@@ -116,6 +116,7 @@ func (a *searchEngine) InsertPost(input []TaggedPostMember) error {
 		ObjectType string `json:"objectType"`
 	}
 	for _, tpm := range input {
+		tpm.UpdatedBy = nil
 		typedObject := searchObject{tpm, "post"}
 		typedString, err := json.Marshal(typedObject)
 		if err != nil {
