@@ -54,7 +54,7 @@ func main() {
 	models.InitPostCache()
 
 	// Init SearchFeed
-	models.SearchFeed.Init()
+	models.SearchFeed.Init(true)
 
 	// Set gin routings
 	routes.SetRoutes(router)

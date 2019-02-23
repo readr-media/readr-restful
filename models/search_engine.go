@@ -26,7 +26,11 @@ var SearchFeed searchEngine = searchEngine{
 		"project": "project",
 	}}
 
-func (s *searchEngine) Init() {
+func (s *searchEngine) Init(enable bool) {
+	if !enable {
+		s.searchEnabled = false
+		return
+	}
 	client, err := elastic.NewClient(
 		elastic.SetURL(config.Config.SearchFeed.Host),
 		elastic.SetSniff(false),
