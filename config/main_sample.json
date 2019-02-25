@@ -203,6 +203,7 @@
     },
     "readr_id": 0,
     "domain_name": "http://www.foo.bar",
+    "token_secret": "",
     "payment_service": {
         "partner_key": "",
         "merchant_id": "",

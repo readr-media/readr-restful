@@ -1,0 +1,1 @@
+ALTER TABLE members DROP `premium_before`;

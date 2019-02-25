@@ -88,8 +88,9 @@ type appConfig struct {
 		HotTagsWeight         map[string]int `mapstructure:"hot_tags_wieght"`
 	} `mapstructure:"models"`
 
-	ReadrID    int    `mapstructure:"readr_id"`
-	DomainName string `mapstructure:"domain_name"`
+	ReadrID     int    `mapstructure:"readr_id"`
+	DomainName  string `mapstructure:"domain_name"`
+	TokenSecret string `mapstructure:"token_secret"`
 
 	PaymentService struct {
 		PartnerKey         string `mapstructure:"partner_key"`
