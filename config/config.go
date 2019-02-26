@@ -19,8 +19,8 @@ type appConfig struct {
 	} `mapstructure:"sql"`
 
 	Redis struct {
-		Host     string `mapstructure:"host"`
-		Port     int    `mapstructure:"port"`
+		ReadURL  string `mapstructure:"read_url"`
+		WriteURL string `mapstructure:"write_url"`
 		Password string `mapstructure:"password"`
 		Cache    struct {
 			LatestCommentCount int `mapstructure:"latest_comment_count"`

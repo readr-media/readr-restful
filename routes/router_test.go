@@ -61,13 +61,11 @@ func TestMain(m *testing.M) {
 
 	// Init Redis connetions
 	models.RedisConn(map[string]string{
-		"url":      fmt.Sprint(config.Config.Redis.Host, ":", config.Config.Redis.Port),
-		"password": fmt.Sprint(config.Config.Redis.Password),
+		"read_url":  fmt.Sprint(config.Config.Redis.ReadURL),
+		"write_url": fmt.Sprint(config.Config.Redis.WriteURL),
+		"password":  fmt.Sprint(config.Config.Redis.Password),
 	})
-	// models.RedisConn(map[string]string{
-	// 	"url":      fmt.Sprint(viper.Get("redis.host"), ":", viper.Get("redis.port")),
-	// 	"password": fmt.Sprint(viper.Get("redis.password")),
-	// })
+
 	models.SearchFeed.Init(false)
 
 	gin.SetMode(gin.TestMode)

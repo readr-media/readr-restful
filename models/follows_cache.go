@@ -21,7 +21,7 @@ type followCache struct {
 }
 
 func (f followCache) Update(input GetFollowedArgs, followeds []FollowedCount) {
-	conn := RedisHelper.Conn()
+	conn := RedisHelper.WriteConn()
 	defer conn.Close()
 
 	conn.Send("MULTI")
@@ -52,7 +52,7 @@ func (f followCache) Revoke(actionType string, resource string, emotion int, obj
 		}
 	}
 
-	conn := RedisHelper.Conn()
+	conn := RedisHelper.WriteConn()
 	defer conn.Close()
 	conn.Send("MULTI")
 

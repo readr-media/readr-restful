@@ -70,7 +70,7 @@ func (p *postCache) Update(post Post) {
 		return
 	}
 
-	conn := RedisHelper.Conn()
+	conn := RedisHelper.ReadConn()
 	defer conn.Close()
 
 	for _, cache := range p.caches {
@@ -97,7 +97,7 @@ func (p *postCache) Update(post Post) {
 
 func (p *postCache) Delete(post_id uint32) {
 
-	conn := RedisHelper.Conn()
+	conn := RedisHelper.ReadConn()
 	defer conn.Close()
 
 	for _, cache := range p.caches {
@@ -126,7 +126,7 @@ func (p *postCache) UpdateAll(params PostUpdateArgs) {
 		return
 	}
 
-	conn := RedisHelper.Conn()
+	conn := RedisHelper.ReadConn()
 	defer conn.Close()
 
 	for _, cache := range p.caches {
@@ -154,7 +154,7 @@ func (p *postCache) UpdateAll(params PostUpdateArgs) {
 
 /*
 func (p *postCache) UpdateFollowing(action string, user_id int64, post_id int64) {
-	conn := RedisHelper.Conn()
+	conn := RedisHelper.WriteConn()
 	defer conn.Close()
 
 	for _, cache := range p.caches {
@@ -189,25 +189,27 @@ func (c latestPostCache) Key() string {
 }
 
 func (c latestPostCache) Insert(post TaggedPostMember) {
-	conn := RedisHelper.Conn()
-	defer conn.Close()
+	readConn := RedisHelper.ReadConn()
+	writeConn := RedisHelper.WriteConn()
+	defer readConn.Close()
+	defer writeConn.Close()
 
 	postString, _ := json.Marshal(post)
 
-	postCacheMap, err := redis.StringMap(conn.Do("HGETALL", c.Key()))
+	postCacheMap, err := redis.StringMap(readConn.Do("HGETALL", c.Key()))
 	if err != nil {
 		fmt.Println("Error get post cache map:", c.Key(), err.Error())
 	}
 
-	postCacheIndex, err := redis.StringMap(conn.Do("HGETALL", fmt.Sprintf("%s_index", c.Key())))
+	postCacheIndex, err := redis.StringMap(readConn.Do("HGETALL", fmt.Sprintf("%s_index", c.Key())))
 	if err != nil {
 		fmt.Println("Error get post cache index:", fmt.Sprintf("%s_index", c.Key()), err.Error())
 	}
 
-	conn.Send("MULTI")
-	conn.Send("DEL", redis.Args{}.Add(fmt.Sprint(c.key, "_index")))
+	writeConn.Send("MULTI")
+	writeConn.Send("DEL", redis.Args{}.Add(fmt.Sprint(c.key, "_index")))
 
-	conn.Send("HSET", redis.Args{}.Add(c.Key()).Add("1").Add(postString)...)
+	writeConn.Send("HSET", redis.Args{}.Add(c.Key()).Add("1").Add(postString)...)
 	for k, v := range postCacheMap {
 		ki, err := strconv.Atoi(k)
 		if err != nil {
@@ -215,11 +217,11 @@ func (c latestPostCache) Insert(post TaggedPostMember) {
 			continue
 		}
 		if ki+1 <= 20 {
-			conn.Send("HSET", redis.Args{}.Add(c.Key()).Add(ki+1).Add(v)...)
+			writeConn.Send("HSET", redis.Args{}.Add(c.Key()).Add(ki+1).Add(v)...)
 		}
 	}
 
-	conn.Send("HSET", redis.Args{}.Add(fmt.Sprintf("%s_index", c.Key())).Add(post.ID).Add(1)...)
+	writeConn.Send("HSET", redis.Args{}.Add(fmt.Sprintf("%s_index", c.Key())).Add(post.ID).Add(1)...)
 	for k, v := range postCacheIndex {
 		vi, err := strconv.Atoi(v)
 		if err != nil {
@@ -227,11 +229,11 @@ func (c latestPostCache) Insert(post TaggedPostMember) {
 			continue
 		}
 		if vi+1 <= 20 {
-			conn.Send("HSET", redis.Args{}.Add(fmt.Sprintf("%s_index", c.Key())).Add(k).Add(vi+1)...)
+			writeConn.Send("HSET", redis.Args{}.Add(fmt.Sprintf("%s_index", c.Key())).Add(k).Add(vi+1)...)
 		}
 	}
 
-	if _, err := redis.Values(conn.Do("EXEC")); err != nil {
+	if _, err := redis.Values(writeConn.Do("EXEC")); err != nil {
 		log.Printf("Error insert cache to redis: %v", err)
 		return
 	}
@@ -239,7 +241,7 @@ func (c latestPostCache) Insert(post TaggedPostMember) {
 
 func (c latestPostCache) SyncFromDataStorage() {
 
-	conn := RedisHelper.Conn()
+	conn := RedisHelper.WriteConn()
 	defer conn.Close()
 
 	var postIDs []uint32
@@ -381,7 +383,7 @@ func (c hottestPostCache) SyncFromDataStorage() {
 	}
 
 	// Write post data, post followers, post score to Redis
-	conn := RedisHelper.Conn()
+	conn := RedisHelper.WriteConn()
 	defer conn.Close()
 	conn.Send("MULTI")
 

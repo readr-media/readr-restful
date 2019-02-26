@@ -23,7 +23,7 @@ type commentCache struct {
 }
 
 func (c commentCache) Obtain() (comments []CommentAuthor, err error) {
-	conn := RedisHelper.Conn()
+	conn := RedisHelper.ReadConn()
 	defer conn.Close()
 
 	CommentCacheBytes := [][]byte{}
@@ -51,7 +51,7 @@ func (c commentCache) Obtain() (comments []CommentAuthor, err error) {
 }
 
 func (c commentCache) Insert(comment CommentAuthor) (err error) {
-	conn := RedisHelper.Conn()
+	conn := RedisHelper.WriteConn()
 	defer conn.Close()
 
 	conn.Send("MULTI")
