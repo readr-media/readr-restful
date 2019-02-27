@@ -1,0 +1,1 @@
+ALTER TABLE members ADD `premium_before` datetime DEFAULT NULL;

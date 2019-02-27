@@ -289,7 +289,7 @@ func (m *mailApi) GetSettingLink() map[int]string {
 func (m *mailApi) GenDailyDigest() (err error) {
 	settingLink := m.GetSettingLink()
 
-	conn := models.RedisHelper.Conn()
+	conn := models.RedisHelper.WriteConn()
 	defer conn.Close()
 
 	// Delete daily mail entry in the begining.
@@ -540,7 +540,7 @@ func (m *mailApi) sendToAll(t string, s string, mailList []string) (err error) {
 }
 
 func (m *mailApi) SendDailyDigest(mailList []string) (err error) {
-	conn := models.RedisHelper.Conn()
+	conn := models.RedisHelper.ReadConn()
 	defer conn.Close()
 
 	settingLink := m.GetSettingLink()

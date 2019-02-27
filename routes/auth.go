@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
@@ -17,9 +18,10 @@ type authHandler struct {
 }
 
 type userLoginParams struct {
-	ID       string `json:"id"`
-	Password string `json:"password"`
-	Mode     string `json:"register_mode"`
+	ID        string `json:"id"`
+	Password  string `json:"password"`
+	Mode      string `json:"register_mode"`
+	KeepAlive bool   `json:"keep_alive"`
 }
 
 func (r *authHandler) userLogin(c *gin.Context) {
@@ -88,7 +90,7 @@ func (r *authHandler) userLogin(c *gin.Context) {
 		}
 	}
 	// 4. get user permission by id
-	// 5. return user's profile and permission info
+	// 5. return user's profile, permission info and token
 
 	userPermissions, err := models.PermissionAPI.GetPermissionsByRole(int(member.Role.Int))
 	if err != nil {
@@ -100,9 +102,17 @@ func (r *authHandler) userLogin(c *gin.Context) {
 	for _, userPermission := range userPermissions[:] {
 		permissions = append(permissions, userPermission.Object.String)
 	}
+
+	token, err := r.genToken(member, permissions, p.KeepAlive)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error", "Reason": err.Error()})
+		return
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"member":      member,
-		"permissions": permissions})
+		"permissions": permissions,
+		"token":       token})
 	return
 }
 
@@ -222,6 +232,26 @@ func (r *authHandler) userRegister(c *gin.Context) {
 	resp := map[string]int{"last_id": lastID}
 	c.JSON(http.StatusOK, gin.H{"_items": resp})
 	return
+}
+
+func (r *authHandler) genToken(member models.Member, permissions []string, keepAlive bool) (string, error) {
+	expireDate := time.Now()
+	if keepAlive {
+		expireDate = expireDate.AddDate(0, 0, 30)
+	} else {
+		expireDate = expireDate.AddDate(0, 0, 1)
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.MapClaims{
+		"exp":         expireDate,
+		"id":          member.ID,
+		"uuid":        member.UUID,
+		"email":       member.MemberID,
+		"nickname":    member.Nickname.String,
+		"role":        member.Role.Int,
+		"permissions": permissions,
+		"username":    member.Name.String,
+	})
+	return token.SignedString([]byte(config.Config.TokenSecret))
 }
 
 func validateMode(mode string) bool {

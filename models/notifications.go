@@ -67,7 +67,7 @@ func (n Notifications) Send() {
 		return
 	}
 
-	conn := RedisHelper.Conn()
+	conn := RedisHelper.WriteConn()
 	defer conn.Close()
 
 	conn.Send("MULTI")
@@ -131,14 +131,16 @@ func (n Notifications) getMemberMail(ids []int) (result map[int]string, err erro
 type commentHandler struct{}
 
 func (c *commentHandler) ReadNotifications(arg UpdateNotificationArgs) error {
-	conn := RedisHelper.Conn()
-	defer conn.Close()
+	readConn := RedisHelper.ReadConn()
+	writeConn := RedisHelper.WriteConn()
+	defer readConn.Close()
+	defer writeConn.Close()
 
 	CommentNotifications := [][]byte{}
 
 	key := fmt.Sprint("notify_", arg.MemberID)
 
-	res, err := redis.Values(conn.Do("LRANGE", key, 0, config.Config.Redis.Cache.NotificationCount-1))
+	res, err := redis.Values(readConn.Do("LRANGE", key, 0, config.Config.Redis.Cache.NotificationCount-1))
 	if err != nil {
 		log.Printf("Error getting redis key: %s , %v", key, err)
 		return err
@@ -186,13 +188,13 @@ func (c *commentHandler) ReadNotifications(arg UpdateNotificationArgs) error {
 		}
 	}
 
-	conn.Do("DEL", fmt.Sprint("notify_", arg.MemberID))
-	conn.Send("MULTI")
+	writeConn.Do("DEL", fmt.Sprint("notify_", arg.MemberID))
+	writeConn.Send("MULTI")
 	for _, v := range CommentNotifications {
-		conn.Send("RPUSH", redis.Args{}.Add(fmt.Sprint("notify_", arg.MemberID)).Add(v)...)
+		writeConn.Send("RPUSH", redis.Args{}.Add(fmt.Sprint("notify_", arg.MemberID)).Add(v)...)
 	}
-	conn.Send("LTRIM", redis.Args{}.Add(fmt.Sprint("notify_", arg.MemberID)).Add(0).Add(config.Config.Redis.Cache.NotificationCount-1)...)
-	if _, err := redis.Values(conn.Do("EXEC")); err != nil {
+	writeConn.Send("LTRIM", redis.Args{}.Add(fmt.Sprint("notify_", arg.MemberID)).Add(0).Add(config.Config.Redis.Cache.NotificationCount-1)...)
+	if _, err := redis.Values(writeConn.Do("EXEC")); err != nil {
 		log.Printf("Error insert cache to redis: %v", err)
 		return err
 	}
@@ -220,7 +222,7 @@ OuterLoop:
 
 func getNotificationsFromRedis(key string) (redisNs []Notification, err error) {
 
-	conn := RedisHelper.Conn()
+	conn := RedisHelper.ReadConn()
 	defer conn.Close()
 
 	llen, err := RedisHelper.GetRedisListLength(key)

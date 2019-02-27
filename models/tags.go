@@ -955,7 +955,7 @@ func (a *tagApi) UpdateHotTags() error {
 
 	// Store to Redis
 	// Write post data, post followers, post score to Redis
-	conn := RedisHelper.Conn()
+	conn := RedisHelper.WriteConn()
 	defer conn.Close()
 
 	if _, err := conn.Do("DEL", redis.Args{}.Add("tagcache_hot")); err != nil {

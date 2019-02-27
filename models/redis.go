@@ -15,17 +15,22 @@ import (
 )
 
 type redisHelper struct {
-	pool *redis.Pool
+	readPool  *redis.Pool
+	writePool *redis.Pool
 }
 
 var RedisHelper = redisHelper{}
 
-func (r *redisHelper) Conn() redis.Conn {
-	return r.pool.Get()
+func (r *redisHelper) ReadConn() redis.Conn {
+	return r.readPool.Get()
+}
+
+func (r *redisHelper) WriteConn() redis.Conn {
+	return r.writePool.Get()
 }
 
 func (r *redisHelper) GetRedisKeys(key string) ([]string, error) {
-	conn := r.Conn()
+	conn := r.ReadConn()
 	defer conn.Close()
 
 	var keys []string
@@ -45,7 +50,7 @@ func (r *redisHelper) GetRedisKeys(key string) ([]string, error) {
 }
 
 func (r *redisHelper) GetRedisListLength(key string) (int, error) {
-	conn := r.Conn()
+	conn := r.ReadConn()
 	defer conn.Close()
 
 	l, err := redis.Int(conn.Do("LLEN", key))
@@ -126,7 +131,7 @@ func convertRedisAssign(dest, src interface{}) error {
 }
 
 func (r *redisHelper) getOrderedHashes(keysTemplate string, quantity int) (result [][]interface{}, err error) {
-	conn := r.Conn()
+	conn := r.ReadConn()
 	defer conn.Close()
 	conn.Send("MULTI")
 
@@ -178,7 +183,7 @@ func (r *redisHelper) GetHotPosts(keysTemplate string, quantity int) (result []H
 */
 
 func (r *redisHelper) GetHotTags(keysTemplate string, quantity int) (result []TagRelatedResources, err error) {
-	conn := r.Conn()
+	conn := r.ReadConn()
 	defer conn.Close()
 
 	resMap, err := redis.StringMap(conn.Do("HGETALL", "tagcache_hot"))
@@ -205,7 +210,7 @@ func (r *redisHelper) GetHotTags(keysTemplate string, quantity int) (result []Ta
 
 func (r *redisHelper) Subscribe(ctx context.Context, cancel func(), onMessage func(channel string, data []byte) error, channel string) error {
 
-	conn := r.Conn()
+	conn := r.ReadConn()
 	psc := redis.PubSubConn{Conn: conn}
 	if err := psc.PSubscribe(redis.Args{}.AddFlat(channel)...); err != nil {
 		return err
@@ -254,11 +259,20 @@ func (r *redisHelper) Subscribe(ctx context.Context, cancel func(), onMessage fu
 }
 
 func RedisConn(config map[string]string) {
-	RedisHelper = redisHelper{&redis.Pool{
-		MaxIdle:     30,
-		IdleTimeout: 240 * time.Second,
-		Dial: func() (redis.Conn, error) {
-			return redis.Dial("tcp", config["url"], redis.DialPassword(config["password"]))
+	RedisHelper = redisHelper{
+		readPool: &redis.Pool{
+			MaxIdle:     30,
+			IdleTimeout: 240 * time.Second,
+			Dial: func() (redis.Conn, error) {
+				return redis.Dial("tcp", config["read_url"], redis.DialPassword(config["password"]))
+			},
 		},
-	}}
+		writePool: &redis.Pool{
+			MaxIdle:     30,
+			IdleTimeout: 240 * time.Second,
+			Dial: func() (redis.Conn, error) {
+				return redis.Dial("tcp", config["write_url"], redis.DialPassword(config["password"]))
+			},
+		},
+	}
 }

@@ -31,11 +31,12 @@ type Member struct {
 	SocialID     NullString `json:"social_id,omitempty" db:"social_id"`
 	TalkID       NullString `json:"talk_id" db:"talk_id"`
 
-	CreatedAt NullTime   `json:"created_at" db:"created_at"`
-	UpdatedAt NullTime   `json:"updated_at" db:"updated_at"`
-	UpdatedBy NullInt    `json:"updated_by" db:"updated_by"`
-	Password  NullString `json:"-" db:"password"`
-	Salt      NullString `json:"-" db:"salt"`
+	CreatedAt     NullTime   `json:"created_at" db:"created_at"`
+	UpdatedAt     NullTime   `json:"updated_at" db:"updated_at"`
+	UpdatedBy     NullInt    `json:"updated_by" db:"updated_by"`
+	Password      NullString `json:"-" db:"password"`
+	Salt          NullString `json:"-" db:"salt"`
+	PremiumBefore NullTime   `json:"premium_before" db:"premium_before"`
 	// Ignore password JSON marshall for now
 
 	Description  NullString `json:"description" db:"description"`
