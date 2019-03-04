@@ -242,7 +242,7 @@ func (r *authHandler) genToken(member models.Member, permissions []string, keepA
 		expireDate = expireDate.AddDate(0, 0, 1)
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.MapClaims{
-		"exp":         expireDate,
+		"exp":         expireDate.Unix(),
 		"id":          member.ID,
 		"uuid":        member.UUID,
 		"email":       member.MemberID,
