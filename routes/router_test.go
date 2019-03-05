@@ -87,7 +87,7 @@ func TestMain(m *testing.M) {
 	models.NotificationGen = new(mockNotificationGenerator)
 
 	models.FollowCache = new(mockFollowCache)
-	//models.CommentCache = new(mockCommentCache)
+	models.CommentCache = new(mockCommentCache)
 
 	os.Exit(m.Run())
 }

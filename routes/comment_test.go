@@ -13,6 +13,12 @@ import (
 	"github.com/readr-media/readr-restful/models"
 )
 
+type mockCommentCache struct{}
+
+func (m *mockCommentCache) Obtain() (comments []models.CommentAuthor, err error) { return comments, nil }
+func (m *mockCommentCache) Insert(comment models.CommentAuthor) (err error)      { return nil }
+func (m *mockCommentCache) Generate() (err error)                                { return nil }
+
 type mockCommentAPI struct{}
 
 func (c *mockCommentAPI) GetComments(args *models.GetCommentArgs) (result []models.CommentAuthor, err error) {
