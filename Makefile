@@ -9,6 +9,7 @@ build:
 
 deps:
 	go get -v -d
+	cd $(GOPATH)/src/github.com/gin-gonic/gin && git checkout tags/v1.3.0  && cd -
 test:
 	go test -v ./...
 run:
