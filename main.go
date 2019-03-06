@@ -42,11 +42,13 @@ func main() {
 	models.Connect(dbURI)
 
 	// Init Redis connections
-	models.RedisConn(map[string]string{
+	redisConfig := map[string]string{
 		"read_url":  fmt.Sprint(config.Config.Redis.ReadURL),
 		"write_url": fmt.Sprint(config.Config.Redis.WriteURL),
 		"password":  fmt.Sprint(config.Config.Redis.Password),
-	})
+	}
+	models.RedisConn(redisConfig)
+	fmt.Println("Init Redis Connection :", redisConfig)
 
 	// Init Straats API
 	models.StraatsHelper.Init()
