@@ -48,7 +48,6 @@ func main() {
 		"password":  fmt.Sprint(config.Config.Redis.Password),
 	}
 	models.RedisConn(redisConfig)
-	fmt.Println("Init Redis Connection :", redisConfig)
 
 	// Init Straats API
 	models.StraatsHelper.Init()
