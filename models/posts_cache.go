@@ -268,7 +268,7 @@ func (c latestPostCache) SyncFromDataStorage() {
 			if postID == cachePost.ID {
 				postString, err := json.Marshal(&cachePost)
 				if err != nil {
-					fmt.Sprintf("Error marshal fullCachePost struct when updating latest post cache", err.Error())
+					fmt.Sprintf("Error marshal fullCachePost struct when updating latest post cache: %s", err.Error())
 					continue
 				}
 
@@ -392,7 +392,7 @@ func (c hottestPostCache) SyncFromDataStorage() {
 		postIndex := PostScoreIndex[int(cachePost.ID)].Index
 		postString, err := json.Marshal(&cachePost)
 		if err != nil {
-			fmt.Sprintf("Error marshal fullCachePost struct when updating hot post cache", err.Error())
+			fmt.Sprintf("Error marshal fullCachePost struct when updating hot post cache: %s", err.Error())
 			continue
 		}
 

@@ -55,7 +55,7 @@ func (r *redisHelper) GetRedisListLength(key string) (int, error) {
 
 	l, err := redis.Int(conn.Do("LLEN", key))
 	if err != nil {
-		log.Println("Error getting length of redis list: %s, %v", key, err)
+		log.Printf("Error getting length of redis list: %s, %v", key, err)
 		return 0, err
 	}
 	return l, err

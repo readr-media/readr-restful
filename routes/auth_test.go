@@ -144,7 +144,7 @@ func TestRouteLogin(t *testing.T) {
 		json.Unmarshal([]byte(w.Body.String()), &resp)
 
 		if w.Code == http.StatusOK && (testcase.out.resp.Member.MemberID != resp.Member.MemberID) {
-			t.Errorf("Expect get user id %s but get %d, testcase %s", testcase.out.resp.Member.MemberID, resp.Member.MemberID, testcase.name)
+			t.Errorf("Expect get user id %s but get %s, testcase %s", testcase.out.resp.Member.MemberID, resp.Member.MemberID, testcase.name)
 			t.Fail()
 		}
 	}
@@ -236,7 +236,7 @@ func TestRouteRegister(t *testing.T) {
 		if w.Code == http.StatusOK {
 			member, _ := models.MemberAPI.GetMember("member_id", testcase.in.MemberID)
 			if testcase.in.MemberID != member.MemberID {
-				t.Errorf("Expect get user id %s but get %d, testcase %s", testcase.in.MemberID, member.MemberID, testcase.name)
+				t.Errorf("Expect get user id %s but get %s, testcase %s", testcase.in.MemberID, member.MemberID, testcase.name)
 				t.Fail()
 			}
 		}

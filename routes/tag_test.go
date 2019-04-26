@@ -192,7 +192,7 @@ func TestRouteTags(t *testing.T) {
 
 		err := json.Unmarshal([]byte(resp), &Response)
 		if err != nil {
-			t.Errorf("%s, Unexpected result body: %v", resp)
+			t.Errorf("%s, Unexpected result body: %v", resp, err.Error())
 		}
 
 		if len(Response.Items) != len(expected) {

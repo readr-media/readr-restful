@@ -82,7 +82,7 @@ func (m *mailApi) Send(args MailArgs) (err error) {
 	}
 
 	if resp.StatusCode != 200 {
-		log.Println("Send mail error: %v, status_code: %v", body, resp.StatusCode)
+		log.Printf("Send mail error: %v, status_code: %v", body, resp.StatusCode)
 		return errors.New(string(body))
 	}
 
@@ -781,13 +781,13 @@ func (m *mailApi) getProjectFollowerMailList(id int) (receiveres []mailReceiver,
 
 	rows, err := models.DB.Queryx(query)
 	if err != nil {
-		log.Println("Get followers of project %d error when SendProjectUpdateMail", id)
+		log.Printf("Get followers of project %d error when SendProjectUpdateMail", id)
 		return receiveres, err
 	}
 	for rows.Next() {
 		var receiver mailReceiver
 		if err = rows.StructScan(&receiver); err != nil {
-			log.Println("Scan followers of project %d error when SendProjectUpdateMail", id)
+			log.Printf("Scan followers of project %d error when SendProjectUpdateMail", id)
 			return receiveres, err
 		}
 		receiveres = append(receiveres, receiver)
