@@ -83,6 +83,15 @@
             "cc": 9,
             "cc-by-sa3": 9
         },
+        "cards":{
+            "deactive": 9,
+            "active": 9
+        },
+        "card_status":{
+            "unpublish": 9,
+            "draft": 9,
+            "publish": 9
+        },
         "members":{
             "active": 9,
             "deactive": 9,

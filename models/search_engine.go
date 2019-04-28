@@ -38,6 +38,7 @@ func (s *searchEngine) Init(enable bool) {
 	if err != nil {
 		log.Println("Warning: Unable to connect to ES.")
 		s.searchEnabled = false
+		return
 	}
 
 	s.client = client
