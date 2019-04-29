@@ -539,7 +539,7 @@ func (c *commentAPI) UpdateCommentAmountByResource(resourceName string, resource
 func (c *commentAPI) UpdateAllCommentAmount() (err error) {
 	resources, err := c.GetCommentCountByResources(make([]string, 0))
 	if err != nil {
-		log.Println("Error when getting comment count by resources, %v")
+		log.Printf("Error when getting comment count by resources, %v", err.Error())
 		return err
 	}
 

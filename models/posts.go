@@ -48,6 +48,8 @@ type Post struct {
 	Order           NullInt    `json:"post_order" db:"post_order" redis:"post_order"`
 	HeroImage       NullString `json:"hero_image" db:"hero_image" redis:"hero_image"`
 	Slug            NullString `json:"slug" db:"slug" redis:"slug"`
+	CSS             NullString `json:"css" db:"css" redis:"css"`
+	JS              NullString `json:"javascript" db:"javascript" redis:"javascript"`
 }
 
 type postAPI struct{}

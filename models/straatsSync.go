@@ -46,7 +46,7 @@ func (v *straatsSync) CheckLivesStatus() {
 	t := v.GetLatestVideoTime()
 	lives, err := v.GetLives(t)
 	if err != nil {
-		log.Println("Fail Getting Live List: %s", err.Error())
+		log.Printf("Fail Getting Live List: %s", err.Error())
 		return
 	}
 

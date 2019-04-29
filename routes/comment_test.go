@@ -190,7 +190,7 @@ func TestRouteComments(t *testing.T) {
 
 		err := json.Unmarshal([]byte(resp), &Response)
 		if err != nil {
-			t.Errorf("%s, Unexpected result body: %v", resp)
+			t.Errorf("%s, Unexpected result body: %v", resp, err.Error())
 		}
 
 		if len(Response.Items) != len(expected) {
@@ -273,11 +273,11 @@ func TestRouteComments(t *testing.T) {
 	})
 	t.Run("InsertCommentWithUrl", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-		//genericTestcase{"InsertCommentWithUrlOK", "post", "/comment", `{"body":"https://developers.facebook.com/","resource":"http://dev.readr.tw/post/90","author":91,"resource_name":"post","resource_id":90}`, http.StatusOK, ``},
-		//genericTestcase{"InsertCommentWithUnicodeOK", "post", "/comment", `{"body":"https://medium.com/@evonneyifangtsai/短評xdite參選台北市長-84b391b3bfae","resource":"http://dev.readr.tw/post/90","author":91}`, http.StatusOK, ``},
-		//genericTestcase{"InsertCommentWithMultipleUrlOK", "post", "/comment", `{"body":"https://www.readr.tw/post/274 http://news.ltn.com.tw/news/focus/paper/1191781","resource":"http://dev.readr.tw/post/90","author":91}`, http.StatusOK, ``},
-		//genericTestcase{"PutCommentWithUrlOK", "put", "/comment", `{"id": 1, "body":"https://medium.com/@evonneyifangtsai/"}`, http.StatusOK, ``},
-		//genericTestcase{"InsertCommentWithSpaceOK", "post", "/comment", `{"body":"https://developers.facebook.com/ index","resource":"http://dev.readr.tw/post/90","author":91}`, http.StatusOK, ``},
+			//genericTestcase{"InsertCommentWithUrlOK", "post", "/comment", `{"body":"https://developers.facebook.com/","resource":"http://dev.readr.tw/post/90","author":91,"resource_name":"post","resource_id":90}`, http.StatusOK, ``},
+			//genericTestcase{"InsertCommentWithUnicodeOK", "post", "/comment", `{"body":"https://medium.com/@evonneyifangtsai/短評xdite參選台北市長-84b391b3bfae","resource":"http://dev.readr.tw/post/90","author":91}`, http.StatusOK, ``},
+			//genericTestcase{"InsertCommentWithMultipleUrlOK", "post", "/comment", `{"body":"https://www.readr.tw/post/274 http://news.ltn.com.tw/news/focus/paper/1191781","resource":"http://dev.readr.tw/post/90","author":91}`, http.StatusOK, ``},
+			//genericTestcase{"PutCommentWithUrlOK", "put", "/comment", `{"id": 1, "body":"https://medium.com/@evonneyifangtsai/"}`, http.StatusOK, ``},
+			//genericTestcase{"InsertCommentWithSpaceOK", "post", "/comment", `{"body":"https://developers.facebook.com/ index","resource":"http://dev.readr.tw/post/90","author":91}`, http.StatusOK, ``},
 		} {
 			genericDoTest(transformPubsub(testcase), t, asserter)
 		}
