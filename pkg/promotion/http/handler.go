@@ -1,13 +1,16 @@
-package promotion
+package http
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/readr-media/readr-restful/pkg/promotion"
+	"github.com/readr-media/readr-restful/pkg/promotion/mysql"
 )
 
-type promotionHandler struct{}
+type Handler struct{}
 
 // bind parses query parameters from gin.Context, and save them in params
 func bind(c *gin.Context, params *ListParams) (err error) {
@@ -22,7 +25,7 @@ func bind(c *gin.Context, params *ListParams) (err error) {
 	return nil
 }
 
-func (r *promotionHandler) List(c *gin.Context) {
+func (h *Handler) List(c *gin.Context) {
 
 	// Get a default filter pointer struct
 	// max_result = 15, page = 1, sort = "created_at
@@ -45,7 +48,7 @@ func (r *promotionHandler) List(c *gin.Context) {
 		return
 	}
 	// fmt.Println(params)
-	promos, err := DataAPI.Get(params)
+	promos, err := mysql.DataAPI.Get(params)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 		return
@@ -53,12 +56,12 @@ func (r *promotionHandler) List(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"_items": promos})
 }
 
-// func (r *promotionHandler) Get(c *gin.Context) {
+// func (h *Handler) Get(c *gin.Context) {
 // }
 
-func (r *promotionHandler) Post(c *gin.Context) {
+func (h *Handler) Post(c *gin.Context) {
 
-	var promo = Promotion{}
+	var promo = promotion.Promotion{}
 
 	if err := c.Bind(&promo); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
@@ -66,17 +69,17 @@ func (r *promotionHandler) Post(c *gin.Context) {
 	}
 	// Validate Promotion data
 	// promo != empty, title != "", created_at = now, updated_at = now
-	if err := (&promo).validate(
-		validateNullBody,
-		validateTitle,
-		setCreatedAtNow,
-		setUpdatedAtNow,
+	if err := (&promo).Validate(
+		promotion.ValidateNullBody,
+		promotion.ValidateTitle,
+		promotion.SetCreatedAtNow,
+		promotion.SetUpdatedAtNow,
 	); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
 	// Insert to db
-	_, err := DataAPI.Insert(promo)
+	_, err := mysql.DataAPI.Insert(promo)
 	if err != nil {
 		switch err.Error() {
 		case "Duplicate entry":
@@ -91,9 +94,9 @@ func (r *promotionHandler) Post(c *gin.Context) {
 	c.Status(http.StatusCreated)
 }
 
-func (r *promotionHandler) Put(c *gin.Context) {
+func (h *Handler) Put(c *gin.Context) {
 
-	var promo = Promotion{}
+	var promo = promotion.Promotion{}
 
 	if err := c.ShouldBindJSON(&promo); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
@@ -101,16 +104,16 @@ func (r *promotionHandler) Put(c *gin.Context) {
 	}
 	// Validate Promotion data
 	// promo != empty, id != 0, updated_at = now
-	if err := (&promo).validate(
-		validateNullBody,
-		validateID,
-		setUpdatedAtNow,
+	if err := (&promo).Validate(
+		promotion.ValidateNullBody,
+		promotion.ValidateID,
+		promotion.SetUpdatedAtNow,
 	); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
 	// fmt.Printf("Promotion Put:%v\n", promo)
-	err := DataAPI.Update(promo)
+	err := mysql.DataAPI.Update(promo)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 		return
@@ -119,30 +122,35 @@ func (r *promotionHandler) Put(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
-func (r *promotionHandler) Delete(c *gin.Context) {
+func (h *Handler) Delete(c *gin.Context) {
 
-	id, _ := strconv.ParseUint(c.Param("id"), 10, 64)
-
-	err := DataAPI.Delete(id)
+	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"Error": err})
+		log.Printf("unable to parse id:%s\n", err.Error())
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
+	}
+
+	err = mysql.DataAPI.Delete(id)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 		return
 	}
 	c.Status(http.StatusOK)
 }
 
 // SetRoutes is an exported API to register API routers in routes/routes.go
-func (r *promotionHandler) SetRoutes(router *gin.Engine) {
+func (h *Handler) SetRoutes(router *gin.Engine) {
 
 	promotionRouter := router.Group("/promotions")
 	{
-		promotionRouter.GET("", r.List)
-		// promotionRouter.GET("/:id", r.Get)
-		promotionRouter.POST("", r.Post)
-		promotionRouter.PUT("", r.Put)
-		promotionRouter.DELETE("/:id", r.Delete)
+		promotionRouter.GET("", h.List)
+		// promotionRouter.GET("/:id", h.Get)
+		promotionRouter.POST("", h.Post)
+		promotionRouter.PUT("", h.Put)
+		promotionRouter.DELETE("/:id", h.Delete)
 	}
 }
 
 // Router is the interface for router layer
-var Router promotionHandler
+var Router Handler

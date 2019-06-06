@@ -5,9 +5,9 @@ import (
 	"time"
 )
 
-// validate exploit input functions to check and modify the content of Promotion
+// Validate exploit input functions to check and modify the content of Promotion
 // It is used in Post and Put http method before using data layer to modify db
-func (p *Promotion) validate(modifiers ...func(*Promotion) error) (err error) {
+func (p *Promotion) Validate(modifiers ...func(*Promotion) error) (err error) {
 
 	for _, modifier := range modifiers {
 		if err := modifier(p); err != nil {
@@ -17,8 +17,8 @@ func (p *Promotion) validate(modifiers ...func(*Promotion) error) (err error) {
 	return nil
 }
 
-// validateNullBody checks if incoming request body is empty
-func validateNullBody(p *Promotion) error {
+// ValidateNullBody checks if incoming request body is empty
+func ValidateNullBody(p *Promotion) error {
 
 	if *p == (Promotion{}) {
 		return errors.New("Null Promotion Body")
@@ -26,7 +26,7 @@ func validateNullBody(p *Promotion) error {
 	return nil
 }
 
-func validateID(p *Promotion) error {
+func ValidateID(p *Promotion) error {
 
 	if p.ID == 0 {
 		return errors.New("Invalid Promotion ID")
@@ -34,8 +34,8 @@ func validateID(p *Promotion) error {
 	return nil
 }
 
-// validateTitle checks if title is given
-func validateTitle(p *Promotion) error {
+// ValidateTitle checks if title is given
+func ValidateTitle(p *Promotion) error {
 
 	if p.Title == "" {
 		return errors.New("Invalid Title")
@@ -43,16 +43,16 @@ func validateTitle(p *Promotion) error {
 	return nil
 }
 
-// setCreatedAtNow set created_at to now
-func setCreatedAtNow(p *Promotion) error {
+// SetCreatedAtNow set created_at to now
+func SetCreatedAtNow(p *Promotion) error {
 
 	p.CreatedAt = time.Now()
 
 	return nil
 }
 
-// setUpdatedAtNow set the updated_at to now
-func setUpdatedAtNow(p *Promotion) error {
+// SetUpdatedAtNow set the updated_at to now
+func SetUpdatedAtNow(p *Promotion) error {
 
 	p.UpdatedAt.Time = time.Now()
 	p.UpdatedAt.Valid = true
