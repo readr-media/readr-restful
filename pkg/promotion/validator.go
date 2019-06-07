@@ -21,7 +21,7 @@ func (p *Promotion) Validate(modifiers ...func(*Promotion) error) (err error) {
 func ValidateNullBody(p *Promotion) error {
 
 	if *p == (Promotion{}) {
-		return errors.New("Null Promotion Body")
+		return errors.New("null promotion payload")
 	}
 	return nil
 }
@@ -29,7 +29,7 @@ func ValidateNullBody(p *Promotion) error {
 func ValidateID(p *Promotion) error {
 
 	if p.ID == 0 {
-		return errors.New("Invalid Promotion ID")
+		return errors.New("invalid promotion id")
 	}
 	return nil
 }
@@ -38,7 +38,7 @@ func ValidateID(p *Promotion) error {
 func ValidateTitle(p *Promotion) error {
 
 	if p.Title == "" {
-		return errors.New("Invalid Title")
+		return errors.New("invalid title")
 	}
 	return nil
 }
@@ -46,7 +46,9 @@ func ValidateTitle(p *Promotion) error {
 // SetCreatedAtNow set created_at to now
 func SetCreatedAtNow(p *Promotion) error {
 
-	p.CreatedAt = time.Now()
+	if p.CreatedAt == (time.Time{}) {
+		p.CreatedAt = time.Now()
+	}
 
 	return nil
 }
@@ -54,8 +56,10 @@ func SetCreatedAtNow(p *Promotion) error {
 // SetUpdatedAtNow set the updated_at to now
 func SetUpdatedAtNow(p *Promotion) error {
 
-	p.UpdatedAt.Time = time.Now()
-	p.UpdatedAt.Valid = true
+	if !p.UpdatedAt.Valid {
+		p.UpdatedAt.Time = time.Now()
+		p.UpdatedAt.Valid = true
+	}
 
 	return nil
 }

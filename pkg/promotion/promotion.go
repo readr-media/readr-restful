@@ -8,7 +8,7 @@ import (
 	"github.com/readr-media/readr-restful/models"
 )
 
-// Promotion is the mapping of the schema for table 'promotions'
+// Promotion maps the schema of table 'promotions'
 type Promotion struct {
 	ID          uint64            `json:"id" db:"id"`
 	Status      int               `json:"status" db:"status"`
@@ -24,12 +24,14 @@ type Promotion struct {
 	PublishedAt models.NullTime   `json:"published_at" db:"published_at"`
 }
 
+// ListParams setup the interface that could be passed to Get() in DataLayer
 type ListParams interface {
 	Parse()
 	Select() (string, []interface{}, error)
 }
 
 // DataLayer is the database interface that allow dependency injection for testing
+//go:generate mockgen -package=mock -destination=mock/mock.go github.com/readr-media/readr-restful/pkg/promotion DataLayer
 type DataLayer interface {
 	Get(params ListParams) (results []Promotion, err error)
 	Insert(p Promotion) (int, error)
@@ -37,6 +39,7 @@ type DataLayer interface {
 	Delete(id uint64) error
 }
 
+// GetTags will parse the db tags in Promotion for Insert() and Update()
 func (p Promotion) GetTags() (columns []string) {
 	// var columns []string
 

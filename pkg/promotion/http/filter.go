@@ -15,8 +15,8 @@ type ListParams struct {
 	Page      int    `form:"page"`
 	Sort      string `form:"sort"`
 
-	Status string
-	Active *int64
+	// Status string
+	// Active *int64
 
 	// Embedded SQLO in the struct
 	// ListParams could be pass through interface because of decoupled Parse()
@@ -27,7 +27,8 @@ type ListParams struct {
 // then return the result. Leaving the input empty, the return will be empty ListParams
 func NewListParams(options ...func(*ListParams) (err error)) (*ListParams, error) {
 
-	var params ListParams
+	// var params ListParams
+	params := ListParams{}
 
 	for _, option := range options {
 		if err := option(&params); err != nil {
@@ -42,7 +43,7 @@ func (p *ListParams) validate() (err error) {
 	// Validate sort fields
 	for _, v := range strings.Split(p.Sort, ",") {
 		if matched, err := regexp.MatchString("-?(updated_at|created_at|id|order)", v); err != nil || !matched {
-			return errors.New("Invalid Sort")
+			return errors.New("invalid sort")
 		}
 	}
 	return nil

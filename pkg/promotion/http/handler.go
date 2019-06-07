@@ -1,6 +1,7 @@
 package http
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	"github.com/readr-media/readr-restful/pkg/promotion/mysql"
 )
 
+// Handler comprises the controller function in promotion package
 type Handler struct{}
 
 // bind parses query parameters from gin.Context, and save them in params
@@ -20,7 +22,10 @@ func bind(c *gin.Context, params *ListParams) (err error) {
 	}
 	// Validate query paramters
 	if err := params.validate(); err != nil {
-		return err
+		if err.Error() == "invalid sort" {
+			log.Printf("warning: binding invalid sort:%s, using default: -created_at\n", params.Sort)
+			params.Sort = "-created_at"
+		}
 	}
 	return nil
 }
@@ -47,7 +52,6 @@ func (h *Handler) List(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
-	// fmt.Println(params)
 	promos, err := mysql.DataAPI.Get(params)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
@@ -64,10 +68,9 @@ func (h *Handler) Post(c *gin.Context) {
 	var promo = promotion.Promotion{}
 
 	if err := c.Bind(&promo); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	// Validate Promotion data
 	// promo != empty, title != "", created_at = now, updated_at = now
 	if err := (&promo).Validate(
 		promotion.ValidateNullBody,
@@ -75,7 +78,7 @@ func (h *Handler) Post(c *gin.Context) {
 		promotion.SetCreatedAtNow,
 		promotion.SetUpdatedAtNow,
 	); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	// Insert to db
@@ -109,13 +112,13 @@ func (h *Handler) Put(c *gin.Context) {
 		promotion.ValidateID,
 		promotion.SetUpdatedAtNow,
 	); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	// fmt.Printf("Promotion Put:%v\n", promo)
 	err := mysql.DataAPI.Update(promo)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 	// return 204
@@ -126,8 +129,8 @@ func (h *Handler) Delete(c *gin.Context) {
 
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		log.Printf("unable to parse id:%s\n", err.Error())
-		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		// log.Printf("unable to parse id:%s\n", err.Error())
+		c.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("unable to parse id:%s", c.Param("id"))})
 		return
 	}
 
