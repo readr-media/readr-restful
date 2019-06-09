@@ -100,7 +100,7 @@ func (a *mockPointsAPI) Insert(pts models.PointsToken) (result int, id int, err 
 			result += int(v.Points.Points)
 		}
 		// mockPointsDS = append(a.mockPointsDS, models.PointsProject{Points: pts, Title: models.NullString{"", false}})
-		result += pts.Points.Points
+		result -= pts.Points.Points
 	}
 	return result, 1, err
 }
@@ -176,11 +176,17 @@ func TestRoutePoints(t *testing.T) {
 	})
 	t.Run("Insert", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
-			genericTestcase{"BasicPoints", "POST", `/points`, `{"member_id":1,"object_type": 2,"object_id": 1,"points": 100}`, http.StatusOK, `{"id":1,"points":1000}`},
-			genericTestcase{"InvalidToken", "POST", `/points`, `{"member_id":1,"object_type": 3,"object_id": 1,"points": -100}`, http.StatusBadRequest, `{"Error":"Invalid Token"}`},
-			genericTestcase{"InvalidTopupAmount", "POST", `/points`, `{"member_id":1,"object_type": 3,"points": 100, "token": "token"}`, http.StatusBadRequest, `{"Error":"Invalid Topup Amount"}`},
-			genericTestcase{"InvalidMemberInfo", "POST", `/points`, `{"member_id":1,"object_type": 3,"points": -100, "token": "token"}`, http.StatusBadRequest, `{"Error":"Invalid Payment Info"}`},
-			genericTestcase{"InvalidObjectID", "POST", `/points`, `{"member_id":1,"object_type": 2,"points": -100}`, http.StatusBadRequest, `{"Error":"Invalid Object ID"}`},
+			genericTestcase{"Deprecated Object Type: project", "POST", `/points`, `{"member_id":1,"object_type": 1}`, http.StatusBadRequest, `{"Error":"ObjectType Deprecated"}`},
+			genericTestcase{"Deprecated Object Type: topup", "POST", `/points`, `{"member_id":1,"object_type": 3}`, http.StatusBadRequest, `{"Error":"ObjectType Deprecated"}`},
+			genericTestcase{"Invalid Currency Value", "POST", `/points`, `{"member_id":1,"currency": -100,"object_type":5}`, http.StatusBadRequest, `{"Error":"Invalid Payment Amount"}`},
+			genericTestcase{"Invalid ObjectType For Currency", "POST", `/points`, `{"member_id":1,"object_type": 4,"currency": 100}`, http.StatusBadRequest, `{"Error":"Currency Not Supported By ObjectType"}`},
+			genericTestcase{"Missing Payment Token", "POST", `/points`, `{"member_id":1,"object_type": 5,"currency": 100}`, http.StatusBadRequest, `{"Error":"Invalid Token"}`},
+			genericTestcase{"InvalidMemberInfo", "POST", `/points`, `{"member_id":1,"object_type": 5,"currency": 100, "token": "token"}`, http.StatusBadRequest, `{"Error":"Invalid Payment Info"}`},
+			genericTestcase{"InvalidObjectID", "POST", `/points`, `{"member_id":1,"object_type": 2,"points": 100}`, http.StatusBadRequest, `{"Error":"Invalid Object ID"}`},
+
+			genericTestcase{"Basic Project Memo", "POST", `/points`, `{"member_id":1,"object_type": 2,"object_id": 1,"currency": 50,"points": 50,"token":"token","member_name":"name","member_phone":"phone","member_mail":"mail"}`, http.StatusOK, `{"id":1,"points":850}`},
+			genericTestcase{"Basic Gift", "POST", `/points`, `{"member_id":1,"object_type": 4,"object_id": 1,"points": -50, "reason": "System"}`, http.StatusOK, `{"id":1,"points":950}`},
+			genericTestcase{"Basic Donate", "POST", `/points`, `{"member_id":1,"object_type": 5,"object_id": 1,"currency": 100,"token":"token","member_name":"name","member_phone":"phone","member_mail":"mail"}`, http.StatusOK, `{"id":1,"points":900}`},
 		} {
 			genericDoTest(testcase, t, asserter)
 		}
