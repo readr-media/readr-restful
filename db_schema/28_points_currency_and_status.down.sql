@@ -1,0 +1,2 @@
+ALTER TABLE points DROP COLUMN currency;
+ALTER TABLE points DROP COLUMN status;

@@ -60,7 +60,7 @@ func (r *pointsHandler) Get(c *gin.Context) {
 
 	var args = &models.PointsArgs{}
 	args.Set(map[string]interface{}{
-		"max_result": 100,
+		"max_result": 15,
 		"page":       1,
 		"sort":       "-created_at",
 	})
@@ -82,6 +82,7 @@ func (r *pointsHandler) Post(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
+
 	if !pts.CreatedAt.Valid {
 		pts.CreatedAt = models.NullTime{Time: time.Now(), Valid: true}
 	}
@@ -89,22 +90,44 @@ func (r *pointsHandler) Post(c *gin.Context) {
 		pts.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
 	}
 
-	if pts.Points.ObjectType == config.Config.Models.PointType["topup"] && pts.Token == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Token"})
+	if pts.Points.ObjectType == config.Config.Models.PointType["topup"] ||
+		pts.Points.ObjectType == config.Config.Models.PointType["project"] {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "ObjectType Deprecated"})
 		return
 	}
-	if pts.Points.ObjectType == config.Config.Models.PointType["topup"] && pts.Points.Points >= 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Topup Amount"})
+
+	// user can only gain currency
+	if pts.Points.Currency < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Payment Amount"})
 		return
+	} else if pts.Points.Currency > 0 {
+		if pts.Points.ObjectType == config.Config.Models.PointType["donate"] || pts.Points.ObjectType == config.Config.Models.PointType["project_memo"] {
+			if pts.Token == nil {
+				c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Token"})
+				return
+			}
+			if pts.MemberName == nil || pts.MemberPhone == nil || pts.MemberMail == nil {
+				c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Payment Info"})
+				return
+			}
+		} else {
+			// currency can only use in project_memo and donate type
+			c.JSON(http.StatusBadRequest, gin.H{"Error": "Currency Not Supported By ObjectType"})
+			return
+		}
 	}
-	if pts.Points.ObjectType == config.Config.Models.PointType["topup"] && (pts.MemberName == nil || pts.MemberPhone == nil || pts.MemberMail == nil) {
-		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Payment Info"})
-		return
-	}
-	if pts.Points.ObjectID == 0 && (pts.Points.ObjectType == config.Config.Models.PointType["project"] || pts.Points.ObjectType == config.Config.Models.PointType["project_memo"]) {
+
+	if pts.Points.ObjectID == 0 && (pts.Points.ObjectType == config.Config.Models.PointType["project_memo"] || pts.Points.ObjectType == config.Config.Models.PointType["project"]) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Object ID"})
 		return
 	}
+
+	// user can not donate point
+	if pts.Points.Points != 0 && pts.Points.ObjectType == config.Config.Models.PointType["donate"] {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Cannot Donate Point"})
+		return
+	}
+
 	points, id, err := models.PointsAPI.Insert(pts)
 	if err != nil {
 		switch err.Error() {
