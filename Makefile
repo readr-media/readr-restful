@@ -9,9 +9,10 @@ build:
 
 deps:
 	go get -v -d
-	cd $(GOPATH)/src/github.com/gin-gonic/gin && git checkout tags/v1.3.0  && cd -
+	# cd $(GOPATH)/src/github.com/gin-gonic/gin && git checkout tags/v1.3.0  && cd -
 test:
-	go test -v ./...
+	# disable cgo to avoid gcc not found re-compile error
+	env CGO_ENABLED=0 go test -v ./...
 run:
 	go run $(ALLGOFILES)
 build-alpine: deps test

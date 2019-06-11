@@ -89,6 +89,7 @@ type appConfig struct {
 		PointType             map[string]int `mapstructure:"point_type"`
 		PointStatus           map[string]int `mapstructure:"point_status"`
 		HotTagsWeight         map[string]int `mapstructure:"hot_tags_wieght"`
+		Promotions            map[string]int `mapstructure:"promotions"`
 	} `mapstructure:"models"`
 
 	ReadrID     int    `mapstructure:"readr_id"`

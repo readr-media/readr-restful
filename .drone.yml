@@ -39,7 +39,9 @@ pipeline:
       branch: [stage]
 
   builds:
-    image: golang:1.9-alpine
+    image: golang:1.12-alpine
+    environment:
+      - GO111MODULE=on
     commands:
     - apk update
     - apk add git make
@@ -49,7 +51,9 @@ pipeline:
       branch: dev
 
   build_stage:
-    image: golang:1.9-alpine
+    image: golang:1.12-alpine
+    environment:
+      - GO111MODULE=on
     commands:
     - apk add --update git make
     - make build-stage

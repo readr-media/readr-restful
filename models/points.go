@@ -218,7 +218,7 @@ func (p *pointsAPI) Insert(pts PointsToken) (result int, id int, err error) {
 				paymentErrString := fmt.Sprintf("Payment Error, Code: %d, ErrorMsg: %s, BankSatusCode: %s, BankMsg: %s", paymentResp.Status, paymentResp.Message, paymentResp.BankCode, paymentResp.BankMessage)
 				rollbackErr := p.rollbackTransaction(transactionID, pts)
 				if rollbackErr != nil {
-					return 0, 0, errors.New(fmt.Sprintf("%s \n During handling above err, another error occured: %s", rollbackErr.Error()))
+					return 0, 0, errors.New(fmt.Sprintf("During handling above err, another error occured: %s", rollbackErr.Error()))
 				} else {
 					return 0, 0, errors.New(paymentErrString)
 				}
@@ -353,7 +353,7 @@ func (p *pointsAPI) payByPrime(pts PointsToken) (rest PaymentResp, err error) {
 		// 100 would become 1 TWD in TapPay
 		"amount":   0 - pts.Points.Currency,
 		"currency": config.Config.PaymentService.Currency,
-		"details":  fmt.Sprintf("%s %s", payment_desc, pts.CreatedAt),
+		"details":  fmt.Sprintf("%s %v", payment_desc, pts.CreatedAt),
 		"cardholder": map[string]string{
 			"phone_number": *pts.MemberPhone,
 			"name":         *pts.MemberName,

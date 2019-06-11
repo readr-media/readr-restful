@@ -1,4 +1,4 @@
-FROM golang:1.8.5-alpine
+FROM golang:1.12-alpine
 
 WORKDIR /
 RUN export GIN_MODE=release
