@@ -14,7 +14,7 @@ import (
 
 type Points struct {
 	PointsID   int64      `json:"id" db:"id"`
-	MemberID   int64      `json:"member_id" db:"member_id" binding:"required"`
+	MemberID   int64      `json:"member_id" db:"member_id"`
 	ObjectType int        `json:"object_type" db:"object_type" binding:"required"`
 	ObjectID   int        `json:"object_id" db:"object_id"`
 	Points     int        `json:"points" db:"points"`
@@ -25,6 +25,8 @@ type Points struct {
 	UpdatedAt  NullTime   `json:"updated_at" db:"updated_at"`
 	Reason     NullString `json:"reason" db:"reason"`
 	Status     int        `json:"status" db:"status"`
+	MemberName NullString `json:"member_name,omitempty" db:"member_name"`
+	MemberMail NullString `json:"member_mail,omitempty" db:"member_mail"`
 }
 
 // PointsToken is made to solve problem if Token is added to Points struct
@@ -35,9 +37,7 @@ type Points struct {
 type PointsToken struct {
 	Points
 	Token       *string `json:"token,omitempty"`
-	MemberName  *string `json:"member_name,omitempty"`
 	MemberPhone *string `json:"member_phone,omitempty"`
-	MemberMail  *string `json:"member_mail,omitempty"`
 }
 
 type pointsAPI struct{}
@@ -351,13 +351,13 @@ func (p *pointsAPI) payByPrime(pts PointsToken) (rest PaymentResp, err error) {
 		"merchant_id": config.Config.PaymentService.MerchantID,
 		// Real amount for TapPay should be positive
 		// 100 would become 1 TWD in TapPay
-		"amount":   0 - pts.Points.Currency,
+		"amount":   pts.Points.Currency,
 		"currency": config.Config.PaymentService.Currency,
 		"details":  fmt.Sprintf("%s %v", payment_desc, pts.CreatedAt),
 		"cardholder": map[string]string{
 			"phone_number": *pts.MemberPhone,
-			"name":         *pts.MemberName,
-			"email":        *pts.MemberMail,
+			"name":         pts.MemberName.String,
+			"email":        pts.MemberMail.String,
 		},
 	})
 
