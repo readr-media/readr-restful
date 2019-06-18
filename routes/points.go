@@ -96,6 +96,11 @@ func (r *pointsHandler) Post(c *gin.Context) {
 		return
 	}
 
+	if pts.Points.MemberID == 0 && pts.Points.ObjectType != config.Config.Models.PointType["donate"] {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid ObjectType With Anonymous User"})
+		return
+	}
+
 	// user can only gain currency
 	if pts.Points.Currency < 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Payment Amount"})

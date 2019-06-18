@@ -251,18 +251,24 @@ func (p *pointsAPI) insertTransaction(pts PointsToken) (result int, id int, err 
 		err = tx.Commit()
 	}()
 
-	// Choose the latest transaction balance
-	if err = tx.Get(&result, `SELECT points FROM members WHERE id = ?`, pts.MemberID); err != nil {
-		return 0, 0, err
-	}
+	if pts.MemberID == 0 {
 
-	// New Balance
-	result = result - pts.Points.Points
-	if result < 0 {
-		return 0, 0, errors.New("insufficient points")
-	}
+		pts.Balance = 0
 
-	pts.Balance = result
+	} else {
+		// Choose the latest transaction balance
+		if err = tx.Get(&result, `SELECT points FROM members WHERE id = ?`, pts.MemberID); err != nil {
+			return 0, 0, err
+		}
+
+		// New Balance
+		result = result - pts.Points.Points
+		if result < 0 {
+			return 0, 0, errors.New("insufficient points")
+		}
+
+		pts.Balance = result
+	}
 
 	pointsU := fmt.Sprintf(`INSERT INTO points (%s) VALUES (:%s)`,
 		strings.Join(tags, ","), strings.Join(tags, ",:"))
@@ -320,7 +326,7 @@ func (p *pointsAPI) rollbackTransaction(transactionID int, pts PointsToken) (err
 		return err
 	}
 
-	if pts.Points.Points != 0 {
+	if pts.Points.Points != 0 && pts.Points.MemberID != 0 {
 		if _, err = tx.Exec(`UPDATE members SET points = points + ? WHERE id = ?`,
 			pts.Points.Points, pts.MemberID); err != nil {
 			return err
