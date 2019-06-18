@@ -183,6 +183,7 @@ func TestRoutePoints(t *testing.T) {
 			genericTestcase{"Missing Payment Token", "POST", `/points`, `{"member_id":1,"object_type": 5,"currency": 100}`, http.StatusBadRequest, `{"Error":"Invalid Token"}`},
 			genericTestcase{"InvalidMemberInfo", "POST", `/points`, `{"member_id":1,"object_type": 5,"currency": 100, "token": "token"}`, http.StatusBadRequest, `{"Error":"Invalid Payment Info"}`},
 			genericTestcase{"InvalidObjectID", "POST", `/points`, `{"member_id":1,"object_type": 2,"points": 100}`, http.StatusBadRequest, `{"Error":"Invalid Object ID"}`},
+			genericTestcase{"InvalidObjectID", "POST", `/points`, `{"object_type": 2,"points": 100}`, http.StatusBadRequest, `{"Error":"Invalid ObjectType With Anonymous User"}`},
 
 			genericTestcase{"Basic Project Memo", "POST", `/points`, `{"member_id":1,"object_type": 2,"object_id": 1,"currency": 50,"points": 50,"token":"token","member_name":"name","member_phone":"phone","member_mail":"mail"}`, http.StatusOK, `{"id":1,"points":850}`},
 			genericTestcase{"Basic Gift", "POST", `/points`, `{"member_id":1,"object_type": 4,"object_id": 1,"points": -50, "reason": "System"}`, http.StatusOK, `{"id":1,"points":950}`},
