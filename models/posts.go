@@ -65,6 +65,7 @@ type PostInterface interface {
 	UpdatePost(p Post) error
 	Count(req *PostArgs) (result int, err error)
 	//Hot() (result []HotPost, err error)
+	UpdateAuthors(p Post, authors []AuthorInput) (err error)
 	SchedulePublish() (ids []uint32, err error)
 	GetPostAuthor(id uint32) (member Member, err error)
 }
@@ -96,9 +97,9 @@ func (pt PostTags) MarshalJSON() ([]byte, error) {
 
 type TaggedPostMember struct {
 	Post
-	Member    *MemberBasic    `json:"author,omitempty" db:"author"`
 	UpdatedBy *MemberBasic    `json:"updated_by,omitempty" db:"updated_by"`
 	Tags      PostTags        `json:"tags,omitempty" db:"tags"`
+	Authors   []AuthorBasic   `json:"authors,omitempty"`
 	Comment   []CommentAuthor `json:"comments,omitempty"`
 	Project   *ProjectBasic   `json:"project,omitempty" db:"project"`
 }
@@ -131,11 +132,11 @@ func (tpm TaggedPostMember) ReturnUpdatedAt() time.Time {
 
 // ------------ ↑↑↑ End of requirement to satisfy LastPNRInterface  ↑↑↑ ------------
 
-type HotPost struct {
-	Post
-	AuthorNickname     NullString `json:"author_nickname" redis:"author_nickname"`
-	AuthorProfileImage NullString `json:"author_profileImage" redis:"author_profileImage"`
-}
+// type HotPost struct {
+// 	Post
+// 	AuthorNickname     NullString `json:"author_nickname" redis:"author_nickname"`
+// 	AuthorProfileImage NullString `json:"author_profileImage" redis:"author_profileImage"`
+// }
 
 // UpdatedBy wraps Member for embedded field updated_by
 // in the usage of anonymous struct in PostMember
@@ -146,6 +147,17 @@ type MemberBasic struct {
 	ProfileImage NullString `json:"profile_image" db:"profile_image"`
 	Description  NullString `json:"description" db:"description"`
 	Role         NullInt    `json:"role" db:"role"`
+}
+
+type AuthorBasic struct {
+	ID           int64      `json:"id" db:"id"`
+	UUID         NullString `json:"uuid" db:"uuid"`
+	Nickname     NullString `json:"nickname" db:"nickname"`
+	ProfileImage NullString `json:"profile_image" db:"profile_image"`
+	Description  NullString `json:"description" db:"description"`
+	Role         NullInt    `json:"role" db:"role"`
+	Type         NullInt    `json:"author_type" db:"author_type"`
+	ResourceID   NullInt    `json:"resource_id" db:"resource_id"`
 }
 
 type ProjectBasic struct {
@@ -166,6 +178,11 @@ type PostUpdateArgs struct {
 	PublishedAt   NullTime `json:"-" db:"published_at"`
 	Active        NullInt  `json:"-" db:"active"`
 	PublishStatus NullInt  `json:"-" db:"publish_status"`
+}
+
+type AuthorInput struct {
+	Type     NullInt `json:"author_type" db:"author_type"`
+	MemberID NullInt `json:"member_id" db:"member_id"`
 }
 
 func (p *PostUpdateArgs) parse() (updates string, values []interface{}) {
@@ -196,7 +213,6 @@ func (p *PostUpdateArgs) parse() (updates string, values []interface{}) {
 	} else if len(setQuery) == 1 {
 		updates = fmt.Sprintf(" %s", setQuery[0])
 	}
-
 	return updates, values
 }
 
@@ -332,17 +348,28 @@ func (a *postAPI) GetPosts(req *PostArgs) (result []TaggedPostMember, err error)
 		}
 		result = append(result, singlePost)
 	}
+
+	postIDs := make([]int, 0)
+	for _, v := range result {
+		postIDs = append(postIDs, int(v.Post.ID))
+	}
+
 	if req.ShowCommment {
-		postIDs := make([]int, 0)
-		for _, v := range result {
-			postIDs = append(postIDs, int(v.Post.ID))
-		}
 		comments, err := a.fetchPostComments(postIDs)
 		if err != nil {
 			return result, err
 		}
 		for k, v := range result {
 			result[k].Comment = comments[int(v.Post.ID)]
+		}
+	}
+	if req.ShowAuthor {
+		authors, err := a.fetchPostAuthors(postIDs)
+		if err != nil {
+			return result, err
+		}
+		for k, v := range result {
+			result[k].Authors = authors[int(v.Post.ID)]
 		}
 	}
 
@@ -380,6 +407,12 @@ func (a *postAPI) GetPost(id uint32, req *PostArgs) (post TaggedPostMember, err 
 		return post, err
 	}
 	post.Comment = comments[int(post.Post.ID)]
+
+	authors, err := a.fetchPostAuthors([]int{int(post.Post.ID)})
+	if err != nil {
+		return post, err
+	}
+	post.Authors = authors[int(post.Post.ID)]
 
 	return post, err
 }
@@ -439,22 +472,52 @@ func (a *postAPI) fetchPostCommentResource(ids []int) (result []postCommentResou
 
 	query, args, err := sqlx.In(query, ids)
 	if err != nil {
-		return []postCommentResource{}, err
+		return result, err
 	}
 	query = DB.Rebind(query)
 
 	rows, err := DB.Queryx(query, args...)
 	if err != nil {
-		return []postCommentResource{}, err
+		return result, err
 	}
 	for rows.Next() {
 		var pcr postCommentResource
 		if err = rows.StructScan(&pcr); err != nil {
-			return []postCommentResource{}, err
+			return result, err
 		}
 		result = append(result, pcr)
 	}
 	return result, err
+}
+
+func (a *postAPI) fetchPostAuthors(ids []int) (authors map[int][]AuthorBasic, err error) {
+	query := `SELECT members.id "id",members.uuid "uuid",members.nickname "nickname",members.profile_image "profile_image",members.description "description",members.role "role",authors.author_type "author_type",authors.resource_id "resource_id" FROM posts 
+		LEFT JOIN authors ON posts.post_id = authors.resource_id 
+		LEFT JOIN members ON authors.author_id = members.id
+		WHERE posts.post_id IN (?);`
+
+	authors = make(map[int][]AuthorBasic, 0)
+
+	query, args, err := sqlx.In(query, ids)
+	if err != nil {
+		return authors, err
+	}
+	query = DB.Rebind(query)
+
+	rows, err := DB.Queryx(query, args...)
+	if err != nil {
+		return authors, err
+	}
+
+	for rows.Next() {
+		var authorb AuthorBasic
+		if err = rows.StructScan(&authorb); err != nil {
+			return authors, err
+		}
+		authors[int(authorb.ResourceID.Int)] = append(authors[int(authorb.ResourceID.Int)], authorb)
+	}
+
+	return authors, err
 }
 
 func (a *postAPI) buildGetQuery(req *PostArgs) (query string, values []interface{}) {
@@ -462,14 +525,6 @@ func (a *postAPI) buildGetQuery(req *PostArgs) (query string, values []interface
 	selectedFields := []string{"posts.*"}
 	joinedTables := make([]string, 0)
 	var joinedTableString, restricts string
-
-	if req.ShowAuthor {
-		authorField := makeFieldString("get", `author.%s "author.%s"`, memberDBTags)
-		authorIDQuery := strings.Split(authorField[0], " ")
-		authorField[0] = fmt.Sprintf(`IFNULL(%s, 0) %s`, authorIDQuery[0], authorIDQuery[1])
-		selectedFields = append(selectedFields, authorField...)
-		joinedTables = append(joinedTables, `LEFT JOIN members AS author ON posts.author = author.id`)
-	}
 
 	if req.ShowUpdater {
 		updatedByField := makeFieldString("get", `updated_by.%s "updated_by.%s"`, memberDBTags)
@@ -663,6 +718,35 @@ func (a *postAPI) Hot() (result []HotPost, err error) {
 	return result, err
 }
 */
+
+func (a *postAPI) UpdateAuthors(post Post, authors []AuthorInput) (err error) {
+	// Delete non-exist author
+
+	authorCodition := make([]string, 0)
+	for _, v := range authors {
+		authorCodition = append(authorCodition, fmt.Sprintf(`AND NOT (author_id = %d and author_type = %d)`, v.MemberID.Int, v.Type.Int))
+	}
+
+	_, err = DB.Exec(fmt.Sprintf(`DELETE FROM authors WHERE resource_id = ? AND resource_type = ? %s ;`,
+		strings.Join(authorCodition, " ")), post.ID, post.Type.Int)
+	if err != nil {
+		return err
+	}
+
+	// Add / update auhtors
+	authorInsertions := make([]string, 0)
+	for _, v := range authors {
+		authorInsertions = append(authorInsertions, fmt.Sprintf(`(%d, %d, %d ,%d)`, post.ID, v.MemberID.Int, post.Type.Int, v.Type.Int))
+	}
+
+	_, err = DB.Exec(fmt.Sprintf(`INSERT IGNORE authors (resource_id, author_id, resource_type, author_type) VALUES %s;`,
+		strings.Join(authorInsertions, ",")))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func (a *postAPI) SchedulePublish() (ids []uint32, err error) {
 	ids = make([]uint32, 0)

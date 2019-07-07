@@ -103,7 +103,7 @@ func (c notificationGenerator) GenerateCommentNotifications(comment InsertCommen
 			}
 		}
 
-		if commentDetail.Author.Int != post.Author.Int {
+		if c.checkForAuthor(int(commentDetail.Author.Int), post.Authors) {
 			ns = append(ns, NewNotification("post_reply", int(post.Author.Int)))
 		}
 
@@ -116,7 +116,7 @@ func (c notificationGenerator) GenerateCommentNotifications(comment InsertCommen
 		}
 
 		if parentCommentDetail.Author.Valid && parentCommentDetail.Author.Int != commentDetail.Author.Int {
-			if commentDetail.Author.Int == post.Author.Int {
+			if c.checkForAuthor(int(commentDetail.Author.Int), post.Authors) {
 				ns = append(ns, NewNotification("comment_reply_author", int(parentCommentDetail.Author.Int)))
 			} else {
 				ns = append(ns, NewNotification("comment_reply", int(parentCommentDetail.Author.Int)))
@@ -127,7 +127,7 @@ func (c notificationGenerator) GenerateCommentNotifications(comment InsertCommen
 			v.SubjectID = strconv.Itoa(int(commentDetail.Author.Int))
 			v.Nickname = commentDetail.AuthorNickname.String
 			v.ProfileImage = commentDetail.AuthorImage.String
-			v.ObjectName = post.Member.Nickname.String
+			v.ObjectName = post.Authors[0].Nickname.String
 			v.ObjectType = resourceName
 			v.ObjectID = strconv.Itoa(resourceID)
 			v.PostType = strconv.Itoa(int(post.Type.Int))
@@ -448,11 +448,6 @@ func (c notificationGenerator) GenerateProjectNotifications(resource interface{}
 func (c notificationGenerator) GeneratePostNotifications(p TaggedPostMember) (err error) {
 	ns := Notifications{}
 
-	authorInfo, err := MemberAPI.GetMember("ID", strconv.Itoa(int(p.Author.Int)))
-	if err != nil {
-		log.Println("Error get post author", p.Author.Int, err.Error())
-	}
-
 	if p.Tags.Valid {
 
 		tas := strings.Split(p.Tags.String, ",")
@@ -460,16 +455,16 @@ func (c notificationGenerator) GeneratePostNotifications(p TaggedPostMember) (er
 			t := strings.Split(ta, ":")
 			id, _ := strconv.Atoi(t[0])
 
-			tagFollowers, err := c.getFollowers(id, config.Config.Models.FollowingType["tag"], []int{0})
+			tagFollowers, _ := c.getFollowers(id, config.Config.Models.FollowingType["tag"], []int{0})
 			if err != nil {
-				log.Println("Error get tag followers", p.Author.Int, err.Error())
+				log.Println("Error get tag followers", t[1], err.Error())
 			}
 			for _, v := range tagFollowers {
-				if v != int(p.Author.Int) {
+				if !c.checkForAuthor(v, p.Authors) {
 					n := NewNotification("follow_tag_post", v)
 					n.SubjectID = strconv.Itoa(int(p.ID))
 					n.Nickname = p.Title.String
-					n.ProfileImage = authorInfo.ProfileImage.String
+					n.ProfileImage = p.Authors[0].ProfileImage.String
 					n.ObjectName = t[1]
 					n.ObjectType = "tag"
 					n.ObjectID = strconv.Itoa(id)
@@ -520,6 +515,15 @@ func (c *notificationGenerator) generateTagNotifications(p Project, eventType st
 
 	ns.Send()
 	return err
+}
+
+func (c notificationGenerator) checkForAuthor(id int, authors []AuthorBasic) (isAuthor bool) {
+	for _, author := range authors {
+		if id == int(author.ID) {
+			return true
+		}
+	}
+	return false
 }
 
 var NotificationGen NotificationGenInterface = notificationGenerator{}
