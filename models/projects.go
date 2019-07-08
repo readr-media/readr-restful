@@ -243,11 +243,10 @@ func (a *projectAPI) GetProjects(args GetProjectArgs) (result []ProjectAuthors, 
 			FROM tagging as pt LEFT JOIN tags as t ON t.tag_id = pt.tag_id WHERE pt.type=%d 
 			GROUP BY pt.target_id
 			) AS t ON t.project_id = projects.project_id
-		LEFT JOIN ( 
-			SELECT posts.author AS author_id, posts.project_id AS project_id FROM posts WHERE posts.type=%d
-			UNION 
-			SELECT author_id, posts.project_id FROM report_authors 
-			LEFT JOIN posts ON posts.post_id = report_authors.report_id WHERE posts.type=%d
+		LEFT JOIN (
+			SELECT DISTINCT authors.author_id, posts.project_id FROM authors 
+			LEFT JOIN posts ON authors.resource_id = posts.post_id AND authors.resource_type = posts.type 
+			WHERE posts.type = %d OR posts.type = %d 
 			) AS pa ON projects.project_id = pa.project_id 
 		LEFT JOIN members author ON pa.author_id = author.id %s;`,
 		args.Fields.GetFields(`author.%s "author.%s"`),

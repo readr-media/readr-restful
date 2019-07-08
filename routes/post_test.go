@@ -188,10 +188,9 @@ func (a *mockPostAPI) Count(req *models.PostArgs) (result int, err error) {
 	return result, err
 }
 
-func (a *mockPostAPI) Hot() (result []models.HotPost, err error) {
-	return result, err
+func (a *mockPostAPI) UpdateAuthors(post models.Post, authors []models.AuthorInput) (err error) {
+	return nil
 }
-
 func (a *mockPostAPI) SchedulePublish() ([]uint32, error) {
 	return nil, nil
 }
@@ -207,10 +206,10 @@ func TestRoutePost(t *testing.T) {
 	var postTest mockPostAPI
 
 	posts := []models.TaggedPostMember{
-		{Post: mockPostDS[0], Member: memberToBasic(mockMembers[0]), UpdatedBy: memberToBasic(mockMembers[0])},
-		{Post: mockPostDS[1], Member: memberToBasic(mockMembers[1]), UpdatedBy: &models.MemberBasic{}},
-		{Post: mockPostDS[2], Member: memberToBasic(mockMembers[2]), UpdatedBy: &models.MemberBasic{}},
-		{Post: mockPostDS[3], Member: memberToBasic(mockMembers[2]), UpdatedBy: &models.MemberBasic{}},
+		{Post: mockPostDS[0], Authors: memberToAuthor(mockMembers[0]), UpdatedBy: memberToBasic(mockMembers[0])},
+		{Post: mockPostDS[1], Authors: memberToAuthor(mockMembers[1]), UpdatedBy: &models.MemberBasic{}},
+		{Post: mockPostDS[2], Authors: memberToAuthor(mockMembers[2]), UpdatedBy: &models.MemberBasic{}},
+		{Post: mockPostDS[3], Authors: memberToAuthor(mockMembers[2]), UpdatedBy: &models.MemberBasic{}},
 	}
 
 	teststep := []TestStep{
@@ -258,12 +257,13 @@ func TestRoutePost(t *testing.T) {
 			teardown: func() { postTest.teardown() },
 			register: &postTest,
 			cases: []genericTestcase{
-				genericTestcase{"New", "POST", `/post`, `{"author":1,"title":"You can't save the world alone, but I can"}`, http.StatusOK, ``},
+				genericTestcase{"New", "POST", `/post`, `{"authors":[{"member_id":2, "author_type":0}],"title":"You can't save the world alone, but I can"}`, http.StatusOK, ``},
 				genericTestcase{"EmptyPayload", "POST", `/post`, `{}`, http.StatusBadRequest, `{"Error":"Invalid Post"}`},
 				// post_id will not repeat now
 				// genericTestcase{"Existing", "POST", "/post", `{"author":1}`, http.StatusBadRequest, `{"Error":"Post ID Already Taken"}`},
-				genericTestcase{"WithTags", "POST", `/post`, `{"author":53,"title":"Why so serious?", "tags":[1,2]}`, http.StatusOK, ``},
-				genericTestcase{"WithPost", "POST", `/post`, `{"author":1,"title":"Why so serious?", "type":4, "project_id":"100001"}`, http.StatusOK, ``},
+				genericTestcase{"WithTags", "POST", `/post`, `{"authors":[{"member_id":53, "author_type":0}],"title":"Why so serious?", "tags":[1,2]}`, http.StatusOK, ``},
+				genericTestcase{"WithPost", "POST", `/post`, `{"authors":[{"member_id":1, "author_type":0}],"title":"Why so serious?", "type":4, "project_id":100001}`, http.StatusOK, ``},
+				genericTestcase{"WithMultipleAuthors", "POST", `/post`, `{"authors":[{"member_id":52, "author_type":"0"},{"member_id":53, "author_type":0}],"title":"OK google"}`, http.StatusOK, ``},
 			},
 		},
 		TestStep{
@@ -272,12 +272,13 @@ func TestRoutePost(t *testing.T) {
 			teardown: func() { postTest.teardown() },
 			register: &postTest,
 			cases: []genericTestcase{
-				genericTestcase{"UpdateCurrent", "PUT", `/post`, `{"id":1,"author":2}`, http.StatusOK, ``},
-				genericTestcase{"NotExisted", "PUT", `/post`, `{"id":12345, "author":1}`, http.StatusBadRequest, `{"Error":"Post Not Found"}`},
+				genericTestcase{"UpdateCurrent", "PUT", `/post`, `{"id":1,"authors":[{"member_id":2, "author_type":0}]}`, http.StatusOK, ``},
+				genericTestcase{"NotExisted", "PUT", `/post`, `{"id":12345, "authors":[{"member_id":1, "author_type":0}]}`, http.StatusBadRequest, `{"Error":"Post Not Found"}`},
 				genericTestcase{"UpdateTags", "PUT", `/post`, `{"id":1, "tags":[5,3], "updated_by":1}`, http.StatusOK, ``},
 				// UpdateSchedule the same with UpdateTags, need to be changed or confirmed
 				genericTestcase{"DeleteTags", "PUT", `/post`, `{"id":1, "tags":[], "updated_by":1}`, http.StatusOK, ``},
-				genericTestcase{"UpdateProjectID", "PUT", `/post`, `{"id":1, "author":1, "project_id":100002}`, http.StatusOK, ``},
+				genericTestcase{"UpdateProjectID", "PUT", `/post`, `{"id":1, "project_id":100002, "updated_by":1}`, http.StatusOK, ``},
+				genericTestcase{"UpdateAuthor", "PUT", `/post`, `{"id":1, "authors":[{"member_id":2, "author_type":0}]}`, http.StatusOK, ``},
 			},
 		},
 		TestStep{
@@ -348,7 +349,7 @@ func TestRoutePost(t *testing.T) {
 			if len(Response.Items) != 0 && len(expected) != 0 {
 				for i := range expected {
 					if (Response.Items[i].Post.ID != expected[i].Post.ID) ||
-						(Response.Items[i].Member.ID != expected[i].Member.ID) ||
+						(len(Response.Items[i].Authors) != len(expected[i].Authors)) ||
 						(Response.Items[i].UpdatedBy.ID != expected[i].UpdatedBy.ID) {
 						t.Errorf("%s, %vth round expect to get \n%v\n , but get \n%v\n", tc.name, i, expected[i], Response.Items[i])
 					}
@@ -385,6 +386,19 @@ func memberToBasic(m models.Member) (result *models.MemberBasic) {
 		ProfileImage: m.ProfileImage,
 		Description:  m.Description,
 		Role:         m.Role,
+	}
+	return result
+}
+
+func memberToAuthor(m models.Member) (result []models.AuthorBasic) {
+	result = []models.AuthorBasic{
+		models.AuthorBasic{
+			ID:           m.ID,
+			Nickname:     m.Nickname,
+			ProfileImage: m.ProfileImage,
+			Description:  m.Description,
+			Role:         m.Role,
+		},
 	}
 	return result
 }

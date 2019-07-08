@@ -15,9 +15,10 @@ import (
 	"github.com/readr-media/readr-restful/pkg/mail"
 )
 
-type taggedPost struct {
+type PostDesciption struct {
 	models.Post
-	Tags models.NullIntSlice `json:"tags" db:"tags"`
+	Tags    models.NullIntSlice  `json:"tags" db:"tags"`
+	Authors []models.AuthorInput `json:"authors" db:"authors"`
 }
 
 type postHandler struct{}
@@ -130,10 +131,8 @@ func (r *postHandler) Get(c *gin.Context) {
 
 func (r *postHandler) Post(c *gin.Context) {
 
-	post := taggedPost{}
-
-	err := c.Bind(&post)
-	if err != nil {
+	var post PostDesciption
+	if err := c.BindJSON(&post); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
@@ -142,7 +141,8 @@ func (r *postHandler) Post(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Post"})
 		return
 	}
-	if !post.Author.Valid {
+
+	if len(post.Authors) <= 0 {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Author"})
 		return
 	}
@@ -158,8 +158,8 @@ func (r *postHandler) Post(c *gin.Context) {
 		post.PublishStatus = models.NullInt{int64(config.Config.Models.PostPublishStatus["pending"]), true}
 	}
 	if !post.UpdatedBy.Valid {
-		if post.Author.Valid {
-			post.UpdatedBy.Int = post.Author.Int
+		if len(post.Authors) > 0 && post.Authors[0].MemberID.Int != 0 {
+			post.UpdatedBy.Int = post.Authors[0].MemberID.Int
 			post.UpdatedBy.Valid = true
 		} else {
 			c.JSON(http.StatusBadRequest, gin.H{"Error": "Neither updated_by or author is valid"})
@@ -189,6 +189,15 @@ func (r *postHandler) Post(c *gin.Context) {
 		}
 	}
 
+	if len(post.Authors) > 0 {
+		post.Post.ID = uint32(postID)
+		err = models.PostAPI.UpdateAuthors(post.Post, post.Authors)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+			return
+		}
+	}
+
 	// Only do the pipeline when it's published
 	if (!post.Active.Valid || post.Active.Int != int64(config.Config.Models.Posts["deactive"])) &&
 		(post.PublishStatus.Valid && post.PublishStatus.Int == int64(config.Config.Models.PostPublishStatus["publish"])) {
@@ -199,7 +208,7 @@ func (r *postHandler) Post(c *gin.Context) {
 
 func (r *postHandler) Put(c *gin.Context) {
 
-	post := taggedPost{}
+	post := PostDesciption{}
 
 	err := c.ShouldBindJSON(&post)
 	// Check if post struct was binded successfully
@@ -223,8 +232,8 @@ func (r *postHandler) Put(c *gin.Context) {
 
 	switch {
 	case post.UpdatedBy.Valid:
-	case post.Author.Valid:
-		post.UpdatedBy.Int = post.Author.Int
+	case len(post.Authors) > 0 && post.Authors[0].MemberID.Int != 0:
+		post.UpdatedBy.Int = post.Authors[0].MemberID.Int
 		post.UpdatedBy.Valid = true
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Neither updated_by or author is valid"})
@@ -245,6 +254,14 @@ func (r *postHandler) Put(c *gin.Context) {
 
 	if post.Tags.Valid {
 		err = models.TagAPI.UpdateTagging(config.Config.Models.TaggingType["post"], int(post.ID), post.Tags.Slice)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+			return
+		}
+	}
+
+	if len(post.Authors) > 0 {
+		err = models.PostAPI.UpdateAuthors(post.Post, post.Authors)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 			return

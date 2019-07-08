@@ -83,6 +83,9 @@
             "cc": 9,
             "cc-by-sa3": 9
         },
+        "author_type":{
+            "ordinary": 9
+        },
         "cards":{
             "deactive": 9,
             "active": 9
@@ -198,7 +201,13 @@
             "project": 9,
             "project_memo": 9,
             "topup": 9,
-            "gift": 9
+            "gift": 9,
+            "donate": 9
+        },
+        "point_status":{
+            "pending": 9,
+            "complete": 9,
+            "rollback": 9
         },
         "hot_tags_wieght":{
             "click": 0,
