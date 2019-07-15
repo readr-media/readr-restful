@@ -226,6 +226,8 @@ type PostArgs struct {
 	ShowUpdater   bool               `form:"show_updater"`
 	ShowProject   bool               `form:"show_project"`
 	ShowCommment  bool               `form:"show_comment"`
+	ProjectID     int64              `form:"project_id"`
+	Slug          string             `form:"slug"`
 	IDs           []uint32           `form:"ids"`
 	Active        map[string][]int   `form:"active"`
 	PublishStatus map[string][]int   `form:"publish_status"`
@@ -283,15 +285,15 @@ func (p *PostArgs) parse() (restricts string, values []interface{}) {
 			where = append(where, fmt.Sprintf("%s %s (?)", "posts.type", operatorHelper(k)))
 			values = append(values, v)
 		}
-	} /* else {
-		where = append(where, "posts.type IN (?)")
-		values = append(values, []int{
-			config.Config.Models.PostType["review"],
-			config.Config.Models.PostType["news"],
-			config.Config.Models.PostType["video"],
-			config.Config.Models.PostType["live"],
-		})
-	}*/
+	}
+	if p.Slug != "" {
+		where = append(where, fmt.Sprintf("%s = ?", "posts.slug"))
+		values = append(values, p.Slug)
+	}
+	if p.ProjectID != 0 {
+		where = append(where, fmt.Sprintf("%v = ?", "posts.project_id"))
+		values = append(values, p.ProjectID)
+	}
 	if p.IDs != nil {
 		where = append(where, fmt.Sprintf("%s %s (?)", "posts.post_id", "IN"))
 		values = append(values, p.IDs)
