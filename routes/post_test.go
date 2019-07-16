@@ -88,6 +88,27 @@ func (a *mockPostAPI) GetPosts(args *models.PostArgs) (result []models.TaggedPos
 			return result, err
 		}
 	}
+	// Slug
+	if args.Slug != "" {
+		if args.Slug == "slug" {
+			result = []models.TaggedPostMember{
+				a.mockPostDS[0],
+			}
+			err = nil
+			return result, err
+		}
+	}
+	// ProjectID
+	if args.ProjectID != 0 {
+		if args.ProjectID == 11000 {
+			result = []models.TaggedPostMember{
+				a.mockPostDS[2],
+				a.mockPostDS[1],
+			}
+			err = nil
+			return result, err
+		}
+	}
 	return result, err
 }
 
@@ -237,6 +258,10 @@ func TestRoutePost(t *testing.T) {
 					[]models.TaggedPostMember{posts[3], posts[1], posts[0]}},
 				genericTestcase{"ShowDetails", "GET", `/posts?show_author=true&show_updater=true&show_tag=true&show_comment=true`, ``, http.StatusOK,
 					[]models.TaggedPostMember{posts[3], posts[1], posts[0], posts[2]}},
+				genericTestcase{"Slug", "GET", `/posts?slug=slug`, ``, http.StatusOK,
+					[]models.TaggedPostMember{posts[0]}},
+				genericTestcase{"Project ID", "GET", `/posts?project_id=11000`, ``, http.StatusOK,
+					[]models.TaggedPostMember{posts[2], posts[1]}},
 			},
 		},
 		TestStep{

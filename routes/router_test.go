@@ -189,6 +189,7 @@ var mockPostDS = []models.Post{
 		UpdatedAt: models.NullTime{Time: time.Date(2017, 11, 8, 16, 27, 52, 0, time.UTC), Valid: true},
 		UpdatedBy: models.NullInt{Int: 1, Valid: true},
 		Type:      models.NullInt{Int: 1, Valid: true},
+		Slug:      models.NullString{String: "slug", Valid: true},
 	},
 	models.Post{
 		ID:         2,
@@ -198,6 +199,7 @@ var mockPostDS = []models.Post{
 		LikeAmount: models.NullInt{Int: 256, Valid: true},
 		UpdatedAt:  models.NullTime{Time: time.Date(2017, 12, 18, 23, 11, 37, 0, time.UTC), Valid: true},
 		Type:       models.NullInt{Int: 2, Valid: true},
+		ProjectID:  models.NullInt{Int: 11000, Valid: true},
 	},
 	models.Post{
 		ID:         6,
@@ -207,6 +209,7 @@ var mockPostDS = []models.Post{
 		LikeAmount: models.NullInt{Int: 257, Valid: true},
 		UpdatedAt:  models.NullTime{Time: time.Date(2017, 10, 23, 7, 55, 25, 0, time.UTC), Valid: true},
 		Type:       models.NullInt{Int: 0, Valid: true},
+		ProjectID:  models.NullInt{Int: 11000, Valid: true},
 	},
 	models.Post{
 		ID:        4,
