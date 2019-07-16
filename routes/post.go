@@ -65,7 +65,7 @@ func (r *postHandler) bindQuery(c *gin.Context, args *models.PostArgs) (err erro
 		}
 	}
 	if c.Query("slug") != "" {
-		args.Sorting = c.Query("slug")
+		args.Slug = c.Query("slug")
 	}
 	if c.Query("project_id") != "" {
 		args.ProjectID, err = strconv.ParseInt(c.Query("project_id"), 10, 64)
