@@ -133,6 +133,10 @@ func (a *mockProjectAPI) GetContents(id int, args models.GetProjectArgs) (result
 	return nil, err
 }
 
+func (a *mockProjectAPI) FilterProjects(args models.GetProjectArgs) (result []interface{}, err error) {
+	return result, err
+}
+
 func (a *mockProjectAPI) InsertProject(p models.Project) error {
 	for _, project := range mockProjectDS {
 		if p.ID == project.ID {

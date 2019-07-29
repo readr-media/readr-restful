@@ -94,6 +94,10 @@ func (a *mockAssetAPI) Delete(ids []int) (err error) {
 	return nil
 }
 
+func (a *mockAssetAPI) FilterAssets(args *GetAssetArgs) (result []FilteredAsset, err error) {
+	return result, err
+}
+
 func (a *mockAssetAPI) GetAssets(args *GetAssetArgs) (result []Asset, err error) {
 	return result, err
 }
