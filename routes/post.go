@@ -24,6 +24,11 @@ type PostDesciption struct {
 type postHandler struct{}
 
 func (r *postHandler) bindQuery(c *gin.Context, args *models.PostArgs) (err error) {
+
+	if c.Query("project_id") == "" {
+		args.ProjectID = -1
+	}
+
 	if err = c.ShouldBindQuery(args); err == nil {
 		return nil
 	}
@@ -176,6 +181,10 @@ func (r *postHandler) Post(c *gin.Context) {
 	}
 	if post.PublishStatus.Valid && post.PublishStatus.Int == int64(config.Config.Models.PostPublishStatus["publish"]) && !post.PublishedAt.Valid {
 		post.PublishedAt = models.NullTime{Time: time.Now(), Valid: true}
+	}
+
+	if !post.ProjectID.Valid {
+		post.ProjectID = models.NullInt{Int: 0, Valid: true}
 	}
 
 	postID, err := models.PostAPI.InsertPost(post.Post)
