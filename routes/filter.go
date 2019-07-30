@@ -112,7 +112,8 @@ func (r *filterHandler) BindTimeOp(param string) (timeOps map[string]time.Time, 
 }
 
 func (r *filterHandler) Get(c *gin.Context) {
-	var resource = c.Param("resource")
+
+	var resource = strings.Split(c.Request.URL.Path, "/")[1]
 	var args = &FilterArgs{}
 
 	if err := r.bindQuery(c, args); err != nil {
@@ -150,7 +151,7 @@ func (r *filterHandler) Get(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"_items": projects})
-	case "post":
+	case "posts":
 		posts, err := models.PostAPI.FilterPosts(&models.PostArgs{
 			MaxResult:         uint8(args.MaxResult),
 			Page:              uint16(args.Page),
@@ -184,7 +185,7 @@ func (r *filterHandler) Get(c *gin.Context) {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"_items": assets})
-	case "member":
+	case "members":
 		members, err := models.MemberAPI.FilterMembers(&models.MemberArgs{
 			MaxResult:       uint8(args.MaxResult),
 			Page:            uint16(args.Page),
@@ -194,6 +195,7 @@ func (r *filterHandler) Get(c *gin.Context) {
 			FilterNickname:  args.Nickname,
 			FilterCreatedAt: args.CreatedAt,
 			FilterUpdatedAt: args.UpdatedAt,
+			Fields:          []string{"id", "mail", "nickname", "role", "custom_editor", "updated_at"},
 		})
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
@@ -208,10 +210,15 @@ func (r *filterHandler) Get(c *gin.Context) {
 
 func (r *filterHandler) SetRoutes(router *gin.Engine) {
 
-	filterRouter := router.Group("/filter")
-	{
-		filterRouter.GET("/:resource", r.Get)
-	}
+	projectRouter := router.Group("/project")
+	projectRouter.GET("/filter", r.Get)
+	postRouter := router.Group("/posts")
+	postRouter.GET("/filter", r.Get)
+	assetRouter := router.Group("/asset")
+	assetRouter.GET("/filter", r.Get)
+	memberRouter := router.Group("/members")
+	memberRouter.GET("/filter", r.Get)
+
 }
 
 var FilterHandler filterHandler

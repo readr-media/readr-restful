@@ -125,6 +125,7 @@ type MemberArgs struct {
 	Active       map[string][]int `form:"active"`
 	IDs          []string         `form:"ids"`
 	UUIDs        []string         `form:"uuids"`
+	Fields       sqlfields
 
 	// For filter API
 	FilterID        int64
@@ -255,7 +256,7 @@ func (p *MemberArgs) parseFilterRestricts() (restrictString string, values []int
 }
 
 func (p *MemberArgs) parseFilterQuery() (restricts string, values []interface{}) {
-	selectedFields := strings.Join([]string{"id", "mail", "nickname", "role", "custom_editor", "updated_at"}, ",")
+	selectedFields := p.Fields.GetFields(`%s "%s"`)
 
 	restricts, restrictVals := p.parseFilterRestricts()
 	limit, limitVals := p.parseLimit()
