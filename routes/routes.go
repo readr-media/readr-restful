@@ -19,6 +19,7 @@ func SetRoutes(router *gin.Engine) {
 		&AuthHandler,
 		&CommentsHandler,
 		&cards.Router,
+		&FilterHandler,
 		&FollowingHandler,
 		&mail.Router,
 		&MemberHandler,

@@ -221,6 +221,9 @@ func (a *mockPostAPI) PublishPipeline(ids []uint32) error {
 func (a *mockPostAPI) GetPostAuthor(id uint32) (member models.Member, err error) {
 	return member, nil
 }
+func (a *mockPostAPI) FilterPosts(args *models.PostArgs) (result []models.FilteredPost, err error) {
+	return result, err
+}
 
 func TestRoutePost(t *testing.T) {
 

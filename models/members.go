@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/config"
@@ -106,6 +107,7 @@ type MemberInterface interface {
 	DeleteMember(idType string, id string) error
 	GetMember(idType string, id string) (Member, error)
 	GetMembers(req *MemberArgs) ([]Member, error)
+	FilterMembers(args *MemberArgs) ([]Stunt, error)
 	InsertMember(m Member) (id int, err error)
 	UpdateAll(ids []int64, active int) error
 	UpdateMember(m Member) error
@@ -123,6 +125,14 @@ type MemberArgs struct {
 	Active       map[string][]int `form:"active"`
 	IDs          []string         `form:"ids"`
 	UUIDs        []string         `form:"uuids"`
+	Fields       sqlfields
+
+	// For filter API
+	FilterID        int64
+	FilterMail      string
+	FilterNickname  string
+	FilterCreatedAt map[string]time.Time
+	FilterUpdatedAt map[string]time.Time
 }
 
 func (m *MemberArgs) SetDefault() {
@@ -183,6 +193,83 @@ func (m *MemberArgs) parse() (restricts string, values []interface{}) {
 		restricts = where[0]
 	}
 	return restricts, values
+}
+
+func (p *MemberArgs) parseLimit() (restricts string, values []interface{}) {
+
+	if p.Sorting != "" {
+		restricts = fmt.Sprintf("%s ORDER BY %s", restricts, orderByHelper(p.Sorting))
+	}
+
+	if p.MaxResult > 0 {
+		restricts = fmt.Sprintf("%s LIMIT ?", restricts)
+		values = append(values, p.MaxResult)
+		if p.Page > 0 {
+			restricts = fmt.Sprintf("%s OFFSET ?", restricts)
+			values = append(values, (p.Page-1)*uint16(p.MaxResult))
+		}
+	}
+	return restricts, values
+}
+
+func (p *MemberArgs) parseFilterRestricts() (restrictString string, values []interface{}) {
+	restricts := make([]string, 0)
+
+	if p.FilterID != 0 {
+		restricts = append(restricts, `CAST(members.id as CHAR) LIKE ?`)
+		values = append(values, fmt.Sprintf("%s%d%s", "%", p.FilterID, "%"))
+	}
+	if p.FilterMail != "" {
+		restricts = append(restricts, `CAST(members.mail as CHAR) LIKE ?`)
+		values = append(values, fmt.Sprintf("%s%s%s", "%", p.FilterMail, "%"))
+	}
+	if p.FilterNickname != "" {
+		restricts = append(restricts, `CAST(members.nickname as CHAR) LIKE ?`)
+		values = append(values, fmt.Sprintf("%s%s%s", "%", p.FilterNickname, "%"))
+	}
+	if len(p.FilterCreatedAt) != 0 {
+		if v, ok := p.FilterCreatedAt["$gt"]; ok {
+			restricts = append(restricts, "members.created_at >= ?")
+			values = append(values, v)
+		}
+		if v, ok := p.FilterCreatedAt["$lt"]; ok {
+			restricts = append(restricts, "members.created_at <= ?")
+			values = append(values, v)
+		}
+	}
+	if len(p.FilterUpdatedAt) != 0 {
+		if v, ok := p.FilterUpdatedAt["$gt"]; ok {
+			restricts = append(restricts, "members.updated_at >= ?")
+			values = append(values, v)
+		}
+		if v, ok := p.FilterUpdatedAt["$lt"]; ok {
+			restricts = append(restricts, "members.updated_at <= ?")
+			values = append(values, v)
+		}
+	}
+	if len(restricts) > 1 {
+		restrictString = fmt.Sprintf("WHERE %s", strings.Join(restricts, " AND "))
+	} else if len(restricts) == 1 {
+		restrictString = fmt.Sprintf("WHERE %s", restricts[0])
+	}
+	return restrictString, values
+}
+
+func (p *MemberArgs) parseFilterQuery() (restricts string, values []interface{}) {
+	selectedFields := p.Fields.GetFields(`%s "%s"`)
+
+	restricts, restrictVals := p.parseFilterRestricts()
+	limit, limitVals := p.parseLimit()
+	values = append(values, restrictVals...)
+	values = append(values, limitVals...)
+
+	query := fmt.Sprintf(`
+		SELECT %s FROM members %s `,
+		selectedFields,
+		restricts+limit,
+	)
+
+	return query, values
 }
 
 type GetMembersKeywordsArgs struct {
@@ -261,6 +348,23 @@ func (a *memberAPI) GetMember(idType string, id string) (Member, error) {
 		err = nil
 	}
 	return member, err
+}
+
+func (a *memberAPI) FilterMembers(args *MemberArgs) (result []Stunt, err error) {
+	query, values := args.parseFilterQuery()
+
+	rows, err := DB.Queryx(query, values...)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		var asset Stunt
+		if err = rows.StructScan(&asset); err != nil {
+			return result, err
+		}
+		result = append(result, asset)
+	}
+	return result, nil
 }
 
 func (a *memberAPI) InsertMember(m Member) (id int, err error) {

@@ -328,6 +328,7 @@ func (r *projectHandler) validateProjectStatus(i int64) bool {
 	}
 	return false
 }
+
 func (r *projectHandler) validateProjectSorting(sort string) bool {
 	for _, v := range strings.Split(sort, ",") {
 		if matched, err := regexp.MatchString("-?(updated_at|published_at|project_id|project_order|status|slug)", v); err != nil || !matched {

@@ -52,6 +52,14 @@ type Post struct {
 	JS              NullString `json:"javascript" db:"javascript" redis:"javascript"`
 }
 
+type FilteredPost struct {
+	ID            int           `json:"id" db:"post_id"`
+	Title         NullString    `json:"title" db:"title"`
+	PublishStatus NullInt       `json:"publish_status" db:"publish_status"`
+	UpdatedAt     NullTime      `json:"updated_at" db:"updated_at"`
+	Authors       []AuthorBasic `json:"authors,omitempty"`
+}
+
 type postAPI struct{}
 
 var PostAPI PostInterface = new(postAPI)
@@ -60,6 +68,7 @@ type PostInterface interface {
 	DeletePost(id uint32) error
 	GetPosts(args *PostArgs) (result []TaggedPostMember, err error)
 	GetPost(id uint32, args *PostArgs) (TaggedPostMember, error)
+	FilterPosts(args *PostArgs) ([]FilteredPost, error)
 	InsertPost(p Post) (int, error)
 	UpdateAll(req PostUpdateArgs) error
 	UpdatePost(p Post) error
@@ -234,6 +243,15 @@ type PostArgs struct {
 	Author        map[string][]int64 `form:"author"`
 	Type          map[string][]int   `form:"type"`
 	Filter        Filter
+
+	// For filter API
+	FilterID          int64
+	FilterTitle       []string
+	FilterContent     []string
+	FilterAuthorName  []string
+	FilterTagName     []string
+	FilterPublishedAt map[string]time.Time
+	FilterUpdatedAt   map[string]time.Time
 }
 
 // NewPostArgs return a PostArgs struct with default settings,
@@ -313,6 +331,15 @@ func (p *PostArgs) parse() (restricts string, values []interface{}) {
 func (p *PostArgs) parseResultLimit() (restricts string, values []interface{}) {
 
 	if p.Sorting != "" {
+		tmp := strings.Split(p.Sorting, ",")
+		for i, v := range tmp {
+			if v := strings.TrimSpace(v); strings.HasPrefix(v, "-") {
+				tmp[i] = "-posts." + v[1:]
+			} else {
+				tmp[i] = "posts." + v
+			}
+		}
+		p.Sorting = strings.Join(tmp, ",")
 		restricts = fmt.Sprintf("%s ORDER BY %s", restricts, orderByHelper(p.Sorting))
 	}
 
@@ -325,6 +352,105 @@ func (p *PostArgs) parseResultLimit() (restricts string, values []interface{}) {
 		}
 	}
 	return restricts, values
+}
+
+func (p *PostArgs) parseFilterRestricts() (restrictString string, values []interface{}) {
+	restricts := make([]string, 0)
+
+	if p.FilterID != 0 {
+		restricts = append(restricts, `CAST(posts.post_id as CHAR) LIKE ?`)
+		values = append(values, fmt.Sprintf("%s%d%s", "%", p.FilterID, "%"))
+	}
+	if len(p.FilterTitle) != 0 {
+		subRestricts := make([]string, 0)
+		for _, v := range p.FilterTitle {
+			subRestricts = append(subRestricts, `posts.title LIKE ?`)
+			values = append(values, fmt.Sprintf("%s%s%s", "%", v, "%"))
+		}
+		restricts = append(restricts, fmt.Sprintf("%s%s%s", "(", strings.Join(subRestricts, " OR "), ")"))
+	}
+	if len(p.FilterContent) != 0 {
+		subRestricts := make([]string, 0)
+		for _, v := range p.FilterContent {
+			subRestricts = append(subRestricts, `posts.content LIKE ?`)
+			values = append(values, fmt.Sprintf("%s%s%s", "%", v, "%"))
+		}
+		restricts = append(restricts, fmt.Sprintf("%s%s%s", "(", strings.Join(subRestricts, " OR "), ")"))
+	}
+	if len(p.FilterAuthorName) != 0 {
+		subRestricts := make([]string, 0)
+		for _, v := range p.FilterAuthorName {
+			subRestricts = append(subRestricts, `members.name LIKE ?`)
+			values = append(values, fmt.Sprintf("%s%s%s", "%", v, "%"))
+		}
+		restricts = append(restricts, fmt.Sprintf("%s%s%s", "(", strings.Join(subRestricts, " OR "), ")"))
+	}
+	if len(p.FilterTagName) != 0 {
+		subRestricts := make([]string, 0)
+		for _, v := range p.FilterTagName {
+			subRestricts = append(subRestricts, `tags.tag_content LIKE ?`)
+			values = append(values, fmt.Sprintf("%s%s%s", "%", v, "%"))
+		}
+		restricts = append(restricts, fmt.Sprintf("(%s)", strings.Join(subRestricts, " OR ")))
+	}
+	if len(p.FilterPublishedAt) != 0 {
+		if v, ok := p.FilterPublishedAt["$gt"]; ok {
+			restricts = append(restricts, "posts.published_at >= ?")
+			values = append(values, v)
+		}
+		if v, ok := p.FilterPublishedAt["$lt"]; ok {
+			restricts = append(restricts, "posts.published_at <= ?")
+			values = append(values, v)
+		}
+	}
+	if len(p.FilterUpdatedAt) != 0 {
+		if v, ok := p.FilterUpdatedAt["$gt"]; ok {
+			restricts = append(restricts, "posts.updated_at >= ?")
+			values = append(values, v)
+		}
+		if v, ok := p.FilterUpdatedAt["$lt"]; ok {
+			restricts = append(restricts, "posts.updated_at <= ?")
+			values = append(values, v)
+		}
+	}
+	if len(restricts) > 1 {
+		restrictString = fmt.Sprintf("WHERE %s", strings.Join(restricts, " AND "))
+	} else if len(restricts) == 1 {
+		restrictString = fmt.Sprintf("WHERE %s", restricts[0])
+	}
+	return restrictString, values
+}
+
+func (p *PostArgs) parseFilterQuery() (restricts string, values []interface{}) {
+	fields := getStructDBTags("exist", FilteredPost{})
+	for k, v := range fields {
+		fields[k] = fmt.Sprintf("posts.%s", v)
+	}
+	selectedFields := strings.Join(fields, ",")
+
+	restricts, restrictVals := p.parseFilterRestricts()
+	limit, limitVals := p.parseResultLimit()
+	values = append(values, restrictVals...)
+	values = append(values, limitVals...)
+
+	var joinedTables []string
+	if len(p.FilterTagName) > 0 {
+		joinedTables = append(joinedTables, fmt.Sprintf(`
+		LEFT JOIN tagging AS tagging ON tagging.target_id = posts.post_id AND tagging.type = %d LEFT JOIN tags AS tags ON tags.tag_id = tagging.tag_id 
+		`, config.Config.Models.TaggingType["post"]))
+	}
+	if len(p.FilterAuthorName) > 0 {
+		joinedTables = append(joinedTables, `LEFT JOIN authors AS authors ON authors.resource_id = posts.post_id LEFT JOIN members AS members ON authors.author_id = members.id `)
+	}
+
+	query := fmt.Sprintf(`
+		SELECT %s FROM posts AS posts %s %s `,
+		selectedFields,
+		strings.Join(joinedTables, " "),
+		restricts+limit,
+	)
+
+	return query, values
 }
 
 func (a *postAPI) GetPosts(req *PostArgs) (result []TaggedPostMember, err error) {
@@ -574,6 +700,40 @@ func (a *postAPI) buildGetQuery(req *PostArgs) (query string, values []interface
 	)
 
 	return query, values
+}
+
+func (a *postAPI) FilterPosts(args *PostArgs) (result []FilteredPost, err error) {
+	query, values := args.parseFilterQuery()
+
+	rows, err := DB.Queryx(query, values...)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		var singlePost FilteredPost
+		if err = rows.StructScan(&singlePost); err != nil {
+			return result, err
+		}
+		result = append(result, singlePost)
+	}
+
+	if len(result) > 0 {
+
+		postIDs := make([]int, 0)
+		for _, v := range result {
+			postIDs = append(postIDs, int(v.ID))
+		}
+
+		authors, err := a.fetchPostAuthors(postIDs)
+		if err != nil {
+			return result, err
+		}
+		for k, v := range result {
+			result[k].Authors = authors[int(v.ID)]
+		}
+	}
+
+	return result, err
 }
 
 func (a *postAPI) InsertPost(p Post) (int, error) {

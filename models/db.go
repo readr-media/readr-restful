@@ -176,6 +176,11 @@ func getStructDBTags(mode string, input interface{}) []string {
 			default:
 				fmt.Println("unrecognised format: ", u.Field(i).Type())
 			}
+		} else if mode == "exist" {
+			dbTag := tag.Get("db")
+			if len(dbTag) != 0 {
+				columns = append(columns, dbTag)
+			}
 		}
 	}
 	return columns

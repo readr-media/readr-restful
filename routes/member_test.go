@@ -127,6 +127,10 @@ func (a *mockMemberAPI) GetMember(idType string, id string) (result models.Membe
 	return result, err
 }
 
+func (a *mockMemberAPI) FilterMembers(args *models.MemberArgs) (result []models.Stunt, err error) {
+	return result, err
+}
+
 func (a *mockMemberAPI) InsertMember(m models.Member) (id int, err error) {
 	for _, member := range mockMemberDS {
 		if member.MemberID == m.MemberID {

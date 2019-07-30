@@ -6,6 +6,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"time"
 
 	"database/sql"
 
@@ -40,6 +41,16 @@ type Project struct {
 	MemoPoints    NullInt    `json:"memo_points" db:"memo_points" redis:"memo_points"`
 }
 
+type FilteredProject struct {
+	ID            int        `json:"id" db:"project_id"`
+	Title         NullString `json:"title" db:"title"`
+	Slug          NullString `json:"slug" db:"slug"`
+	Progress      NullFloat  `json:"progress" db:"progress"`
+	Status        NullInt    `json:"status" db:"status"`
+	PublishStatus NullInt    `json:"publish_status" db:"publish_status"`
+	PublishedAt   NullTime   `json:"published_at" db:"published_at"`
+}
+
 type projectAPI struct{}
 
 type ProjectAPIInterface interface {
@@ -48,6 +59,7 @@ type ProjectAPIInterface interface {
 	GetProject(p Project) (Project, error)
 	GetProjects(args GetProjectArgs) ([]ProjectAuthors, error)
 	GetContents(id int, args GetProjectArgs) ([]interface{}, error)
+	FilterProjects(args GetProjectArgs) ([]interface{}, error)
 	InsertProject(p Project) error
 	UpdateProjects(p Project) error
 	SchedulePublish() error
@@ -70,7 +82,17 @@ type GetProjectArgs struct {
 	// For determining to show memo abstract or not
 	MemberID int64 `form:"member_id"`
 
+	//Generate select fields
 	Fields sqlfields `form:"fields"`
+
+	// Filter operation
+	FilterID          int64
+	FilterSlug        string
+	FilterTitle       []string
+	FilterDescription []string
+	FilterTagName     []string
+	FilterPublishedAt map[string]time.Time
+	FilterUpdatedAt   map[string]time.Time
 }
 
 func (g *GetProjectArgs) Default() {
@@ -130,6 +152,17 @@ func (p *GetProjectArgs) parse() (restricts string, values []interface{}) {
 func (p *GetProjectArgs) parseLimit() (limit map[string]string, values []interface{}) {
 	restricts := make([]string, 0)
 	limit = make(map[string]string, 2)
+
+	tmp := strings.Split(p.Sorting, ",")
+	for i, v := range tmp {
+		if v := strings.TrimSpace(v); strings.HasPrefix(v, "-") {
+			tmp[i] = "-projects." + v[1:]
+		} else {
+			tmp[i] = "projects." + v
+		}
+	}
+	p.Sorting = strings.Join(tmp, ",")
+
 	if p.Sorting != "" {
 		restricts = append(restricts, fmt.Sprintf("ORDER BY %s", orderByHelper(p.Sorting)))
 		limit["order"] = fmt.Sprintf("ORDER BY %s", orderByHelper(p.Sorting))
@@ -137,15 +170,110 @@ func (p *GetProjectArgs) parseLimit() (limit map[string]string, values []interfa
 	if p.MaxResult != 0 {
 		restricts = append(restricts, "LIMIT ?")
 		values = append(values, p.MaxResult)
-	}
-	if p.Page != 0 {
-		restricts = append(restricts, "OFFSET ?")
-		values = append(values, (p.Page-1)*(p.MaxResult))
+		if p.Page != 0 {
+			restricts = append(restricts, "OFFSET ?")
+			values = append(values, (p.Page-1)*(p.MaxResult))
+		}
 	}
 	if len(restricts) > 0 {
 		limit["full"] = fmt.Sprintf(" %s", strings.Join(restricts, " "))
 	}
 	return limit, values
+}
+
+func (p *GetProjectArgs) parseFilterRestricts() (restrictString string, values []interface{}) {
+	restricts := make([]string, 0)
+
+	if p.FilterID != 0 {
+		restricts = append(restricts, `CAST(projects.project_id as CHAR) LIKE ?`)
+		values = append(values, fmt.Sprintf("%s%d%s", "%", p.FilterID, "%"))
+	}
+	if p.FilterSlug != "" {
+		restricts = append(restricts, `projects.slug LIKE ?`)
+		values = append(values, fmt.Sprintf("%s%s%s", "%", p.FilterSlug, "%"))
+	}
+	if len(p.FilterTitle) != 0 {
+		subRestricts := make([]string, 0)
+		for _, v := range p.FilterTitle {
+			subRestricts = append(subRestricts, `projects.title LIKE ?`)
+			values = append(values, fmt.Sprintf("%s%s%s", "%", v, "%"))
+		}
+		restricts = append(restricts, fmt.Sprintf("%s%s%s", "(", strings.Join(subRestricts, " OR "), ")"))
+	}
+	if len(p.FilterDescription) != 0 {
+		subRestricts := make([]string, 0)
+		for _, v := range p.FilterDescription {
+			subRestricts = append(subRestricts, `projects.description LIKE ?`)
+			values = append(values, fmt.Sprintf("%s%s%s", "%", v, "%"))
+		}
+		restricts = append(restricts, fmt.Sprintf("%s%s%s", "(", strings.Join(subRestricts, " OR "), ")"))
+	}
+	if len(p.FilterTagName) != 0 {
+		subRestricts := make([]string, 0)
+		for _, v := range p.FilterTagName {
+			subRestricts = append(subRestricts, `tags.tag_content LIKE ?`)
+			values = append(values, fmt.Sprintf("%s%s%s", "%", v, "%"))
+		}
+		restricts = append(restricts, fmt.Sprintf("(%s)", strings.Join(subRestricts, " OR ")))
+	}
+
+	if len(p.FilterPublishedAt) != 0 {
+		if v, ok := p.FilterPublishedAt["$gt"]; ok {
+			restricts = append(restricts, "projects.published_at >= ?")
+			values = append(values, v)
+		}
+		if v, ok := p.FilterPublishedAt["$lt"]; ok {
+			restricts = append(restricts, "projects.published_at <= ?")
+			values = append(values, v)
+		}
+	}
+	if len(p.FilterUpdatedAt) != 0 {
+		if v, ok := p.FilterUpdatedAt["$gt"]; ok {
+			restricts = append(restricts, "projects.updated_at >= ?")
+			values = append(values, v)
+		}
+		if v, ok := p.FilterUpdatedAt["$lt"]; ok {
+			restricts = append(restricts, "projects.updated_at <= ?")
+			values = append(values, v)
+		}
+	}
+	if len(restricts) > 1 {
+		restrictString = fmt.Sprintf("WHERE %s", strings.Join(restricts, " AND "))
+	} else if len(restricts) == 1 {
+		restrictString = fmt.Sprintf("WHERE %s", restricts[0])
+	}
+	return restrictString, values
+}
+
+func (p *GetProjectArgs) parseFilterQuery() (query string, values []interface{}) {
+
+	var selectedFields string
+	if len(p.Fields) == 0 {
+		selectedFields = "*"
+	} else {
+		selectedFields = p.Fields.GetFields(`projects.%s "%s"`)
+	}
+
+	restricts, restrictVals := p.parseFilterRestricts()
+	limit, limitVals := p.parseLimit()
+	values = append(values, restrictVals...)
+	values = append(values, limitVals...)
+
+	var joinedTables []string
+	if len(p.FilterTagName) > 0 {
+		joinedTables = append(joinedTables, fmt.Sprintf(`
+		LEFT JOIN tagging AS tagging ON tagging.target_id = projects.project_id AND tagging.type = %d LEFT JOIN tags AS tags ON tags.tag_id = tagging.tag_id 
+		`, config.Config.Models.TaggingType["project"]))
+	}
+
+	query = fmt.Sprintf(`
+		SELECT %s FROM projects AS projects %s %s `,
+		selectedFields,
+		strings.Join(joinedTables, " "),
+		restricts+limit["full"],
+	)
+
+	return query, values
 }
 
 func (g *GetProjectArgs) FullAuthorTags() (result []string) {
@@ -416,6 +544,23 @@ func (a *projectAPI) GetContents(id int, args GetProjectArgs) (result []interfac
 		}
 	}
 
+	return result, nil
+}
+
+func (a *projectAPI) FilterProjects(args GetProjectArgs) (result []interface{}, err error) {
+	query, values := args.parseFilterQuery()
+
+	rows, err := DB.Queryx(query, values...)
+	if err != nil {
+		return nil, err
+	}
+	for rows.Next() {
+		var project FilteredProject
+		if err = rows.StructScan(&project); err != nil {
+			return result, err
+		}
+		result = append(result, project)
+	}
 	return result, nil
 }
 
