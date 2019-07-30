@@ -308,7 +308,7 @@ func (p *PostArgs) parse() (restricts string, values []interface{}) {
 		where = append(where, fmt.Sprintf("%s = ?", "posts.slug"))
 		values = append(values, p.Slug)
 	}
-	if p.ProjectID != 0 {
+	if p.ProjectID >= 0 {
 		where = append(where, fmt.Sprintf("%v = ?", "posts.project_id"))
 		values = append(values, p.ProjectID)
 	}
