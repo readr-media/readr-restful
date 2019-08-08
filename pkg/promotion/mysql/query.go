@@ -9,9 +9,9 @@ import (
 	"github.com/readr-media/readr-restful/models"
 )
 
-type sqlsv struct {
-	statement string
-	variable  interface{}
+type SQLsv struct {
+	Statement string
+	Variable  interface{}
 }
 
 type Sqlfield struct {
@@ -56,7 +56,7 @@ type SQLO struct {
 	Join []string
 
 	// Where comprises SQL statements strings in 'WHERE' section
-	Where []sqlsv
+	Where []SQLsv
 
 	// Order by maps to the ORDER BY section in SQL
 	Orderby string
@@ -112,8 +112,8 @@ func (s *SQLO) Select() (query string, args []interface{}, err error) {
 				base.WriteString(" AND")
 			}
 			base.WriteString(" ")
-			base.WriteString(condition.statement)
-			s.Args = append(s.Args, condition.variable)
+			base.WriteString(condition.Statement)
+			s.Args = append(s.Args, condition.Variable)
 		}
 	}
 	if s.Orderby != "" {
