@@ -73,18 +73,18 @@ func NewListParams(options ...func(*ListParams) (err error)) (*ListParams, error
 }
 
 func (p *ListParams) validate() (err error) {
+
 	// Validate sort fields
 	for _, v := range strings.Split(p.Sort, ",") {
-		if matched, err := regexp.MatchString("-?(updated_at|created_at|id|order)", v); err != nil || !matched {
-			return errors.New("invalid sort")
+		if matched, e := regexp.MatchString("-?(updated_at|created_at|id|order)", v); e != nil || !matched {
+			err = errors.New("invalid sort")
 		}
 	}
-
 	// If Active is empty, set default to active before parsing
 	if len(p.Active) == 0 {
 		p.Active = map[string][]int{"$in": []int{config.Config.Models.Promotions["active"]}}
 	}
-	return nil
+	return err
 }
 
 // Parse will populate the SQLO in ListParams
