@@ -137,9 +137,9 @@ pipeline:
       branch: [dev]
     template: >
       {{# success build.status}}
-        The pull request passes tests. Please review the <pull request|https://github.com/{{repo.owner}}/{{repo.name}}/pull/{{build.pull}}>
+        The pull request *passes* tests. Please review the <https://github.com/{{repo.owner}}/{{repo.name}}/pull/{{build.pull}}|pull request>
       {{else}}
-        The pull request failed tests. Please modify your <commit|https://github.com/{{repo.owner}}/{{repo.name}}/pull/{{build.pull}}>
+        The pull request *failed* tests. Please modify your <https://github.com/{{repo.owner}}/{{repo.name}}/pull/{{build.pull}}|commit>
       {{/success}}
 
   finish_slack:
