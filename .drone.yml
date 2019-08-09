@@ -15,7 +15,7 @@ pipeline:
       event: [push]
       branch: [master, dev, stage]
 
-  get_config:
+  get_config_dev:
     image: gcr.io/mirrormedia-1470651750304/drone-cloud-sdk:latest
     secrets: [google_credentials]
     commands:
@@ -23,7 +23,7 @@ pipeline:
     - cp ../default/readr-restful/dev/main.json ./config/main.json
     - cp ../default/readr-restful/*.html ./config/
     when:
-      event: [push]
+      event: [push, pull_request]
       branch: [dev]
 
   get_stage_config:
@@ -37,6 +37,18 @@ pipeline:
     when:
       event: [push]
       branch: [stage]
+
+  pull_request_test:
+    image: golang:1.12-alpine
+    environment:
+      - GO111MODULE=on
+    commands:
+    - apk add --update git make
+    - make deps
+    - make test
+    when:
+      event: [pull_request]
+      branch: [dev]
 
   builds:
     image: golang:1.12-alpine
@@ -110,6 +122,23 @@ pipeline:
     when:
       event: [push]
       branch: stage
+
+  pr_test_fail: 
+    image: plugins/slack
+    channel: jenkins
+    secrets: [slack_webhook]
+    username: drone
+    icon_url: https://avatars2.githubusercontent.com/u/2181346?s=200&v=4
+    when:
+      status: [success, failure]
+      event: [pull_request]
+      branch: [dev]
+    template: >
+      {{# success build.status}}
+        The pull request passes tests. Please review the <pull request|https://github.com/{{repo.owner}}/{{repo.name}}/pull/{{build.pull}}>
+      {{else}}
+        The pull request failed tests. Please modify your <commit|https://github.com/{{repo.owner}}/{{repo.name}}/pull/{{build.pull}}>
+      {{/success}}
 
   finish_slack:
     image: plugins/slack
