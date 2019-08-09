@@ -19,9 +19,10 @@ pipeline:
     image: gcr.io/mirrormedia-1470651750304/drone-cloud-sdk:latest
     secrets: [google_credentials]
     commands:
-    - gcloud source repos clone default ../default
-    - cp ../default/readr-restful/dev/main.json ./config/main.json
-    - cp ../default/readr-restful/*.html ./config/
+    - gcloud source repos clone configs rr-configs
+    - cp rr-configs/readr-media/readr-restful/dev/main.json ./config/main.json
+    - cp rr-configs/readr-media/readr-restful/*.html ./config/
+    - rm -rf rr-configs
     when:
       event: [push, pull_request]
       branch: [dev]
@@ -30,10 +31,11 @@ pipeline:
     image: gcr.io/mirrormedia-1470651750304/drone-cloud-sdk:latest
     secrets: [google_credentials]
     commands:
-    - gcloud source repos clone default ../default
-    - cp ../default/readr-restful/production/main.json ./config/main.json
-    - cp ../default/readr-restful/production/.kube.yml ./.kube.yml
-    - cp ../default/readr-restful/*.html ./config/
+    - gcloud source repos clone configs rr-configs
+    - cp rr-configs/readr-media/readr-restful/prod/main.json ./config/main.json
+    - cp rr-configs/readr-media/readr-restful/prod/.kube.yml ./.kube.yml
+    - cp rr-configs/readr-media/readr-restful/*.html ./config/
+    - rm -rf rr-configs
     when:
       event: [push]
       branch: [stage]
