@@ -43,10 +43,10 @@ func TestPromotionHandlerList(t *testing.T) {
 		err      string
 	}{
 		// Should we use gomock.Any() to replace &ListParams{}?
-		{"default-params", http.StatusOK, `/promotions`, &ListParams{MaxResult: 15, Page: 1, Sort: "-created_at", Active: map[string][]int{"$in": []int{1}}}, ``},
-		{"max-result", http.StatusOK, `/promotions?max_result=25`, &ListParams{MaxResult: 25, Page: 1, Sort: "-created_at", Active: map[string][]int{"$in": []int{1}}}, ``},
-		{"page", http.StatusOK, `/promotions?page=7`, &ListParams{MaxResult: 15, Page: 7, Sort: "-created_at", Active: map[string][]int{"$in": []int{1}}}, ``},
-		{"modify-invalid-sort", http.StatusOK, `/promotions?sort=updated_by`, &ListParams{MaxResult: 15, Page: 1, Sort: "-created_at", Active: map[string][]int{"$in": []int{1}}}, ``},
+		{"default-params", http.StatusOK, `/promotions`, &ListParams{MaxResult: 15, Page: 1, Sort: "-created_at", Active: map[string][]int{"$in": []int{config.Config.Models.Promotions["active"]}}}, ``},
+		{"max-result", http.StatusOK, `/promotions?max_result=25`, &ListParams{MaxResult: 25, Page: 1, Sort: "-created_at", Active: map[string][]int{"$in": []int{config.Config.Models.Promotions["active"]}}}, ``},
+		{"page", http.StatusOK, `/promotions?page=7`, &ListParams{MaxResult: 15, Page: 7, Sort: "-created_at", Active: map[string][]int{"$in": []int{config.Config.Models.Promotions["active"]}}}, ``},
+		{"modify-invalid-sort", http.StatusOK, `/promotions?sort=updated_by`, &ListParams{MaxResult: 15, Page: 1, Sort: "-created_at", Active: map[string][]int{"$in": []int{config.Config.Models.Promotions["active"]}}}, ``},
 		{"active", http.StatusOK, `/promotions?active=$in:0,1`, &ListParams{MaxResult: 15, Page: 1, Sort: "-created_at", Active: map[string][]int{"$in": []int{0, 1}}}, ``},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
