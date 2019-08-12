@@ -470,7 +470,7 @@ func (a *reportAPI) UpdateAuthors(reportID int, authorIDs []int) (err error) {
 
 func (a *reportAPI) SchedulePublish() (ids []int, err error) {
 
-	rows, err := DB.Queryx(fmt.Sprintf("SELECT id FROM posts WHERE publish_status=3 AND published_at <= cast(now() as datetime) AND type = %d;", config.Config.Models.PostType["report"]))
+	rows, err := DB.Queryx(fmt.Sprintf("SELECT post_id FROM posts WHERE publish_status=3 AND published_at <= cast(now() as datetime) AND type = %d;", config.Config.Models.PostType["report"]))
 	if err != nil {
 		log.Println("Getting report error when schedule publishing reports", err)
 		return ids, err
