@@ -3,8 +3,10 @@ package http
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
@@ -12,6 +14,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/pkg/promotion"
 	"github.com/readr-media/readr-restful/pkg/promotion/mock"
@@ -40,10 +43,11 @@ func TestPromotionHandlerList(t *testing.T) {
 		err      string
 	}{
 		// Should we use gomock.Any() to replace &ListParams{}?
-		{"default-params", http.StatusOK, `/promotions`, &ListParams{MaxResult: 15, Page: 1, Sort: "-created_at"}, ``},
-		{"max-result", http.StatusOK, `/promotions?max_result=25`, &ListParams{MaxResult: 25, Page: 1, Sort: "-created_at"}, ``},
-		{"page", http.StatusOK, `/promotions?page=7`, &ListParams{MaxResult: 15, Page: 7, Sort: "-created_at"}, ``},
-		{"modify-invalid-sort", http.StatusOK, `/promotions?sort=updated_by`, &ListParams{MaxResult: 15, Page: 1, Sort: "-created_at"}, ``},
+		{"default-params", http.StatusOK, `/promotions`, &ListParams{MaxResult: 15, Page: 1, Sort: "-created_at", Active: map[string][]int{"$in": []int{config.Config.Models.Promotions["active"]}}}, ``},
+		{"max-result", http.StatusOK, `/promotions?max_result=25`, &ListParams{MaxResult: 25, Page: 1, Sort: "-created_at", Active: map[string][]int{"$in": []int{config.Config.Models.Promotions["active"]}}}, ``},
+		{"page", http.StatusOK, `/promotions?page=7`, &ListParams{MaxResult: 15, Page: 7, Sort: "-created_at", Active: map[string][]int{"$in": []int{config.Config.Models.Promotions["active"]}}}, ``},
+		{"modify-invalid-sort", http.StatusOK, `/promotions?sort=updated_by`, &ListParams{MaxResult: 15, Page: 1, Sort: "-created_at", Active: map[string][]int{"$in": []int{config.Config.Models.Promotions["active"]}}}, ``},
+		{"active", http.StatusOK, `/promotions?active=$in:0,1`, &ListParams{MaxResult: 15, Page: 1, Sort: "-created_at", Active: map[string][]int{"$in": []int{0, 1}}}, ``},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
@@ -213,4 +217,11 @@ func TestPromotionHandlerDelete(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestMain(m *testing.M) {
+	if err := config.LoadConfig("../../../config", ""); err != nil {
+		panic(fmt.Errorf("Invalid application configuration: %s", err))
+	}
+	os.Exit(m.Run())
 }

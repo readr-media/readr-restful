@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/pkg/promotion"
@@ -20,6 +21,32 @@ func bind(c *gin.Context, params *ListParams) (err error) {
 	if err = c.ShouldBindQuery(params); err != nil {
 		return err
 	}
+	if c.Query("active") != "" {
+		actives := strings.Split(c.Query("active"), "::")
+		if len(actives) > 0 {
+			for _, statement := range actives {
+				splitStatement := strings.Split(statement, ":")
+				if len(splitStatement) != 2 {
+					continue
+				}
+				operator := splitStatement[0]
+				splitValues := strings.Split(splitStatement[1], ",")
+				var values []int
+				for _, v := range splitValues {
+					value, err := strconv.ParseInt(v, 10, 64)
+					if err != nil {
+						continue
+					}
+					// If value is not valid active, skip it
+					if isValidActive(int(value)) {
+						values = append(values, int(value))
+					}
+				}
+				params.Active[operator] = values
+			}
+		}
+	}
+
 	// Validate query paramters
 	if err := params.validate(); err != nil {
 		if err.Error() == "invalid sort" {
@@ -30,6 +57,7 @@ func bind(c *gin.Context, params *ListParams) (err error) {
 	return nil
 }
 
+// List is the controller returning promotion list to clients
 func (h *Handler) List(c *gin.Context) {
 
 	// Get a default filter pointer struct
@@ -40,6 +68,7 @@ func (h *Handler) List(c *gin.Context) {
 			p.Page = 1
 			p.Sort = "-created_at"
 
+			p.Active = make(map[string][]int)
 			return nil
 		},
 	)
@@ -63,6 +92,7 @@ func (h *Handler) List(c *gin.Context) {
 // func (h *Handler) Get(c *gin.Context) {
 // }
 
+// Post is the controller handling POST method
 func (h *Handler) Post(c *gin.Context) {
 
 	var promo = promotion.Promotion{}
@@ -97,6 +127,7 @@ func (h *Handler) Post(c *gin.Context) {
 	c.Status(http.StatusCreated)
 }
 
+// Put is the controller handling UPDATE with PUT method
 func (h *Handler) Put(c *gin.Context) {
 
 	var promo = promotion.Promotion{}
@@ -125,6 +156,7 @@ func (h *Handler) Put(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// Delete handles DELETE method by setting active to 0
 func (h *Handler) Delete(c *gin.Context) {
 
 	id, err := strconv.ParseUint(c.Param("id"), 10, 64)
