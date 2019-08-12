@@ -15,28 +15,42 @@ pipeline:
       event: [push]
       branch: [master, dev, stage]
 
-  get_config:
+  get_config_dev:
     image: gcr.io/mirrormedia-1470651750304/drone-cloud-sdk:latest
     secrets: [google_credentials]
     commands:
-    - gcloud source repos clone default ../default
-    - cp ../default/readr-restful/dev/main.json ./config/main.json
-    - cp ../default/readr-restful/*.html ./config/
+    - gcloud source repos clone configs rr-configs
+    - cp rr-configs/readr-media/readr-restful/dev/main.json ./config/main.json
+    - cp rr-configs/readr-media/readr-restful/*.html ./config/
+    - rm -rf rr-configs
     when:
-      event: [push]
+      event: [push, pull_request]
       branch: [dev]
 
   get_stage_config:
     image: gcr.io/mirrormedia-1470651750304/drone-cloud-sdk:latest
     secrets: [google_credentials]
     commands:
-    - gcloud source repos clone default ../default
-    - cp ../default/readr-restful/production/main.json ./config/main.json
-    - cp ../default/readr-restful/production/.kube.yml ./.kube.yml
-    - cp ../default/readr-restful/*.html ./config/
+    - gcloud source repos clone configs rr-configs
+    - cp rr-configs/readr-media/readr-restful/prod/main.json ./config/main.json
+    - cp rr-configs/readr-media/readr-restful/prod/.kube.yml ./.kube.yml
+    - cp rr-configs/readr-media/readr-restful/*.html ./config/
+    - rm -rf rr-configs
     when:
       event: [push]
       branch: [stage]
+
+  pull_request_test:
+    image: golang:1.12-alpine
+    environment:
+      - GO111MODULE=on
+    commands:
+    - apk add --update git make
+    - make deps
+    - make test
+    when:
+      event: [pull_request]
+      branch: [dev]
 
   builds:
     image: golang:1.12-alpine
@@ -110,6 +124,23 @@ pipeline:
     when:
       event: [push]
       branch: stage
+
+  pr_test_fail: 
+    image: plugins/slack
+    channel: jenkins
+    secrets: [slack_webhook]
+    username: drone
+    icon_url: https://avatars2.githubusercontent.com/u/2181346?s=200&v=4
+    when:
+      status: [success, failure]
+      event: [pull_request]
+      branch: [dev]
+    template: >
+      {{# success build.status}}
+        The pull request *passes* tests. Please review the <https://github.com/{{repo.owner}}/{{repo.name}}/pull/{{build.pull}}|pull request>
+      {{else}}
+        The pull request *failed* tests. Please modify your <https://github.com/{{repo.owner}}/{{repo.name}}/pull/{{build.pull}}|commit>
+      {{/success}}
 
   finish_slack:
     image: plugins/slack
