@@ -226,6 +226,7 @@ func (g *GetFollowingArgs) getPostDetails(items []FollowingItem) (result []Follo
 	}
 
 	posts, err := PostAPI.GetPosts(&PostArgs{
+		ProjectID:    -1,
 		IDs:          ids,
 		Active:       map[string][]int{"in": []int{config.Config.Models.Posts["active"]}},
 		MaxResult:    uint8(len(ids)),

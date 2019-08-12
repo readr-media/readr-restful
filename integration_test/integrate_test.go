@@ -4,14 +4,18 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"os"
+	"regexp"
 	"strconv"
 	"testing"
 
 	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
@@ -21,9 +25,9 @@ import (
 )
 
 var r *gin.Engine
+var update = flag.Bool("update", false, "update .golden files")
 
 func TestMain(m *testing.M) {
-
 	if err := config.LoadConfig("../config", "integration_test"); err != nil {
 		panic(fmt.Errorf("Invalid application configuration: %s", err))
 	}
@@ -41,12 +45,15 @@ func TestMain(m *testing.M) {
 
 	// Init Redis connetions
 	models.RedisConn(map[string]string{
-		"url":      fmt.Sprint(config.Config.Redis.Host, ":", config.Config.Redis.Port),
-		"password": fmt.Sprint(config.Config.Redis.Password),
+		"read_url":  fmt.Sprint(config.Config.Redis.ReadURL),
+		"write_url": fmt.Sprint(config.Config.Redis.WriteURL),
+		"password":  fmt.Sprint(config.Config.Redis.Password),
 	})
 
-	models.Algolia.Init()
 	models.InitPostCache()
+
+	// Init SearchFeed
+	models.SearchFeed.Init(false)
 
 	// Set gin routings
 	gin.SetMode(gin.TestMode)
@@ -91,6 +98,30 @@ func genericDoRequest(tc genericRequestTestcase, t *testing.T) (int, string) {
 	return w.Code, w.Body.String()
 }
 
+func genericDoRequestByte(tc genericRequestTestcase, t *testing.T) (int, []byte) {
+	w := httptest.NewRecorder()
+	jsonStr := []byte{}
+	if s, ok := tc.body.(string); ok {
+		jsonStr = []byte(s)
+	} else {
+		p, err := json.Marshal(tc.body)
+		if err != nil {
+			t.Errorf("%s, Error when marshaling input parameters", tc.name)
+		}
+		jsonStr = p
+	}
+	req, _ := http.NewRequest(tc.method, tc.url, bytes.NewBuffer(jsonStr))
+	if tc.method == "GET" {
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	} else {
+		req.Header.Set("Content-Type", "application/json")
+	}
+
+	r.ServeHTTP(w, req)
+
+	return w.Code, w.Body.Bytes()
+}
+
 func flushDB() {
 	var tableNames []string
 	models.DB.Select(&tableNames, `SELECT table_name FROM INFORMATION_SCHEMA.tables WHERE table_schema = 'memberdb'`)
@@ -112,7 +143,7 @@ func flushDB() {
 	}
 }
 func resetRedisKeyHelper(t *testing.T, name string, keys []string) {
-	conn := models.RedisHelper.Conn()
+	conn := models.RedisHelper.WriteConn()
 	defer conn.Close()
 	for _, v := range keys {
 		_, err := conn.Do("DEL", v)
@@ -138,4 +169,83 @@ func assertStringHelper(t *testing.T, name string, subject string, want string, 
 	if want != get {
 		t.Errorf("%s expect %s to be %s but get %s", name, subject, want, get)
 	}
+}
+func assertByteHelper(t *testing.T, name string, subject string, want []byte, get []byte) {
+	if !bytes.Equal(want, get) {
+		t.Errorf("%s expect %s to be %s but get %s", name, subject, want, get)
+	}
+}
+
+type Golden struct {
+	update bool
+}
+
+func (g *Golden) SetUpdate(update bool) {
+	g.update = update
+}
+func (g *Golden) Assert(t *testing.T, actualData []byte) {
+	if g.update {
+		err := g.Update(t.Name(), actualData)
+		if err != nil {
+			t.Errorf("failed to update golden file: %s", err)
+		}
+	} else {
+		err := g.Compare(t.Name(), actualData)
+		if err != nil {
+			t.Errorf(err.Error())
+		}
+	}
+}
+
+func (g *Golden) Update(name string, actualData []byte) error {
+	if err := g.ensureDir(filepath.Dir(g.goldenFileName(name))); err != nil {
+		return err
+	}
+	return ioutil.WriteFile(g.goldenFileName(name), actualData, 0644)
+}
+
+func (g *Golden) goldenFileName(name string) string {
+	return filepath.Join("testdata", filepath.FromSlash(name)+".golden")
+}
+
+func (g *Golden) ensureDir(path string) error {
+	s, err := os.Stat(path)
+	switch {
+	case err != nil && os.IsNotExist(err):
+		// the location does not exist, so make directories to there
+		return os.MkdirAll(path, 0755)
+	case err == nil && !s.IsDir():
+		return fmt.Errorf("testdata is a file")
+	}
+
+	return err
+}
+
+func (g *Golden) Compare(name string, actualData []byte) error {
+	expectedData, err := ioutil.ReadFile(g.goldenFileName(name))
+
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("FileNotExist")
+		}
+
+		return fmt.Errorf("ReadFileError: %s", err.Error())
+	}
+
+	if !bytes.Equal(g.trimTime(actualData), g.trimTime(expectedData)) {
+		return fmt.Errorf(
+			"Result did not match the golden fixture.\n"+
+				"Expected: %s\n"+
+				"Got: %s",
+			string(expectedData),
+			string(actualData))
+	}
+
+	return nil
+}
+
+func (g *Golden) trimTime(s []byte) []byte {
+	var re = regexp.MustCompile(`[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z`)
+	trimed := re.ReplaceAllString(string(s), "")
+	return []byte(trimed)
 }

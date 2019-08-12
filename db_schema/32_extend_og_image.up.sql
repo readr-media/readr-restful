@@ -1,0 +1,3 @@
+ALTER TABLE posts MODIFY COLUMN og_image varchar(512) DEFAULT NULL;
+ALTER TABLE projects MODIFY COLUMN og_image varchar(512) DEFAULT NULL;
+ALTER TABLE comments MODIFY COLUMN og_image varchar(512) DEFAULT NULL;

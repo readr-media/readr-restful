@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"encoding/json"
 	"net/http"
 
 	"github.com/garyburd/redigo/redis"
@@ -16,6 +15,9 @@ import (
 )
 
 func TestPost(t *testing.T) {
+
+	gd := Golden{}
+	gd.SetUpdate(*update)
 
 	var mockedPosts = []models.Post{
 		models.Post{
@@ -75,6 +77,10 @@ func TestPost(t *testing.T) {
 			if err != nil {
 				t.Fatalf("init post data fail: %s ", err.Error())
 			}
+			err = models.PostAPI.UpdateAuthors(v, []models.AuthorInput{models.AuthorInput{MemberID: v.Author, Type: models.NullInt{0, true}}})
+			if err != nil {
+				t.Fatalf("init post author fail: %s ", err.Error())
+			}
 		}
 		for _, v := range mockedMembers {
 			_, err := models.MemberAPI.InsertMember(v)
@@ -100,26 +106,16 @@ func TestPost(t *testing.T) {
 			genericRequestTestcase{"NotExisted", "GET", `/post/12345`, `{"Error":"Post Not Found"}`, http.StatusNotFound, `{"Error":"Post Not Found"}`, nil},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
-				code, resp := genericDoRequest(tc, t)
+				code, resp := genericDoRequestByte(tc, t)
 
 				assertIntHelper(t, tc.name, "status code", tc.httpcode, code)
+
 				if statusCodeOKHelper(code) {
-					var Response struct {
-						Items []models.TaggedPostMember `json:"_items"`
-					}
-					err := json.Unmarshal([]byte(resp), &Response)
-					if err != nil {
-						t.Errorf("%s, Unexpected result body: %v", resp)
-					}
-					var expected []models.Post = tc.misc[0].([]models.Post)
-					assertIntHelper(t, tc.name, "result length", len(expected), len(Response.Items))
-					for i, r := range Response.Items {
-						assertIntHelper(t, tc.name, "post ID", int(expected[i].ID), int(r.Post.ID))
-						assertStringHelper(t, tc.name, "post title", expected[i].Title.String, r.Post.Title.String)
-					}
+					gd.Assert(t, resp)
 				} else {
-					assertStringHelper(t, tc.name, "request result", tc.resp, resp)
+					assertByteHelper(t, tc.name, "request result", []byte(tc.resp), resp)
 				}
+
 			})
 		}
 	})
@@ -127,10 +123,10 @@ func TestPost(t *testing.T) {
 	t.Run("InsertPost", func(t *testing.T) {
 		defer init()()
 		for _, tc := range []genericRequestTestcase{
-			genericRequestTestcase{"New", "POST", `/post`, `{"author":1, "title":"New Post", "type":0}`, http.StatusOK, ``, []interface{}{"New Post"}},
+			genericRequestTestcase{"New", "POST", `/post`, `{"authors":[{"member_id":1,"author_type":0}], "title":"New Post", "type":0}`, http.StatusOK, ``, []interface{}{"New Post"}},
 			genericRequestTestcase{"EmptyPayload", "POST", `/post`, `{}`, http.StatusBadRequest, `{"Error":"Invalid Post"}`, []interface{}{}},
-			genericRequestTestcase{"WithTags", "POST", `/post`, `{"author":1, "title":"Post with tags", "tags":[1,2], "type":0}`, http.StatusOK, ``, []interface{}{"Post with tags", `1:tag1,2:tag2`}},
-			genericRequestTestcase{"WithPorojectID", "POST", `/post`, `{"author":1, "title":"Post with project id", "type":4, "project_id":100001, "type":0}`, http.StatusOK, ``, []interface{}{"Post with project id", 100001}},
+			genericRequestTestcase{"WithTags", "POST", `/post`, `{"authors":[{"member_id":1,"author_type":0}], "title":"Post with tags", "tags":[1,2], "type":0}`, http.StatusOK, ``, []interface{}{"Post with tags", `1:tag1,2:tag2`}},
+			genericRequestTestcase{"WithPorojectID", "POST", `/post`, `{"authors":[{"member_id":1,"author_type":0}], "title":"Post with project id", "type":4, "project_id":100001, "type":0}`, http.StatusOK, ``, []interface{}{"Post with project id", 100001}},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
 				code, resp := genericDoRequest(tc, t)
@@ -139,20 +135,13 @@ func TestPost(t *testing.T) {
 				assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 
 				if statusCodeOKHelper(code) {
-					result, err := models.PostAPI.GetPosts(&models.PostArgs{
-						MaxResult: 1,
-						Sorting:   "-post_id",
-						ShowTag:   true,
-					})
-					if err != nil {
-						t.Fatalf("Error getting latest posts")
-					}
-					assertStringHelper(t, tc.name, "title", tc.misc[0].(string), result[0].Title.String)
-					if tc.name == "WithTags" {
-						assertStringHelper(t, tc.name, "tag string", tc.misc[1].(string), result[0].Tags.String)
-					} else if tc.name == "WithPorojectID" {
-						assertIntHelper(t, tc.name, "project_id", tc.misc[1].(int), int(result[0].ProjectID.Int))
-					}
+					vCode, vResp := genericDoRequestByte(genericRequestTestcase{
+						name:   "InsertPostVarification",
+						method: "GET",
+						url:    `/posts?sort=-post_id&show_tag=1&project_id=-1&max_result=1`}, t)
+
+					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
+					gd.Assert(t, vResp)
 				}
 			})
 		}
@@ -162,11 +151,11 @@ func TestPost(t *testing.T) {
 		defer init()()
 		for _, tc := range []genericRequestTestcase{
 			genericRequestTestcase{"UpdateCurrent", "PUT", `/post`, `{"id":1,"title":"Updated Title", "updated_by":1}`, http.StatusOK, ``, []interface{}{"Updated Title"}},
-			genericRequestTestcase{"NotExisted", "PUT", `/post`, `{"id":12345, "author":1}`, http.StatusBadRequest, `{"Error":"Post Not Found"}`, nil},
+			genericRequestTestcase{"NotExisted", "PUT", `/post`, `{"id":12345, "authors":[{"member_id":1,"author_type":0}]}`, http.StatusBadRequest, `{"Error":"Post Not Found"}`, nil},
 			genericRequestTestcase{"WithoutUpdater", "PUT", `/post`, `{"id":1,"title":""}`, http.StatusBadRequest, `{"Error":"Neither updated_by or author is valid"}`, nil},
 			genericRequestTestcase{"UpdateTags", "PUT", `/post`, `{"id":1, "tags":[3], "title":"UpdateTags", "updated_by":1}`, http.StatusOK, ``, []interface{}{"3:tag3"}},
 			genericRequestTestcase{"DeleteTags", "PUT", `/post`, `{"id":1, "tags":[], "title":"DeleteTags", "updated_by":1}`, http.StatusOK, ``, []interface{}{""}},
-			genericRequestTestcase{"UpdateProjectID", "PUT", `/post`, `{"id":1, "author":1, "project_id":100002}`, http.StatusOK, ``, []interface{}{100002}},
+			genericRequestTestcase{"UpdateProjectID", "PUT", `/post`, `{"id":1, "authors":[{"member_id":1,"author_type":0}], "project_id":100002}`, http.StatusOK, ``, []interface{}{100002}},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
 				code, resp := genericDoRequest(tc, t)
@@ -175,21 +164,13 @@ func TestPost(t *testing.T) {
 				assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 
 				if statusCodeOKHelper(code) {
-					result, err := models.PostAPI.GetPosts(&models.PostArgs{
-						MaxResult: 1,
-						IDs:       []uint32{uint32(1)},
-						ShowTag:   true,
-					})
-					if err != nil {
-						t.Fatalf("Error getting latest posts")
-					}
-					if tc.name == "UpdateTags" || tc.name == "DeleteTags" {
-						assertStringHelper(t, tc.name, "tag string", tc.misc[0].(string), result[0].Tags.String)
-					} else if tc.name == "UpdateProjectID" {
-						assertIntHelper(t, tc.name, "project_id", tc.misc[0].(int), int(result[0].ProjectID.Int))
-					} else if tc.name == "UpdateCurrent" {
-						assertStringHelper(t, tc.name, "title", tc.misc[0].(string), result[0].Title.String)
-					}
+					vCode, vResp := genericDoRequestByte(genericRequestTestcase{
+						name:   "UpdatePostVarification",
+						method: "GET",
+						url:    `/posts?ids=[1]&show_tag=1&project_id=-1&max_result=1`}, t)
+
+					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
+					gd.Assert(t, vResp)
 				}
 			})
 		}
@@ -208,14 +189,13 @@ func TestPost(t *testing.T) {
 				assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 
 				if statusCodeOKHelper(code) {
-					result, err := models.PostAPI.GetPosts(&models.PostArgs{
-						MaxResult: 1,
-						IDs:       []uint32{uint32(1)},
-					})
-					if err != nil {
-						t.Fatalf("Error getting latest posts")
-					}
-					assertIntHelper(t, tc.name, "post active", int(result[0].Post.Active.Int), tc.misc[0].(int))
+					vCode, vResp := genericDoRequestByte(genericRequestTestcase{
+						name:   "DeletePostVarification",
+						method: "GET",
+						url:    `/posts?ids=[1]&project_id=-1&max_result=1`}, t)
+
+					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
+					gd.Assert(t, vResp)
 				}
 			})
 		}
@@ -223,6 +203,9 @@ func TestPost(t *testing.T) {
 }
 
 func TestPosts(t *testing.T) {
+
+	gd := Golden{}
+	gd.SetUpdate(*update)
 
 	var mockedPosts = []models.Post{
 		models.Post{
@@ -303,6 +286,10 @@ func TestPosts(t *testing.T) {
 				fmt.Print(err.Error())
 				t.Fatalf("init post data fail: %s ", err.Error())
 			}
+			err = models.PostAPI.UpdateAuthors(v, []models.AuthorInput{models.AuthorInput{MemberID: v.Author, Type: models.NullInt{0, true}}})
+			if err != nil {
+				t.Fatalf("init post author fail: %s ", err.Error())
+			}
 		}
 		for _, v := range mockedMembers {
 			_, err := models.MemberAPI.InsertMember(v)
@@ -341,36 +328,14 @@ func TestPosts(t *testing.T) {
 				[]interface{}{[]models.Post{mockedPosts[2], mockedPosts[1], mockedPosts[0]}, []string{"test_member_02", "test_member_01", "test_member_01"}}},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
-				code, resp := genericDoRequest(tc, t)
+				code, resp := genericDoRequestByte(tc, t)
 
 				assertIntHelper(t, tc.name, "status code", tc.httpcode, code)
 
 				if statusCodeOKHelper(code) {
-					var Response struct {
-						Items []models.TaggedPostMember `json:"_items"`
-					}
-					err := json.Unmarshal([]byte(resp), &Response)
-					if err != nil {
-						t.Errorf("%s, Unexpected result body: %v", resp)
-					}
-					var expected []models.Post = tc.misc[0].([]models.Post)
-
-					assertIntHelper(t, tc.name, "result length", len(expected), len(Response.Items))
-
-					for i, r := range Response.Items {
-
-						assertIntHelper(t, tc.name, "post ID", int(expected[i].ID), int(r.Post.ID))
-						assertStringHelper(t, tc.name, "post title", expected[i].Title.String, r.Post.Title.String)
-
-						if tc.name == "ShowDetails" {
-
-							assertStringHelper(t, tc.name, "author name", tc.misc[1].([]string)[i], r.Member.Nickname.String)
-							assertStringHelper(t, tc.name, "tags", "", r.Tags.String)
-
-						}
-					}
+					gd.Assert(t, resp)
 				} else {
-					assertStringHelper(t, tc.name, "request result", tc.resp, resp)
+					assertByteHelper(t, tc.name, "request result", []byte(tc.resp), resp)
 				}
 			})
 		}
@@ -385,29 +350,14 @@ func TestPosts(t *testing.T) {
 				mockedPosts[2], mockedPosts[1], mockedPosts[0]}}},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
-				code, resp := genericDoRequest(tc, t)
+				code, resp := genericDoRequestByte(tc, t)
 
 				assertIntHelper(t, tc.name, "status code", tc.httpcode, code)
 
 				if statusCodeOKHelper(code) {
-					var Response struct {
-						Items []models.TaggedPostMember `json:"_items"`
-					}
-					err := json.Unmarshal([]byte(resp), &Response)
-					if err != nil {
-						t.Errorf("%s, Unexpected result body: %v", resp)
-					}
-					var expected []models.Post = tc.misc[0].([]models.Post)
-
-					assertIntHelper(t, tc.name, "result length", len(expected), len(Response.Items))
-
-					for i, r := range Response.Items {
-
-						assertIntHelper(t, tc.name, "post ID", int(expected[i].ID), int(r.Post.ID))
-						assertStringHelper(t, tc.name, "post title", expected[i].Title.String, r.Post.Title.String)
-					}
+					gd.Assert(t, resp)
 				} else {
-					assertStringHelper(t, tc.name, "request result", tc.resp, resp)
+					assertByteHelper(t, tc.name, "request result", []byte(tc.resp), resp)
 				}
 			})
 		}
@@ -427,16 +377,13 @@ func TestPosts(t *testing.T) {
 				assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 
 				if statusCodeOKHelper(code) {
-					result, err := models.PostAPI.GetPosts(&models.PostArgs{
-						MaxResult: 1,
-						IDs:       tc.misc[0].([]uint32),
-					})
-					if err != nil {
-						t.Fatalf("Error getting latest posts")
-					}
-					for _, post := range result {
-						assertIntHelper(t, tc.name, "post active", 0, int(post.Active.Int))
-					}
+					vCode, vResp := genericDoRequestByte(genericRequestTestcase{
+						name:   "DeletePostsVarification",
+						method: "GET",
+						url:    `/posts`}, t)
+
+					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
+					gd.Assert(t, vResp)
 				}
 			})
 		}
@@ -456,16 +403,13 @@ func TestPosts(t *testing.T) {
 				assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 
 				if statusCodeOKHelper(code) {
-					result, err := models.PostAPI.GetPosts(&models.PostArgs{
-						MaxResult: 1,
-						IDs:       tc.misc[0].([]uint32),
-					})
-					if err != nil {
-						t.Fatalf("Error getting latest posts")
-					}
-					for _, post := range result {
-						assertIntHelper(t, tc.name, "post publish_status", 2, int(post.PublishStatus.Int))
-					}
+					vCode, vResp := genericDoRequestByte(genericRequestTestcase{
+						name:   "UpdatePostsVarification",
+						method: "GET",
+						url:    `/posts`}, t)
+
+					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
+					gd.Assert(t, vResp)
 				}
 			})
 		}
@@ -500,12 +444,11 @@ func TestPosts(t *testing.T) {
 			t.Run(tc.name, func(t *testing.T) {
 
 				code, resp := genericDoRequest(tc, t)
-				var expected []models.Post = tc.misc[0].([]models.Post)
 
 				assertIntHelper(t, tc.name, "status code", tc.httpcode, code)
 				assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 
-				conn := models.RedisHelper.Conn()
+				conn := models.RedisHelper.ReadConn()
 				defer conn.Close()
 
 				res, err := redis.Values(conn.Do("hgetall", "postcache_hot"))
@@ -518,23 +461,18 @@ func TestPosts(t *testing.T) {
 					t.Fatalf("Error scan redis hash to slice: %v", err)
 				}
 
-				assertIntHelper(t, tc.name, "result length", len(expected), len(redisBytes)/2)
-				for i, redisByte := range redisBytes {
-
-					if i%2 != 0 {
-						index := (i - 1) / 2
-						var post_cache models.TaggedPostMember
-
-						if err := json.Unmarshal(redisByte, &post_cache); err != nil {
-							t.Fatalf("Error scan redis comment notification: %s , %v", string(redisByte), err)
-						}
-
-						assertIntHelper(t, tc.name, "post ID", int(expected[index].ID), int(post_cache.Post.ID))
-						assertStringHelper(t, tc.name, "post title", expected[index].Title.String, post_cache.Post.Title.String)
-
-					}
+				// concat append redisBytes to []byte
+				var totalLen int
+				for _, s := range redisBytes {
+					totalLen += len(s)
+				}
+				redisBytesAll := make([]byte, totalLen)
+				var i int
+				for _, s := range redisBytes {
+					i += copy(redisBytesAll[i:], s)
 				}
 
+				gd.Assert(t, redisBytesAll)
 			})
 		}
 	})
