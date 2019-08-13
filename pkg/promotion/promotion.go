@@ -28,12 +28,14 @@ type Promotion struct {
 type ListParams interface {
 	Parse()
 	Select() (string, []interface{}, error)
+	Count() (string, []interface{}, error)
 }
 
 // DataLayer is the database interface that allow dependency injection for testing
 //go:generate mockgen -package=mock -destination=mock/mock.go github.com/readr-media/readr-restful/pkg/promotion DataLayer
 type DataLayer interface {
 	Get(params ListParams) (results []Promotion, err error)
+	Count(params ListParams) (count int, err error)
 	Insert(p Promotion) (int, error)
 	Update(p Promotion) error
 	Delete(id uint64) error
