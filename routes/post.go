@@ -200,6 +200,14 @@ func (r *postHandler) Post(c *gin.Context) {
 		}
 	}
 
+	// Assign post.authors to post.author when post.authors is empty
+	// This is a temporary measure before fe complete the author assignment in the insert post API
+	if post.Post.Author.Valid && len(post.Authors) == 0 {
+		post.Authors = append(post.Authors, models.AuthorInput{
+			MemberID: post.Post.Author,
+			Type:     models.NullInt{Int: 0, Valid: true},
+		})
+	}
 	if len(post.Authors) > 0 {
 		post.Post.ID = uint32(postID)
 		err = models.PostAPI.UpdateAuthors(post.Post, post.Authors)
