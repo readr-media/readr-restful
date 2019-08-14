@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/config"
+	rt "github.com/readr-media/readr-restful/internal/router"
 	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/utils"
 )
@@ -74,19 +75,35 @@ func bindKeywordsArgs(c *gin.Context, params *models.GetMembersKeywordsArgs) (er
 func (r *memberHandler) GetAll(c *gin.Context) {
 
 	var args = &models.MemberArgs{}
-	if err := r.bindQuery(c, args); err != nil {
+	err := r.bindQuery(c, args)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
 	if args.Active == nil {
 		args.DefaultActive()
 	}
-	result, err := models.MemberAPI.GetMembers(args)
+	var results struct {
+		Items []models.Member  `json:"_items"`
+		Meta  *rt.ResponseMeta `json:"_meta,omitempty"`
+	}
+	results.Items, err = models.MemberAPI.GetMembers(args)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"_items": result})
+	if args.Total {
+		totalMembers, err := models.MemberAPI.Count(args)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+			return
+		}
+		var MemberMeta = rt.ResponseMeta{
+			Total: &totalMembers,
+		}
+		results.Meta = &MemberMeta
+	}
+	c.JSON(http.StatusOK, results)
 }
 
 func (r *memberHandler) Get(c *gin.Context) {

@@ -125,6 +125,7 @@ type MemberArgs struct {
 	Active       map[string][]int `form:"active"`
 	IDs          []string         `form:"ids"`
 	UUIDs        []string         `form:"uuids"`
+	Total        bool             `form:"total"`
 	Fields       sqlfields
 
 	// For filter API
