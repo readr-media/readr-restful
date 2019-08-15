@@ -500,6 +500,7 @@ func (t *tagApi) UpdateTagging(resourceType int, targetID int, tagIDs []int) err
 
 	if resourceType == config.Config.Models.TaggingType["post"] {
 		post, err := PostAPI.GetPost(uint32(targetID), &PostArgs{
+			ProjectID:   -1,
 			ShowAuthor:  true,
 			ShowUpdater: true,
 			ShowTag:     true,
@@ -1132,6 +1133,7 @@ func (t *tagApi) GetPostReport(args *GetPostReportArgs) (results []LastPNRInterf
 			args.MaxResult = uint8(in.MaxResult + 1)
 			args.Sorting = in.Sorting
 			args.IDs = pl
+			args.ProjectID = -1
 			args.Filter = in.Filter
 			args.Active = map[string][]int{"$nin": []int{config.Config.Models.Reports["deactive"]}}
 			args.ShowAuthor = true

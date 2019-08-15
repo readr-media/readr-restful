@@ -217,6 +217,10 @@
             "comment": 0,
             "tag_follow": 0,
             "tagged_post": 0
+        },
+        "promotions": {
+            "active": 0,
+            "deactive": 0
         }
     },
     "readr_id": 0,

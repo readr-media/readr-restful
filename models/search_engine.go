@@ -111,7 +111,7 @@ type searchObject struct {
 	ObjectType string `json:"objectType"`
 }
 
-func (a *searchEngine) InsertPost(input []TaggedPostMember) error {
+func (s *searchEngine) InsertPost(input []TaggedPostMember) error {
 	type searchObject struct {
 		TaggedPostMember
 		ObjectType string `json:"objectType"`
@@ -124,12 +124,12 @@ func (a *searchEngine) InsertPost(input []TaggedPostMember) error {
 			log.Println("Marshal post error:", err.Error())
 			return err
 		}
-		a.insert(int(tpm.ID), typedString, "post")
+		s.insert(int(tpm.ID), typedString, "post")
 	}
 	return nil
 }
 
-func (a *searchEngine) InsertProject(input []ProjectAuthors) error {
+func (s *searchEngine) InsertProject(input []ProjectAuthors) error {
 	type searchObject struct {
 		ProjectAuthors
 		ObjectType string `json:"objectType"`
@@ -141,21 +141,21 @@ func (a *searchEngine) InsertProject(input []ProjectAuthors) error {
 			log.Println("Marshal post error:", err.Error())
 			return err
 		}
-		a.insert(int(tpm.Project.ID), typedString, "project")
+		s.insert(int(tpm.Project.ID), typedString, "project")
 	}
 	return nil
 }
 
-func (a *searchEngine) DeletePost(ids []int) error {
+func (s *searchEngine) DeletePost(ids []int) error {
 	for _, id := range ids {
-		a.delete(id, "post")
+		s.delete(id, "post")
 	}
 	return nil
 }
 
-func (a *searchEngine) DeleteProject(ids []int) error {
+func (s *searchEngine) DeleteProject(ids []int) error {
 	for _, id := range ids {
-		a.delete(id, "project")
+		s.delete(id, "project")
 	}
 	return nil
 }

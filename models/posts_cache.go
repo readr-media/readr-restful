@@ -25,6 +25,7 @@ type postCache struct {
 func assembleCachePost(postIDs []uint32) (posts []TaggedPostMember, err error) {
 
 	posts, err = PostAPI.GetPosts(&PostArgs{
+		ProjectID:    -1,
 		IDs:          postIDs,
 		ShowAuthor:   true,
 		ShowCommment: true,
@@ -378,7 +379,7 @@ func (c hottestPostCache) SyncFromDataStorage() {
 
 	fullCachePosts, err := assembleCachePost(hotPosts)
 	if err != nil {
-		fmt.Println("Error getting cache post when updating hot posts. PostIDs:", hotPosts)
+		fmt.Println("Error getting cache post when updating hot posts. HotPostIDs:", hotPosts)
 		return
 	}
 

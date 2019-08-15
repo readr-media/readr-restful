@@ -65,7 +65,9 @@ func (c notificationGenerator) GenerateCommentNotifications(comment InsertCommen
 
 	switch resourceName {
 	case "post":
+
 		post, err := PostAPI.GetPost(uint32(resourceID), &PostArgs{
+			ProjectID:  -1,
 			ShowAuthor: true,
 		})
 		if err != nil {

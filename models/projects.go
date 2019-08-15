@@ -153,17 +153,18 @@ func (p *GetProjectArgs) parseLimit() (limit map[string]string, values []interfa
 	restricts := make([]string, 0)
 	limit = make(map[string]string, 2)
 
-	tmp := strings.Split(p.Sorting, ",")
-	for i, v := range tmp {
-		if v := strings.TrimSpace(v); strings.HasPrefix(v, "-") {
-			tmp[i] = "-projects." + v[1:]
-		} else {
-			tmp[i] = "projects." + v
-		}
-	}
-	p.Sorting = strings.Join(tmp, ",")
-
 	if p.Sorting != "" {
+		tmp := strings.Split(p.Sorting, ",")
+		for i, v := range tmp {
+			if v := strings.TrimSpace(v); strings.HasPrefix(v, "-") {
+				tmp[i] = "-projects." + v[1:]
+			} else {
+				tmp[i] = "projects." + v
+			}
+		}
+
+		p.Sorting = strings.Join(tmp, ",")
+
 		restricts = append(restricts, fmt.Sprintf("ORDER BY %s", orderByHelper(p.Sorting)))
 		limit["order"] = fmt.Sprintf("ORDER BY %s", orderByHelper(p.Sorting))
 	}
@@ -489,6 +490,7 @@ func (a *projectAPI) GetContents(id int, args GetProjectArgs) (result []interfac
 
 	if len(postIDs) > 0 {
 		posts, err = PostAPI.GetPosts(&PostArgs{
+			ProjectID:    -1,
 			MaxResult:    uint8(args.MaxResult),
 			IDs:          postIDs,
 			ShowAuthor:   true,

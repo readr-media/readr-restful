@@ -639,8 +639,9 @@ func (a *postAPI) fetchPostAuthors(ids []int) (authors map[int][]AuthorBasic, er
 
 	for rows.Next() {
 		var authorb AuthorBasic
-		if err = rows.StructScan(&authorb); err != nil {
-			return authors, err
+		e := rows.StructScan(&authorb)
+		if e != nil {
+			return map[int][]AuthorBasic{}, err
 		}
 		authors[int(authorb.ResourceID.Int)] = append(authors[int(authorb.ResourceID.Int)], authorb)
 	}

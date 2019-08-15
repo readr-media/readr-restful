@@ -16,6 +16,10 @@ import (
 )
 
 func TestFollowing(t *testing.T) {
+
+	gd := Golden{}
+	gd.SetUpdate(*update)
+
 	var mockedFollowings = []routes.PubsubFollowMsgBody{
 		routes.PubsubFollowMsgBody{
 			Resource: "member",
@@ -187,6 +191,10 @@ func TestFollowing(t *testing.T) {
 			if err != nil {
 				t.Fatalf("init post data fail: %s ", err.Error())
 			}
+			err = models.PostAPI.UpdateAuthors(v, []models.AuthorInput{models.AuthorInput{MemberID: v.Author, Type: models.NullInt{0, true}}})
+			if err != nil {
+				t.Fatalf("init post author fail: %s ", err.Error())
+			}
 		}
 		for _, v := range mockedMembers {
 			_, err := models.MemberAPI.InsertMember(v)
@@ -238,27 +246,12 @@ func TestFollowing(t *testing.T) {
 			genericRequestTestcase{"FollowingBadType", "GET", `/following/user?resource=["post", "aaa"]&id=1`, ``, http.StatusBadRequest, `{"Error":"Bad Following Type"}`, nil},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
-				code, resp := genericDoRequest(tc, t)
+				code, resp := genericDoRequestByte(tc, t)
 				assertIntHelper(t, tc.name, "status code", tc.httpcode, code)
-				if statusCodeOKHelper(code) && tc.resp == "" {
-					var Response struct {
-						Items []struct {
-							Item struct {
-								ID int `json:"id"`
-							} `json:"item"`
-						} `json:"_items"`
-					}
-					err := json.Unmarshal([]byte(resp), &Response)
-					if err != nil {
-						t.Fatalf("%s, Unexpected result body: %v", resp)
-						return
-					}
-					var expected []routes.PubsubFollowMsgBody = tc.misc[0].([]routes.PubsubFollowMsgBody)
-					for i, r := range Response.Items {
-						assertIntHelper(t, tc.name, "following resource id", int(expected[i].Object), int(r.Item.ID))
-					}
+				if statusCodeOKHelper(code) {
+					gd.AssertOrUpdate(t, resp)
 				} else {
-					assertStringHelper(t, tc.name, "request result", tc.resp, resp)
+					assertByteHelper(t, tc.name, "request result", []byte(tc.resp), resp)
 				}
 			})
 		}
@@ -289,27 +282,12 @@ func TestFollowing(t *testing.T) {
 			genericRequestTestcase{"FollowedProjectInvalidEmotion", "GET", `/following/resource?resource=project&ids=[1,2]&resource_type=review&emotion=angry`, ``, http.StatusBadRequest, `{"Error":"Unsupported Emotion"}`, nil},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
-				code, resp := genericDoRequest(tc, t)
+				code, resp := genericDoRequestByte(tc, t)
 				assertIntHelper(t, tc.name, "status code", tc.httpcode, code)
-				if statusCodeOKHelper(code) && tc.resp == "" {
-					var Response struct {
-						Items []models.FollowedCount `json:"_items"`
-					}
-					err := json.Unmarshal([]byte(resp), &Response)
-					if err != nil {
-						t.Fatalf("%s, Unexpected result body: %v", resp)
-						return
-					}
-					var expected []models.FollowedCount = tc.misc[0].([]models.FollowedCount)
-					for i, r := range Response.Items {
-						assertIntHelper(t, tc.name, "followed resource id", int(expected[i].ResourceID), int(r.ResourceID))
-						assertIntHelper(t, tc.name, "followed count", int(expected[i].Count), int(r.Count))
-						for j, follower := range r.Followers {
-							assertIntHelper(t, tc.name, "follower id", int(expected[i].Followers[j]), int(follower))
-						}
-					}
+				if statusCodeOKHelper(code) {
+					gd.AssertOrUpdate(t, resp)
 				} else {
-					assertStringHelper(t, tc.name, "request result", tc.resp, resp)
+					assertByteHelper(t, tc.name, "request result", []byte(tc.resp), resp)
 				}
 			})
 		}
@@ -327,18 +305,12 @@ func TestFollowing(t *testing.T) {
 				code, resp := genericDoRequest(tctransed, t)
 				assertIntHelper(t, tc.name, "status code", tc.httpcode, code)
 				if statusCodeOKHelper(code) && tc.resp == "" {
-					rawResult, err := models.FollowingAPI.Get(&models.GetFollowingArgs{
-						MemberID:  2,
-						Mode:      "id",
-						TargetIDs: []int{tc.misc[1].(int)},
-						Resources: []string{tc.misc[0].(string)},
-					})
-					if err != nil {
-						t.Fatalf(fmt.Sprintf("Get Following error when testing %s", tc.name))
-					}
-					result := rawResult.([]int)
-					assertIntHelper(t, tc.name, "result length", 1, len(result))
-					assertIntHelper(t, tc.name, "following id", tc.misc[1].(int), result[0])
+					vCode, vResp := genericDoRequestByte(genericRequestTestcase{
+						name:   "InsertFollowVarification",
+						method: "GET",
+						url:    fmt.Sprintf(`/following/user?id=2&mode=id&resource=%s`, tc.misc[0].(string))}, t)
+					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
+					gd.AssertOrUpdate(t, vResp)
 				} else {
 					assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 				}
@@ -357,17 +329,12 @@ func TestFollowing(t *testing.T) {
 				code, resp := genericDoRequest(tctransed, t)
 				assertIntHelper(t, tc.name, "status code", tc.httpcode, code)
 				if statusCodeOKHelper(code) && tc.resp == "" {
-					rawResult, err := models.FollowingAPI.Get(&models.GetFollowingArgs{
-						MemberID:  1,
-						Mode:      "id",
-						TargetIDs: []int{tc.misc[1].(int)},
-						Resources: []string{tc.misc[0].(string)},
-					})
-					if err != nil {
-						t.Fatalf(fmt.Sprintf("Get Following error when testing %s", tc.name))
-					}
-					result := rawResult.([]int)
-					assertIntHelper(t, tc.name, "result length", 0, len(result))
+					vCode, vResp := genericDoRequestByte(genericRequestTestcase{
+						name:   "UnFollowVarification",
+						method: "GET",
+						url:    fmt.Sprintf(`/following/user?id=1&mode=id&resource=%s`, tc.misc[0].(string))}, t)
+					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
+					gd.AssertOrUpdate(t, vResp)
 				} else {
 					assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 				}
@@ -377,8 +344,8 @@ func TestFollowing(t *testing.T) {
 	t.Run("InsertEmotion", func(t *testing.T) {
 		defer init()()
 		for _, tc := range []genericRequestTestcase{
-			genericRequestTestcase{"LikePostOK", "insert", `/restful/pubsub`, `{"resource":"post","subject":2,"object":1,"emotion":"like"}`, http.StatusOK, ``, []interface{}{2, 2, []int64{1}, 1}}, //resourceType, memberID, objectID, emotion
-			genericRequestTestcase{"DislikePostOK", "insert", `/restful/pubsub`, `{"resource":"post","subject":2,"object":1,"emotion":"dislike"}`, http.StatusOK, ``, []interface{}{2, 2, []int64{1}, 2}},
+			genericRequestTestcase{"LikePostOK", "insert", `/restful/pubsub`, `{"resource":"post","subject":2,"object":1,"emotion":"like"}`, http.StatusOK, ``, []interface{}{"post", "like"}}, //resourceType, memberID, objectID, emotion
+			genericRequestTestcase{"DislikePostOK", "insert", `/restful/pubsub`, `{"resource":"post","subject":2,"object":1,"emotion":"dislike"}`, http.StatusOK, ``, []interface{}{"post", "dislike"}},
 			genericRequestTestcase{"LikeMemberFail", "insert", `/restful/pubsub`, `{"resource":"member","subject":2,"object":4}`, http.StatusOK, `{"Error":"Emotion Not Available For Member"}`, nil},
 			genericRequestTestcase{"UnknownEmotion", "insert", `/restful/pubsub`, `{"resource":"post","subject":2,"object":4,"emotion":"unknown"}`, http.StatusOK, `{"Error":"Unsupported Emotion"}`, nil},
 		} {
@@ -387,19 +354,15 @@ func TestFollowing(t *testing.T) {
 				code, resp := genericDoRequest(tctransed, t)
 				assertIntHelper(t, tc.name, "status code", tc.httpcode, code)
 				if statusCodeOKHelper(code) && tc.resp == "" {
-					rawResult, err := models.FollowingAPI.Get(&models.GetFollowedArgs{
-						tc.misc[2].([]int64),
-						models.Resource{
-							Emotion:    tc.misc[3].(int),
-							FollowType: tc.misc[0].(int),
-						},
-					})
-					if err != nil {
-						t.Fatalf(fmt.Sprintf("Get Following error when testing %s", tc.name))
-					}
-					result := rawResult.([]models.FollowedCount)
-					assertIntHelper(t, tc.name, "result length", 1, len(result))
-					assertIntHelper(t, tc.name, "emotion maker", tc.misc[1].(int), int(result[0].Followers[0]))
+					vCode, vResp := genericDoRequestByte(genericRequestTestcase{
+						name:   "InsertEmotionVarification",
+						method: "GET",
+						url: fmt.Sprintf(`/following/resource?resource=%s&ids=[1]&emotion=%s`,
+							tc.misc[0].(string),
+							tc.misc[1].(string),
+						)}, t)
+					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
+					gd.AssertOrUpdate(t, vResp)
 				} else {
 					assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 				}
@@ -409,26 +372,22 @@ func TestFollowing(t *testing.T) {
 	t.Run("UpdateEmotion", func(t *testing.T) {
 		defer init()()
 		for _, tc := range []genericRequestTestcase{
-			genericRequestTestcase{"UpdateEmotionOK", "update", `/restful/pubsub`, `{"resource":"post","subject":1,"object":2,"emotion":"dislike"}`, http.StatusOK, ``, []interface{}{2, 1, []int64{2}, 2}}, //resourceType, memberID, objectID, emotion
+			genericRequestTestcase{"UpdateEmotionOK", "update", `/restful/pubsub`, `{"resource":"post","subject":1,"object":2,"emotion":"dislike"}`, http.StatusOK, ``, []interface{}{"post", "dislike"}}, //resourceType, memberID, objectID, emotion
 		} {
 			t.Run(tc.name, func(t *testing.T) {
 				tctransed := transformCommentPubsubMsg(tc.name, "emotion", tc.method, []byte(tc.body.(string)))
 				code, resp := genericDoRequest(tctransed, t)
 				assertIntHelper(t, tc.name, "status code", tc.httpcode, code)
 				if statusCodeOKHelper(code) && tc.resp == "" {
-					rawResult, err := models.FollowingAPI.Get(&models.GetFollowedArgs{
-						tc.misc[2].([]int64),
-						models.Resource{
-							Emotion:    tc.misc[3].(int),
-							FollowType: tc.misc[0].(int),
-						},
-					})
-					if err != nil {
-						t.Fatalf(fmt.Sprintf("Get Following error when testing %s", tc.name))
-					}
-					result := rawResult.([]models.FollowedCount)
-					assertIntHelper(t, tc.name, "result length", 1, len(result))
-					assertIntHelper(t, tc.name, "emotion maker", tc.misc[1].(int), int(result[0].Followers[0]))
+					vCode, vResp := genericDoRequestByte(genericRequestTestcase{
+						name:   "UpdateEmotionVarification",
+						method: "GET",
+						url: fmt.Sprintf(`/following/resource?resource=%s&ids=[2]&emotion=%s`,
+							tc.misc[0].(string),
+							tc.misc[1].(string),
+						)}, t)
+					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
+					gd.AssertOrUpdate(t, vResp)
 				} else {
 					assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 				}
@@ -438,26 +397,23 @@ func TestFollowing(t *testing.T) {
 	t.Run("DeleteEmotion", func(t *testing.T) {
 		defer init()()
 		for _, tc := range []genericRequestTestcase{
-			genericRequestTestcase{"DeleteLikePostOK", "delete", `/restful/pubsub`, `{"resource":"post","subject":2,"object":1,"emotion":"like"}`, http.StatusOK, ``, []interface{}{2, []int64{1}, 1}}, //resourceType, memberID, objectID, emotion
-			genericRequestTestcase{"DeleteDislikePostOK", "delete", `/restful/pubsub`, `{"resource":"post","subject":2,"object":1,"emotion":"dislike"}`, http.StatusOK, ``, []interface{}{2, []int64{1}, 2}},
+			genericRequestTestcase{"DeleteLikePostOK", "delete", `/restful/pubsub`, `{"resource":"post","subject":2,"object":1,"emotion":"like"}`, http.StatusOK, ``, []interface{}{"post", "like"}}, //resourceType, memberID, objectID, emotion
+			genericRequestTestcase{"DeleteDislikePostOK", "delete", `/restful/pubsub`, `{"resource":"post","subject":2,"object":1,"emotion":"dislike"}`, http.StatusOK, ``, []interface{}{"post", "dislike"}},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
 				tctransed := transformCommentPubsubMsg(tc.name, "emotion", tc.method, []byte(tc.body.(string)))
 				code, resp := genericDoRequest(tctransed, t)
 				assertIntHelper(t, tc.name, "status code", tc.httpcode, code)
 				if statusCodeOKHelper(code) && tc.resp == "" {
-					rawResult, err := models.FollowingAPI.Get(&models.GetFollowedArgs{
-						tc.misc[1].([]int64),
-						models.Resource{
-							Emotion:    tc.misc[2].(int),
-							FollowType: tc.misc[0].(int),
-						},
-					})
-					if err != nil {
-						t.Fatalf(fmt.Sprintf("Get Following error when testing %s", tc.name))
-					}
-					result := rawResult.([]models.FollowedCount)
-					assertIntHelper(t, tc.name, "result length", 0, len(result))
+					vCode, vResp := genericDoRequestByte(genericRequestTestcase{
+						name:   "UpdateEmotionVarification",
+						method: "GET",
+						url: fmt.Sprintf(`/following/resource?resource=%s&ids=[1]&emotion=%s`,
+							tc.misc[0].(string),
+							tc.misc[1].(string),
+						)}, t)
+					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
+					gd.AssertOrUpdate(t, vResp)
 				} else {
 					assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 				}

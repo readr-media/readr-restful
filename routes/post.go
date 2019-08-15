@@ -136,6 +136,7 @@ func (r *postHandler) Get(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"Error": "Post Not Found"})
 			return
 		default:
+			log.Println("Get Post Error: ", err.Error())
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": "Internal Server Error"})
 			return
 		}
@@ -199,17 +200,25 @@ func (r *postHandler) Post(c *gin.Context) {
 		}
 	}
 
-	if post.Tags.Valid {
-		err = models.TagAPI.UpdateTagging(config.Config.Models.TaggingType["post"], postID, post.Tags.Slice)
+	// Assign post.authors to post.author when post.authors is empty
+	// This is a temporary measure before fe complete the author assignment in the insert post API
+	if post.Post.Author.Valid && len(post.Authors) == 0 {
+		post.Authors = append(post.Authors, models.AuthorInput{
+			MemberID: post.Post.Author,
+			Type:     models.NullInt{Int: 0, Valid: true},
+		})
+	}
+	if len(post.Authors) > 0 {
+		post.Post.ID = uint32(postID)
+		err = models.PostAPI.UpdateAuthors(post.Post, post.Authors)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 			return
 		}
 	}
 
-	if len(post.Authors) > 0 {
-		post.Post.ID = uint32(postID)
-		err = models.PostAPI.UpdateAuthors(post.Post, post.Authors)
+	if post.Tags.Valid {
+		err = models.TagAPI.UpdateTagging(config.Config.Models.TaggingType["post"], postID, post.Tags.Slice)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 			return
@@ -300,6 +309,7 @@ func (r *postHandler) Put(c *gin.Context) {
 			}
 			if m.CustomEditor.Valid && m.CustomEditor.Bool == true {
 				postDetail, err := models.PostAPI.GetPost(post.ID, &models.PostArgs{
+					ProjectID:  -1,
 					ShowAuthor: true,
 				})
 				if err != nil {
@@ -480,6 +490,7 @@ func (r *postHandler) PublishPipeline(ids []uint32) error {
 	}
 
 	posts, err := models.PostAPI.GetPosts(models.NewPostArgs(func(arg *models.PostArgs) {
+		arg.ProjectID = -1
 		arg.IDs = ids
 		arg.ShowAuthor = true
 		arg.ShowCommment = true

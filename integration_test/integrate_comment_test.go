@@ -16,6 +16,9 @@ import (
 
 func TestComment(t *testing.T) {
 
+	gd := Golden{}
+	gd.SetUpdate(*update)
+
 	var mockedComments = []models.InsertCommentArgs{
 		models.InsertCommentArgs{
 			Author:       models.NullInt{1, true},
@@ -204,6 +207,10 @@ func TestComment(t *testing.T) {
 			if err != nil {
 				t.Fatalf("init post data fail: %s ", err.Error())
 			}
+			err = models.PostAPI.UpdateAuthors(v, []models.AuthorInput{models.AuthorInput{MemberID: v.Author, Type: models.NullInt{0, true}}})
+			if err != nil {
+				t.Fatalf("init post author fail: %s ", err.Error())
+			}
 		}
 		for _, v := range mockedMembers {
 			_, err := models.MemberAPI.InsertMember(v)
@@ -241,23 +248,12 @@ func TestComment(t *testing.T) {
 			genericRequestTestcase{"GetCommentNotfound", "GET", "/comment/101", ``, http.StatusNotFound, `{"Error":"Comment Not Found"}`, nil},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
-				code, resp := genericDoRequest(tc, t)
+				code, resp := genericDoRequestByte(tc, t)
 				assertIntHelper(t, tc.name, "status code", tc.httpcode, code)
 				if statusCodeOKHelper(code) {
-					var Response struct {
-						Items models.CommentAuthor `json:"_items"`
-					}
-					err := json.Unmarshal([]byte(resp), &Response)
-					if err != nil {
-						t.Fatalf("%s, Unexpected result body: %v", resp)
-						return
-					}
-					var expected models.InsertCommentArgs = tc.misc[0].(models.InsertCommentArgs)
-					assertStringHelper(t, tc.name, "comment resource", expected.Resource.String, Response.Items.Resource.String)
-					assertStringHelper(t, tc.name, "comment body", expected.Body.String, Response.Items.Body.String)
-					assertIntHelper(t, tc.name, "comment parent id", int(expected.ParentID.Int), int(Response.Items.ParentID.Int))
+					gd.AssertOrUpdate(t, resp)
 				} else {
-					assertStringHelper(t, tc.name, "request result", tc.resp, resp)
+					assertByteHelper(t, tc.name, "request result", []byte(tc.resp), resp)
 				}
 			})
 		}
@@ -270,27 +266,12 @@ func TestComment(t *testing.T) {
 			genericRequestTestcase{"GetChildCommentOK", "GET", `/comment?parent=[1]`, ``, http.StatusOK, ``, []interface{}{[]models.InsertCommentArgs{mockedComments[5], mockedComments[4], mockedComments[3]}}},
 		} {
 			t.Run(tc.name, func(t *testing.T) {
-				code, resp := genericDoRequest(tc, t)
+				code, resp := genericDoRequestByte(tc, t)
 				assertIntHelper(t, tc.name, "status code", tc.httpcode, code)
 				if statusCodeOKHelper(code) {
-					var Response struct {
-						Items []models.InsertCommentArgs `json:"_items"`
-					}
-					err := json.Unmarshal([]byte(resp), &Response)
-					if err != nil {
-						t.Fatalf("%s, Unexpected result body: %v", resp)
-						return
-					}
-
-					var expected []models.InsertCommentArgs = tc.misc[0].([]models.InsertCommentArgs)
-					assertIntHelper(t, tc.name, "result length", len(expected), len(Response.Items))
-					for i, r := range Response.Items {
-						assertStringHelper(t, tc.name, "comment resource", expected[i].Resource.String, r.Resource.String)
-						assertStringHelper(t, tc.name, "comment body", expected[i].Body.String, r.Body.String)
-						assertIntHelper(t, tc.name, "comment parent id", int(expected[i].ParentID.Int), int(r.ParentID.Int))
-					}
+					gd.AssertOrUpdate(t, resp)
 				} else {
-					assertStringHelper(t, tc.name, "request result", tc.resp, resp)
+					assertByteHelper(t, tc.name, "request result", []byte(tc.resp), resp)
 				}
 			})
 		}
@@ -314,7 +295,7 @@ func TestComment(t *testing.T) {
 						Resource:      models.NullString{"http://dev.readr.tw/post/1", true},
 						Body:          models.NullString{`<a href="https://developers.facebook.com/" target="_blank">https://developers.facebook.com/</a>`, true},
 						ParentID:      models.NullInt{0, false},
-						OgTitle:       models.NullString{"Facebook for Developers", true},
+						OgTitle:       models.NullString{"Facebook Developers", true},
 						OgDescription: models.NullString{"為 Facebook 用戶開發應用程式。深入探討人工智慧、商業工具、遊戲、開放原始碼、發佈、社交網站硬體、社交網站整合，以及虛擬實境。瞭解 Facebook 的全球開發人員教育訓練和交流計畫。", true},
 					}}},
 			},
@@ -333,32 +314,12 @@ func TestComment(t *testing.T) {
 				code, resp := genericDoRequest(transformCommentPubsubMsg(tc.name, tc.method, body), t)
 				assertIntHelper(t, tc.name, "status code", tc.httpcode, code)
 				if statusCodeOKHelper(code) {
-					result, err := models.CommentAPI.GetComments(&models.GetCommentArgs{
-						MaxResult: 1,
-						Sorting:   "-id",
-						Page:      1,
-					})
-					if err != nil {
-						t.Fatalf("Error getting the latest report")
-					}
-
-					var expected []models.InsertCommentArgs = tc.misc[0].([]models.InsertCommentArgs)
-					assertIntHelper(t, tc.name, "result length", len(expected), len(result))
-					for i, r := range result {
-						assertStringHelper(t, tc.name, "comment resource", expected[i].Resource.String, r.Resource.String)
-						assertStringHelper(t, tc.name, "comment body", expected[i].Body.String, r.Body.String)
-						assertIntHelper(t, tc.name, "comment parent id", int(expected[i].ParentID.Int), int(r.ParentID.Int))
-
-						if tc.name == "InsertCommentWithCreatedAt" {
-							if r.CreatedAt.Time.Format("2006-01-02 03:04:05") == "2046-01-05 00:42:42" {
-								t.Errorf("%s expect created time not to be %s", tc.name, "2046-01-05 00:42:42")
-							}
-						}
-						if tc.name == "InsertCommentWithUrl" {
-							assertStringHelper(t, tc.name, "og title", expected[i].OgTitle.String, r.OgTitle.String)
-							assertStringHelper(t, tc.name, "og description", expected[i].OgDescription.String, r.OgDescription.String)
-						}
-					}
+					vCode, vResp := genericDoRequestByte(genericRequestTestcase{
+						name:   "InsertCommentsVarification",
+						method: "GET",
+						url:    `/comment?sort=-id&max_result=1`}, t)
+					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
+					gd.AssertOrUpdate(t, vResp)
 				} else {
 					assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 				}
@@ -378,18 +339,12 @@ func TestComment(t *testing.T) {
 				assertIntHelper(t, tc.name, "status code", tc.httpcode, code)
 				assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 				if tc.resp == "" {
-					result, err := models.CommentAPI.GetComments(&models.GetCommentArgs{
-						Resource: []string{"http://dev.readr.tw/post/1"},
-					})
-					if err != nil {
-						t.Fatalf("Error getting comments")
-					}
-
-					var expected []string = tc.misc[0].([]string)
-					assertIntHelper(t, tc.name, "result length", len(expected), len(result))
-					for i, r := range result {
-						assertStringHelper(t, tc.name, "comment body", expected[i], r.Body.String)
-					}
+					vCode, vResp := genericDoRequestByte(genericRequestTestcase{
+						name:   "UpdateCommentVarification",
+						method: "GET",
+						url:    `/comment?resource=["http://dev.readr.tw/post/1"]`}, t)
+					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
+					gd.AssertOrUpdate(t, vResp)
 				}
 			})
 		}
@@ -405,14 +360,12 @@ func TestComment(t *testing.T) {
 				assertIntHelper(t, tc.name, "status code", tc.httpcode, code)
 				assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 				if tc.resp == "" {
-					result, err := models.CommentAPI.GetComments(&models.GetCommentArgs{
-						Parent: []int{1},
-						Status: map[string][]int{"$nin": []int{0}},
-					})
-					if err != nil {
-						t.Fatalf("Error getting comments")
-					}
-					assertIntHelper(t, tc.name, "request result lengths", 1, len(result))
+					vCode, vResp := genericDoRequestByte(genericRequestTestcase{
+						name:   "UpdateCommentsVarification",
+						method: "GET",
+						url:    `/comment?parent=[1]&status={"$nin":[0]}`}, t)
+					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
+					gd.AssertOrUpdate(t, vResp)
 				} else {
 					assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 				}
@@ -429,13 +382,12 @@ func TestComment(t *testing.T) {
 				assertIntHelper(t, tc.name, "status code", tc.httpcode, code)
 				assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 				if statusCodeOKHelper(code) {
-					result, err := models.CommentAPI.GetComments(&models.GetCommentArgs{
-						Resource: []string{"http://dev.readr.tw/post/1", "http://dev.readr.tw/project/report_slug_1"},
-					})
-					if err != nil {
-						t.Fatalf("Error getting comments")
-					}
-					assertIntHelper(t, tc.name, "result length", 0, len(result))
+					vCode, vResp := genericDoRequestByte(genericRequestTestcase{
+						name:   "DeleteCommentsVarification",
+						method: "GET",
+						url:    `/comment?resource=["http://dev.readr.tw/post/1","http://dev.readr.tw/project/report_slug_1"]`}, t)
+					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
+					gd.AssertOrUpdate(t, vResp)
 				} else {
 					assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 				}
@@ -456,19 +408,12 @@ func TestComment(t *testing.T) {
 				code, resp := genericDoRequest(tc, t)
 				assertIntHelper(t, tc.name, "status code", tc.httpcode, code)
 				if statusCodeOKHelper(code) {
-					result, err := models.CommentAPI.GetReportedComments(&models.GetReportedCommentArgs{
-						MaxResult: 1,
-						Sorting:   "-id",
-					})
-					if err != nil {
-						t.Fatalf("Error getting reports")
-					}
-					var expected []models.ReportedComment = tc.misc[0].([]models.ReportedComment)
-					assertIntHelper(t, tc.name, "result length", len(expected), len(result))
-					for i, r := range result {
-						assertIntHelper(t, tc.name, "comment parent id", int(expected[i].CommentID.Int), int(r.Report.CommentID.Int))
-						assertIntHelper(t, tc.name, "comment parent id", int(expected[i].Reporter.Int), int(r.Report.Reporter.Int))
-					}
+					vCode, vResp := genericDoRequestByte(genericRequestTestcase{
+						name:   "InsertReportVarification",
+						method: "GET",
+						url:    `/reported_comment?sort=-id&max_result=1`}, t)
+					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
+					gd.AssertOrUpdate(t, vResp)
 				} else {
 					assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 				}
@@ -486,19 +431,12 @@ func TestComment(t *testing.T) {
 				code, resp := genericDoRequest(tc, t)
 				assertIntHelper(t, tc.name, "status code", tc.httpcode, code)
 				if statusCodeOKHelper(code) {
-					result, err := models.CommentAPI.GetReportedComments(&models.GetReportedCommentArgs{
-						MaxResult: 1,
-						Solved:    map[string][]int{"in": []int{1}},
-					})
-					if err != nil {
-						t.Fatalf("Error getting reports: %v", err.Error())
-					}
-					var expected []models.ReportedComment = tc.misc[0].([]models.ReportedComment)
-					assertIntHelper(t, tc.name, "result length", len(expected), len(result))
-					for i, r := range result {
-						assertIntHelper(t, tc.name, "comment parent id", int(expected[i].CommentID.Int), int(r.Report.CommentID.Int))
-						assertIntHelper(t, tc.name, "comment parent id", int(expected[i].Reporter.Int), int(r.Report.Reporter.Int))
-					}
+					vCode, vResp := genericDoRequestByte(genericRequestTestcase{
+						name:   "UpdateReportVarification",
+						method: "GET",
+						url:    `/reported_comment?solved={"$in":[1]}&max_result=1`}, t)
+					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
+					gd.AssertOrUpdate(t, vResp)
 				} else {
 					assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 				}
