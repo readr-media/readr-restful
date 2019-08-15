@@ -251,7 +251,7 @@ func TestComment(t *testing.T) {
 				code, resp := genericDoRequestByte(tc, t)
 				assertIntHelper(t, tc.name, "status code", tc.httpcode, code)
 				if statusCodeOKHelper(code) {
-					gd.Assert(t, resp)
+					gd.AssertOrUpdate(t, resp)
 				} else {
 					assertByteHelper(t, tc.name, "request result", []byte(tc.resp), resp)
 				}
@@ -269,7 +269,7 @@ func TestComment(t *testing.T) {
 				code, resp := genericDoRequestByte(tc, t)
 				assertIntHelper(t, tc.name, "status code", tc.httpcode, code)
 				if statusCodeOKHelper(code) {
-					gd.Assert(t, resp)
+					gd.AssertOrUpdate(t, resp)
 				} else {
 					assertByteHelper(t, tc.name, "request result", []byte(tc.resp), resp)
 				}
@@ -319,7 +319,7 @@ func TestComment(t *testing.T) {
 						method: "GET",
 						url:    `/comment?sort=-id&max_result=1`}, t)
 					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
-					gd.Assert(t, vResp)
+					gd.AssertOrUpdate(t, vResp)
 				} else {
 					assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 				}
@@ -344,7 +344,7 @@ func TestComment(t *testing.T) {
 						method: "GET",
 						url:    `/comment?resource=["http://dev.readr.tw/post/1"]`}, t)
 					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
-					gd.Assert(t, vResp)
+					gd.AssertOrUpdate(t, vResp)
 				}
 			})
 		}
@@ -365,7 +365,7 @@ func TestComment(t *testing.T) {
 						method: "GET",
 						url:    `/comment?parent=[1]&status={"$nin":[0]}`}, t)
 					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
-					gd.Assert(t, vResp)
+					gd.AssertOrUpdate(t, vResp)
 				} else {
 					assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 				}
@@ -387,7 +387,7 @@ func TestComment(t *testing.T) {
 						method: "GET",
 						url:    `/comment?resource=["http://dev.readr.tw/post/1","http://dev.readr.tw/project/report_slug_1"]`}, t)
 					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
-					gd.Assert(t, vResp)
+					gd.AssertOrUpdate(t, vResp)
 				} else {
 					assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 				}
@@ -413,7 +413,7 @@ func TestComment(t *testing.T) {
 						method: "GET",
 						url:    `/reported_comment?sort=-id&max_result=1`}, t)
 					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
-					gd.Assert(t, vResp)
+					gd.AssertOrUpdate(t, vResp)
 				} else {
 					assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 				}
@@ -436,7 +436,7 @@ func TestComment(t *testing.T) {
 						method: "GET",
 						url:    `/reported_comment?solved={"$in":[1]}&max_result=1`}, t)
 					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
-					gd.Assert(t, vResp)
+					gd.AssertOrUpdate(t, vResp)
 				} else {
 					assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 				}

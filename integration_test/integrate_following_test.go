@@ -249,7 +249,7 @@ func TestFollowing(t *testing.T) {
 				code, resp := genericDoRequestByte(tc, t)
 				assertIntHelper(t, tc.name, "status code", tc.httpcode, code)
 				if statusCodeOKHelper(code) {
-					gd.Assert(t, resp)
+					gd.AssertOrUpdate(t, resp)
 				} else {
 					assertByteHelper(t, tc.name, "request result", []byte(tc.resp), resp)
 				}
@@ -285,7 +285,7 @@ func TestFollowing(t *testing.T) {
 				code, resp := genericDoRequestByte(tc, t)
 				assertIntHelper(t, tc.name, "status code", tc.httpcode, code)
 				if statusCodeOKHelper(code) {
-					gd.Assert(t, resp)
+					gd.AssertOrUpdate(t, resp)
 				} else {
 					assertByteHelper(t, tc.name, "request result", []byte(tc.resp), resp)
 				}
@@ -310,7 +310,7 @@ func TestFollowing(t *testing.T) {
 						method: "GET",
 						url:    fmt.Sprintf(`/following/user?id=2&mode=id&resource=%s`, tc.misc[0].(string))}, t)
 					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
-					gd.Assert(t, vResp)
+					gd.AssertOrUpdate(t, vResp)
 				} else {
 					assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 				}
@@ -334,7 +334,7 @@ func TestFollowing(t *testing.T) {
 						method: "GET",
 						url:    fmt.Sprintf(`/following/user?id=1&mode=id&resource=%s`, tc.misc[0].(string))}, t)
 					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
-					gd.Assert(t, vResp)
+					gd.AssertOrUpdate(t, vResp)
 				} else {
 					assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 				}
@@ -362,7 +362,7 @@ func TestFollowing(t *testing.T) {
 							tc.misc[1].(string),
 						)}, t)
 					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
-					gd.Assert(t, vResp)
+					gd.AssertOrUpdate(t, vResp)
 				} else {
 					assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 				}
@@ -387,7 +387,7 @@ func TestFollowing(t *testing.T) {
 							tc.misc[1].(string),
 						)}, t)
 					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
-					gd.Assert(t, vResp)
+					gd.AssertOrUpdate(t, vResp)
 				} else {
 					assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 				}
@@ -413,7 +413,7 @@ func TestFollowing(t *testing.T) {
 							tc.misc[1].(string),
 						)}, t)
 					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
-					gd.Assert(t, vResp)
+					gd.AssertOrUpdate(t, vResp)
 				} else {
 					assertStringHelper(t, tc.name, "request result", tc.resp, resp)
 				}

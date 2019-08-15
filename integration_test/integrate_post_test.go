@@ -111,7 +111,7 @@ func TestPost(t *testing.T) {
 				assertIntHelper(t, tc.name, "status code", tc.httpcode, code)
 
 				if statusCodeOKHelper(code) {
-					gd.Assert(t, resp)
+					gd.AssertOrUpdate(t, resp)
 				} else {
 					assertByteHelper(t, tc.name, "request result", []byte(tc.resp), resp)
 				}
@@ -141,7 +141,7 @@ func TestPost(t *testing.T) {
 						url:    `/posts?sort=-post_id&show_tag=1&project_id=-1&max_result=1`}, t)
 
 					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
-					gd.Assert(t, vResp)
+					gd.AssertOrUpdate(t, vResp)
 				}
 			})
 		}
@@ -170,7 +170,7 @@ func TestPost(t *testing.T) {
 						url:    `/posts?ids=[1]&show_tag=1&project_id=-1&max_result=1`}, t)
 
 					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
-					gd.Assert(t, vResp)
+					gd.AssertOrUpdate(t, vResp)
 				}
 			})
 		}
@@ -195,7 +195,7 @@ func TestPost(t *testing.T) {
 						url:    `/posts?ids=[1]&project_id=-1&max_result=1`}, t)
 
 					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
-					gd.Assert(t, vResp)
+					gd.AssertOrUpdate(t, vResp)
 				}
 			})
 		}
@@ -333,7 +333,7 @@ func TestPosts(t *testing.T) {
 				assertIntHelper(t, tc.name, "status code", tc.httpcode, code)
 
 				if statusCodeOKHelper(code) {
-					gd.Assert(t, resp)
+					gd.AssertOrUpdate(t, resp)
 				} else {
 					assertByteHelper(t, tc.name, "request result", []byte(tc.resp), resp)
 				}
@@ -355,7 +355,7 @@ func TestPosts(t *testing.T) {
 				assertIntHelper(t, tc.name, "status code", tc.httpcode, code)
 
 				if statusCodeOKHelper(code) {
-					gd.Assert(t, resp)
+					gd.AssertOrUpdate(t, resp)
 				} else {
 					assertByteHelper(t, tc.name, "request result", []byte(tc.resp), resp)
 				}
@@ -383,7 +383,7 @@ func TestPosts(t *testing.T) {
 						url:    `/posts`}, t)
 
 					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
-					gd.Assert(t, vResp)
+					gd.AssertOrUpdate(t, vResp)
 				}
 			})
 		}
@@ -409,7 +409,7 @@ func TestPosts(t *testing.T) {
 						url:    `/posts`}, t)
 
 					assertIntHelper(t, tc.name, "verify request status code", http.StatusOK, vCode)
-					gd.Assert(t, vResp)
+					gd.AssertOrUpdate(t, vResp)
 				}
 			})
 		}
@@ -472,7 +472,7 @@ func TestPosts(t *testing.T) {
 					i += copy(redisBytesAll[i:], s)
 				}
 
-				gd.Assert(t, redisBytesAll)
+				gd.AssertOrUpdate(t, redisBytesAll)
 			})
 		}
 	})

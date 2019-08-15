@@ -183,14 +183,14 @@ type Golden struct {
 func (g *Golden) SetUpdate(update bool) {
 	g.update = update
 }
-func (g *Golden) Assert(t *testing.T, actualData []byte) {
+func (g *Golden) AssertOrUpdate(t *testing.T, actualData []byte) {
 	if g.update {
 		err := g.Update(t.Name(), actualData)
 		if err != nil {
 			t.Errorf("failed to update golden file: %s", err)
 		}
 	} else {
-		err := g.Compare(t.Name(), actualData)
+		err := g.Assert(t.Name(), actualData)
 		if err != nil {
 			t.Errorf(err.Error())
 		}
@@ -221,7 +221,7 @@ func (g *Golden) ensureDir(path string) error {
 	return err
 }
 
-func (g *Golden) Compare(name string, actualData []byte) error {
+func (g *Golden) Assert(name string, actualData []byte) error {
 	expectedData, err := ioutil.ReadFile(g.goldenFileName(name))
 
 	if err != nil {
