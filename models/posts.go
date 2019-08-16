@@ -242,6 +242,7 @@ type PostArgs struct {
 	PublishStatus map[string][]int   `form:"publish_status"`
 	Author        map[string][]int64 `form:"author"`
 	Type          map[string][]int   `form:"type"`
+	Total         bool               `form:"total"`
 	Filter        Filter
 
 	// For filter API
@@ -436,7 +437,7 @@ func (p *PostArgs) parseFilterQuery() (restricts string, values []interface{}) {
 	var joinedTables []string
 	if len(p.FilterTagName) > 0 {
 		joinedTables = append(joinedTables, fmt.Sprintf(`
-		LEFT JOIN tagging AS tagging ON tagging.target_id = posts.post_id AND tagging.type = %d LEFT JOIN tags AS tags ON tags.tag_id = tagging.tag_id 
+		LEFT JOIN tagging AS tagging ON tagging.target_id = posts.post_id AND tagging.type = %d LEFT JOIN tags AS tags ON tags.tag_id = tagging.tag_id
 		`, config.Config.Models.TaggingType["post"]))
 	}
 	if len(p.FilterAuthorName) > 0 {
@@ -594,8 +595,8 @@ func (a *postAPI) fetchPostComments(ids []int) (comments map[int][]CommentAuthor
 
 func (a *postAPI) fetchPostCommentResource(ids []int) (result []postCommentResource, err error) {
 	query := fmt.Sprintf(`
-		SELECT posts.post_id as post_id, posts.type as type, CASE posts.type WHEN %d THEN projects.slug ELSE posts.slug END as slug FROM posts 
-		LEFT JOIN projects ON posts.project_id = projects.project_id 
+		SELECT posts.post_id as post_id, posts.type as type, CASE posts.type WHEN %d THEN projects.slug ELSE posts.slug END as slug FROM posts
+		LEFT JOIN projects ON posts.project_id = projects.project_id
 		WHERE posts.post_id IN (?);`, config.Config.Models.PostType["memo"])
 
 	query, args, err := sqlx.In(query, ids)
@@ -619,8 +620,8 @@ func (a *postAPI) fetchPostCommentResource(ids []int) (result []postCommentResou
 }
 
 func (a *postAPI) fetchPostAuthors(ids []int) (authors map[int][]AuthorBasic, err error) {
-	query := `SELECT members.id "id",members.uuid "uuid",members.nickname "nickname",members.profile_image "profile_image",members.description "description",members.role "role",authors.author_type "author_type",authors.resource_id "resource_id" FROM posts 
-		LEFT JOIN authors ON posts.post_id = authors.resource_id 
+	query := `SELECT members.id "id",members.uuid "uuid",members.nickname "nickname",members.profile_image "profile_image",members.description "description",members.role "role",authors.author_type "author_type",authors.resource_id "resource_id" FROM posts
+		LEFT JOIN authors ON posts.post_id = authors.resource_id
 		LEFT JOIN members ON authors.author_id = members.id
 		WHERE posts.post_id IN (?);`
 
@@ -675,9 +676,9 @@ func (a *postAPI) buildGetQuery(req *PostArgs) (query string, values []interface
 		selectedFields = append(selectedFields, "t.tags as tags")
 		joinedTables = append(joinedTables, fmt.Sprintf(`
 		LEFT JOIN (
-			SELECT pt.target_id as post_id, 
+			SELECT pt.target_id as post_id,
 				GROUP_CONCAT(CONCAT(t.tag_id, ":", t.tag_content) SEPARATOR ',') as tags
-			FROM tagging as pt LEFT JOIN tags as t ON t.tag_id = pt.tag_id WHERE pt.type=%d 
+			FROM tagging as pt LEFT JOIN tags as t ON t.tag_id = pt.tag_id WHERE pt.type=%d
 			GROUP BY pt.target_id
 		) AS t ON t.post_id = posts.post_id
 		`, config.Config.Models.TaggingType["post"]))

@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/config"
+	rt "github.com/readr-media/readr-restful/internal/router"
 	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/pkg/mail"
 )
@@ -83,19 +84,35 @@ func (r *postHandler) bindQuery(c *gin.Context, args *models.PostArgs) (err erro
 
 func (r *postHandler) GetAll(c *gin.Context) {
 	var args = models.NewPostArgs()
-	if err := r.bindQuery(c, args); err != nil {
+	err := r.bindQuery(c, args)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
 	if args.Active == nil {
 		args.DefaultActive()
 	}
-	result, err := models.PostAPI.GetPosts(args)
+	var result struct {
+		Items []models.TaggedPostMember `json:"_items"`
+		Meta  *rt.ResponseMeta          `json:"_meta,omitempty"`
+	}
+	result.Items, err = models.PostAPI.GetPosts(args)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"_items": result})
+	if args.Total {
+		totalPosts, err := models.PostAPI.Count(args)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+			return
+		}
+		var postMeta = rt.ResponseMeta{
+			Total: &totalPosts,
+		}
+		result.Meta = &postMeta
+	}
+	c.JSON(http.StatusOK, result)
 }
 
 func (r *postHandler) GetActivePosts(c *gin.Context) {
