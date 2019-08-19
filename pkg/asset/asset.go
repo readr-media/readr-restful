@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/config"
+	rt "github.com/readr-media/readr-restful/internal/router"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -106,20 +107,35 @@ func (r *router) Delete(c *gin.Context) {
 
 func (r *router) Get(c *gin.Context) {
 	var args = NewAssetArgs()
-	if err := r.bindQuery(c, args); err != nil {
+	err := r.bindQuery(c, args)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
 	if args.Active == nil {
 		args.DefaultActive()
 	}
-	result, err := AssetAPI.GetAssets(args)
+	var results struct {
+		Items []Asset          `json:"_items"`
+		Meta  *rt.ResponseMeta `json:"_meta,omitempty"`
+	}
+	results.Items, err = AssetAPI.GetAssets(args)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 		return
 	}
-
-	c.JSON(http.StatusOK, gin.H{"_items": result})
+	if args.Total {
+		totalAssets, err := AssetAPI.Count(args)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+			return
+		}
+		var meta = rt.ResponseMeta{
+			Total: &totalAssets,
+		}
+		results.Meta = &meta
+	}
+	c.JSON(http.StatusOK, results)
 }
 
 func (r *router) Post(c *gin.Context) {
