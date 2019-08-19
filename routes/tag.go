@@ -14,6 +14,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/config"
+	rt "github.com/readr-media/readr-restful/internal/router"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -79,7 +80,8 @@ func (r *tagHandler) bindGetQuery(c *gin.Context, args *models.GetTagsArgs) (err
 
 func (r *tagHandler) Get(c *gin.Context) {
 	args := models.DefaultGetTagsArgs()
-	if err := r.bindGetQuery(c, &args); err != nil {
+	err := r.bindGetQuery(c, &args)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
@@ -92,7 +94,11 @@ func (r *tagHandler) Get(c *gin.Context) {
 		args.Sorting = strings.Replace(args.Sorting, "text", "tag_content", 1)
 	}
 
-	result, err := models.TagAPI.GetTags(args)
+	var results struct {
+		Items []models.TagRelatedResources `json:"_items"`
+		Meta  *rt.ResponseMeta             `json:"_meta,omitempty"`
+	}
+	results.Items, err = models.TagAPI.GetTags(args)
 	if err != nil {
 		switch err.Error() {
 		default:
@@ -100,7 +106,18 @@ func (r *tagHandler) Get(c *gin.Context) {
 			return
 		}
 	}
-	c.JSON(http.StatusOK, gin.H{"_items": result})
+	if args.Total {
+		totalTags, err := models.TagAPI.CountTags(args)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+			return
+		}
+		var meta = rt.ResponseMeta{
+			Total: &totalTags,
+		}
+		results.Meta = &meta
+	}
+	c.JSON(http.StatusOK, results)
 }
 
 func (r *tagHandler) Post(c *gin.Context) {
