@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	rt "github.com/readr-media/readr-restful/internal/router"
 )
 
 type router struct{}
@@ -31,12 +32,27 @@ func (r *router) GetPolls(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
-	results, err := PollData.Get(filter)
+	var results struct {
+		Items []PollSerializer `json:"_items"`
+		Meta  *rt.ResponseMeta `json:"_meta,omitempty"`
+	}
+	results.Items, err = PollData.Get(filter)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"_items": results})
+	if filter.Total {
+		totalPolls, err := PollData.Count(filter)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+			return
+		}
+		var meta = rt.ResponseMeta{
+			Total: &totalPolls,
+		}
+		results.Meta = &meta
+	}
+	c.JSON(http.StatusOK, results)
 }
 
 // PostPolls accepts a single poll w/o choices

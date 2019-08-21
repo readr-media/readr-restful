@@ -78,6 +78,7 @@ type ListPollsFilter struct {
 	Active  *int64 `form:"active,omitempty"`
 	StartAt string `form:"start_at"`
 	IDS     string `form:"ids"`
+	Total   bool   `form:"total"`
 }
 
 func (f *ListPollsFilter) validate() bool {

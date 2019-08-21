@@ -5,8 +5,8 @@ import (
 	"github.com/readr-media/readr-restful/pkg/asset"
 	"github.com/readr-media/readr-restful/pkg/cards"
 	"github.com/readr-media/readr-restful/pkg/mail"
+	"github.com/readr-media/readr-restful/pkg/poll"
 	promotion "github.com/readr-media/readr-restful/pkg/promotion/http"
-	"github.com/readr-media/readr-restful/poll"
 )
 
 type RouterHandler interface {

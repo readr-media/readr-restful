@@ -76,6 +76,7 @@ type pollInterface interface {
 	Get(filters *ListPollsFilter) (polls []PollSerializer, err error)
 	Insert(p PollDeserializer) (err error)
 	Update(poll Poll) (err error)
+	Count(filters *ListPollsFilter) (count int, err error)
 }
 
 type pollData struct{}
@@ -186,6 +187,8 @@ FieldLoop:
 			results = append(results, fmt.Sprintf(sf.pattern, sf.table, f))
 		case `%s`:
 			results = append(results, fmt.Sprintf(sf.pattern, f))
+		case `COUNT(%s)`:
+			results = append(results, fmt.Sprintf(sf.pattern, f))
 		default:
 			fmt.Printf("could not parse:%s\n", sf.pattern)
 		}
@@ -242,9 +245,9 @@ func (s *SQLO) GenFields() string {
 	return strings.Join(results, ", ")
 }
 
-func (s *SQLO) SQL() (query string, args []interface{}, err error) {
+func (s *SQLO) GenSelectBase(template string, args ...interface{}) *bytes.Buffer {
 
-	base := bytes.NewBufferString(fmt.Sprintf("SELECT %s FROM %s", s.GenFields(), s.table))
+	base := bytes.NewBufferString(fmt.Sprintf(template, args...))
 	for _, join := range s.join {
 		base.WriteString(join)
 	}
@@ -259,6 +262,13 @@ func (s *SQLO) SQL() (query string, args []interface{}, err error) {
 			s.args = append(s.args, condition.variable)
 		}
 	}
+	return base
+}
+
+func (s *SQLO) Select() (query string, args []interface{}, err error) {
+
+	base := s.GenSelectBase("SELECT %s FROM %s", s.GenFields(), s.table)
+	// Add ORDER BY, LIMIT, and OFFSET from select base
 	if s.orderby != "" {
 		base.WriteString(s.orderby)
 	}
@@ -266,6 +276,16 @@ func (s *SQLO) SQL() (query string, args []interface{}, err error) {
 		base.WriteString(s.pagination)
 	}
 	//base.WriteString(";")
+	query, args, err = sqlx.In(base.String(), s.args...)
+	if err != nil {
+		return "", nil, err
+	}
+	query = models.DB.Rebind(query)
+	return query, args, err
+}
+
+func (s *SQLO) Count() (query string, args []interface{}, err error) {
+	base := s.GenSelectBase("SELECT %s FROM %s", s.GenFields(), s.table)
 	query, args, err = sqlx.In(base.String(), s.args...)
 	if err != nil {
 		return "", nil, err
@@ -292,7 +312,7 @@ func (p *pollData) Get(filter *ListPollsFilter) (polls []PollSerializer, err err
 		s.table = "polls"
 		s.fields = append(s.fields, sqlfield{pattern: `%s`, fields: []string{"*"}})
 	}, subFilter.Parse())
-	subQuery, subArgs, err := subselect.SQL()
+	subQuery, subArgs, err := subselect.Select()
 	if err != nil {
 		log.Printf("Error parsing sub query for poll")
 		return nil, err
@@ -304,13 +324,12 @@ func (p *pollData) Get(filter *ListPollsFilter) (polls []PollSerializer, err err
 		s.table = fmt.Sprintf("(%s) AS polls", subQuery)
 		s.fields = append(s.fields, sqlfield{table: "polls", pattern: `%s.%s`, fields: []string{"*"}})
 	}, mainFilter.Parse())
-	query, args, err := osql.SQL()
+	query, args, err := osql.Select()
 	if err != nil {
 		log.Printf("Error parsing main query for poll")
 		return nil, err
 	}
 	args = append(args, subArgs...)
-	// fmt.Printf("sql query:%s\n, args:%v\n", query, args)
 
 	rows, err := models.DB.Queryx(query, args...)
 	if err != nil {
@@ -346,6 +365,28 @@ ScanLoop:
 		}
 	}
 	return polls, err
+}
+
+func (p *pollData) Count(filter *ListPollsFilter) (count int, err error) {
+	// Copy original filter, set Embed to empty string to generate simple select query
+	copyFilter := new(ListPollsFilter)
+	*copyFilter = *filter
+	copyFilter.Embed = ""
+
+	countObj := NewSQLO(func(s *SQLO) {
+		s.table = "polls"
+		s.fields = append(s.fields, sqlfield{pattern: `COUNT(%s)`, fields: []string{"polls.id"}})
+	}, copyFilter.Parse())
+	query, args, err := countObj.Count()
+	if err != nil {
+		return 0, err
+	}
+	err = models.DB.QueryRow(query, args...).Scan(&count)
+	if err != nil {
+		log.Printf("Failed to count polls:%s\n", err.Error())
+		return count, err
+	}
+	return count, nil
 }
 
 // Insert allows consumer to insert a poll at a time.
@@ -520,7 +561,7 @@ func (s *pickData) Get(filter *ListPicksFilter) (picks []ChosenChoice, err error
 		s.table = "polls_chosen_choice"
 		s.fields = append(s.fields, sqlfield{table: "polls_chosen_choice", pattern: `%s.%s`, fields: []string{"*"}})
 	}, filter.Parse())
-	query, args, err := osql.SQL()
+	query, args, err := osql.Select()
 	// fmt.Printf("SQL query:%s,\nargs:%v\n", query, args)
 
 	if err != nil {
