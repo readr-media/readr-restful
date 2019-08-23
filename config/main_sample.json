@@ -118,7 +118,9 @@
             "video": 9,
             "live": 9,
             "report": 9,
-            "memo": 9
+            "memo": 9,
+            "paragragh": 9,
+            "dummy": 9
         },
         "post_publish_status":{
             "unpublish": 9,

@@ -110,6 +110,7 @@ type TaggedPostMember struct {
 	Tags      PostTags        `json:"tags,omitempty" db:"tags"`
 	Authors   []AuthorBasic   `json:"authors,omitempty"`
 	Comment   []CommentAuthor `json:"comments,omitempty"`
+	Cards     []postCard      `json:"cards,omitempty"`
 	Project   *ProjectBasic   `json:"project,omitempty" db:"project"`
 }
 
@@ -235,6 +236,7 @@ type PostArgs struct {
 	ShowUpdater   bool               `form:"show_updater"`
 	ShowProject   bool               `form:"show_project"`
 	ShowCommment  bool               `form:"show_comment"`
+	ShowCard      bool               `form:"show_card"`
 	ProjectID     int64              `form:"project_id"`
 	Slug          string             `form:"slug"`
 	IDs           []uint32           `form:"ids"`
@@ -484,20 +486,26 @@ func (a *postAPI) GetPosts(req *PostArgs) (result []TaggedPostMember, err error)
 
 	if req.ShowCommment {
 		comments, err := a.fetchPostComments(postIDs)
-		if err != nil {
-			return result, err
-		}
-		for k, v := range result {
-			result[k].Comment = comments[int(v.Post.ID)]
+		if err == nil {
+			for k, v := range result {
+				result[k].Comment = comments[int(v.Post.ID)]
+			}
 		}
 	}
 	if req.ShowAuthor {
 		authors, err := a.fetchPostAuthors(postIDs)
-		if err != nil {
-			return result, err
+		if err == nil {
+			for k, v := range result {
+				result[k].Authors = authors[int(v.Post.ID)]
+			}
 		}
-		for k, v := range result {
-			result[k].Authors = authors[int(v.Post.ID)]
+	}
+	if req.ShowCard {
+		cards, err := a.fetchPostCards(postIDs)
+		if err == nil {
+			for k, v := range result {
+				result[k].Cards = cards[int(v.Post.ID)]
+			}
 		}
 	}
 
@@ -531,16 +539,21 @@ func (a *postAPI) GetPost(id uint32, req *PostArgs) (post TaggedPostMember, err 
 	}
 
 	comments, err := a.fetchPostComments([]int{int(post.Post.ID)})
-	if err != nil {
-		return post, err
+	if err == nil {
+		post.Comment = comments[int(post.Post.ID)]
 	}
-	post.Comment = comments[int(post.Post.ID)]
 
 	authors, err := a.fetchPostAuthors([]int{int(post.Post.ID)})
-	if err != nil {
-		return post, err
+	if err == nil {
+		post.Authors = authors[int(post.Post.ID)]
 	}
-	post.Authors = authors[int(post.Post.ID)]
+
+	if req.ShowCard {
+		cards, err := a.fetchPostCards([]int{int(post.Post.ID)})
+		if err == nil {
+			post.Cards = cards[int(post.Post.ID)]
+		}
+	}
 
 	return post, err
 }
@@ -550,6 +563,17 @@ type postCommentResource struct {
 	Type     NullInt    `db:"type"`
 	Slug     NullString `db:"slug"`
 	Resource string     `db:"-"`
+}
+type postCard struct {
+	ID              uint32     `json:"id" db:"id"`
+	PostID          uint32     `json:"post_id" db:"post_id"`
+	Title           NullString `json:"title" db:"title"`
+	Description     NullString `json:"description" db:"description"`
+	BackgroundImage NullString `json:"background_image" db:"background_image"`
+	BackgroundColor NullString `json:"background_color" db:"background_color"`
+	Image           NullString `json:"image" db:"image"`
+	Video           NullString `json:"video" db:"video"`
+	Order           NullInt    `json:"order" db:"order"`
 }
 
 func (a *postAPI) fetchPostComments(ids []int) (comments map[int][]CommentAuthor, err error) {
@@ -647,6 +671,36 @@ func (a *postAPI) fetchPostAuthors(ids []int) (authors map[int][]AuthorBasic, er
 	}
 
 	return authors, err
+}
+
+func (a *postAPI) fetchPostCards(ids []int) (cards map[int][]postCard, err error) {
+	query := `SELECT newscards.id "id",newscards.post_id "post_id",newscards.title "title",newscards.description "description",newscards.background_image "background_image",newscards.background_color "background_color",newscards.image "image",newscards.video "video",newscards.order "order" FROM posts 
+		INNER JOIN newscards ON posts.post_id = newscards.post_id 
+		WHERE posts.post_id IN (?);`
+
+	cards = make(map[int][]postCard, 0)
+
+	query, args, err := sqlx.In(query, ids)
+	if err != nil {
+		return cards, err
+	}
+	query = DB.Rebind(query)
+
+	rows, err := DB.Queryx(query, args...)
+	if err != nil {
+		return cards, err
+	}
+
+	for rows.Next() {
+		var pc postCard
+		e := rows.StructScan(&pc)
+		if e != nil {
+			return map[int][]postCard{}, err
+		}
+		cards[int(pc.PostID)] = append(cards[int(pc.PostID)], pc)
+	}
+
+	return cards, err
 }
 
 func (a *postAPI) buildGetQuery(req *PostArgs) (query string, values []interface{}) {

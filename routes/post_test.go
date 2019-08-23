@@ -259,7 +259,7 @@ func TestRoutePost(t *testing.T) {
 					[]models.TaggedPostMember{}},
 				genericTestcase{"Type", "GET", `/posts?type={"$in":[1,2]}`, ``, http.StatusOK,
 					[]models.TaggedPostMember{posts[3], posts[1], posts[0]}},
-				genericTestcase{"ShowDetails", "GET", `/posts?show_author=true&show_updater=true&show_tag=true&show_comment=true`, ``, http.StatusOK,
+				genericTestcase{"ShowDetails", "GET", `/posts?show_author=true&show_updater=true&show_tag=true&show_comment=true&show_card=true`, ``, http.StatusOK,
 					[]models.TaggedPostMember{posts[3], posts[1], posts[0], posts[2]}},
 				genericTestcase{"Slug", "GET", `/posts?slug=slug`, ``, http.StatusOK,
 					[]models.TaggedPostMember{posts[0]}},
@@ -277,6 +277,8 @@ func TestRoutePost(t *testing.T) {
 					[]models.TaggedPostMember{posts[0]}},
 				genericTestcase{"NotExisted", "GET", `/post/3`, `{"Error":"Post Not Found"}`, http.StatusNotFound,
 					[]models.TaggedPostMember{}},
+				genericTestcase{"ShowDetails", "GET", `/post/1?show_card=true`, ``, http.StatusOK,
+					[]models.TaggedPostMember{posts[0]}},
 			},
 		},
 		TestStep{
