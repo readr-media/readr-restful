@@ -48,6 +48,7 @@ func TestPromotionHandlerList(t *testing.T) {
 		{"page", http.StatusOK, `/promotions?page=7`, &ListParams{MaxResult: 15, Page: 7, Sort: "-created_at", Active: map[string][]int{"$in": []int{config.Config.Models.Promotions["active"]}}}, ``},
 		{"modify-invalid-sort", http.StatusOK, `/promotions?sort=updated_by`, &ListParams{MaxResult: 15, Page: 1, Sort: "-created_at", Active: map[string][]int{"$in": []int{config.Config.Models.Promotions["active"]}}}, ``},
 		{"active", http.StatusOK, `/promotions?active=$in:0,1`, &ListParams{MaxResult: 15, Page: 1, Sort: "-created_at", Active: map[string][]int{"$in": []int{0, 1}}}, ``},
+		{"count", http.StatusOK, `/promotions?total=true`, &ListParams{MaxResult: 15, Page: 1, Sort: "-created_at", Active: map[string][]int{"$in": []int{config.Config.Models.Promotions["active"]}}, Total: true}, ``},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
@@ -58,7 +59,10 @@ func TestPromotionHandlerList(t *testing.T) {
 			if tc.httpcode == http.StatusOK {
 				mockData.EXPECT().Get(tc.params).Times(1)
 			}
-
+			// if using count=true, expect Count to be called once
+			if tc.name == "count" {
+				mockData.EXPECT().Count(tc.params).Times(1)
+			}
 			r.ServeHTTP(w, req)
 			// Check return http status code
 			assert.Equal(t, w.Code, tc.httpcode)

@@ -15,6 +15,7 @@ type ListParams struct {
 	MaxResult int    `form:"max_result"`
 	Page      int    `form:"page"`
 	Sort      string `form:"sort"`
+	Total     bool   `form:"total"`
 
 	// Status string
 	Active map[string][]int
@@ -115,5 +116,11 @@ func (p *ListParams) Parse() {
 // Select is a wrap for SQLO's Select()
 func (p *ListParams) Select() (query string, args []interface{}, err error) {
 	query, args, err = p.o.Select()
+	return query, args, err
+}
+
+// Count is a wrap for SQLO's Count()
+func (p *ListParams) Count() (query string, args []interface{}, err error) {
+	query, args, err = p.o.Count()
 	return query, args, err
 }

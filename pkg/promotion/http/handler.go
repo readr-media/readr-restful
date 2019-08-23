@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	rt "github.com/readr-media/readr-restful/internal/router"
 	"github.com/readr-media/readr-restful/pkg/promotion"
 	"github.com/readr-media/readr-restful/pkg/promotion/mysql"
 )
@@ -81,12 +82,27 @@ func (h *Handler) List(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
 	}
-	promos, err := mysql.DataAPI.Get(params)
+	var results struct {
+		Items []promotion.Promotion `json:"_items"`
+		Meta  *rt.ResponseMeta      `json:"_meta,omitempty"`
+	}
+	results.Items, err = mysql.DataAPI.Get(params)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"_items": promos})
+	if params.Total {
+		totalPromotions, err := mysql.DataAPI.Count(params)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+			return
+		}
+		var promotionMeta = rt.ResponseMeta{
+			Total: &totalPromotions,
+		}
+		results.Meta = &promotionMeta
+	}
+	c.JSON(http.StatusOK, results)
 }
 
 // func (h *Handler) Get(c *gin.Context) {

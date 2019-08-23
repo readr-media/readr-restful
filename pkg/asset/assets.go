@@ -44,6 +44,7 @@ type GetAssetArgs struct {
 	AssetType []int            `form:"asset_type"`
 	FileType  []string         `form:"file_type"`
 	Active    map[string][]int `form:"active"`
+	Total     bool             `form:"total"`
 
 	// For filter API
 	FilterID        int64
@@ -102,8 +103,8 @@ func (p *GetAssetArgs) parseLimit() (restricts string, values []interface{}) {
 				tmp[i] = "assets." + v
 			}
 		}
-		p.Sorting = strings.Join(tmp, ",")
-		restricts = fmt.Sprintf("%s ORDER BY %s", restricts, orderByHelper(p.Sorting))
+		sortFields := strings.Join(tmp, ",")
+		restricts = fmt.Sprintf("%s ORDER BY %s", restricts, orderByHelper(sortFields))
 	}
 
 	if p.MaxResult > 0 {
@@ -183,7 +184,7 @@ func (p *GetAssetArgs) parseFilterQuery() (restricts string, values []interface{
 	var joinedTables []string
 	if len(p.FilterTagName) > 0 {
 		joinedTables = append(joinedTables, fmt.Sprintf(`
-		LEFT JOIN tagging AS tagging ON tagging.target_id = assets.id AND tagging.type = %d LEFT JOIN tags AS tags ON tags.tag_id = tagging.tag_id 
+		LEFT JOIN tagging AS tagging ON tagging.target_id = assets.id AND tagging.type = %d LEFT JOIN tags AS tags ON tags.tag_id = tagging.tag_id
 		`, config.Config.Models.TaggingType["asset"]))
 	}
 

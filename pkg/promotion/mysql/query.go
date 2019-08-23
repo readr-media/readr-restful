@@ -99,9 +99,9 @@ func (s *SQLO) GenFields() string {
 	return strings.Join(results, ", ")
 }
 
-func (s *SQLO) Select() (query string, args []interface{}, err error) {
+func (s *SQLO) GenSelectBase(template string, args ...interface{}) *bytes.Buffer {
 
-	base := bytes.NewBufferString(fmt.Sprintf("SELECT %s FROM %s", s.GenFields(), s.Table))
+	base := bytes.NewBufferString(fmt.Sprintf(template, args...))
 	for _, join := range s.Join {
 		base.WriteString(join)
 	}
@@ -116,13 +116,30 @@ func (s *SQLO) Select() (query string, args []interface{}, err error) {
 			s.Args = append(s.Args, condition.Variable)
 		}
 	}
+	return base
+}
+
+func (s *SQLO) Select() (query string, args []interface{}, err error) {
+
+	base := s.GenSelectBase("SELECT %s FROM %s", s.GenFields(), s.Table)
+	// Add ORDER BY, LIMIT, and OFFSET from select base
 	if s.Orderby != "" {
 		base.WriteString(s.Orderby)
 	}
 	if s.Pagination != "" {
 		base.WriteString(s.Pagination)
 	}
-	//base.WriteString(";")
+	query, args, err = sqlx.In(base.String(), s.Args...)
+	if err != nil {
+		return "", nil, err
+	}
+	query = models.DB.Rebind(query)
+	return query, args, err
+}
+
+func (s *SQLO) Count() (query string, args []interface{}, err error) {
+
+	base := s.GenSelectBase("SELECT COUNT(id) FROM %s", s.Table)
 	query, args, err = sqlx.In(base.String(), s.Args...)
 	if err != nil {
 		return "", nil, err

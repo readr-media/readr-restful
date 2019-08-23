@@ -33,6 +33,21 @@ func (m *MockDataLayer) EXPECT() *MockDataLayerMockRecorder {
 	return m.recorder
 }
 
+// Count mocks base method
+func (m *MockDataLayer) Count(arg0 promotion.ListParams) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Count", arg0)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Count indicates an expected call of Count
+func (mr *MockDataLayerMockRecorder) Count(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Count", reflect.TypeOf((*MockDataLayer)(nil).Count), arg0)
+}
+
 // Delete mocks base method
 func (m *MockDataLayer) Delete(arg0 uint64) error {
 	m.ctrl.T.Helper()

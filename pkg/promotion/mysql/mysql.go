@@ -25,7 +25,6 @@ func (a *dataAPI) Get(params promotion.ListParams) (results []promotion.Promotio
 	if err != nil {
 		return nil, err
 	}
-	// fmt.Printf("Get query:%s,\nvalues:%v\n", query, values)
 	// Select from db
 	err = models.DB.Select(&results, query, values...)
 	if err != nil {
@@ -33,6 +32,23 @@ func (a *dataAPI) Get(params promotion.ListParams) (results []promotion.Promotio
 		return nil, err
 	}
 	return results, nil
+}
+
+func (a *dataAPI) Count(params promotion.ListParams) (count int, err error) {
+
+	params.Parse()
+	query, values, err := params.Count()
+	if err != nil {
+		return 0, err
+	}
+
+	// Only select a row for count
+	err = models.DB.QueryRow(query, values...).Scan(&count)
+	if err != nil {
+		log.Printf("Failed to count promotions:%s\n", err.Error())
+		return count, err
+	}
+	return count, nil
 }
 
 func (a *dataAPI) Insert(p promotion.Promotion) (int, error) {

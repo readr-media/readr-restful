@@ -88,6 +88,7 @@ type GetTagsArgs struct {
 	PostFields    sqlfields `form:"post_fields"`
 	ProjectFields sqlfields `form:"project_fields"`
 	ReportFields  sqlfields `form:"report_fields"`
+	Total         bool      `form:"total"`
 }
 
 func DefaultGetTagsArgs() GetTagsArgs {
@@ -180,16 +181,16 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []TagRelatedResources, err erro
 
 	if args.ShowStats {
 		base := `
-		SELECT DISTINCT ta.*, pt.related_reviews, pt.related_news, jt.related_projects FROM tags as ta 
+		SELECT DISTINCT ta.*, pt.related_reviews, pt.related_news, jt.related_projects FROM tags as ta
 		LEFT JOIN (SELECT t.tag_id as tag_id,
 			COUNT(CASE WHEN p.type=%d THEN p.post_id END) as related_reviews,
-			COUNT(CASE WHEN p.type=%d THEN p.post_id END) as related_news 
-			FROM tagging as t LEFT JOIN posts as p ON t.target_id=p.post_id 
-			WHERE t.type=%d GROUP BY t.tag_id ) as pt ON ta.tag_id = pt.tag_id 
+			COUNT(CASE WHEN p.type=%d THEN p.post_id END) as related_news
+			FROM tagging as t LEFT JOIN posts as p ON t.target_id=p.post_id
+			WHERE t.type=%d GROUP BY t.tag_id ) as pt ON ta.tag_id = pt.tag_id
 		LEFT JOIN (SELECT t.tag_id as tag_id,
-			COUNT(p.project_id) as related_projects 
-			FROM tagging as t LEFT JOIN projects as p ON t.target_id=p.project_id 
-			WHERE t.type=%d GROUP BY t.tag_id ) as jt ON ta.tag_id = jt.tag_id 
+			COUNT(p.project_id) as related_projects
+			FROM tagging as t LEFT JOIN projects as p ON t.target_id=p.project_id
+			WHERE t.type=%d GROUP BY t.tag_id ) as jt ON ta.tag_id = jt.tag_id
 		`
 
 		query.WriteString(fmt.Sprintf(base,
@@ -274,9 +275,9 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []TagRelatedResources, err erro
 	if args.ShowResources {
 		// Get Related Post
 		relatedPostQuery := fmt.Sprintf(`
-			SELECT tg.tag_id, %s 
-			FROM tagging AS tg 
-			LEFT JOIN posts AS p ON p.post_id = tg.target_id 
+			SELECT tg.tag_id, %s
+			FROM tagging AS tg
+			LEFT JOIN posts AS p ON p.post_id = tg.target_id
 			WHERE tg.type = %d AND tg.tag_id IN (?) AND p.active = %d AND p.type IN (%d, %d);`,
 			args.PostFields.GetFields(`p.%s "post.%s"`),
 			config.Config.Models.TaggingType["post"],
@@ -312,9 +313,9 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []TagRelatedResources, err erro
 
 		// Get Related Projects
 		relatedProjectQuery := fmt.Sprintf(`
-			SELECT tg.tag_id, %s 
-			FROM tagging AS tg 
-			LEFT JOIN projects AS p ON p.project_id = tg.target_id 
+			SELECT tg.tag_id, %s
+			FROM tagging AS tg
+			LEFT JOIN projects AS p ON p.project_id = tg.target_id
 			WHERE tg.type = %d AND tg.tag_id IN (?) AND p.active = %d`,
 			args.ProjectFields.GetFields(`p.%s "project.%s"`),
 			config.Config.Models.TaggingType["project"],
@@ -348,11 +349,11 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []TagRelatedResources, err erro
 
 		// Get Related Reports
 		relatedReportQuery := fmt.Sprintf(`
-			SELECT tg.tag_id, %s 
-			FROM tagging AS tg 
-			LEFT JOIN projects ON projects.project_id = tg.target_id 
-			LEFT JOIN posts AS p ON p.project_id = projects.project_id 
-			WHERE tg.type = %d AND tg.tag_id IN (?) AND p.active = %d AND p.type = %d 
+			SELECT tg.tag_id, %s
+			FROM tagging AS tg
+			LEFT JOIN projects ON projects.project_id = tg.target_id
+			LEFT JOIN posts AS p ON p.project_id = projects.project_id
+			WHERE tg.type = %d AND tg.tag_id IN (?) AND p.active = %d AND p.type = %d
 			ORDER BY p.published_at DESC`,
 			args.ReportFields.GetFields(`p.%s "report.%s"`),
 			config.Config.Models.TaggingType["project"],
