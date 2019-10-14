@@ -72,12 +72,18 @@ func (c notificationGenerator) GenerateCommentNotifications(comment InsertCommen
 		})
 		if err != nil {
 			log.Println("Error get post", resourceID, err.Error())
+			return err
+		}
+		if len(post.Authors) == 0 {
+			log.Println("Error post no author", resourceID)
+			return errors.New(fmt.Sprintf("Error post %d has no author", resourceID))
 		}
 
 		postFollowers, err := c.getFollowers(resourceID, config.Config.Models.FollowingType["post"],
 			[]int{config.Config.Models.Emotions["like"], config.Config.Models.Emotions["dislike"]})
 		if err != nil {
 			log.Println("Error get post followers", resourceID, err.Error())
+			return err
 		}
 		//log.Println(postFollowers)
 
@@ -462,7 +468,7 @@ func (c notificationGenerator) GeneratePostNotifications(p TaggedPostMember) (er
 				log.Println("Error get tag followers", t[1], err.Error())
 			}
 			for _, v := range tagFollowers {
-				if !c.checkForAuthor(v, p.Authors) {
+				if !c.checkForAuthor(v, p.Authors) && len(p.Authors) > 0 {
 					n := NewNotification("follow_tag_post", v)
 					n.SubjectID = strconv.Itoa(int(p.ID))
 					n.Nickname = p.Title.String
