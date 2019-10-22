@@ -13,6 +13,9 @@ deps:
 test:
 	# disable cgo to avoid gcc not found re-compile error
 	env CGO_ENABLED=0 go test -v ./...
+test-integration:
+	# disable cgo to avoid gcc not found re-compile error
+	env CGO_ENABLED=0 go test -v -tags=integration ./integration_test
 run:
 	go run $(ALLGOFILES)
 build-alpine: deps test

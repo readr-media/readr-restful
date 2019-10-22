@@ -217,7 +217,6 @@
 
 <body>
   <header class='newsletter-header'>
-    <p style=”display:none;font-size:0;max-height:0;width:0;line-height:0;mso-hide:all”> {{.PreviewText}} </p>
     <div class='newsletter-header__banner'>
       <a class='newsletter-header__link' href='https://www.readr.tw/?utm_medium=newsletter&utm_campaign={{.MailID}}' target='_blank'>
         <img class='newsletter-header__logo' src='https://www.readr.tw/assets/icons/readr-logo-backstage.png' alt='newsletter-header__logo'>
@@ -334,6 +333,6 @@
       <a href="{{.SettingLink}}/profile-edit" class="newsletter-footer__unsubscribe">取消訂閱 Unsubscribe</a>
     </footer>
   </div>
-  <img src="{{.APIDomain}}/hello.jpg?campaign-id={{.CampaignID}}&mail-id={{.MailID}}" style="width:1px;height:1px">
+  <img src="https://www.readr.tw/hello.jpg?campaign-id={{.CampaignID}}&mail-id={{.MailID}}" style="width:1px;height:1px">
 </body>
 </html>

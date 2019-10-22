@@ -52,8 +52,5 @@ SET following.target_id = ref.new_res;
 # update post link for reports
 UPDATE posts SET link = CONCAT('https://readr.tw/project/', slug), video_views = NULL WHERE type = 4;
 
-
-SELECT reports.id, posts.post_id FROM reports LEFT JOIN posts ON reports.slug = posts.slug;
-
 # Add column "subtitle" to posts table
 ALTER TABLE posts ADD COLUMN `subtitle` varchar(256) DEFAULT NULL AFTER `title`;

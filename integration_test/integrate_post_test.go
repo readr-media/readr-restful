@@ -9,7 +9,7 @@ import (
 
 	"net/http"
 
-	"github.com/garyburd/redigo/redis"
+	//"github.com/garyburd/redigo/redis"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/readr-media/readr-restful/models"
 )
@@ -434,7 +434,7 @@ func TestPosts(t *testing.T) {
 		}
 	})
 
-	t.Run("PostCache", func(t *testing.T) {
+	/*t.Run("PostCache", func(t *testing.T) {
 		resetRedisKeyHelper(t, "PostCache", []string{"postcache_hot_index", "postcache_hot", "postcache_latest_index", "postcache_latest"})
 		defer init()()
 		for _, tc := range []genericRequestTestcase{
@@ -475,5 +475,5 @@ func TestPosts(t *testing.T) {
 				gd.AssertOrUpdate(t, redisBytesAll)
 			})
 		}
-	})
+	})*/
 }

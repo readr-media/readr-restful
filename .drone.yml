@@ -22,7 +22,6 @@ pipeline:
     - gcloud source repos clone configs rr-configs
     - cp rr-configs/readr-media/readr-restful/dev/main.json ./config/main.json
     - cp rr-configs/readr-media/readr-restful/*.html ./config/
-    - rm -rf rr-configs
     when:
       event: [push, pull_request]
       branch: [dev]
@@ -35,7 +34,6 @@ pipeline:
     - cp rr-configs/readr-media/readr-restful/prod/main.json ./config/main.json
     - cp rr-configs/readr-media/readr-restful/prod/.kube.yml ./.kube.yml
     - cp rr-configs/readr-media/readr-restful/*.html ./config/
-    - rm -rf rr-configs
     when:
       event: [push]
       branch: [stage]
@@ -51,6 +49,30 @@ pipeline:
     when:
       event: [pull_request]
       branch: [dev]
+
+  pr_integration_test:
+    image: golang:1.12-alpine
+    environment:
+      - GO111MODULE=on
+    commands:
+    - cp rr-configs/readr-media/readr-restful/integration_test/main.json config/integration_test.json
+    - cp rr-configs/readr-media/readr-restful/*.html ./config/
+    - sleep 30
+    - apk add --update git make
+    - make deps
+    - make test-integration
+    - rm config/integration_test.json
+    when:
+      event: [pull_request]
+      branch: [dev]
+
+  config_clean:
+    image: golang:1.12-alpine
+    commands:
+    - rm -rf rr-configs
+    when:
+      event: [push, pull_request]
+      branch: [dev, stage]
 
   builds:
     image: golang:1.12-alpine
@@ -125,7 +147,7 @@ pipeline:
       event: [push]
       branch: stage
 
-  pr_test_fail: 
+  pr_test_fail:
     image: plugins/slack
     channel: jenkins
     secrets: [slack_webhook]
@@ -159,3 +181,14 @@ pipeline:
       {{else}}
         Houston, we have a problem. Build <${DRONE_BUILD_LINK}|#{{build.number}}> failed. Fix me please, {{build.author}}
       {{/success}}
+
+services:
+  mysql:
+    image: mysql:5.7.24
+    environment:
+      - MYSQL_ALLOW_EMPTY_PASSWORD=yes
+      - MYSQL_DATABASE=memberdb
+    cap_add:
+      - seccomp:unconfined
+  redis:
+    image: redis
