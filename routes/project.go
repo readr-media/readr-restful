@@ -14,12 +14,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 )
 
 type taggedProject struct {
 	models.Project
-	Tags models.NullIntSlice `json:"tags" db:"tags"`
+	Tags rrsql.NullIntSlice `json:"tags" db:"tags"`
 }
 
 type projectHandler struct {
@@ -33,8 +34,8 @@ func (r *projectHandler) bindQuery(c *gin.Context, args *models.GetProjectArgs) 
 			log.Println(err.Error())
 			return err
 		} else if err == nil {
-			// if err = models.ValidateActive(args.Active, models.ProjectActive); err != nil {
-			if err = models.ValidateActive(args.Active, config.Config.Models.ProjectsActive); err != nil {
+			// if err = rrsql.ValidateActive(args.Active, models.ProjectActive); err != nil {
+			if err = rrsql.ValidateActive(args.Active, config.Config.Models.ProjectsActive); err != nil {
 				return err
 			}
 		}
@@ -44,8 +45,8 @@ func (r *projectHandler) bindQuery(c *gin.Context, args *models.GetProjectArgs) 
 			log.Println(err.Error())
 			return err
 		} else if err == nil {
-			// if err = models.ValidateActive(args.Status, models.ProjectStatus); err != nil {
-			if err = models.ValidateActive(args.Status, config.Config.Models.ProjectsStatus); err != nil {
+			// if err = rrsql.ValidateActive(args.Status, models.ProjectStatus); err != nil {
+			if err = rrsql.ValidateActive(args.Status, config.Config.Models.ProjectsStatus); err != nil {
 				return err
 			}
 		}
@@ -55,8 +56,8 @@ func (r *projectHandler) bindQuery(c *gin.Context, args *models.GetProjectArgs) 
 			log.Println(err.Error())
 			return err
 		} else if err == nil {
-			// if err = models.ValidateActive(args.PublishStatus, models.ProjectPublishStatus); err != nil {
-			if err = models.ValidateActive(args.PublishStatus, config.Config.Models.ProjectsPublishStatus); err != nil {
+			// if err = rrsql.ValidateActive(args.PublishStatus, models.ProjectPublishStatus); err != nil {
+			if err = rrsql.ValidateActive(args.PublishStatus, config.Config.Models.ProjectsPublishStatus); err != nil {
 				return err
 			}
 		}
@@ -197,9 +198,9 @@ func (r *projectHandler) Post(c *gin.Context) {
 	}
 
 	if !project.CreatedAt.Valid {
-		project.CreatedAt = models.NullTime{time.Now(), true}
+		project.CreatedAt = rrsql.NullTime{time.Now(), true}
 	}
-	project.UpdatedAt = models.NullTime{time.Now(), true}
+	project.UpdatedAt = rrsql.NullTime{time.Now(), true}
 
 	err = models.ProjectAPI.InsertProject(project.Project)
 	if err != nil {
@@ -258,7 +259,7 @@ func (r *projectHandler) Put(c *gin.Context) {
 	if project.CreatedAt.Valid {
 		project.CreatedAt.Valid = false
 	}
-	project.UpdatedAt = models.NullTime{time.Now(), true}
+	project.UpdatedAt = rrsql.NullTime{time.Now(), true}
 
 	err = models.ProjectAPI.UpdateProjects(project.Project)
 	if err != nil {

@@ -13,51 +13,60 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/rrsql"
+	"github.com/readr-media/readr-restful/pkg/cards"
 	"github.com/readr-media/readr-restful/utils"
 )
 
 // Post could use json:"omitempty" tag to ignore null field
-// However, struct type field like NullTime, NullString must be declared as pointer,
-// like *NullTime, *NullString to be used with omitempty
+// However, struct type field like rrsql.NullTime, rrsql.NullString must be declared as pointer,
+// like *rrsql.NullTime, *rrsql.NullString to be used with omitempty
 type Post struct {
-	ID              uint32     `json:"id" db:"post_id" redis:"post_id"`
-	Author          NullInt    `json:"author" db:"author" redis:"author"`
-	CreatedAt       NullTime   `json:"created_at" db:"created_at" redis:"created_at"`
-	LikeAmount      NullInt    `json:"like_amount" db:"like_amount" redis:"like_amount"`
-	CommentAmount   NullInt    `json:"comment_amount" db:"comment_amount" redis:"comment_amount"`
-	Title           NullString `json:"title" db:"title" redis:"title"`
-	Subtitle        NullString `json:"subtitle" db:"subtitle" redis:"subtitle"`
-	Content         NullString `json:"content" db:"content" redis:"content"`
-	Type            NullInt    `json:"type" db:"type" redis:"type"`
-	Link            NullString `json:"link" db:"link" redis:"link"`
-	OgTitle         NullString `json:"og_title" db:"og_title" redis:"og_title"`
-	OgDescription   NullString `json:"og_description" db:"og_description" redis:"og_description"`
-	OgImage         NullString `json:"og_image" db:"og_image" redis:"og_image"`
-	Active          NullInt    `json:"active" db:"active" redis:"active"`
-	UpdatedAt       NullTime   `json:"updated_at" db:"updated_at" redis:"updated_at"`
-	UpdatedBy       NullInt    `json:"updated_by" db:"updated_by" redis:"updated_by"`
-	PublishedAt     NullTime   `json:"published_at" db:"published_at" redis:"published_at"`
-	LinkTitle       NullString `json:"link_title" db:"link_title" redis:"link_title"`
-	LinkDescription NullString `json:"link_description" db:"link_description" redis:"link_description"`
-	LinkImage       NullString `json:"link_image" db:"link_image" redis:"link_image"`
-	LinkName        NullString `json:"link_name" db:"link_name" redis:"link_name"`
-	VideoID         NullString `json:"video_id" db:"video_id" redis:"video_id"`
-	VideoViews      NullInt    `json:"video_views" db:"video_views" redis:"video_views"`
-	PublishStatus   NullInt    `json:"publish_status" db:"publish_status" redis:"publish_status"`
-	ProjectID       NullInt    `json:"project_id" db:"project_id" redis:"project_id"`
-	Order           NullInt    `json:"post_order" db:"post_order" redis:"post_order"`
-	HeroImage       NullString `json:"hero_image" db:"hero_image" redis:"hero_image"`
-	Slug            NullString `json:"slug" db:"slug" redis:"slug"`
-	CSS             NullString `json:"css" db:"css" redis:"css"`
-	JS              NullString `json:"javascript" db:"javascript" redis:"javascript"`
+	ID              uint32           `json:"id" db:"post_id" redis:"post_id"`
+	Author          rrsql.NullInt    `json:"author" db:"author" redis:"author"`
+	CreatedAt       rrsql.NullTime   `json:"created_at" db:"created_at" redis:"created_at"`
+	LikeAmount      rrsql.NullInt    `json:"like_amount" db:"like_amount" redis:"like_amount"`
+	CommentAmount   rrsql.NullInt    `json:"comment_amount" db:"comment_amount" redis:"comment_amount"`
+	Title           rrsql.NullString `json:"title" db:"title" redis:"title"`
+	Subtitle        rrsql.NullString `json:"subtitle" db:"subtitle" redis:"subtitle"`
+	Content         rrsql.NullString `json:"content" db:"content" redis:"content"`
+	Type            rrsql.NullInt    `json:"type" db:"type" redis:"type"`
+	Link            rrsql.NullString `json:"link" db:"link" redis:"link"`
+	OgTitle         rrsql.NullString `json:"og_title" db:"og_title" redis:"og_title"`
+	OgDescription   rrsql.NullString `json:"og_description" db:"og_description" redis:"og_description"`
+	OgImage         rrsql.NullString `json:"og_image" db:"og_image" redis:"og_image"`
+	Active          rrsql.NullInt    `json:"active" db:"active" redis:"active"`
+	UpdatedAt       rrsql.NullTime   `json:"updated_at" db:"updated_at" redis:"updated_at"`
+	UpdatedBy       rrsql.NullInt    `json:"updated_by" db:"updated_by" redis:"updated_by"`
+	PublishedAt     rrsql.NullTime   `json:"published_at" db:"published_at" redis:"published_at"`
+	LinkTitle       rrsql.NullString `json:"link_title" db:"link_title" redis:"link_title"`
+	LinkDescription rrsql.NullString `json:"link_description" db:"link_description" redis:"link_description"`
+	LinkImage       rrsql.NullString `json:"link_image" db:"link_image" redis:"link_image"`
+	LinkName        rrsql.NullString `json:"link_name" db:"link_name" redis:"link_name"`
+	VideoID         rrsql.NullString `json:"video_id" db:"video_id" redis:"video_id"`
+	VideoViews      rrsql.NullInt    `json:"video_views" db:"video_views" redis:"video_views"`
+	PublishStatus   rrsql.NullInt    `json:"publish_status" db:"publish_status" redis:"publish_status"`
+	ProjectID       rrsql.NullInt    `json:"project_id" db:"project_id" redis:"project_id"`
+	Order           rrsql.NullInt    `json:"post_order" db:"post_order" redis:"post_order"`
+	HeroImage       rrsql.NullString `json:"hero_image" db:"hero_image" redis:"hero_image"`
+	Slug            rrsql.NullString `json:"slug" db:"slug" redis:"slug"`
+	CSS             rrsql.NullString `json:"css" db:"css" redis:"css"`
+	JS              rrsql.NullString `json:"javascript" db:"javascript" redis:"javascript"`
 }
 
 type FilteredPost struct {
-	ID            int           `json:"id" db:"post_id"`
-	Title         NullString    `json:"title" db:"title"`
-	PublishStatus NullInt       `json:"publish_status" db:"publish_status"`
-	UpdatedAt     NullTime      `json:"updated_at" db:"updated_at"`
-	Authors       []AuthorBasic `json:"authors,omitempty"`
+	ID            int              `json:"id" db:"post_id"`
+	Title         rrsql.NullString `json:"title" db:"title"`
+	PublishStatus rrsql.NullInt    `json:"publish_status" db:"publish_status"`
+	UpdatedAt     rrsql.NullTime   `json:"updated_at" db:"updated_at"`
+	Authors       []AuthorBasic    `json:"authors,omitempty"`
+}
+
+type PostDescription struct {
+	Post
+	Tags      rrsql.NullIntSlice `json:"tags" db:"tags"`
+	Authors   []AuthorInput      `json:"authors" db:"authors"`
+	NewsCards []cards.NewsCard   `json:"cards" db:"cards"`
 }
 
 type postAPI struct{}
@@ -69,9 +78,9 @@ type PostInterface interface {
 	GetPosts(args *PostArgs) (result []TaggedPostMember, err error)
 	GetPost(id uint32, args *PostArgs) (TaggedPostMember, error)
 	FilterPosts(args *PostArgs) ([]FilteredPost, error)
-	InsertPost(p Post) (int, error)
+	InsertPost(p PostDescription) (lastID int, err error)
 	UpdateAll(req PostUpdateArgs) error
-	UpdatePost(p Post) error
+	UpdatePost(p PostDescription) error
 	Count(req *PostArgs) (result int, err error)
 	//Hot() (result []HotPost, err error)
 	UpdateAuthors(p Post, authors []AuthorInput) (err error)
@@ -79,11 +88,11 @@ type PostInterface interface {
 	GetPostAuthor(id uint32) (member Member, err error)
 }
 
-// PostTags is the wrap for NullString used especially in TaggedPostMember
+// PostTags is the wrap for rrsql.NullString used especially in TaggedPostMember
 // Because it is convenient to implement MarshalJSON to override Tags default JSON output
-// The reason I don't use direct alias, ex: type PostTags NullString,
+// The reason I don't use direct alias, ex: type PostTags rrsql.NullString,
 // is because in this way sqlx could not scan values into the type
-type PostTags struct{ NullString }
+type PostTags struct{ rrsql.NullString }
 
 func (pt PostTags) MarshalJSON() ([]byte, error) {
 	type tag struct {
@@ -144,55 +153,55 @@ func (tpm TaggedPostMember) ReturnUpdatedAt() time.Time {
 
 // type HotPost struct {
 // 	Post
-// 	AuthorNickname     NullString `json:"author_nickname" redis:"author_nickname"`
-// 	AuthorProfileImage NullString `json:"author_profileImage" redis:"author_profileImage"`
+// 	AuthorNickname     rrsql.NullString `json:"author_nickname" redis:"author_nickname"`
+// 	AuthorProfileImage rrsql.NullString `json:"author_profileImage" redis:"author_profileImage"`
 // }
 
 // UpdatedBy wraps Member for embedded field updated_by
 // in the usage of anonymous struct in PostMember
 type MemberBasic struct {
-	ID           int64      `json:"id" db:"id"`
-	UUID         NullString `json:"uuid" db:"uuid"`
-	Nickname     NullString `json:"nickname" db:"nickname"`
-	ProfileImage NullString `json:"profile_image" db:"profile_image"`
-	Description  NullString `json:"description" db:"description"`
-	Role         NullInt    `json:"role" db:"role"`
+	ID           int64            `json:"id" db:"id"`
+	UUID         rrsql.NullString `json:"uuid" db:"uuid"`
+	Nickname     rrsql.NullString `json:"nickname" db:"nickname"`
+	ProfileImage rrsql.NullString `json:"profile_image" db:"profile_image"`
+	Description  rrsql.NullString `json:"description" db:"description"`
+	Role         rrsql.NullInt    `json:"role" db:"role"`
 }
 
 type AuthorBasic struct {
-	ID           int64      `json:"id" db:"id"`
-	UUID         NullString `json:"uuid" db:"uuid"`
-	Nickname     NullString `json:"nickname" db:"nickname"`
-	ProfileImage NullString `json:"profile_image" db:"profile_image"`
-	Description  NullString `json:"description" db:"description"`
-	Role         NullInt    `json:"role" db:"role"`
-	Type         NullInt    `json:"author_type" db:"author_type"`
-	ResourceID   NullInt    `json:"resource_id" db:"resource_id"`
+	ID           int64            `json:"id" db:"id"`
+	UUID         rrsql.NullString `json:"uuid" db:"uuid"`
+	Nickname     rrsql.NullString `json:"nickname" db:"nickname"`
+	ProfileImage rrsql.NullString `json:"profile_image" db:"profile_image"`
+	Description  rrsql.NullString `json:"description" db:"description"`
+	Role         rrsql.NullInt    `json:"role" db:"role"`
+	Type         rrsql.NullInt    `json:"author_type" db:"author_type"`
+	ResourceID   rrsql.NullInt    `json:"resource_id" db:"resource_id"`
 }
 
 type ProjectBasic struct {
-	ID            NullInt    `json:"id" db:"project_id"`
-	HeroImage     NullString `json:"hero_image" db:"hero_image"`
-	Title         NullString `json:"title" db:"title"`
-	Description   NullString `json:"description" db:"description"`
-	OgTitle       NullString `json:"og_title" db:"og_title"`
-	OgDescription NullString `json:"og_description" db:"og_description"`
-	OgImage       NullString `json:"og_image" db:"og_image"`
-	Slug          NullString `json:"slug" db:"slug" redis:"slug"`
+	ID            rrsql.NullInt    `json:"id" db:"project_id"`
+	HeroImage     rrsql.NullString `json:"hero_image" db:"hero_image"`
+	Title         rrsql.NullString `json:"title" db:"title"`
+	Description   rrsql.NullString `json:"description" db:"description"`
+	OgTitle       rrsql.NullString `json:"og_title" db:"og_title"`
+	OgDescription rrsql.NullString `json:"og_description" db:"og_description"`
+	OgImage       rrsql.NullString `json:"og_image" db:"og_image"`
+	Slug          rrsql.NullString `json:"slug" db:"slug" redis:"slug"`
 }
 
 type PostUpdateArgs struct {
-	IDs           []int    `json:"ids"`
-	UpdatedBy     int64    `form:"updated_by" json:"updated_by" db:"updated_by"`
-	UpdatedAt     NullTime `json:"-" db:"updated_at"`
-	PublishedAt   NullTime `json:"-" db:"published_at"`
-	Active        NullInt  `json:"-" db:"active"`
-	PublishStatus NullInt  `json:"-" db:"publish_status"`
+	IDs           []int          `json:"ids"`
+	UpdatedBy     int64          `form:"updated_by" json:"updated_by" db:"updated_by"`
+	UpdatedAt     rrsql.NullTime `json:"-" db:"updated_at"`
+	PublishedAt   rrsql.NullTime `json:"-" db:"published_at"`
+	Active        rrsql.NullInt  `json:"-" db:"active"`
+	PublishStatus rrsql.NullInt  `json:"-" db:"publish_status"`
 }
 
 type AuthorInput struct {
-	Type     NullInt `json:"author_type" db:"author_type"`
-	MemberID NullInt `json:"member_id" db:"member_id"`
+	Type     rrsql.NullInt `json:"author_type" db:"author_type"`
+	MemberID rrsql.NullInt `json:"member_id" db:"member_id"`
 }
 
 func (p *PostUpdateArgs) parse() (updates string, values []interface{}) {
@@ -285,25 +294,25 @@ func (p *PostArgs) parse() (restricts string, values []interface{}) {
 
 	if p.Active != nil {
 		for k, v := range p.Active {
-			where = append(where, fmt.Sprintf("%s %s (?)", "posts.active", operatorHelper(k)))
+			where = append(where, fmt.Sprintf("%s %s (?)", "posts.active", rrsql.OperatorHelper(k)))
 			values = append(values, v)
 		}
 	}
 	if p.PublishStatus != nil {
 		for k, v := range p.PublishStatus {
-			where = append(where, fmt.Sprintf("%s %s (?)", "posts.publish_status", operatorHelper(k)))
+			where = append(where, fmt.Sprintf("%s %s (?)", "posts.publish_status", rrsql.OperatorHelper(k)))
 			values = append(values, v)
 		}
 	}
 	if p.Author != nil {
 		for k, v := range p.Author {
-			where = append(where, fmt.Sprintf("%s %s (?)", "posts.author", operatorHelper(k)))
+			where = append(where, fmt.Sprintf("%s %s (?)", "posts.author", rrsql.OperatorHelper(k)))
 			values = append(values, v)
 		}
 	}
 	if p.Type != nil {
 		for k, v := range p.Type {
-			where = append(where, fmt.Sprintf("%s %s (?)", "posts.type", operatorHelper(k)))
+			where = append(where, fmt.Sprintf("%s %s (?)", "posts.type", rrsql.OperatorHelper(k)))
 			values = append(values, v)
 		}
 	}
@@ -343,7 +352,7 @@ func (p *PostArgs) parseResultLimit() (restricts string, values []interface{}) {
 			}
 		}
 		p.Sorting = strings.Join(tmp, ",")
-		restricts = fmt.Sprintf("%s ORDER BY %s", restricts, orderByHelper(p.Sorting))
+		restricts = fmt.Sprintf("%s ORDER BY %s", restricts, rrsql.OrderByHelper(p.Sorting))
 	}
 
 	if p.MaxResult > 0 {
@@ -425,7 +434,7 @@ func (p *PostArgs) parseFilterRestricts() (restrictString string, values []inter
 }
 
 func (p *PostArgs) parseFilterQuery() (restricts string, values []interface{}) {
-	fields := getStructDBTags("exist", FilteredPost{})
+	fields := rrsql.GetStructDBTags("exist", FilteredPost{})
 	for k, v := range fields {
 		fields[k] = fmt.Sprintf("posts.%s", v)
 	}
@@ -465,9 +474,9 @@ func (a *postAPI) GetPosts(req *PostArgs) (result []TaggedPostMember, err error)
 	if err != nil {
 		return nil, err
 	}
-	query = DB.Rebind(query)
+	query = rrsql.DB.Rebind(query)
 
-	rows, err := DB.Queryx(query, args...)
+	rows, err := rrsql.DB.Queryx(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -523,9 +532,9 @@ func (a *postAPI) GetPost(id uint32, req *PostArgs) (post TaggedPostMember, err 
 	if err != nil {
 		return post, err
 	}
-	query = DB.Rebind(query)
+	query = rrsql.DB.Rebind(query)
 
-	err = DB.Get(&post, query, args...)
+	err = rrsql.DB.Get(&post, query, args...)
 	if err != nil {
 		switch {
 		case err == sql.ErrNoRows:
@@ -560,21 +569,21 @@ func (a *postAPI) GetPost(id uint32, req *PostArgs) (post TaggedPostMember, err 
 }
 
 type postCommentResource struct {
-	ID       int        `db:"post_id"`
-	Type     NullInt    `db:"type"`
-	Slug     NullString `db:"slug"`
-	Resource string     `db:"-"`
+	ID       int              `db:"post_id"`
+	Type     rrsql.NullInt    `db:"type"`
+	Slug     rrsql.NullString `db:"slug"`
+	Resource string           `db:"-"`
 }
 type postCard struct {
-	ID              uint32     `json:"id" db:"id"`
-	PostID          uint32     `json:"post_id" db:"post_id"`
-	Title           NullString `json:"title" db:"title"`
-	Description     NullString `json:"description" db:"description"`
-	BackgroundImage NullString `json:"background_image" db:"background_image"`
-	BackgroundColor NullString `json:"background_color" db:"background_color"`
-	Image           NullString `json:"image" db:"image"`
-	Video           NullString `json:"video" db:"video"`
-	Order           NullInt    `json:"order" db:"order"`
+	ID              uint32           `json:"id" db:"id"`
+	PostID          uint32           `json:"post_id" db:"post_id"`
+	Title           rrsql.NullString `json:"title" db:"title"`
+	Description     rrsql.NullString `json:"description" db:"description"`
+	BackgroundImage rrsql.NullString `json:"background_image" db:"background_image"`
+	BackgroundColor rrsql.NullString `json:"background_color" db:"background_color"`
+	Image           rrsql.NullString `json:"image" db:"image"`
+	Video           rrsql.NullString `json:"video" db:"video"`
+	Order           rrsql.NullInt    `json:"order" db:"order"`
 }
 
 func (a *postAPI) fetchPostComments(ids []int) (comments map[int][]CommentAuthor, err error) {
@@ -627,9 +636,9 @@ func (a *postAPI) fetchPostCommentResource(ids []int) (result []postCommentResou
 	if err != nil {
 		return result, err
 	}
-	query = DB.Rebind(query)
+	query = rrsql.DB.Rebind(query)
 
-	rows, err := DB.Queryx(query, args...)
+	rows, err := rrsql.DB.Queryx(query, args...)
 	if err != nil {
 		return result, err
 	}
@@ -655,9 +664,9 @@ func (a *postAPI) fetchPostAuthors(ids []int) (authors map[int][]AuthorBasic, er
 	if err != nil {
 		return authors, err
 	}
-	query = DB.Rebind(query)
+	query = rrsql.DB.Rebind(query)
 
-	rows, err := DB.Queryx(query, args...)
+	rows, err := rrsql.DB.Queryx(query, args...)
 	if err != nil {
 		return authors, err
 	}
@@ -685,9 +694,9 @@ func (a *postAPI) fetchPostCards(ids []int) (cards map[int][]postCard, err error
 	if err != nil {
 		return cards, err
 	}
-	query = DB.Rebind(query)
+	query = rrsql.DB.Rebind(query)
 
-	rows, err := DB.Queryx(query, args...)
+	rows, err := rrsql.DB.Queryx(query, args...)
 	if err != nil {
 		return cards, err
 	}
@@ -705,13 +714,13 @@ func (a *postAPI) fetchPostCards(ids []int) (cards map[int][]postCard, err error
 }
 
 func (a *postAPI) buildGetQuery(req *PostArgs) (query string, values []interface{}) {
-	memberDBTags := getStructDBTags("full", MemberBasic{})
+	memberDBTags := rrsql.GetStructDBTags("full", MemberBasic{})
 	selectedFields := []string{"posts.*"}
 	joinedTables := make([]string, 0)
 	var joinedTableString, restricts string
 
 	if req.ShowUpdater {
-		updatedByField := makeFieldString("get", `updated_by.%s "updated_by.%s"`, memberDBTags)
+		updatedByField := rrsql.MakeFieldString("get", `updated_by.%s "updated_by.%s"`, memberDBTags)
 		updatedByIDQuery := strings.Split(updatedByField[0], " ")
 		updatedByField[0] = fmt.Sprintf(`IFNULL(%s, 0) %s`, updatedByIDQuery[0], updatedByIDQuery[1])
 		selectedFields = append(selectedFields, updatedByField...)
@@ -719,8 +728,8 @@ func (a *postAPI) buildGetQuery(req *PostArgs) (query string, values []interface
 	}
 
 	if req.ShowProject {
-		projectDBTags := getStructDBTags("full", ProjectBasic{})
-		projectField := makeFieldString("get", `project.%s "project.%s"`, projectDBTags)
+		projectDBTags := rrsql.GetStructDBTags("full", ProjectBasic{})
+		projectField := rrsql.MakeFieldString("get", `project.%s "project.%s"`, projectDBTags)
 		projectIDQuery := strings.Split(projectField[0], " ")
 		projectField[0] = fmt.Sprintf(`IFNULL(%s, 0) %s`, projectIDQuery[0], projectIDQuery[1])
 		selectedFields = append(selectedFields, projectField...)
@@ -761,7 +770,7 @@ func (a *postAPI) buildGetQuery(req *PostArgs) (query string, values []interface
 func (a *postAPI) FilterPosts(args *PostArgs) (result []FilteredPost, err error) {
 	query, values := args.parseFilterQuery()
 
-	rows, err := DB.Queryx(query, values...)
+	rows, err := rrsql.DB.Queryx(query, values...)
 	if err != nil {
 		return nil, err
 	}
@@ -792,63 +801,87 @@ func (a *postAPI) FilterPosts(args *PostArgs) (result []FilteredPost, err error)
 	return result, err
 }
 
-func (a *postAPI) InsertPost(p Post) (int, error) {
+func (a *postAPI) insertPostStms() string {
 
-	tags := getStructDBTags("full", Post{})
+	tags := rrsql.GetStructDBTags("full", Post{})
 	query := fmt.Sprintf(`INSERT INTO posts (%s) VALUES (:%s)`,
 		strings.Join(tags, ","), strings.Join(tags, ",:"))
 
-	result, err := DB.NamedExec(query, p)
-	if err != nil {
-		if strings.Contains(err.Error(), "Duplicate entry") {
-			return 0, errors.New("Duplicate entry")
-		}
-		return 0, err
-	}
-	rowCnt, err := result.RowsAffected()
-	if err != nil {
-		log.Fatal(err)
-	}
-	if rowCnt > 1 {
-		return 0, errors.New("More Than One Rows Affected")
-	} else if rowCnt == 0 {
-		return 0, errors.New("Post Not Found")
-	}
-	lastID, err := result.LastInsertId()
-	if err != nil {
-		log.Printf("Fail to get last insert ID when insert a post: %v", err)
-		return 0, err
-	}
-
-	return int(lastID), err
+	return query
 }
 
-func (a *postAPI) UpdatePost(p Post) error {
+func (a *postAPI) InsertPost(p PostDescription) (lastID int, err error) {
 
-	tags := getStructDBTags("partial", p)
-	fields := makeFieldString("update", `%s = :%s`, tags)
+	stmts := []*rrsql.PipelineStmt{}
+
+	stmts = append(stmts, &rrsql.PipelineStmt{
+		Query:        a.insertPostStms(),
+		Args:         []interface{}{},
+		NamedArgs:    p.Post,
+		NamedExec:    true,
+		RowsAffected: true,
+		LastInsertId: true,
+	})
+
+	if len(p.Authors) > 0 {
+		stmts = append(stmts, a.updateAuthorsStms(p.Post, p.Authors)...)
+	}
+
+	if p.Tags.Valid {
+		stmts = append(stmts, updateTaggingStmts(config.Config.Models.TaggingType["post"], 0, p.Tags.Slice)...)
+	}
+
+	err = rrsql.WithTransaction(rrsql.DB.DB, func(tx *sqlx.Tx) error {
+		id, _, err := rrsql.RunPipeline(tx, stmts...)
+		lastID = int(id)
+		return err
+	})
+
+	return lastID, err
+}
+
+func (a *postAPI) updatePostStms(p PostDescription) string {
+
+	tags := rrsql.GetStructDBTags("partial", p.Post)
+	fields := rrsql.MakeFieldString("update", `%s = :%s`, tags)
 	query := fmt.Sprintf(`UPDATE posts SET %s WHERE post_id = :post_id`,
 		strings.Join(fields, ", "))
 
-	result, err := DB.NamedExec(query, p)
+	return query
+}
 
-	if err != nil {
+func (a *postAPI) UpdatePost(p PostDescription) (err error) {
+
+	stmts := []*rrsql.PipelineStmt{}
+
+	stmts = append(stmts, &rrsql.PipelineStmt{
+		Query:        a.updatePostStms(p),
+		Args:         []interface{}{},
+		NamedArgs:    p.Post,
+		NamedExec:    true,
+		RowsAffected: true,
+	})
+
+	if len(p.Authors) > 0 {
+		stmts = append(stmts, a.updateAuthorsStms(p.Post, p.Authors)...)
+	}
+
+	if p.Tags.Valid {
+		stmts = append(stmts, updateTaggingStmts(config.Config.Models.TaggingType["post"], int(p.Post.ID), p.Tags.Slice)...)
+	}
+
+	err = rrsql.WithTransaction(rrsql.DB.DB, func(tx *sqlx.Tx) error {
+		_, _, err := rrsql.RunPipeline(tx, stmts...)
 		return err
-	}
-	rowCnt, err := result.RowsAffected()
-	if rowCnt > 1 {
-		return errors.New("More Than One Rows Affected")
-	} else if rowCnt == 0 {
-		return errors.New("Post Not Found")
-	}
+	})
 
 	return err
 }
 
 func (a *postAPI) DeletePost(id uint32) error {
 
-	// result, err := DB.Exec(fmt.Sprintf("UPDATE posts SET active = %d WHERE post_id = ?", int(PostStatus["deactive"].(float64))), id)
-	result, err := DB.Exec(fmt.Sprintf("UPDATE posts SET active = %d WHERE post_id = ?", config.Config.Models.Posts["deactive"]), id)
+	// result, err := rrsql.DB.Exec(fmt.Sprintf("UPDATE posts SET active = %d WHERE post_id = ?", int(PostStatus["deactive"].(float64))), id)
+	result, err := rrsql.DB.Exec(fmt.Sprintf("UPDATE posts SET active = %d WHERE post_id = ?", config.Config.Models.Posts["deactive"]), id)
 	if err != nil {
 		return err
 	}
@@ -874,10 +907,10 @@ func (a *postAPI) UpdateAll(req PostUpdateArgs) error {
 		return err
 	}
 
-	restrictQuery = DB.Rebind(restrictQuery)
+	restrictQuery = rrsql.DB.Rebind(restrictQuery)
 	updateArgs = append(updateArgs, restrictArgs...)
 
-	result, err := DB.Exec(fmt.Sprintf("%s %s", updateQuery, restrictQuery), updateArgs...)
+	result, err := rrsql.DB.Exec(fmt.Sprintf("%s %s", updateQuery, restrictQuery), updateArgs...)
 	if err != nil {
 		return err
 	}
@@ -894,7 +927,7 @@ func (a *postAPI) UpdateAll(req PostUpdateArgs) error {
 func (a *postAPI) Count(req *PostArgs) (result int, err error) {
 
 	if !req.anyFilter() {
-		rows, err := DB.Queryx(`SELECT COUNT(*) FROM posts`)
+		rows, err := rrsql.DB.Queryx(`SELECT COUNT(*) FROM posts`)
 		if err != nil {
 			return 0, err
 		}
@@ -912,8 +945,8 @@ func (a *postAPI) Count(req *PostArgs) (result int, err error) {
 		if err != nil {
 			return 0, err
 		}
-		query = DB.Rebind(query)
-		count, err := DB.Queryx(query, args...)
+		query = rrsql.DB.Rebind(query)
+		count, err := rrsql.DB.Queryx(query, args...)
 		if err != nil {
 			return 0, err
 		}
@@ -937,38 +970,51 @@ func (a *postAPI) Hot() (result []HotPost, err error) {
 }
 */
 
-func (a *postAPI) UpdateAuthors(post Post, authors []AuthorInput) (err error) {
-	// Delete non-exist author
+func (a *postAPI) updateAuthorsStms(post Post, authors []AuthorInput) (stmts []*rrsql.PipelineStmt) {
+
+	// If post has no id, then give a placeholder for sql trasaction
+	postIDString := config.Config.SQL.TrasactionIDPlaceholder
+	if post.ID != 0 {
+		postIDString = strconv.Itoa(int(post.ID))
+	}
 
 	authorCodition := make([]string, 0)
 	for _, v := range authors {
 		authorCodition = append(authorCodition, fmt.Sprintf(`AND NOT (author_id = %d and author_type = %d)`, v.MemberID.Int, v.Type.Int))
 	}
 
-	_, err = DB.Exec(fmt.Sprintf(`DELETE FROM authors WHERE resource_id = ? AND resource_type = ? %s ;`,
-		strings.Join(authorCodition, " ")), post.ID, post.Type.Int)
-	if err != nil {
-		return err
-	}
-
 	// Add / update auhtors
 	authorInsertions := make([]string, 0)
 	for _, v := range authors {
-		authorInsertions = append(authorInsertions, fmt.Sprintf(`(%d, %d, %d ,%d)`, post.ID, v.MemberID.Int, post.Type.Int, v.Type.Int))
+		authorInsertions = append(authorInsertions, fmt.Sprintf(`(%s, %d, %d ,%d)`, postIDString, v.MemberID.Int, post.Type.Int, v.Type.Int))
 	}
 
-	_, err = DB.Exec(fmt.Sprintf(`INSERT IGNORE authors (resource_id, author_id, resource_type, author_type) VALUES %s;`,
-		strings.Join(authorInsertions, ",")))
-	if err != nil {
+	stmts = append(stmts,
+		&rrsql.PipelineStmt{
+			Query: fmt.Sprintf(`DELETE FROM authors WHERE resource_id = ? AND resource_type = ? %s ;`, strings.Join(authorCodition, " ")),
+			Args:  []interface{}{postIDString, post.Type.Int}},
+		&rrsql.PipelineStmt{
+			Query: fmt.Sprintf(`INSERT IGNORE authors (resource_id, author_id, resource_type, author_type) VALUES %s;`, strings.Join(authorInsertions, ",")),
+		})
+	return stmts
+}
+
+func (a *postAPI) UpdateAuthors(post Post, authors []AuthorInput) (err error) {
+	// Delete non-exist author
+
+	stmts := a.updateAuthorsStms(post, authors)
+
+	err = rrsql.WithTransaction(rrsql.DB.DB, func(tx *sqlx.Tx) error {
+		_, _, err := rrsql.RunPipeline(tx, stmts...)
 		return err
-	}
+	})
 
 	return nil
 }
 
 func (a *postAPI) SchedulePublish() (ids []uint32, err error) {
 	ids = make([]uint32, 0)
-	rows, err := DB.Queryx(fmt.Sprintf("SELECT post_id FROM posts WHERE publish_status=%d AND type in (%d,%d,%d,%d) AND published_at <= cast(now() as datetime);",
+	rows, err := rrsql.DB.Queryx(fmt.Sprintf("SELECT post_id FROM posts WHERE publish_status=%d AND type in (%d,%d,%d,%d) AND published_at <= cast(now() as datetime);",
 		config.Config.Models.PostPublishStatus["schedule"],
 		config.Config.Models.PostType["review"],
 		config.Config.Models.PostType["news"],
@@ -992,7 +1038,7 @@ func (a *postAPI) SchedulePublish() (ids []uint32, err error) {
 		return ids, err
 	}
 
-	_, err = DB.Exec(fmt.Sprintf("UPDATE posts SET publish_status=%d WHERE publish_status=%d AND type in (%d,%d,%d,%d) AND published_at <= cast(now() as datetime);",
+	_, err = rrsql.DB.Exec(fmt.Sprintf("UPDATE posts SET publish_status=%d WHERE publish_status=%d AND type in (%d,%d,%d,%d) AND published_at <= cast(now() as datetime);",
 		config.Config.Models.PostPublishStatus["publish"],
 		config.Config.Models.PostPublishStatus["schedule"],
 		config.Config.Models.PostType["review"],
@@ -1011,7 +1057,7 @@ func (a *postAPI) SchedulePublish() (ids []uint32, err error) {
 func (a *postAPI) GetPostAuthor(id uint32) (member Member, err error) {
 	query := `SELECT m.* FROM members AS m LEFT JOIN posts AS p ON p.author = m.id WHERE p.post_id = ?;`
 
-	err = DB.Get(&member, query, id)
+	err = rrsql.DB.Get(&member, query, id)
 	if err != nil {
 		return member, err
 	}

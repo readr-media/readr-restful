@@ -12,15 +12,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/config"
 	rt "github.com/readr-media/readr-restful/internal/router"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/pkg/mail"
 )
-
-type PostDesciption struct {
-	models.Post
-	Tags    models.NullIntSlice  `json:"tags" db:"tags"`
-	Authors []models.AuthorInput `json:"authors" db:"authors"`
-}
 
 type postHandler struct{}
 
@@ -43,7 +38,7 @@ func (r *postHandler) bindQuery(c *gin.Context, args *models.PostArgs) (err erro
 		if err = json.Unmarshal([]byte(c.Query("active")), &args.Active); err != nil {
 			return err
 		} else if err == nil {
-			if err = models.ValidateActive(args.Active, config.Config.Models.Posts); err != nil {
+			if err = rrsql.ValidateActive(args.Active, config.Config.Models.Posts); err != nil {
 				return err
 			}
 		}
@@ -52,7 +47,7 @@ func (r *postHandler) bindQuery(c *gin.Context, args *models.PostArgs) (err erro
 		if err = json.Unmarshal([]byte(c.Query("publish_status")), &args.PublishStatus); err != nil {
 			return err
 		} else if err == nil {
-			if err = models.ValidateActive(args.PublishStatus, config.Config.Models.PostPublishStatus); err != nil {
+			if err = rrsql.ValidateActive(args.PublishStatus, config.Config.Models.PostPublishStatus); err != nil {
 				return err
 			}
 		}
@@ -163,7 +158,7 @@ func (r *postHandler) Get(c *gin.Context) {
 
 func (r *postHandler) Post(c *gin.Context) {
 
-	var post PostDesciption
+	var post models.PostDescription
 	if err := c.BindJSON(&post); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return
@@ -180,14 +175,14 @@ func (r *postHandler) Post(c *gin.Context) {
 	}
 
 	// CreatedAt and UpdatedAt set default to now
-	post.CreatedAt = models.NullTime{Time: time.Now(), Valid: true}
-	post.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
+	post.CreatedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
+	post.UpdatedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
 
 	if !post.Active.Valid {
-		post.Active = models.NullInt{int64(config.Config.Models.Posts["active"]), true}
+		post.Active = rrsql.NullInt{int64(config.Config.Models.Posts["active"]), true}
 	}
 	if !post.PublishStatus.Valid {
-		post.PublishStatus = models.NullInt{int64(config.Config.Models.PostPublishStatus["pending"]), true}
+		post.PublishStatus = rrsql.NullInt{int64(config.Config.Models.PostPublishStatus["pending"]), true}
 	}
 	if !post.UpdatedBy.Valid {
 		if len(post.Authors) > 0 && post.Authors[0].MemberID.Int != 0 {
@@ -198,23 +193,11 @@ func (r *postHandler) Post(c *gin.Context) {
 		}
 	}
 	if post.PublishStatus.Valid && post.PublishStatus.Int == int64(config.Config.Models.PostPublishStatus["publish"]) && !post.PublishedAt.Valid {
-		post.PublishedAt = models.NullTime{Time: time.Now(), Valid: true}
+		post.PublishedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
 	}
 
 	if !post.ProjectID.Valid {
-		post.ProjectID = models.NullInt{Int: 0, Valid: true}
-	}
-
-	postID, err := models.PostAPI.InsertPost(post.Post)
-	if err != nil {
-		switch err.Error() {
-		case "Duplicate entry":
-			c.JSON(http.StatusBadRequest, gin.H{"Error": "Post ID Already Taken"})
-			return
-		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
-			return
-		}
+		post.ProjectID = rrsql.NullInt{Int: 0, Valid: true}
 	}
 
 	// Assign post.authors to post.author when post.authors is empty
@@ -222,21 +205,17 @@ func (r *postHandler) Post(c *gin.Context) {
 	if post.Post.Author.Valid && len(post.Authors) == 0 {
 		post.Authors = append(post.Authors, models.AuthorInput{
 			MemberID: post.Post.Author,
-			Type:     models.NullInt{Int: 0, Valid: true},
+			Type:     rrsql.NullInt{Int: 0, Valid: true},
 		})
 	}
-	if len(post.Authors) > 0 {
-		post.Post.ID = uint32(postID)
-		err = models.PostAPI.UpdateAuthors(post.Post, post.Authors)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
-			return
-		}
-	}
 
-	if post.Tags.Valid {
-		err = models.TagAPI.UpdateTagging(config.Config.Models.TaggingType["post"], postID, post.Tags.Slice)
-		if err != nil {
+	postID, err := models.PostAPI.InsertPost(post)
+	if err != nil {
+		switch err.Error() {
+		case "Duplicate entry":
+			c.JSON(http.StatusBadRequest, gin.H{"Error": "Post ID Already Taken"})
+			return
+		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 			return
 		}
@@ -252,7 +231,7 @@ func (r *postHandler) Post(c *gin.Context) {
 
 func (r *postHandler) Put(c *gin.Context) {
 
-	post := PostDesciption{}
+	post := models.PostDescription{}
 
 	err := c.ShouldBindJSON(&post)
 	// Check if post struct was binded successfully
@@ -270,9 +249,9 @@ func (r *postHandler) Put(c *gin.Context) {
 		post.CreatedAt.Valid = false
 	}
 	if post.PublishStatus.Valid && post.PublishStatus.Int == int64(config.Config.Models.PostPublishStatus["publish"]) && !post.PublishedAt.Valid {
-		post.PublishedAt = models.NullTime{Time: time.Now(), Valid: true}
+		post.PublishedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
 	}
-	post.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
+	post.UpdatedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
 
 	switch {
 	case post.UpdatedBy.Valid:
@@ -284,29 +263,13 @@ func (r *postHandler) Put(c *gin.Context) {
 		return
 	}
 
-	err = models.PostAPI.UpdatePost(post.Post)
+	err = models.PostAPI.UpdatePost(post)
 	if err != nil {
-		switch err.Error() {
-		case "Post Not Found":
+		switch err {
+		case rrsql.ItemNotFoundError:
 			c.JSON(http.StatusBadRequest, gin.H{"Error": "Post Not Found"})
 			return
 		default:
-			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
-			return
-		}
-	}
-
-	if post.Tags.Valid {
-		err = models.TagAPI.UpdateTagging(config.Config.Models.TaggingType["post"], int(post.ID), post.Tags.Slice)
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
-			return
-		}
-	}
-
-	if len(post.Authors) > 0 {
-		err = models.PostAPI.UpdateAuthors(post.Post, post.Authors)
-		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 			return
 		}
@@ -379,8 +342,8 @@ func (r *postHandler) DeleteAll(c *gin.Context) {
 	// if strings.HasSuffix(params.UpdatedBy, `"`) {
 	// 	params.UpdatedBy = strings.TrimSuffix(params.UpdatedBy, `"`)
 	// }
-	params.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
-	params.Active = models.NullInt{Int: int64(config.Config.Models.Posts["deactive"]), Valid: true}
+	params.UpdatedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
+	params.Active = rrsql.NullInt{Int: int64(config.Config.Models.Posts["deactive"]), Valid: true}
 	err = models.PostAPI.UpdateAll(params)
 	if err != nil {
 		switch err.Error() {
@@ -429,8 +392,8 @@ func (r *postHandler) PublishAll(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Request Body"})
 		return
 	}
-	payload.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
-	payload.PublishStatus = models.NullInt{Int: int64(config.Config.Models.PostPublishStatus["publish"]), Valid: true}
+	payload.UpdatedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
+	payload.PublishStatus = rrsql.NullInt{Int: int64(config.Config.Models.PostPublishStatus["publish"]), Valid: true}
 	err = models.PostAPI.UpdateAll(payload)
 	if err != nil {
 		switch err.Error() {

@@ -30,7 +30,8 @@
                 "table_name": "",
                 "primary_key": ""
             }
-        }
+        },
+        "trasaction_id_placeholder": "{{LAST_INSERT_ID_PLACEHOLDER}}"
     },
     "redis":{
         "read_url": "",

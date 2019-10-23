@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/readr-media/readr-restful/models"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 )
 
 type SQLsv struct {
@@ -133,7 +133,7 @@ func (s *SQLO) Select() (query string, args []interface{}, err error) {
 	if err != nil {
 		return "", nil, err
 	}
-	query = models.DB.Rebind(query)
+	query = rrsql.DB.Rebind(query)
 	return query, args, err
 }
 
@@ -144,6 +144,6 @@ func (s *SQLO) Count() (query string, args []interface{}, err error) {
 	if err != nil {
 		return "", nil, err
 	}
-	query = models.DB.Rebind(query)
+	query = rrsql.DB.Rebind(query)
 	return query, args, err
 }

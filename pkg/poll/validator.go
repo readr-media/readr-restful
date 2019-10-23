@@ -3,7 +3,7 @@ package poll
 import (
 	"time"
 
-	"github.com/readr-media/readr-restful/models"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 )
 
 // Validate exploit functions to check and modify the content of Poll
@@ -24,14 +24,14 @@ func ValidatePollInsertID(p *Poll) {
 // ValidatePollCreatedAt set created_at of Poll to current time
 func ValidatePollCreatedAt(p *Poll) {
 	if !p.CreatedAt.Valid {
-		p.CreatedAt = models.NullTime{Time: time.Now(), Valid: true}
+		p.CreatedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
 	}
 }
 
 // ValidatePollUpdatedAt set updated_at of Poll to now
 func ValidatePollUpdatedAt(p *Poll) {
 	if p.UpdatedAt.Valid {
-		p.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
+		p.UpdatedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
 	}
 }
 
@@ -48,14 +48,14 @@ func ValidateChoiceInsertID(c *Choice) {
 func ValidateChoiceCreatedAt(c *Choice) {
 
 	if !c.CreatedAt.Valid {
-		c.CreatedAt = models.NullTime{Time: time.Now(), Valid: true}
+		c.CreatedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
 	}
 }
 
 // ValidateChoiceUpdatedAt set updated_at of Choice to now
 func ValidateChoiceUpdatedAt(c *Choice) {
 	if !c.UpdatedAt.Valid {
-		c.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
+		c.UpdatedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
 	}
 }
 

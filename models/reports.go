@@ -12,39 +12,40 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 )
 
 type Report struct {
-	ID              uint32     `json:"id" db:"post_id" redis:"post_id"`
-	Author          NullInt    `json:"author" db:"author" redis:"author"`
-	CreatedAt       NullTime   `json:"created_at" db:"created_at" redis:"created_at"`
-	LikeAmount      NullInt    `json:"like_amount" db:"like_amount" redis:"like_amount"`
-	CommentAmount   NullInt    `json:"comment_amount" db:"comment_amount" redis:"comment_amount"`
-	Title           NullString `json:"title" db:"title" redis:"title"`
-	Subtitle        NullString `json:"subtitle" db:"subtitle" redis:"subtitle"`
-	Content         NullString `json:"content" db:"content" redis:"content"` //change from "description"
-	Type            NullInt    `json:"type" db:"type" redis:"type"`
-	Link            NullString `json:"link" db:"link" redis:"link"`
-	OgTitle         NullString `json:"og_title" db:"og_title" redis:"og_title"`
-	OgDescription   NullString `json:"og_description" db:"og_description" redis:"og_description"`
-	OgImage         NullString `json:"og_image" db:"og_image" redis:"og_image"`
-	Active          NullInt    `json:"active" db:"active" redis:"active"`
-	UpdatedAt       NullTime   `json:"updated_at" db:"updated_at" redis:"updated_at"`
-	UpdatedBy       NullInt    `json:"updated_by" db:"updated_by" redis:"updated_by"`
-	PublishedAt     NullTime   `json:"published_at" db:"published_at" redis:"published_at"`
-	LinkTitle       NullString `json:"link_title" db:"link_title" redis:"link_title"`
-	LinkDescription NullString `json:"link_description" db:"link_description" redis:"link_description"`
-	LinkImage       NullString `json:"link_image" db:"link_image" redis:"link_image"`
-	LinkName        NullString `json:"link_name" db:"link_name" redis:"link_name"`
-	VideoID         NullString `json:"video_id" db:"video_id" redis:"video_id"`
-	VideoViews      NullInt    `json:"video_views" db:"video_views" redis:"video_views"`
-	PublishStatus   NullInt    `json:"publish_status" db:"publish_status" redis:"publish_status"`
-	ProjectID       NullInt    `json:"project_id" db:"project_id" redis:"project_id"`
-	Order           NullInt    `json:"post_order" db:"post_order" redis:"post_order"`
-	HeroImage       NullString `json:"hero_image" db:"hero_image" redis:"hero_image"`
-	Slug            NullString `json:"slug" db:"slug" redis:"slug"`
-	CSS             NullString `json:"css" db:"css" redis:"css"`
-	JS              NullString `json:"javascript" db:"javascript" redis:"javascript"`
+	ID              uint32           `json:"id" db:"post_id" redis:"post_id"`
+	Author          rrsql.NullInt    `json:"author" db:"author" redis:"author"`
+	CreatedAt       rrsql.NullTime   `json:"created_at" db:"created_at" redis:"created_at"`
+	LikeAmount      rrsql.NullInt    `json:"like_amount" db:"like_amount" redis:"like_amount"`
+	CommentAmount   rrsql.NullInt    `json:"comment_amount" db:"comment_amount" redis:"comment_amount"`
+	Title           rrsql.NullString `json:"title" db:"title" redis:"title"`
+	Subtitle        rrsql.NullString `json:"subtitle" db:"subtitle" redis:"subtitle"`
+	Content         rrsql.NullString `json:"content" db:"content" redis:"content"` //change from "description"
+	Type            rrsql.NullInt    `json:"type" db:"type" redis:"type"`
+	Link            rrsql.NullString `json:"link" db:"link" redis:"link"`
+	OgTitle         rrsql.NullString `json:"og_title" db:"og_title" redis:"og_title"`
+	OgDescription   rrsql.NullString `json:"og_description" db:"og_description" redis:"og_description"`
+	OgImage         rrsql.NullString `json:"og_image" db:"og_image" redis:"og_image"`
+	Active          rrsql.NullInt    `json:"active" db:"active" redis:"active"`
+	UpdatedAt       rrsql.NullTime   `json:"updated_at" db:"updated_at" redis:"updated_at"`
+	UpdatedBy       rrsql.NullInt    `json:"updated_by" db:"updated_by" redis:"updated_by"`
+	PublishedAt     rrsql.NullTime   `json:"published_at" db:"published_at" redis:"published_at"`
+	LinkTitle       rrsql.NullString `json:"link_title" db:"link_title" redis:"link_title"`
+	LinkDescription rrsql.NullString `json:"link_description" db:"link_description" redis:"link_description"`
+	LinkImage       rrsql.NullString `json:"link_image" db:"link_image" redis:"link_image"`
+	LinkName        rrsql.NullString `json:"link_name" db:"link_name" redis:"link_name"`
+	VideoID         rrsql.NullString `json:"video_id" db:"video_id" redis:"video_id"`
+	VideoViews      rrsql.NullInt    `json:"video_views" db:"video_views" redis:"video_views"`
+	PublishStatus   rrsql.NullInt    `json:"publish_status" db:"publish_status" redis:"publish_status"`
+	ProjectID       rrsql.NullInt    `json:"project_id" db:"project_id" redis:"project_id"`
+	Order           rrsql.NullInt    `json:"post_order" db:"post_order" redis:"post_order"`
+	HeroImage       rrsql.NullString `json:"hero_image" db:"hero_image" redis:"hero_image"`
+	Slug            rrsql.NullString `json:"slug" db:"slug" redis:"slug"`
+	CSS             rrsql.NullString `json:"css" db:"css" redis:"css"`
+	JS              rrsql.NullString `json:"javascript" db:"javascript" redis:"javascript"`
 }
 
 type reportAPI struct{}
@@ -78,7 +79,7 @@ type GetReportArgs struct {
 	Page      int    `form:"page" json:"page"`
 	Sorting   string `form:"sort" json:"sort"`
 
-	Fields sqlfields `form:"fields"`
+	Fields rrsql.Sqlfields `form:"fields"`
 
 	Filter Filter
 }
@@ -107,32 +108,32 @@ func (p *GetReportArgs) parse() (restricts string, values []interface{}) {
 
 	if p.Active != nil {
 		for k, v := range p.Active {
-			where = append(where, fmt.Sprintf("%s %s (?)", "posts.active", operatorHelper(k)))
+			where = append(where, fmt.Sprintf("%s %s (?)", "posts.active", rrsql.OperatorHelper(k)))
 			values = append(values, v)
 		}
 	}
 	if p.ReportPublishStatus != nil {
 		for k, v := range p.ReportPublishStatus {
-			where = append(where, fmt.Sprintf("%s %s (?)", "posts.publish_status", operatorHelper(k)))
+			where = append(where, fmt.Sprintf("%s %s (?)", "posts.publish_status", rrsql.OperatorHelper(k)))
 			values = append(values, v)
 		}
 	}
 	if p.ProjectPublishStatus != nil {
 		for k, v := range p.ProjectPublishStatus {
-			where = append(where, fmt.Sprintf("%s %s (?)", "projects.publish_status", operatorHelper(k)))
+			where = append(where, fmt.Sprintf("%s %s (?)", "projects.publish_status", rrsql.OperatorHelper(k)))
 			values = append(values, v)
 		}
 	}
 	if len(p.IDs) != 0 {
-		where = append(where, fmt.Sprintf("%s %s (?)", "posts.post_id", operatorHelper("in")))
+		where = append(where, fmt.Sprintf("%s %s (?)", "posts.post_id", rrsql.OperatorHelper("in")))
 		values = append(values, p.IDs)
 	}
 	if len(p.Slugs) != 0 {
-		where = append(where, fmt.Sprintf("%s %s (?)", "posts.slug", operatorHelper("in")))
+		where = append(where, fmt.Sprintf("%s %s (?)", "posts.slug", rrsql.OperatorHelper("in")))
 		values = append(values, p.Slugs)
 	}
 	if len(p.ProjectSlugs) != 0 {
-		where = append(where, fmt.Sprintf("%s %s (?)", "projects.slug", operatorHelper("in")))
+		where = append(where, fmt.Sprintf("%s %s (?)", "projects.slug", rrsql.OperatorHelper("in")))
 		values = append(values, p.ProjectSlugs)
 	}
 	if len(p.Project) > 0 {
@@ -161,8 +162,8 @@ func (p *GetReportArgs) parseLimit() (limit map[string]string, values []interfac
 	restricts := make([]string, 0)
 	limit = make(map[string]string, 2)
 	if p.Sorting != "" {
-		restricts = append(restricts, fmt.Sprintf("ORDER BY %s%s", "posts.", orderByHelper(p.Sorting)))
-		limit["order"] = fmt.Sprintf("ORDER BY %s", orderByHelper(p.Sorting))
+		restricts = append(restricts, fmt.Sprintf("ORDER BY %s%s", "posts.", rrsql.OrderByHelper(p.Sorting)))
+		limit["order"] = fmt.Sprintf("ORDER BY %s", rrsql.OrderByHelper(p.Sorting))
 	}
 	if p.MaxResult != 0 {
 		restricts = append(restricts, "LIMIT ?")
@@ -179,7 +180,7 @@ func (p *GetReportArgs) parseLimit() (limit map[string]string, values []interfac
 }
 
 func (g *GetReportArgs) FullAuthorTags() (result []string) {
-	return getStructDBTags("full", Member{})
+	return rrsql.GetStructDBTags("full", Member{})
 }
 
 type ReportAuthors struct {
@@ -230,8 +231,8 @@ func (a *reportAPI) CountReports(arg GetReportArgs) (result int, err error) {
 	if err != nil {
 		return 0, err
 	}
-	query = DB.Rebind(query)
-	count, err := DB.Queryx(query, args...)
+	query = rrsql.DB.Rebind(query)
+	count, err := rrsql.DB.Queryx(query, args...)
 	if err != nil {
 		return 0, err
 	}
@@ -245,7 +246,7 @@ func (a *reportAPI) CountReports(arg GetReportArgs) (result int, err error) {
 
 func (a *reportAPI) GetReport(p Report) (Report, error) {
 	report := Report{}
-	err := DB.QueryRowx("SELECT * FROM posts WHERE post_id = ?", p.ID).StructScan(&report)
+	err := rrsql.DB.QueryRowx("SELECT * FROM posts WHERE post_id = ?", p.ID).StructScan(&report)
 	switch {
 	case err == sql.ErrNoRows:
 		err = errors.New("Report Not Found")
@@ -270,8 +271,8 @@ func (a *reportAPI) GetReports(args GetReportArgs) (result []ReportAuthors, err 
 	limit, largs := args.parseLimit()
 	values = append(values, largs...)
 
-	projectTags := getStructDBTags("full", Project{})
-	projectField := makeFieldString("get", `projects.%s "projects.%s"`, projectTags)
+	projectTags := rrsql.GetStructDBTags("full", Project{})
+	projectField := rrsql.MakeFieldString("get", `projects.%s "projects.%s"`, projectTags)
 	projectIDQuery := strings.Split(projectField[0], " ")
 	projectPostQuery := strings.Split(projectField[5], " ")
 	projectField[0] = fmt.Sprintf(`IFNULL(%s, 0) %s`, projectIDQuery[0], projectIDQuery[1])
@@ -285,10 +286,10 @@ func (a *reportAPI) GetReports(args GetReportArgs) (result []ReportAuthors, err 
 		log.Println(err.Error())
 		return nil, err
 	}
-	query = DB.Rebind(query)
+	query = rrsql.DB.Rebind(query)
 	var ra []ReportAuthor
 
-	if err = DB.Select(&ra, query, values...); err != nil {
+	if err = rrsql.DB.Select(&ra, query, values...); err != nil {
 		log.Println(err.Error())
 		return []ReportAuthors{}, err
 	}
@@ -327,10 +328,10 @@ func (a *reportAPI) GetReports(args GetReportArgs) (result []ReportAuthors, err 
 
 func (a *reportAPI) InsertReport(p Report) (lastID int, err error) {
 
-	p.Type = NullInt{int64(config.Config.Models.PostType["report"]), true}
+	p.Type = rrsql.NullInt{int64(config.Config.Models.PostType["report"]), true}
 
-	query, _ := generateSQLStmt("insert", "posts", p)
-	result, err := DB.NamedExec(query, p)
+	query, _ := rrsql.GenerateSQLStmt("insert", "posts", p)
+	result, err := rrsql.DB.NamedExec(query, p)
 
 	if err != nil {
 		if strings.Contains(err.Error(), "Duplicate entry") {
@@ -361,10 +362,10 @@ func (a *reportAPI) InsertReport(p Report) (lastID int, err error) {
 }
 
 func (a *reportAPI) UpdateReport(p Report) error {
-	tags := getStructDBTags("partial", p)
-	fields := makeFieldString("update", `%s = :%s`, tags)
+	tags := rrsql.GetStructDBTags("partial", p)
+	fields := rrsql.MakeFieldString("update", `%s = :%s`, tags)
 	query := fmt.Sprintf(`UPDATE posts SET %s WHERE post_id = :post_id`, strings.Join(fields, ", "))
-	result, err := DB.NamedExec(query, p)
+	result, err := rrsql.DB.NamedExec(query, p)
 
 	if err != nil {
 		return err
@@ -381,7 +382,7 @@ func (a *reportAPI) UpdateReport(p Report) error {
 
 func (a *reportAPI) DeleteReport(p Report) error {
 
-	result, err := DB.NamedExec("UPDATE posts SET active = 0 WHERE post_id = :post_id", p)
+	result, err := rrsql.DB.NamedExec("UPDATE posts SET active = 0 WHERE post_id = :post_id", p)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -407,11 +408,11 @@ func (a *reportAPI) InsertAuthors(reportID int, authorIDs []int) (err error) {
 		insertValues = append(insertValues, reportID, author)
 	}
 	query := fmt.Sprintf(`INSERT IGNORE INTO report_authors (report_id, author_id) VALUES %s;`, strings.Join(valueStr, ", "))
-	_, err = DB.Exec(query, insertValues...)
+	_, err = rrsql.DB.Exec(query, insertValues...)
 	if err != nil {
 		sqlerr, ok := err.(*mysql.MySQLError)
 		if ok && sqlerr.Number == 1062 {
-			return DuplicateError
+			return rrsql.DuplicateError
 		}
 		return err
 	}
@@ -422,13 +423,13 @@ func (a *reportAPI) UpdateAuthors(reportID int, authorIDs []int) (err error) {
 
 	// Delete all author record if authorIDs is null
 	if authorIDs == nil || len(authorIDs) == 0 {
-		_, err = DB.Exec(`DELETE FROM report_authors WHERE report_id = ?`, reportID)
+		_, err = rrsql.DB.Exec(`DELETE FROM report_authors WHERE report_id = ?`, reportID)
 		if err != nil {
 			return err
 		}
 		return nil
 	}
-	tx, err := DB.Beginx()
+	tx, err := rrsql.DB.Beginx()
 	if err != nil {
 		log.Printf("Fail to get sql connection: %v", err)
 		return err
@@ -447,7 +448,7 @@ func (a *reportAPI) UpdateAuthors(reportID int, authorIDs []int) (err error) {
 		log.Printf("Fail to generate query: %v", err)
 		return err
 	}
-	del = DB.Rebind(del)
+	del = rrsql.DB.Rebind(del)
 	_, err = tx.Exec(del, args...)
 	if err != nil {
 
@@ -470,7 +471,7 @@ func (a *reportAPI) UpdateAuthors(reportID int, authorIDs []int) (err error) {
 
 func (a *reportAPI) SchedulePublish() (ids []int, err error) {
 
-	rows, err := DB.Queryx(fmt.Sprintf("SELECT post_id FROM posts WHERE publish_status=3 AND published_at <= cast(now() as datetime) AND type = %d;", config.Config.Models.PostType["report"]))
+	rows, err := rrsql.DB.Queryx(fmt.Sprintf("SELECT post_id FROM posts WHERE publish_status=3 AND published_at <= cast(now() as datetime) AND type = %d;", config.Config.Models.PostType["report"]))
 	if err != nil {
 		log.Println("Getting report error when schedule publishing reports", err)
 		return ids, err
@@ -484,7 +485,7 @@ func (a *reportAPI) SchedulePublish() (ids []int, err error) {
 		ids = append(ids, i)
 	}
 
-	_, err = DB.Exec(fmt.Sprintf("UPDATE posts SET publish_status=2 WHERE publish_status=3 AND published_at <= cast(now() as datetime) AND type = %d;", config.Config.Models.PostType["report"]))
+	_, err = rrsql.DB.Exec(fmt.Sprintf("UPDATE posts SET publish_status=2 WHERE publish_status=3 AND published_at <= cast(now() as datetime) AND type = %d;", config.Config.Models.PostType["report"]))
 	if err != nil {
 		return ids, err
 	}

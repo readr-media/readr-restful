@@ -12,6 +12,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 )
 
 type Resource struct {
@@ -65,11 +66,11 @@ type FollowArgs struct {
 /* ================================================ Get Following ================================================ */
 
 type FollowingItem struct {
-	Type         int         `db:"type" json:"-"`
-	TargetID     int         `db:"target_id" json:"-"`
-	FollowedAt   NullTime    `db:"created_at" json:"followed_at"`
-	Item         interface{} `json:"item"`
-	ResourceName string      `json:"resource"`
+	Type         int            `db:"type" json:"-"`
+	TargetID     int            `db:"target_id" json:"-"`
+	FollowedAt   rrsql.NullTime `db:"created_at" json:"followed_at"`
+	Item         interface{}    `json:"item"`
+	ResourceName string         `json:"resource"`
 }
 
 type GetFollowInterface interface {
@@ -139,9 +140,9 @@ func (g *GetFollowingArgs) get() (*sqlx.Rows, error) {
 		osql.AppendPrintarg("")
 	}
 	query, args, err := sqlx.In(osql.SQL(), osql.args...)
-	query = DB.Rebind(query)
+	query = rrsql.DB.Rebind(query)
 
-	rows, err := DB.Queryx(query, args...)
+	rows, err := rrsql.DB.Queryx(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -396,9 +397,9 @@ func (g *GetFollowingArgs) getTagDetails(items []FollowingItem) (result []Follow
 		ShowStats:     false,
 		ShowResources: true,
 		IDs:           ids,
-		PostFields:    sqlfields{"post_id", "publish_status", "published_at", "title", "type"},
-		ProjectFields: sqlfields{"project_id", "publish_status", "published_at", "title", "slug", "status", "hero_image"},
-		ReportFields:  sqlfields{"id", "publish_status", "published_at", "title", "hero_image", "project_id", "slug"},
+		PostFields:    rrsql.Sqlfields{"post_id", "publish_status", "published_at", "title", "type"},
+		ProjectFields: rrsql.Sqlfields{"project_id", "publish_status", "published_at", "title", "slug", "status", "hero_image"},
+		ReportFields:  rrsql.Sqlfields{"id", "publish_status", "published_at", "title", "hero_image", "project_id", "slug"},
 	})
 	if err != nil {
 		return nil, err
@@ -441,7 +442,7 @@ func (g *GetFollowingArgs) getSingleResource() (*sqlx.Rows, error) {
 
 	if g.Active != nil {
 		for k, v := range g.Active {
-			osql.AppendCondition(fmt.Sprintf("t.active %s (?)", operatorHelper(k)))
+			osql.AppendCondition(fmt.Sprintf("t.active %s (?)", rrsql.OperatorHelper(k)))
 			osql.AppendArg(v)
 		}
 	}
@@ -480,9 +481,9 @@ func (g *GetFollowingArgs) getSingleResource() (*sqlx.Rows, error) {
 	}
 
 	query, args, err := sqlx.In(osql.SQL(), osql.args...)
-	query = DB.Rebind(query)
+	query = rrsql.DB.Rebind(query)
 
-	rows, err := DB.Queryx(query, args...)
+	rows, err := rrsql.DB.Queryx(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -499,7 +500,7 @@ func (g *GetFollowingArgs) scanSingleSource(rows *sqlx.Rows) (interface{}, error
 
 	type TagFollowTime struct {
 		Tag
-		FollowedAt NullTime `json:"followed_at" db:"followed_at"`
+		FollowedAt rrsql.NullTime `json:"followed_at" db:"followed_at"`
 	}
 
 	for rows.Next() {
@@ -512,7 +513,7 @@ func (g *GetFollowingArgs) scanSingleSource(rows *sqlx.Rows) (interface{}, error
 			case "post":
 				var post struct {
 					Post
-					FollowedAt NullTime `json:"followed_at" db:"followed_at"`
+					FollowedAt rrsql.NullTime `json:"followed_at" db:"followed_at"`
 				}
 				err = rows.StructScan(&post)
 				followings = append(followings, post)
@@ -520,8 +521,8 @@ func (g *GetFollowingArgs) scanSingleSource(rows *sqlx.Rows) (interface{}, error
 				var project struct {
 					Project
 					Tags       []string   `json:"tags"`
-					TagString  NullString `json:"-" db:"tags"`
-					FollowedAt NullTime   `json:"followed_at" db:"followed_at"`
+					TagString  rrsql.NullString `json:"-" db:"tags"`
+					FollowedAt rrsql.NullTime   `json:"followed_at" db:"followed_at"`
 				}
 				err = rows.StructScan(&project)
 				if project.TagString.Valid {
@@ -531,21 +532,21 @@ func (g *GetFollowingArgs) scanSingleSource(rows *sqlx.Rows) (interface{}, error
 			case "member":
 				var member struct {
 					Member
-					FollowedAt NullTime `json:"followed_at" db:"followed_at"`
+					FollowedAt rrsql.NullTime `json:"followed_at" db:"followed_at"`
 				}
 				err = rows.StructScan(&member)
 				followings = append(followings, member)
 			case "memo":
 				var memo struct {
 					Memo
-					FollowedAt NullTime `json:"followed_at" db:"followed_at"`
+					FollowedAt rrsql.NullTime `json:"followed_at" db:"followed_at"`
 				}
 				err = rows.StructScan(&memo)
 				followings = append(followings, memo)
 			case "report":
 				var report struct {
 					Report
-					FollowedAt NullTime `json:"followed_at" db:"followed_at"`
+					FollowedAt rrsql.NullTime `json:"followed_at" db:"followed_at"`
 				}
 				err = rows.StructScan(&report)
 				followings = append(followings, report)
@@ -570,9 +571,9 @@ func (g *GetFollowingArgs) scanSingleSource(rows *sqlx.Rows) (interface{}, error
 			ShowStats:     true,
 			ShowResources: true,
 			IDs:           IDs,
-			PostFields:    sqlfields{"post_id", "publish_status", "published_at", "title", "type"},
-			ProjectFields: sqlfields{"project_id", "publish_status", "published_at", "title", "slug", "status", "hero_image"},
-			ReportFields:  sqlfields{"id", "publish_status", "published_at", "title", "hero_image", "project_id", "slug"},
+			PostFields:    rrsql.Sqlfields{"post_id", "publish_status", "published_at", "title", "type"},
+			ProjectFields: rrsql.Sqlfields{"project_id", "publish_status", "published_at", "title", "slug", "status", "hero_image"},
+			ReportFields:  rrsql.Sqlfields{"id", "publish_status", "published_at", "title", "hero_image", "project_id", "slug"},
 		})
 		if err != nil {
 			log.Println("Error getting tag info when updating hottags:", err)
@@ -585,7 +586,7 @@ func (g *GetFollowingArgs) scanSingleSource(rows *sqlx.Rows) (interface{}, error
 				if t.ID == tag.ID {
 					followedTags = append(followedTags, struct {
 						TagRelatedResources
-						FollowedAt NullTime `json:"followed_at"`
+						FollowedAt rrsql.NullTime `json:"followed_at"`
 					}{tag, t.FollowedAt})
 					continue
 				}
@@ -632,8 +633,8 @@ func (g *GetFollowedArgs) get() (*sqlx.Rows, error) {
 	if err != nil {
 		return nil, err
 	}
-	query = DB.Rebind(query)
-	return DB.Queryx(query, args...)
+	query = rrsql.DB.Rebind(query)
+	return rrsql.DB.Queryx(query, args...)
 }
 
 func (g *GetFollowedArgs) scan(rows *sqlx.Rows) (interface{}, error) {
@@ -702,7 +703,7 @@ func (g *GetFollowMapArgs) get() (*sqlx.Rows, error) {
 		osql.args = append(osql.args, config.Config.Models.ProjectsActive["active"], config.Config.Models.ProjectsPublishStatus["publish"], g.UpdateAfter)
 	}
 
-	rows, err := DB.Queryx(fmt.Sprintf(osql.base, strings.Join(osql.join, " LEFT JOIN "), strings.Join(osql.condition, " AND ")), osql.args...)
+	rows, err := rrsql.DB.Queryx(fmt.Sprintf(osql.base, strings.Join(osql.join, " LEFT JOIN "), strings.Join(osql.condition, " AND ")), osql.args...)
 	if err != nil {
 		log.Println(err.Error())
 		return nil, err
@@ -744,9 +745,9 @@ type FollowingMapItem struct {
 func (g *GetFollowerMemberIDsArgs) get() (*sqlx.Rows, error) {
 
 	query, args, err := sqlx.In(`SELECT member_id FROM following WHERE target_id = ? AND type = ? AND emotion IN (?);`, g.ID, g.FollowType, g.Emotions)
-	query = DB.Rebind(query)
+	query = rrsql.DB.Rebind(query)
 
-	rows, err := DB.Queryx(query, args...)
+	rows, err := rrsql.DB.Queryx(query, args...)
 	if err != nil {
 		log.Printf("Error: %v get Follower for id:%d, type:%d\n", err.Error(), g.ID, g.FollowType)
 	}
@@ -798,22 +799,22 @@ func (f *followingAPI) Insert(params FollowArgs) (err error) {
 
 	query := `INSERT INTO following (member_id, target_id, type, emotion) VALUES ( ?, ?, ?, ?);`
 
-	result, err := DB.Exec(query, params.Subject, params.Object, params.Type, params.Emotion)
+	result, err := rrsql.DB.Exec(query, params.Subject, params.Object, params.Type, params.Emotion)
 	if err != nil {
 		sqlerr, ok := err.(*mysql.MySQLError)
 		if ok && sqlerr.Number == 1062 {
-			return DuplicateError
+			return rrsql.DuplicateError
 		}
 		log.Println(err.Error())
-		return InternalServerError
+		return rrsql.InternalServerError
 	}
 	changed, err := result.RowsAffected()
 	if err != nil {
 		log.Println(err.Error())
-		return InternalServerError
+		return rrsql.InternalServerError
 	}
 	if changed == 0 {
-		return SQLInsertionFail
+		return rrsql.SQLInsertionFail
 	}
 
 	return nil
@@ -821,25 +822,25 @@ func (f *followingAPI) Insert(params FollowArgs) (err error) {
 
 func (f *followingAPI) Update(params FollowArgs) (err error) {
 
-	result, err := DB.Exec(`UPDATE following SET emotion = ? WHERE member_id = ? AND target_id = ? AND type = ? AND emotion != 0;`, params.Emotion, params.Subject, params.Object, params.Type)
+	result, err := rrsql.DB.Exec(`UPDATE following SET emotion = ? WHERE member_id = ? AND target_id = ? AND type = ? AND emotion != 0;`, params.Emotion, params.Subject, params.Object, params.Type)
 	if err != nil {
 		log.Println(err.Error())
-		return InternalServerError
+		return rrsql.InternalServerError
 	}
 	changed, err := result.RowsAffected()
 	if err != nil {
 		log.Println(err.Error())
-		return InternalServerError
+		return rrsql.InternalServerError
 	}
 	if changed == 0 {
-		return SQLUpdateFail
+		return rrsql.SQLUpdateFail
 	}
 	return nil
 }
 
 func (f *followingAPI) Delete(params FollowArgs) (err error) {
 	query := `DELETE FROM following WHERE member_id = ? AND target_id = ? AND type = ? AND emotion = ?;`
-	_, err = DB.Exec(query, params.Subject, params.Object, params.Type, params.Emotion)
+	_, err = rrsql.DB.Exec(query, params.Subject, params.Object, params.Type, params.Emotion)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -20,19 +20,20 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/olivere/elastic"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/utils"
 )
 
 type Tag struct {
-	ID              int      `json:"id" db:"tag_id" redis:"id"`
-	Text            string   `json:"text" db:"tag_content" redis:"tag_content"`
-	CreatedAt       NullTime `json:"created_at" db:"created_at" redis:"created_at"`
-	UpdatedAt       NullTime `json:"updated_at" db:"updated_at" redis:"updated_at"`
-	UpdatedBy       NullInt  `json:"updated_by" db:"updated_by" redis:"updated_by"`
-	Active          NullInt  `json:"active" db:"active"`
-	RelatedReviews  NullInt  `json:"related_reviews" db:"related_reviews"`
-	RelatedNews     NullInt  `json:"related_news" db:"related_news"`
-	RelatedProjects NullInt  `json:"related_projects" db:"related_projects"`
+	ID              int            `json:"id" db:"tag_id" redis:"id"`
+	Text            string         `json:"text" db:"tag_content" redis:"tag_content"`
+	CreatedAt       rrsql.NullTime `json:"created_at" db:"created_at" redis:"created_at"`
+	UpdatedAt       rrsql.NullTime `json:"updated_at" db:"updated_at" redis:"updated_at"`
+	UpdatedBy       rrsql.NullInt  `json:"updated_by" db:"updated_by" redis:"updated_by"`
+	Active          rrsql.NullInt  `json:"active" db:"active"`
+	RelatedReviews  rrsql.NullInt  `json:"related_reviews" db:"related_reviews"`
+	RelatedNews     rrsql.NullInt  `json:"related_news" db:"related_news"`
+	RelatedProjects rrsql.NullInt  `json:"related_projects" db:"related_projects"`
 }
 
 type TagInterface interface {
@@ -65,9 +66,9 @@ func (t *tagApi) ToggleTags(args UpdateMultipleTagsArgs) error {
 		log.Println(err.Error())
 		return err
 	}
-	query = DB.Rebind(query)
+	query = rrsql.DB.Rebind(query)
 
-	_, err = DB.Exec(query, sqlArgs...)
+	_, err = rrsql.DB.Exec(query, sqlArgs...)
 	if err != nil {
 		log.Println(err.Error())
 		return err
@@ -77,18 +78,18 @@ func (t *tagApi) ToggleTags(args UpdateMultipleTagsArgs) error {
 }
 
 type GetTagsArgs struct {
-	MaxResult     uint8     `form:"max_result" json:"max_result"`
-	Page          uint16    `form:"page" json:"page"`
-	Sorting       string    `form:"sort" json:"sort"`
-	Keyword       string    `form:"keyword" json:"keyword"`
-	ShowStats     bool      `form:"stats" json:"stats"`
-	ShowResources bool      `form:"tagged_resources" json:"tagged_resources"`
-	TaggingType   int       `form:"tagging_type" json:"tagging_type" db:"tagging_type"`
-	IDs           []int     `form:"ids" json:"-"`
-	PostFields    sqlfields `form:"post_fields"`
-	ProjectFields sqlfields `form:"project_fields"`
-	ReportFields  sqlfields `form:"report_fields"`
-	Total         bool      `form:"total"`
+	MaxResult     uint8           `form:"max_result" json:"max_result"`
+	Page          uint16          `form:"page" json:"page"`
+	Sorting       string          `form:"sort" json:"sort"`
+	Keyword       string          `form:"keyword" json:"keyword"`
+	ShowStats     bool            `form:"stats" json:"stats"`
+	ShowResources bool            `form:"tagged_resources" json:"tagged_resources"`
+	TaggingType   int             `form:"tagging_type" json:"tagging_type" db:"tagging_type"`
+	IDs           []int           `form:"ids" json:"-"`
+	PostFields    rrsql.Sqlfields `form:"post_fields"`
+	ProjectFields rrsql.Sqlfields `form:"project_fields"`
+	ReportFields  rrsql.Sqlfields `form:"report_fields"`
+	Total         bool            `form:"total"`
 }
 
 func DefaultGetTagsArgs() GetTagsArgs {
@@ -112,15 +113,15 @@ func (a *GetTagsArgs) ValidateGet() error {
 }
 
 func (g *GetTagsArgs) FullPostTags() (result []string) {
-	return getStructDBTags("full", Post{})
+	return rrsql.GetStructDBTags("full", Post{})
 }
 
 func (g *GetTagsArgs) FullProjectTags() (result []string) {
-	return getStructDBTags("full", Project{})
+	return rrsql.GetStructDBTags("full", Project{})
 }
 
 func (g *GetTagsArgs) FullReportTags() (result []string) {
-	return getStructDBTags("full", Report{})
+	return rrsql.GetStructDBTags("full", Report{})
 }
 
 type TagRelatedResources struct {
@@ -223,7 +224,7 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []TagRelatedResources, err erro
 	}
 
 	if args.Sorting != "" {
-		query.WriteString(fmt.Sprintf(` ORDER BY %s`, orderByHelper(args.Sorting)))
+		query.WriteString(fmt.Sprintf(` ORDER BY %s`, rrsql.OperatorHelper(args.Sorting)))
 	}
 
 	if args.MaxResult != 0 {
@@ -242,9 +243,9 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []TagRelatedResources, err erro
 		log.Println("Error parsing IN query when get tag info when updating hottags:", err)
 		return nil, err
 	}
-	queryString = DB.Rebind(queryString)
+	queryString = rrsql.DB.Rebind(queryString)
 
-	rows, err := DB.Queryx(queryString, queryArgs...)
+	rows, err := rrsql.DB.Queryx(queryString, queryArgs...)
 	if err != nil {
 		log.Println(err.Error())
 		return nil, err
@@ -262,10 +263,10 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []TagRelatedResources, err erro
 		}
 		if args.ShowStats {
 			if !singleTag.RelatedNews.Valid {
-				singleTag.RelatedNews = NullInt{0, true}
+				singleTag.RelatedNews = rrsql.NullInt{0, true}
 			}
 			if !singleTag.RelatedReviews.Valid {
-				singleTag.RelatedReviews = NullInt{0, true}
+				singleTag.RelatedReviews = rrsql.NullInt{0, true}
 			}
 		}
 		tag_ids = append(tag_ids, singleTag.ID)
@@ -290,8 +291,8 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []TagRelatedResources, err erro
 			log.Println(err.Error())
 			return nil, err
 		}
-		relatedPostQuery = DB.Rebind(relatedPostQuery)
-		rows, err := DB.Queryx(relatedPostQuery, relatedPostArgs...)
+		relatedPostQuery = rrsql.DB.Rebind(relatedPostQuery)
+		rows, err := rrsql.DB.Queryx(relatedPostQuery, relatedPostArgs...)
 		if err != nil {
 			return nil, err
 		}
@@ -326,8 +327,8 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []TagRelatedResources, err erro
 			log.Println(err.Error())
 			return nil, err
 		}
-		relatedProjectQuery = DB.Rebind(relatedProjectQuery)
-		rows, err = DB.Queryx(relatedProjectQuery, relatedProjectArgs...)
+		relatedProjectQuery = rrsql.DB.Rebind(relatedProjectQuery)
+		rows, err = rrsql.DB.Queryx(relatedProjectQuery, relatedProjectArgs...)
 		if err != nil {
 			return nil, err
 		}
@@ -365,8 +366,8 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []TagRelatedResources, err erro
 			log.Println(err.Error())
 			return nil, err
 		}
-		relatedReportQuery = DB.Rebind(relatedReportQuery)
-		rows, err = DB.Queryx(relatedReportQuery, relatedReportArgs...)
+		relatedReportQuery = rrsql.DB.Rebind(relatedReportQuery)
+		rows, err = rrsql.DB.Queryx(relatedReportQuery, relatedReportArgs...)
 		if err != nil {
 			return nil, err
 		}
@@ -392,21 +393,21 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []TagRelatedResources, err erro
 func (t *tagApi) InsertTag(tag Tag) (int, error) {
 	var existTag Tag
 	query := fmt.Sprint("SELECT * FROM tags WHERE active=", config.Config.Models.Tags["active"], " AND BINARY tag_content=?;")
-	err := DB.Get(&existTag, query, tag.Text)
+	err := rrsql.DB.Get(&existTag, query, tag.Text)
 	if err != nil && err != sql.ErrNoRows {
 		return 0, err
 	}
 	if existTag.ID > 0 {
-		return 0, DuplicateError
+		return 0, rrsql.DuplicateError
 	}
 
 	query = fmt.Sprintf(`INSERT INTO tags (tag_content, updated_by) VALUES (?, ?);`)
 
-	result, err := DB.Exec(query, tag.Text, tag.UpdatedBy)
+	result, err := rrsql.DB.Exec(query, tag.Text, tag.UpdatedBy)
 	if err != nil {
 		sqlerr, ok := err.(*mysql.MySQLError)
 		if ok && sqlerr.Number == 1062 {
-			return 0, DuplicateError
+			return 0, rrsql.DuplicateError
 		} else {
 			return 0, err
 		}
@@ -421,34 +422,34 @@ func (t *tagApi) InsertTag(tag Tag) (int, error) {
 }
 
 type UpdateMultipleTagsArgs struct {
-	IDs       []int    `json:"ids"`
-	UpdatedBy string   `form:"updated_by" json:"updated_by" db:"updated_by"`
-	UpdatedAt NullTime `json:"-" db:"updated_at"`
-	Active    string   `json:"-" db:"active"`
+	IDs       []int          `json:"ids"`
+	UpdatedBy string         `form:"updated_by" json:"updated_by" db:"updated_by"`
+	UpdatedAt rrsql.NullTime `json:"-" db:"updated_at"`
+	Active    string         `json:"-" db:"active"`
 }
 
 func (t *tagApi) UpdateTag(tag Tag) error {
 
 	var existTag Tag
 	query := fmt.Sprint("SELECT * FROM tags WHERE active=", config.Config.Models.Tags["active"], " AND BINARY tag_content=?;")
-	err := DB.Get(&existTag, query, tag.Text)
+	err := rrsql.DB.Get(&existTag, query, tag.Text)
 	if err != nil && err != sql.ErrNoRows {
 		return err
 	}
 	if existTag.ID > 0 {
-		return DuplicateError
+		return rrsql.DuplicateError
 	}
 
-	dbTags := getStructDBTags("partial", tag)
-	fields := makeFieldString("update", `%s = :%s`, dbTags)
+	dbTags := rrsql.GetStructDBTags("partial", tag)
+	fields := rrsql.MakeFieldString("update", `%s = :%s`, dbTags)
 	query = fmt.Sprintf(`UPDATE tags SET %s WHERE tag_id = :tag_id`,
 		strings.Join(fields, ", "))
 
-	result, err := DB.NamedExec(query, tag)
+	result, err := rrsql.DB.NamedExec(query, tag)
 	if err != nil {
 		sqlerr, ok := err.(*mysql.MySQLError)
 		if ok && sqlerr.Number == 1062 {
-			return DuplicateError
+			return rrsql.DuplicateError
 		} else {
 			return err
 		}
@@ -456,49 +457,65 @@ func (t *tagApi) UpdateTag(tag Tag) error {
 
 	rowCnt, err := result.RowsAffected()
 	if rowCnt > 1 {
-		return MultipleRowAffectedError
+		return rrsql.MultipleRowAffectedError
 	} else if rowCnt == 0 {
-		return ItemNotFoundError
+		return rrsql.ItemNotFoundError
 	}
 
 	return nil
 }
 
-func (t *tagApi) UpdateTagging(resourceType int, targetID int, tagIDs []int) error {
-	//To add new tags and eliminate unwanted tags, we need to perfom two sql queries
-	//The update is success only if all query succeed, to make sure this, we use transaction.
+func updateTaggingStmts(resourceType int, targetID int, tagIDs []int) (stmts []*rrsql.PipelineStmt) {
 
-	if !utils.ValidateTaggingType(resourceType) {
-		return errors.New("Invalid Resource Type")
+	// If post has no id, then give a placeholder for sql trasaction
+	targetIDString := config.Config.SQL.TrasactionIDPlaceholder
+	if targetID != 0 {
+		targetIDString = strconv.Itoa(int(targetID))
 	}
 
-	tx, err := DB.Beginx()
-	if err != nil {
-		log.Printf("Fail to get sql connection: %v", err)
-		return err
-	}
-
-	_ = tx.MustExec(fmt.Sprintf("DELETE FROM tagging WHERE target_id=%d;", targetID))
+	stmts = append(stmts, &rrsql.PipelineStmt{
+		Query: fmt.Sprintf("DELETE FROM tagging WHERE target_id=%s;", targetIDString),
+	})
 
 	if len(tagIDs) > 0 {
 		var insqueryBuffer bytes.Buffer
 		var insargs []interface{}
 		insqueryBuffer.WriteString("INSERT IGNORE INTO tagging (type, tag_id, target_id) VALUES ")
 		for index, tagID := range tagIDs {
-			insqueryBuffer.WriteString("( ?, ?, ? )")
-			insargs = append(insargs, resourceType, tagID, targetID)
+			insqueryBuffer.WriteString(fmt.Sprintf("( ?, ?, %s )", targetIDString))
+			insargs = append(insargs, resourceType, tagID)
 			if index < len(tagIDs)-1 {
 				insqueryBuffer.WriteString(",")
 			} else {
 				insqueryBuffer.WriteString(";")
 			}
 		}
-		_ = tx.MustExec(insqueryBuffer.String(), insargs...)
+		stmts = append(stmts, &rrsql.PipelineStmt{
+			Query: insqueryBuffer.String(),
+			Args:  insargs,
+		})
 	}
-	tx.Commit()
+
+	return stmts
+}
+
+func (t *tagApi) UpdateTagging(resourceType int, targetID int, tagIDs []int) (err error) {
+
+	if !utils.ValidateTaggingType(resourceType) {
+		return errors.New("Invalid Resource Type")
+	}
+
+	//To add new tags and eliminate unwanted tags, we need to perfom two sql queries
+	//The update is success only if all query succeed, to make sure this, we use transaction.
+
+	stmts := updateTaggingStmts(resourceType, targetID, tagIDs)
+
+	err = rrsql.WithTransaction(rrsql.DB.DB, func(tx *sqlx.Tx) error {
+		_, _, err := rrsql.RunPipeline(tx, stmts...)
+		return err
+	})
 
 	//If post tag updated, Write to new post data to search feed
-
 	if resourceType == config.Config.Models.TaggingType["post"] {
 		post, err := PostAPI.GetPost(uint32(targetID), &PostArgs{
 			ProjectID:   -1,
@@ -522,9 +539,9 @@ func (a *tagApi) CountTags(args GetTagsArgs) (result int, err error) {
 	if args.Keyword != "" {
 		query.WriteString(` AND tag_content LIKE ?`)
 		args.Keyword = "%" + args.Keyword + "%"
-		err = DB.Get(&result, query.String(), args.Keyword)
+		err = rrsql.DB.Get(&result, query.String(), args.Keyword)
 	} else {
-		err = DB.Get(&result, query.String())
+		err = rrsql.DB.Get(&result, query.String())
 	}
 
 	if err != nil {
@@ -611,7 +628,7 @@ func (a *tagApi) UpdateHotTags() error {
 
 	// Get Tag and Reources
 	query := "SELECT tag_id, type, GROUP_CONCAT(target_id) FROM tagging GROUP BY tag_id, type;"
-	rows, err := DB.Queryx(query)
+	rows, err := rrsql.DB.Queryx(query)
 	if err != nil {
 		return err
 	}
@@ -747,8 +764,8 @@ func (a *tagApi) UpdateHotTags() error {
 		log.Println("Fail compile query for getting post follower count when updating hot tags:", err.Error())
 		return err
 	}
-	postEmotionQuery = DB.Rebind(postEmotionQuery)
-	rows, err = DB.Queryx(postEmotionQuery, postEmotionArgs...)
+	postEmotionQuery = rrsql.DB.Rebind(postEmotionQuery)
+	rows, err = rrsql.DB.Queryx(postEmotionQuery, postEmotionArgs...)
 	if err != nil {
 		log.Println("Fail getting post follower count when updating hot tags:", err.Error())
 		return err
@@ -782,8 +799,8 @@ func (a *tagApi) UpdateHotTags() error {
 		log.Println("Fail compile query for getting project follower count when updating hot tags:", err.Error())
 		return err
 	}
-	projectEmotionQuery = DB.Rebind(projectEmotionQuery)
-	rows, err = DB.Queryx(projectEmotionQuery, projectEmotionArgs...)
+	projectEmotionQuery = rrsql.DB.Rebind(projectEmotionQuery)
+	rows, err = rrsql.DB.Queryx(projectEmotionQuery, projectEmotionArgs...)
 	if err != nil {
 		log.Println("Fail getting project follower count when updating hot tags:", err.Error())
 		return err
@@ -841,8 +858,8 @@ func (a *tagApi) UpdateHotTags() error {
 		log.Println("Error parsing IN query when get post Commentcount when updating hottags:", err)
 		return err
 	}
-	postCCQuery = DB.Rebind(postCCQuery)
-	rows, err = DB.Queryx(postCCQuery, args...)
+	postCCQuery = rrsql.DB.Rebind(postCCQuery)
+	rows, err = rrsql.DB.Queryx(postCCQuery, args...)
 	if err != nil {
 		log.Println("Error get post Commentcount when updating hottags:", err)
 		return err
@@ -865,8 +882,8 @@ func (a *tagApi) UpdateHotTags() error {
 		log.Println("Error parsing IN query when get post Commentcount when updating hottags:", err)
 		return err
 	}
-	projectCCQuery = DB.Rebind(projectCCQuery)
-	rows, err = DB.Queryx(projectCCQuery, args...)
+	projectCCQuery = rrsql.DB.Rebind(projectCCQuery)
+	rows, err = rrsql.DB.Queryx(projectCCQuery, args...)
 	if err != nil {
 		log.Println("Error get post Commentcount when updating hottags:", err)
 		return err
@@ -885,7 +902,7 @@ func (a *tagApi) UpdateHotTags() error {
 
 	// Tagged Post Count
 	taggedPostQuery := fmt.Sprintf("SELECT tag_id, COUNT(id) FROM tagging WHERE type = %d GROUP by tag_id;", config.Config.Models.TaggingType["post"])
-	rows, err = DB.Queryx(taggedPostQuery)
+	rows, err = rrsql.DB.Queryx(taggedPostQuery)
 	if err != nil {
 		log.Println("Error get tagged post count when updating hottags:", err)
 		return err
@@ -946,9 +963,9 @@ func (a *tagApi) UpdateHotTags() error {
 		ShowStats:     true,
 		ShowResources: true,
 		IDs:           tagIDs,
-		PostFields:    sqlfields{"post_id", "publish_status", "published_at", "title", "type"},
-		ProjectFields: sqlfields{"project_id", "publish_status", "published_at", "title", "slug", "status", "hero_image"},
-		ReportFields:  sqlfields{"post_id", "publish_status", "published_at", "title", "hero_image", "project_id", "slug"},
+		PostFields:    rrsql.Sqlfields{"post_id", "publish_status", "published_at", "title", "type"},
+		ProjectFields: rrsql.Sqlfields{"project_id", "publish_status", "published_at", "title", "slug", "status", "hero_image"},
+		ReportFields:  rrsql.Sqlfields{"post_id", "publish_status", "published_at", "title", "hero_image", "project_id", "slug"},
 	})
 	if err != nil {
 		log.Println("Error getting tag info when updating hottags:", err)
@@ -1016,8 +1033,8 @@ func mapResourceString(resType string, resIDs []int) (orderedResIDs []int, resSt
 			log.Println("Error parsing IN query when mapResourceString:", err)
 			return orderedResIDs, resStrings
 		}
-		query = DB.Rebind(query)
-		rows, err := DB.Queryx(query, args...)
+		query = rrsql.DB.Rebind(query)
+		rows, err := rrsql.DB.Queryx(query, args...)
 		if err != nil {
 			log.Println("Error querying project slugs when mapResourceString:", err)
 			return orderedResIDs, resStrings
@@ -1111,7 +1128,7 @@ func (t *tagApi) GetPostReport(args *GetPostReportArgs) (results []LastPNRInterf
 		TagID    int    `db:"tag_id"`
 		TargetID uint32 `db:"target_id"`
 	}{}
-	err = DB.Select(&tagging, `SELECT type, tag_id, target_id FROM tagging WHERE tag_id = ?`, args.TagID)
+	err = rrsql.DB.Select(&tagging, `SELECT type, tag_id, target_id FROM tagging WHERE tag_id = ?`, args.TagID)
 	if err != nil {
 		return results, err
 	}

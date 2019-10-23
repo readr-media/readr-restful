@@ -14,6 +14,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/pkg/mail"
 )
@@ -29,8 +30,8 @@ func (r *reportHandler) bindQuery(c *gin.Context, args *models.GetReportArgs) (e
 			log.Println(err.Error())
 			return err
 		} else if err == nil {
-			// if err = models.ValidateActive(args.Active, models.ReportActive); err != nil {
-			if err = models.ValidateActive(args.Active, config.Config.Models.Reports); err != nil {
+			// if err = rrsql.ValidateActive(args.Active, models.ReportActive); err != nil {
+			if err = rrsql.ValidateActive(args.Active, config.Config.Models.Reports); err != nil {
 				return err
 			}
 		}
@@ -40,8 +41,8 @@ func (r *reportHandler) bindQuery(c *gin.Context, args *models.GetReportArgs) (e
 			log.Println(err.Error())
 			return err
 		} else if err == nil {
-			// if err = models.ValidateActive(args.PublishStatus, models.ProjectPublishStatus); err != nil {
-			if err = models.ValidateActive(args.ReportPublishStatus, config.Config.Models.ReportsPublishStatus); err != nil {
+			// if err = rrsql.ValidateActive(args.PublishStatus, models.ProjectPublishStatus); err != nil {
+			if err = rrsql.ValidateActive(args.ReportPublishStatus, config.Config.Models.ReportsPublishStatus); err != nil {
 				return err
 			}
 		}
@@ -51,8 +52,8 @@ func (r *reportHandler) bindQuery(c *gin.Context, args *models.GetReportArgs) (e
 			log.Println(err.Error())
 			return err
 		} else if err == nil {
-			// if err = models.ValidateActive(args.PublishStatus, models.ProjectPublishStatus); err != nil {
-			if err = models.ValidateActive(args.ProjectPublishStatus, config.Config.Models.ProjectsPublishStatus); err != nil {
+			// if err = rrsql.ValidateActive(args.PublishStatus, models.ProjectPublishStatus); err != nil {
+			if err = rrsql.ValidateActive(args.ProjectPublishStatus, config.Config.Models.ProjectsPublishStatus); err != nil {
 				return err
 			}
 		}
@@ -187,10 +188,10 @@ func (r *reportHandler) Post(c *gin.Context) {
 	}
 
 	if !report.CreatedAt.Valid {
-		report.CreatedAt = models.NullTime{time.Now(), true}
+		report.CreatedAt = rrsql.NullTime{time.Now(), true}
 	}
-	report.UpdatedAt = models.NullTime{time.Now(), true}
-	report.Active = models.NullInt{int64(config.Config.Models.Reports["active"]), true}
+	report.UpdatedAt = rrsql.NullTime{time.Now(), true}
+	report.Active = rrsql.NullInt{int64(config.Config.Models.Reports["active"]), true}
 
 	args := models.GetReportArgs{
 		MaxResult: 1,
@@ -288,7 +289,7 @@ func (r *reportHandler) Put(c *gin.Context) {
 				return
 			}
 			if !report.PublishedAt.Valid {
-				report.PublishedAt = models.NullTime{Time: time.Now(), Valid: true}
+				report.PublishedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
 			}
 			break
 		}
@@ -297,7 +298,7 @@ func (r *reportHandler) Put(c *gin.Context) {
 	if report.CreatedAt.Valid {
 		report.CreatedAt.Valid = false
 	}
-	report.UpdatedAt = models.NullTime{time.Now(), true}
+	report.UpdatedAt = rrsql.NullTime{time.Now(), true}
 
 	err = models.ReportAPI.UpdateReport(report)
 	if err != nil {
@@ -441,7 +442,7 @@ func (r *reportHandler) PublishHandler(ids []int) error {
 	}
 
 	for _, report := range reports {
-		p := models.Project{ID: int(report.ProjectID.Int), UpdatedAt: models.NullTime{Time: time.Now(), Valid: true}}
+		p := models.Project{ID: int(report.ProjectID.Int), UpdatedAt: rrsql.NullTime{Time: time.Now(), Valid: true}}
 		if report.UpdatedBy.Valid {
 			p.UpdatedBy = report.UpdatedBy
 		}
@@ -483,9 +484,9 @@ func (r *reportHandler) UpdateHandler(ids []int, params ...int64) error {
 	}
 
 	for _, report := range reports {
-		p := models.Project{ID: report.Project.ID, UpdatedAt: models.NullTime{Time: time.Now(), Valid: true}}
+		p := models.Project{ID: report.Project.ID, UpdatedAt: rrsql.NullTime{Time: time.Now(), Valid: true}}
 		if len(params) > 0 {
-			p.UpdatedBy = models.NullInt{Int: params[0], Valid: true}
+			p.UpdatedBy = rrsql.NullInt{Int: params[0], Valid: true}
 		}
 		go models.ProjectAPI.UpdateProjects(p)
 	}

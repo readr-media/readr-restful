@@ -8,6 +8,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/routes"
 	//"github.com/robfig/cron"
@@ -39,7 +40,7 @@ func main() {
 	router.Use(gin.LoggerWithWriter(gin.DefaultWriter, "/metrics"))
 
 	// Init Mysql connections
-	models.Connect(dbURI)
+	rrsql.Connect(dbURI)
 
 	// Init Redis connections
 	redisConfig := map[string]string{

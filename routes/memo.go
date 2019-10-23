@@ -11,6 +11,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/pkg/mail"
 )
@@ -24,8 +25,8 @@ func (r *memoHandler) bindQuery(c *gin.Context, args *models.MemoGetArgs) (err e
 		if err = json.Unmarshal([]byte(c.Query("active")), &args.Active); err != nil {
 			return err
 		} else if err == nil {
-			// if err = models.ValidateActive(args.Active, models.MemoStatus); err != nil {
-			if err = models.ValidateActive(args.Active, config.Config.Models.Memos); err != nil {
+			// if err = rrsql.ValidateActive(args.Active, models.MemoStatus); err != nil {
+			if err = rrsql.ValidateActive(args.Active, config.Config.Models.Memos); err != nil {
 				return err
 			}
 		}
@@ -34,8 +35,8 @@ func (r *memoHandler) bindQuery(c *gin.Context, args *models.MemoGetArgs) (err e
 		if err = json.Unmarshal([]byte(c.Query("memo_publish_status")), &args.MemoPublishStatus); err != nil {
 			return err
 		} else if err == nil {
-			// if err = models.ValidateActive(args.MemoPublishStatus, models.MemoPublishStatus); err != nil {
-			if err = models.ValidateActive(args.MemoPublishStatus, config.Config.Models.MemosPublishStatus); err != nil {
+			// if err = rrsql.ValidateActive(args.MemoPublishStatus, models.MemoPublishStatus); err != nil {
+			if err = rrsql.ValidateActive(args.MemoPublishStatus, config.Config.Models.MemosPublishStatus); err != nil {
 				return err
 			}
 		}
@@ -44,8 +45,8 @@ func (r *memoHandler) bindQuery(c *gin.Context, args *models.MemoGetArgs) (err e
 		if err = json.Unmarshal([]byte(c.Query("project_publish_status")), &args.ProjectPublishStatus); err != nil {
 			return err
 		} else if err == nil {
-			// if err = models.ValidateActive(args.ProjectPublishStatus, models.ProjectPublishStatus); err != nil {
-			if err = models.ValidateActive(args.ProjectPublishStatus, config.Config.Models.ProjectsPublishStatus); err != nil {
+			// if err = rrsql.ValidateActive(args.ProjectPublishStatus, models.ProjectPublishStatus); err != nil {
+			if err = rrsql.ValidateActive(args.ProjectPublishStatus, config.Config.Models.ProjectsPublishStatus); err != nil {
 				return err
 			}
 		}
@@ -164,8 +165,8 @@ func (r *memoHandler) Post(c *gin.Context) {
 		return
 	}
 
-	memo.CreatedAt = models.NullTime{Time: time.Now(), Valid: true}
-	memo.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
+	memo.CreatedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
+	memo.UpdatedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
 
 	if !memo.Active.Valid {
 		// memo.Active.Int = int64(models.MemoStatus["active"].(float64))
@@ -179,7 +180,7 @@ func (r *memoHandler) Post(c *gin.Context) {
 	}
 	if !memo.UpdatedBy.Valid {
 		if memo.Author.Valid {
-			memo.UpdatedBy = models.NullInt{Int: memo.Author.Int, Valid: true}
+			memo.UpdatedBy = rrsql.NullInt{Int: memo.Author.Int, Valid: true}
 		} else {
 			c.JSON(http.StatusBadRequest, gin.H{"Error": "Invalid Updator"})
 		}
@@ -251,7 +252,7 @@ func (r *memoHandler) Put(c *gin.Context) {
 				return
 			}
 			if !memo.PublishedAt.Valid {
-				memo.PublishedAt = models.NullTime{Time: time.Now(), Valid: true}
+				memo.PublishedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
 			}
 			break
 		}
@@ -260,7 +261,7 @@ func (r *memoHandler) Put(c *gin.Context) {
 	if memo.CreatedAt.Valid {
 		memo.CreatedAt.Valid = false
 	}
-	memo.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
+	memo.UpdatedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
 
 	switch {
 	case memo.UpdatedBy.Valid:
@@ -301,7 +302,7 @@ func (r *memoHandler) Put(c *gin.Context) {
 func (r *memoHandler) Delete(c *gin.Context) {
 
 	id, _ := strconv.Atoi(c.Param("id"))
-	err := models.MemoAPI.UpdateMemo(models.Memo{ID: uint32(id), Active: models.NullInt{0, true}})
+	err := models.MemoAPI.UpdateMemo(models.Memo{ID: uint32(id), Active: rrsql.NullInt{0, true}})
 
 	if err != nil {
 		switch err.Error() {
@@ -336,8 +337,8 @@ func (r *memoHandler) DeleteMany(c *gin.Context) {
 		return
 	}
 
-	params.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
-	params.Active = models.NullInt{Int: int64(config.Config.Models.Posts["deactive"]), Valid: true}
+	params.UpdatedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
+	params.Active = rrsql.NullInt{Int: int64(config.Config.Models.Posts["deactive"]), Valid: true}
 
 	err = models.MemoAPI.UpdateMemos(params)
 	if err != nil {
@@ -416,7 +417,7 @@ func (r *memoHandler) PublishHandler(ids []int) error {
 	}
 
 	for _, memo := range memos {
-		p := models.Project{ID: memo.Project.ID, UpdatedAt: models.NullTime{Time: time.Now(), Valid: true}}
+		p := models.Project{ID: memo.Project.ID, UpdatedAt: rrsql.NullTime{Time: time.Now(), Valid: true}}
 		err := models.ProjectAPI.UpdateProjects(p)
 		if err != nil {
 			return err
@@ -457,9 +458,9 @@ func (r *memoHandler) UpdateHandler(ids []int, params ...int64) error {
 	}
 
 	for _, memo := range memos {
-		p := models.Project{ID: memo.Project.ID, UpdatedAt: models.NullTime{Time: time.Now(), Valid: true}}
+		p := models.Project{ID: memo.Project.ID, UpdatedAt: rrsql.NullTime{Time: time.Now(), Valid: true}}
 		if len(params) > 0 {
-			p.UpdatedBy = models.NullInt{Int: params[0], Valid: true}
+			p.UpdatedBy = rrsql.NullInt{Int: params[0], Valid: true}
 		}
 		go models.ProjectAPI.UpdateProjects(p)
 	}

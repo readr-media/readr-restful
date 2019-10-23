@@ -9,31 +9,32 @@ import (
 	"encoding/json"
 
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/utils"
 )
 
 type Points struct {
-	PointsID   int64      `json:"id" db:"id"`
-	MemberID   int64      `json:"member_id" db:"member_id"`
-	ObjectType int        `json:"object_type" db:"object_type" binding:"required"`
-	ObjectID   int        `json:"object_id" db:"object_id"`
-	Points     int        `json:"points" db:"points"`
-	Currency   int        `json:"currency" db:"currency"`
-	Balance    int        `json:"balance" db:"balance"`
-	CreatedAt  NullTime   `json:"created_at" db:"created_at"`
-	UpdatedBy  NullInt    `json:"updated_by" db:"updated_by"`
-	UpdatedAt  NullTime   `json:"updated_at" db:"updated_at"`
-	Reason     NullString `json:"reason" db:"reason"`
-	Status     int        `json:"status" db:"status"`
-	MemberName NullString `json:"member_name,omitempty" db:"member_name"`
-	MemberMail NullString `json:"member_mail,omitempty" db:"member_mail"`
+	PointsID   int64            `json:"id" db:"id"`
+	MemberID   int64            `json:"member_id" db:"member_id"`
+	ObjectType int              `json:"object_type" db:"object_type" binding:"required"`
+	ObjectID   int              `json:"object_id" db:"object_id"`
+	Points     int              `json:"points" db:"points"`
+	Currency   int              `json:"currency" db:"currency"`
+	Balance    int              `json:"balance" db:"balance"`
+	CreatedAt  rrsql.NullTime   `json:"created_at" db:"created_at"`
+	UpdatedBy  rrsql.NullInt    `json:"updated_by" db:"updated_by"`
+	UpdatedAt  rrsql.NullTime   `json:"updated_at" db:"updated_at"`
+	Reason     rrsql.NullString `json:"reason" db:"reason"`
+	Status     int              `json:"status" db:"status"`
+	MemberName rrsql.NullString `json:"member_name,omitempty" db:"member_name"`
+	MemberMail rrsql.NullString `json:"member_mail,omitempty" db:"member_mail"`
 }
 
 // PointsToken is made to solve problem if Token is added to Points struct
-// Since in Insert method getStructDBTags is used,
+// Since in Insert method rrsql.GetStructDBTags is used,
 // and *string seems going to be asserted as string and get an empty database field,
 // resulting in insert NamedExec fail.
-// I have to use embedded struct here. Might have to reform getStructDBTags
+// I have to use embedded struct here. Might have to reform rrsql.GetStructDBTags
 type PointsToken struct {
 	Points
 	Token       *string `json:"token,omitempty"`
@@ -134,7 +135,7 @@ func (a *PointsArgs) build() {
 
 	// Parse ORDER BY, LIMIT, OFFSET conditions
 	if a.OrderBy != "" {
-		a.limits = append(a.limits, fmt.Sprintf("ORDER BY %s", orderByHelper(a.OrderBy)))
+		a.limits = append(a.limits, fmt.Sprintf("ORDER BY %s", rrsql.OrderByHelper(a.OrderBy)))
 	}
 	if a.MaxResult != 0 {
 		a.limits = append(a.limits, "LIMIT ?")
@@ -164,7 +165,7 @@ func (a *PointsArgs) Set(in map[string]interface{}) {
 
 type PointsProject struct {
 	Points
-	Title NullString `db:"title" json:"object_name"`
+	Title rrsql.NullString `db:"title" json:"object_name"`
 }
 
 func (p *pointsAPI) Get(args *PointsArgs) (result []PointsProject, err error) {
@@ -174,7 +175,7 @@ func (p *pointsAPI) Get(args *PointsArgs) (result []PointsProject, err error) {
 	if err != nil {
 		return nil, err
 	}
-	if err = DB.Select(&result, query, params...); err != nil {
+	if err = rrsql.DB.Select(&result, query, params...); err != nil {
 		return nil, err
 	}
 	return result, err
@@ -186,7 +187,7 @@ func (p *pointsAPI) Insert(pts PointsToken) (result int, id int, err error) {
 	if pts.Points.ObjectType == config.Config.Models.PointType["project"] ||
 		pts.Points.ObjectType == config.Config.Models.PointType["project_memo"] {
 		var memoPoints int
-		if err = DB.Get(&memoPoints, `SELECT memo_points FROM projects WHERE project_id = ?`, pts.ObjectID); err != nil {
+		if err = rrsql.DB.Get(&memoPoints, `SELECT memo_points FROM projects WHERE project_id = ?`, pts.ObjectID); err != nil {
 			return 0, 0, err
 		}
 		if pts.Points.Currency+pts.Points.Points < memoPoints {
@@ -234,9 +235,9 @@ func (p *pointsAPI) Insert(pts PointsToken) (result int, id int, err error) {
 
 func (p *pointsAPI) insertTransaction(pts PointsToken) (result int, id int, err error) {
 
-	tags := getStructDBTags("full", pts.Points)
+	tags := rrsql.GetStructDBTags("full", pts.Points)
 
-	tx, err := DB.Beginx()
+	tx, err := rrsql.DB.Beginx()
 	if err != nil {
 		log.Printf("Fail to get sql connection: %v", err)
 		return 0, 0, err
@@ -289,7 +290,7 @@ func (p *pointsAPI) insertTransaction(pts PointsToken) (result int, id int, err 
 }
 
 func (p *pointsAPI) updateTransactionStatus(transactionID int, status int) (err error) {
-	result, err := DB.Exec(`UPDATE points SET status = ? WHERE id = ?`, status, transactionID)
+	result, err := rrsql.DB.Exec(`UPDATE points SET status = ? WHERE id = ?`, status, transactionID)
 	if err != nil {
 		return err
 	}
@@ -305,7 +306,7 @@ func (p *pointsAPI) updateTransactionStatus(transactionID int, status int) (err 
 }
 
 func (p *pointsAPI) rollbackTransaction(transactionID int, pts PointsToken) (err error) {
-	tx, err := DB.Beginx()
+	tx, err := rrsql.DB.Beginx()
 	if err != nil {
 		log.Printf("Fail to get sql connection: %v", err)
 		return err

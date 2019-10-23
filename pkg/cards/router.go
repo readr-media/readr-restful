@@ -9,7 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/config"
-	"github.com/readr-media/readr-restful/models"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 )
 
 type newscardHandler struct{}
@@ -35,7 +35,7 @@ func (r *newscardHandler) bindQuery(c *gin.Context, args *NewsCardArgs) (err err
 		if err = json.Unmarshal([]byte(c.Query("active")), &args.Active); err != nil {
 			return err
 		} else if err == nil {
-			if err = models.ValidateActive(args.Active, config.Config.Models.Cards); err != nil {
+			if err = rrsql.ValidateActive(args.Active, config.Config.Models.Cards); err != nil {
 				return err
 			}
 		}
@@ -45,7 +45,7 @@ func (r *newscardHandler) bindQuery(c *gin.Context, args *NewsCardArgs) (err err
 		if err = json.Unmarshal([]byte(c.Query("status")), &args.Status); err != nil {
 			return err
 		} else if err == nil {
-			if err = models.ValidateActive(args.Status, config.Config.Models.CardStatus); err != nil {
+			if err = rrsql.ValidateActive(args.Status, config.Config.Models.CardStatus); err != nil {
 				return err
 			}
 		}
@@ -119,14 +119,14 @@ func (r *newscardHandler) Post(c *gin.Context) {
 	}
 
 	// CreatedAt and UpdatedAt set default to now
-	card.CreatedAt = models.NullTime{Time: time.Now(), Valid: true}
-	card.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
+	card.CreatedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
+	card.UpdatedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
 
 	if !card.Active.Valid {
-		card.Active = models.NullInt{int64(config.Config.Models.Cards["inctive"]), true}
+		card.Active = rrsql.NullInt{int64(config.Config.Models.Cards["inctive"]), true}
 	}
 	if !card.Status.Valid {
-		card.Status = models.NullInt{int64(config.Config.Models.CardStatus["draft"]), true}
+		card.Status = rrsql.NullInt{int64(config.Config.Models.CardStatus["draft"]), true}
 	}
 
 	_, err = NewsCardAPI.InsertCard(card)
@@ -164,7 +164,7 @@ func (r *newscardHandler) Put(c *gin.Context) {
 		card.CreatedAt.Valid = false
 	}
 
-	card.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
+	card.UpdatedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
 
 	err = NewsCardAPI.UpdateCard(card)
 	if err != nil {

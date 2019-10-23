@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/routes"
 )
@@ -86,85 +87,85 @@ func TestFollowing(t *testing.T) {
 	var mockedPosts = []models.Post{
 		models.Post{
 			ID:            1,
-			Author:        models.NullInt{2, true},
-			Title:         models.NullString{"Test post 01", true},
-			Content:       models.NullString{"<p>Test post content 01</p>", true},
-			Type:          models.NullInt{0, true},
-			Link:          models.NullString{"http://dev.readr.tw/post/1", true},
-			Active:        models.NullInt{1, true},
-			PublishStatus: models.NullInt{2, true},
-			UpdatedAt:     models.NullTime{Time: time.Date(2018, 1, 2, 3, 4, 5, 6, time.UTC), Valid: true},
+			Author:        rrsql.NullInt{2, true},
+			Title:         rrsql.NullString{"Test post 01", true},
+			Content:       rrsql.NullString{"<p>Test post content 01</p>", true},
+			Type:          rrsql.NullInt{0, true},
+			Link:          rrsql.NullString{"http://dev.readr.tw/post/1", true},
+			Active:        rrsql.NullInt{1, true},
+			PublishStatus: rrsql.NullInt{2, true},
+			UpdatedAt:     rrsql.NullTime{Time: time.Date(2018, 1, 2, 3, 4, 5, 6, time.UTC), Valid: true},
 		},
 		models.Post{
 			ID:            2,
-			Author:        models.NullInt{1, true},
-			Title:         models.NullString{"Test report 01", true},
-			Content:       models.NullString{"<p>Test report content 01</p>", true},
-			Type:          models.NullInt{4, true},
-			Link:          models.NullString{"http://dev.readr.tw/project/report_slug_1", true},
-			Active:        models.NullInt{1, true},
-			PublishStatus: models.NullInt{2, true},
-			UpdatedAt:     models.NullTime{Time: time.Date(2018, 1, 3, 3, 4, 5, 6, time.UTC), Valid: true},
-			ProjectID:     models.NullInt{1, true},
-			Slug:          models.NullString{"report_slug_1", true},
+			Author:        rrsql.NullInt{1, true},
+			Title:         rrsql.NullString{"Test report 01", true},
+			Content:       rrsql.NullString{"<p>Test report content 01</p>", true},
+			Type:          rrsql.NullInt{4, true},
+			Link:          rrsql.NullString{"http://dev.readr.tw/project/report_slug_1", true},
+			Active:        rrsql.NullInt{1, true},
+			PublishStatus: rrsql.NullInt{2, true},
+			UpdatedAt:     rrsql.NullTime{Time: time.Date(2018, 1, 3, 3, 4, 5, 6, time.UTC), Valid: true},
+			ProjectID:     rrsql.NullInt{1, true},
+			Slug:          rrsql.NullString{"report_slug_1", true},
 		},
 		models.Post{
 			ID:            3,
-			Author:        models.NullInt{1, true},
-			Title:         models.NullString{"Test memo 01", true},
-			Type:          models.NullInt{5, true},
-			Link:          models.NullString{"http://dev.readr.tw/series/project_slug_2/3", true},
-			Active:        models.NullInt{1, true},
-			PublishStatus: models.NullInt{2, true},
-			UpdatedAt:     models.NullTime{Time: time.Date(2018, 1, 4, 3, 4, 5, 6, time.UTC), Valid: true},
-			ProjectID:     models.NullInt{2, true},
-			Slug:          models.NullString{"project_slug_2", true},
+			Author:        rrsql.NullInt{1, true},
+			Title:         rrsql.NullString{"Test memo 01", true},
+			Type:          rrsql.NullInt{5, true},
+			Link:          rrsql.NullString{"http://dev.readr.tw/series/project_slug_2/3", true},
+			Active:        rrsql.NullInt{1, true},
+			PublishStatus: rrsql.NullInt{2, true},
+			UpdatedAt:     rrsql.NullTime{Time: time.Date(2018, 1, 4, 3, 4, 5, 6, time.UTC), Valid: true},
+			ProjectID:     rrsql.NullInt{2, true},
+			Slug:          rrsql.NullString{"project_slug_2", true},
 		},
 		models.Post{
 			ID:            4,
-			Author:        models.NullInt{2, true},
-			Title:         models.NullString{"Test post 02", true},
-			Content:       models.NullString{"<p>Test post content 02</p>", true},
-			Type:          models.NullInt{0, true},
-			Link:          models.NullString{"http://dev.readr.tw/post/2", true},
-			Active:        models.NullInt{1, true},
-			PublishStatus: models.NullInt{2, true},
-			UpdatedAt:     models.NullTime{Time: time.Date(2018, 1, 2, 3, 4, 5, 6, time.UTC), Valid: true},
+			Author:        rrsql.NullInt{2, true},
+			Title:         rrsql.NullString{"Test post 02", true},
+			Content:       rrsql.NullString{"<p>Test post content 02</p>", true},
+			Type:          rrsql.NullInt{0, true},
+			Link:          rrsql.NullString{"http://dev.readr.tw/post/2", true},
+			Active:        rrsql.NullInt{1, true},
+			PublishStatus: rrsql.NullInt{2, true},
+			UpdatedAt:     rrsql.NullTime{Time: time.Date(2018, 1, 2, 3, 4, 5, 6, time.UTC), Valid: true},
 		},
 	}
 	var mockedMembers = []models.Member{
 		models.Member{
 			ID:       1,
 			UUID:     "uuid1",
-			Mail:     models.NullString{"testmember01@test.cc", true},
-			Nickname: models.NullString{"test_member_01", true},
+			Mail:     rrsql.NullString{"testmember01@test.cc", true},
+			Nickname: rrsql.NullString{"test_member_01", true},
 			MemberID: "testmember01@test.cc",
 		}, models.Member{
 			ID:       2,
 			UUID:     "uuid2",
-			Mail:     models.NullString{"testmember02@test.cc", true},
-			Nickname: models.NullString{"test_member_02", true},
+			Mail:     rrsql.NullString{"testmember02@test.cc", true},
+			Nickname: rrsql.NullString{"test_member_02", true},
 			MemberID: "testmember02@test.cc",
 		}, models.Member{
 			ID:       3,
 			UUID:     "uuid3",
-			Mail:     models.NullString{"testmember03@test.cc", true},
-			Nickname: models.NullString{"test_member_03", true},
+			Mail:     rrsql.NullString{"testmember03@test.cc", true},
+			Nickname: rrsql.NullString{"test_member_03", true},
 			MemberID: "testmember03@test.cc",
 		},
 	}
 	var mockedProjects = []models.Project{
 		models.Project{
 			ID:            1,
-			Slug:          models.NullString{"project_slug_1", true},
-			Title:         models.NullString{"project_title_1", true},
-			PublishStatus: models.NullInt{1, true},
+			Slug:          rrsql.NullString{"project_slug_1", true},
+			Title:         rrsql.NullString{"project_title_1", true},
+			PublishStatus: rrsql.NullInt{1, true},
 		},
 		models.Project{
 			ID:            2,
-			Slug:          models.NullString{"project_slug_2", true},
-			Title:         models.NullString{"project_title_2", true},
-			PublishStatus: models.NullInt{2, true},
+			Slug:          rrsql.NullString{"project_slug_2", true},
+			Title:         rrsql.NullString{"project_title_2", true},
+			PublishStatus: rrsql.NullInt{2, true},
 		},
 	}
 	var mockedTags = []models.Tag{
@@ -187,11 +188,11 @@ func TestFollowing(t *testing.T) {
 
 	init := func() func() {
 		for _, v := range mockedPosts {
-			_, err := models.PostAPI.InsertPost(v)
+			_, err := models.PostAPI.InsertPost(models.PostDescription{Post: v})
 			if err != nil {
 				t.Fatalf("init post data fail: %s ", err.Error())
 			}
-			err = models.PostAPI.UpdateAuthors(v, []models.AuthorInput{models.AuthorInput{MemberID: v.Author, Type: models.NullInt{0, true}}})
+			err = models.PostAPI.UpdateAuthors(v, []models.AuthorInput{models.AuthorInput{MemberID: v.Author, Type: rrsql.NullInt{0, true}}})
 			if err != nil {
 				t.Fatalf("init post author fail: %s ", err.Error())
 			}

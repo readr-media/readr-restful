@@ -12,6 +12,7 @@ import (
 	// "encoding/json"
 	// "net/http"
 
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -27,7 +28,7 @@ func (a *mockReportAPI) CountReports(arg models.GetReportArgs) (result int, err 
 
 func (a *mockReportAPI) GetReport(p models.Report) (result models.Report, err error) {
 	if p.ID == 32768 {
-		return models.Report{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0001", true}}, err
+		return models.Report{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Slug: rrsql.NullString{"sampleslug0001", true}}, err
 	} else {
 		return models.Report{ID: p.ID}, err
 	}
@@ -39,72 +40,72 @@ func (a *mockReportAPI) GetReports(args models.GetReportArgs) (result []models.R
 	}
 	if args.Keyword == "no" {
 		return []models.ReportAuthors{
-			{Report: models.Report{ID: 32234, Title: models.NullString{"nonActive", true}, Active: models.NullInt{1, true}}},
+			{Report: models.Report{ID: 32234, Title: rrsql.NullString{"nonActive", true}, Active: rrsql.NullInt{1, true}}},
 		}, nil
 	}
 	if args.Keyword == "327" {
 		return []models.ReportAuthors{
-			{Report: models.Report{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0001", true}, PublishStatus: models.NullInt{2, true}}},
-			{Report: models.Report{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Content: models.NullString{"id not provided", true}}},
-			{Report: models.Report{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}}},
+			{Report: models.Report{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Slug: rrsql.NullString{"sampleslug0001", true}, PublishStatus: rrsql.NullInt{2, true}}},
+			{Report: models.Report{ID: 32769, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Content: rrsql.NullString{"id not provided", true}}},
+			{Report: models.Report{ID: 32767, Title: rrsql.NullString{"Modified", true}, Active: rrsql.NullInt{1, true}}},
 		}, nil
 	}
 	log.Println(args.Sorting)
 	if args.Sorting == "-slug,post_id" {
 		return []models.ReportAuthors{
 
-			{Report: models.Report{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0002", true}}},
-			{Report: models.Report{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0001", true}, PublishStatus: models.NullInt{2, true}}},
-			{Report: models.Report{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}}},
-			{Report: models.Report{ID: 32234, Title: models.NullString{"nonActive", true}, Active: models.NullInt{1, true}}},
-			{Report: models.Report{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}}},
-			{Report: models.Report{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Content: models.NullString{"id not provided", true}}},
+			{Report: models.Report{ID: 32233, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Slug: rrsql.NullString{"sampleslug0002", true}}},
+			{Report: models.Report{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Slug: rrsql.NullString{"sampleslug0001", true}, PublishStatus: rrsql.NullInt{2, true}}},
+			{Report: models.Report{ID: 1, Title: rrsql.NullString{"Alpha", true}, Active: rrsql.NullInt{1, true}, PublishStatus: rrsql.NullInt{1, true}}},
+			{Report: models.Report{ID: 32234, Title: rrsql.NullString{"nonActive", true}, Active: rrsql.NullInt{1, true}}},
+			{Report: models.Report{ID: 32767, Title: rrsql.NullString{"Modified", true}, Active: rrsql.NullInt{1, true}}},
+			{Report: models.Report{ID: 32769, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Content: rrsql.NullString{"id not provided", true}}},
 		}, nil
 	}
 	if len(args.Slugs) == 1 {
 		return []models.ReportAuthors{
-			{Report: models.Report{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0001", true}, PublishStatus: models.NullInt{2, true}}},
+			{Report: models.Report{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Slug: rrsql.NullString{"sampleslug0001", true}, PublishStatus: rrsql.NullInt{2, true}}},
 		}, nil
 	} else if len(args.Slugs) == 2 {
 		return []models.ReportAuthors{
-			{Report: models.Report{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0002", true}}},
-			{Report: models.Report{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0001", true}, PublishStatus: models.NullInt{2, true}}},
+			{Report: models.Report{ID: 32233, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Slug: rrsql.NullString{"sampleslug0002", true}}},
+			{Report: models.Report{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Slug: rrsql.NullString{"sampleslug0001", true}, PublishStatus: rrsql.NullInt{2, true}}},
 		}, nil
 	}
 	if len(args.ProjectSlugs) == 1 {
 		return []models.ReportAuthors{
-			{Report: models.Report{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0002", true}}},
+			{Report: models.Report{ID: 32233, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Slug: rrsql.NullString{"sampleslug0002", true}}},
 		}, nil
 	}
 	if len(args.IDs) == 2 {
 		if reflect.DeepEqual([]string(args.Fields), args.FullAuthorTags()) {
 			return []models.ReportAuthors{
 				models.ReportAuthors{
-					Report:  models.Report{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}},
+					Report:  models.Report{ID: 32767, Title: rrsql.NullString{"Modified", true}, Active: rrsql.NullInt{1, true}},
 					Authors: []models.Stunt{mockReportAuthors[0]},
 				},
 				models.ReportAuthors{
-					Report:  models.Report{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}},
+					Report:  models.Report{ID: 1, Title: rrsql.NullString{"Alpha", true}, Active: rrsql.NullInt{1, true}, PublishStatus: rrsql.NullInt{1, true}},
 					Authors: []models.Stunt{mockReportAuthors[0], mockReportAuthors[1]},
 				}}, nil
 		} else if reflect.DeepEqual([]string(args.Fields), []string{"id", "nickname"}) {
 			return []models.ReportAuthors{
 				models.ReportAuthors{
-					Report:  models.Report{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}},
+					Report:  models.Report{ID: 32767, Title: rrsql.NullString{"Modified", true}, Active: rrsql.NullInt{1, true}},
 					Authors: []models.Stunt{models.Stunt{ID: mockReportAuthors[0].ID, Nickname: mockReportAuthors[0].Nickname}},
 				},
 				models.ReportAuthors{
-					Report:  models.Report{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}},
+					Report:  models.Report{ID: 1, Title: rrsql.NullString{"Alpha", true}, Active: rrsql.NullInt{1, true}, PublishStatus: rrsql.NullInt{1, true}},
 					Authors: []models.Stunt{models.Stunt{ID: mockReportAuthors[0].ID, Nickname: mockReportAuthors[0].Nickname}, models.Stunt{ID: mockReportAuthors[1].ID, Nickname: mockReportAuthors[1].Nickname}},
 				}}, nil
 		}
 		return []models.ReportAuthors{
 			models.ReportAuthors{
-				Report:  models.Report{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}},
+				Report:  models.Report{ID: 32767, Title: rrsql.NullString{"Modified", true}, Active: rrsql.NullInt{1, true}},
 				Authors: []models.Stunt{models.Stunt{Nickname: mockReportAuthors[0].Nickname}},
 			},
 			models.ReportAuthors{
-				Report:  models.Report{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}},
+				Report:  models.Report{ID: 1, Title: rrsql.NullString{"Alpha", true}, Active: rrsql.NullInt{1, true}, PublishStatus: rrsql.NullInt{1, true}},
 				Authors: []models.Stunt{models.Stunt{Nickname: mockReportAuthors[0].Nickname}, models.Stunt{Nickname: mockReportAuthors[1].Nickname}},
 			},
 		}, nil
@@ -113,31 +114,31 @@ func (a *mockReportAPI) GetReports(args models.GetReportArgs) (result []models.R
 	}
 	if len(args.ReportPublishStatus) == 1 {
 		return []models.ReportAuthors{
-			{Report: models.Report{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}}},
+			{Report: models.Report{ID: 1, Title: rrsql.NullString{"Alpha", true}, Active: rrsql.NullInt{1, true}, PublishStatus: rrsql.NullInt{1, true}}},
 		}, nil
 	}
 	if len(args.ProjectPublishStatus) == 1 {
 		return []models.ReportAuthors{
-			{Report: models.Report{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0001", true}, PublishStatus: models.NullInt{2, true}}},
+			{Report: models.Report{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Slug: rrsql.NullString{"sampleslug0001", true}, PublishStatus: rrsql.NullInt{2, true}}},
 		}, nil
 	}
 	if args.MaxResult == 1 && args.Page == 2 {
 		return []models.ReportAuthors{
-			{Report: models.Report{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Content: models.NullString{"id not provided", true}}},
+			{Report: models.Report{ID: 32769, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Content: rrsql.NullString{"id not provided", true}}},
 		}, nil
 	}
 	if args.MaxResult == 1 {
 		return []models.ReportAuthors{
-			{Report: models.Report{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0001", true}, PublishStatus: models.NullInt{2, true}}},
+			{Report: models.Report{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Slug: rrsql.NullString{"sampleslug0001", true}, PublishStatus: rrsql.NullInt{2, true}}},
 		}, nil
 	}
 	return []models.ReportAuthors{
-		{Report: models.Report{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0002", true}}},
-		{Report: models.Report{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0001", true}, PublishStatus: models.NullInt{2, true}}},
-		{Report: models.Report{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Content: models.NullString{"id not provided", true}}},
-		{Report: models.Report{ID: 32234, Title: models.NullString{"nonActive", true}, Active: models.NullInt{1, true}}},
-		{Report: models.Report{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}}},
-		{Report: models.Report{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}}},
+		{Report: models.Report{ID: 32233, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Slug: rrsql.NullString{"sampleslug0002", true}}},
+		{Report: models.Report{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Slug: rrsql.NullString{"sampleslug0001", true}, PublishStatus: rrsql.NullInt{2, true}}},
+		{Report: models.Report{ID: 32769, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Content: rrsql.NullString{"id not provided", true}}},
+		{Report: models.Report{ID: 32234, Title: rrsql.NullString{"nonActive", true}, Active: rrsql.NullInt{1, true}}},
+		{Report: models.Report{ID: 32767, Title: rrsql.NullString{"Modified", true}, Active: rrsql.NullInt{1, true}}},
+		{Report: models.Report{ID: 1, Title: rrsql.NullString{"Alpha", true}, Active: rrsql.NullInt{1, true}, PublishStatus: rrsql.NullInt{1, true}}},
 	}, nil
 }
 
@@ -208,8 +209,8 @@ var MockReportAPI mockReportAPI
 
 // 	// Insert test data
 // 	for _, params := range []models.Report{
-// 		models.Report{Active: models.NullInt{1, true}, Title: models.NullString{"Alpha", true}, PublishStatus: models.NullInt{1, true}},
-// 		models.Report{ID: 32767, Active: models.NullInt{1, true}, Title: models.NullString{"Omega", true}},
+// 		models.Report{Active: rrsql.NullInt{1, true}, Title: rrsql.NullString{"Alpha", true}, PublishStatus: rrsql.NullInt{1, true}},
+// 		models.Report{ID: 32767, Active: rrsql.NullInt{1, true}, Title: rrsql.NullString{"Omega", true}},
 // 	} {
 // 		_, err := models.ReportAPI.InsertReport(params)
 // 		if err != nil {
@@ -218,8 +219,8 @@ var MockReportAPI mockReportAPI
 // 	}
 
 // 	for _, params := range []models.Project{
-// 		models.Project{ID: 420, Active: models.NullInt{1, true}, Title: models.NullString{"Test project for memo", true}, Slug: models.NullString{"testproject", true}},
-// 		models.Project{ID: 421, Active: models.NullInt{1, true}, Title: models.NullString{"Test project2 for memo", true}, Slug: models.NullString{"testproject2", true}, PublishStatus: models.NullInt{1, true}},
+// 		models.Project{ID: 420, Active: rrsql.NullInt{1, true}, Title: rrsql.NullString{"Test project for memo", true}, Slug: rrsql.NullString{"testproject", true}},
+// 		models.Project{ID: 421, Active: rrsql.NullInt{1, true}, Title: rrsql.NullString{"Test project2 for memo", true}, Slug: rrsql.NullString{"testproject2", true}, PublishStatus: rrsql.NullInt{1, true}},
 // 	} {
 // 		err := models.ProjectAPI.InsertProject(params)
 // 		if err != nil {
@@ -297,80 +298,80 @@ var MockReportAPI mockReportAPI
 // 	t.Run("GetReport", func(t *testing.T) {
 // 		testcases := []genericTestcase{
 // 			genericTestcase{"GetReportBasicOK", "GET", "/report/list", ``, http.StatusOK, []models.ReportAuthors{
-// 				models.ReportAuthors{Report: models.Report{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0002", true}}},
-// 				models.ReportAuthors{Report: models.Report{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0001", true}, PublishStatus: models.NullInt{2, true}}},
-// 				models.ReportAuthors{Report: models.Report{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Content: models.NullString{"id not provided", true}}},
-// 				models.ReportAuthors{Report: models.Report{ID: 32234, Title: models.NullString{"nonActive", true}, Active: models.NullInt{1, true}}},
-// 				models.ReportAuthors{Report: models.Report{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}}},
-// 				models.ReportAuthors{Report: models.Report{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}}},
+// 				models.ReportAuthors{Report: models.Report{ID: 32233, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Slug: rrsql.NullString{"sampleslug0002", true}}},
+// 				models.ReportAuthors{Report: models.Report{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Slug: rrsql.NullString{"sampleslug0001", true}, PublishStatus: rrsql.NullInt{2, true}}},
+// 				models.ReportAuthors{Report: models.Report{ID: 32769, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Content: rrsql.NullString{"id not provided", true}}},
+// 				models.ReportAuthors{Report: models.Report{ID: 32234, Title: rrsql.NullString{"nonActive", true}, Active: rrsql.NullInt{1, true}}},
+// 				models.ReportAuthors{Report: models.Report{ID: 32767, Title: rrsql.NullString{"Modified", true}, Active: rrsql.NullInt{1, true}}},
+// 				models.ReportAuthors{Report: models.Report{ID: 1, Title: rrsql.NullString{"Alpha", true}, Active: rrsql.NullInt{1, true}, PublishStatus: rrsql.NullInt{1, true}}},
 // 			}},
 // 			genericTestcase{"GetReportMaxResultOK", "GET", "/report/list?max_result=1", ``, http.StatusOK, []models.ReportAuthors{
-// 				models.ReportAuthors{Report: models.Report{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0001", true}, PublishStatus: models.NullInt{2, true}}},
+// 				models.ReportAuthors{Report: models.Report{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Slug: rrsql.NullString{"sampleslug0001", true}, PublishStatus: rrsql.NullInt{2, true}}},
 // 			}},
 // 			genericTestcase{"GetReportOffsetOK", "GET", "/report/list?max_result=1&page=2", ``, http.StatusOK, []models.ReportAuthors{
-// 				models.ReportAuthors{Report: models.Report{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Content: models.NullString{"id not provided", true}}},
+// 				models.ReportAuthors{Report: models.Report{ID: 32769, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Content: rrsql.NullString{"id not provided", true}}},
 // 			}},
 // 			genericTestcase{"GetReportWithIDsOK", "GET", `/report/list?ids=[1,32767]`, ``, http.StatusOK, []models.ReportAuthors{
 // 				models.ReportAuthors{
-// 					Report:  models.Report{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}},
+// 					Report:  models.Report{ID: 32767, Title: rrsql.NullString{"Modified", true}, Active: rrsql.NullInt{1, true}},
 // 					Authors: []models.Stunt{models.Stunt{Nickname: mockReportAuthors[0].Nickname}},
 // 				},
 // 				models.ReportAuthors{
-// 					Report:  models.Report{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}},
+// 					Report:  models.Report{ID: 1, Title: rrsql.NullString{"Alpha", true}, Active: rrsql.NullInt{1, true}, PublishStatus: rrsql.NullInt{1, true}},
 // 					Authors: []models.Stunt{models.Stunt{Nickname: mockReportAuthors[0].Nickname}, models.Stunt{Nickname: mockReportAuthors[1].Nickname}},
 // 				},
 // 			}},
 // 			genericTestcase{"GetReportWithIDsNotFound", "GET", "/report/list?ids=[9527]", ``, http.StatusOK, `{"_items":[]}`},
 // 			genericTestcase{"GetReportWithSlugs", "GET", `/report/list?report_slugs=["sampleslug0001"]`, ``, http.StatusOK, []models.ReportAuthors{
-// 				models.ReportAuthors{Report: models.Report{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0001", true}, PublishStatus: models.NullInt{2, true}}},
+// 				models.ReportAuthors{Report: models.Report{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Slug: rrsql.NullString{"sampleslug0001", true}, PublishStatus: rrsql.NullInt{2, true}}},
 // 			}},
 // 			genericTestcase{"GetReportWithMultipleSlugs", "GET", `/report/list?report_slugs=["sampleslug0001","sampleslug0002"]`, ``, http.StatusOK, []models.ReportAuthors{
-// 				models.ReportAuthors{Report: models.Report{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0002", true}}},
-// 				models.ReportAuthors{Report: models.Report{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0001", true}, PublishStatus: models.NullInt{2, true}}},
+// 				models.ReportAuthors{Report: models.Report{ID: 32233, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Slug: rrsql.NullString{"sampleslug0002", true}}},
+// 				models.ReportAuthors{Report: models.Report{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Slug: rrsql.NullString{"sampleslug0001", true}, PublishStatus: rrsql.NullInt{2, true}}},
 // 			}},
 // 			genericTestcase{"GetReportWithProjectSlugs", "GET", `/report/list?project_slugs=["testproject"]`, ``, http.StatusOK, []models.ReportAuthors{
-// 				models.ReportAuthors{Report: models.Report{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0002", true}}},
+// 				models.ReportAuthors{Report: models.Report{ID: 32233, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Slug: rrsql.NullString{"sampleslug0002", true}}},
 // 			}},
 // 			genericTestcase{"GetReportWithReportPublishStatus", "GET", `/report/list?report_publish_status={"$in":[1]}`, ``, http.StatusOK, []models.ReportAuthors{
-// 				models.ReportAuthors{Report: models.Report{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}}},
+// 				models.ReportAuthors{Report: models.Report{ID: 1, Title: rrsql.NullString{"Alpha", true}, Active: rrsql.NullInt{1, true}, PublishStatus: rrsql.NullInt{1, true}}},
 // 			}},
 // 			genericTestcase{"GetReportWithProjectPublishStatus", "GET", `/report/list?project_publish_status={"$in":[1]}`, ``, http.StatusOK, []models.ReportAuthors{
-// 				models.ReportAuthors{Report: models.Report{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0001", true}, PublishStatus: models.NullInt{2, true}}},
+// 				models.ReportAuthors{Report: models.Report{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Slug: rrsql.NullString{"sampleslug0001", true}, PublishStatus: rrsql.NullInt{2, true}}},
 // 			}},
 // 			genericTestcase{"GetReportWithMultipleSorting", "GET", `/report/list?sort=-slug,id`, ``, http.StatusOK, []models.ReportAuthors{
-// 				models.ReportAuthors{Report: models.Report{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0002", true}}},
-// 				models.ReportAuthors{Report: models.Report{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0001", true}, PublishStatus: models.NullInt{2, true}}},
-// 				models.ReportAuthors{Report: models.Report{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}}},
-// 				models.ReportAuthors{Report: models.Report{ID: 32234, Title: models.NullString{"nonActive", true}, Active: models.NullInt{1, true}}},
-// 				models.ReportAuthors{Report: models.Report{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}}},
-// 				models.ReportAuthors{Report: models.Report{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Content: models.NullString{"id not provided", true}}},
+// 				models.ReportAuthors{Report: models.Report{ID: 32233, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Slug: rrsql.NullString{"sampleslug0002", true}}},
+// 				models.ReportAuthors{Report: models.Report{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Slug: rrsql.NullString{"sampleslug0001", true}, PublishStatus: rrsql.NullInt{2, true}}},
+// 				models.ReportAuthors{Report: models.Report{ID: 1, Title: rrsql.NullString{"Alpha", true}, Active: rrsql.NullInt{1, true}, PublishStatus: rrsql.NullInt{1, true}}},
+// 				models.ReportAuthors{Report: models.Report{ID: 32234, Title: rrsql.NullString{"nonActive", true}, Active: rrsql.NullInt{1, true}}},
+// 				models.ReportAuthors{Report: models.Report{ID: 32767, Title: rrsql.NullString{"Modified", true}, Active: rrsql.NullInt{1, true}}},
+// 				models.ReportAuthors{Report: models.Report{ID: 32769, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Content: rrsql.NullString{"id not provided", true}}},
 // 			}},
 // 			genericTestcase{"GetReportKeywordMatchTitle", "GET", `/report/list?keyword=no&active={"$in":[0,1]}`, ``, http.StatusOK, []models.ReportAuthors{
-// 				models.ReportAuthors{Report: models.Report{ID: 32234, Title: models.NullString{"nonActive", true}, Active: models.NullInt{1, true}}},
+// 				models.ReportAuthors{Report: models.Report{ID: 32234, Title: rrsql.NullString{"nonActive", true}, Active: rrsql.NullInt{1, true}}},
 // 			}},
 // 			genericTestcase{"GetReportKeywordMatchID", "GET", `/report/list?keyword=327`, ``, http.StatusOK, []models.ReportAuthors{
-// 				models.ReportAuthors{Report: models.Report{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Slug: models.NullString{"sampleslug0001", true}, PublishStatus: models.NullInt{2, true}}},
-// 				models.ReportAuthors{Report: models.Report{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Content: models.NullString{"id not provided", true}}},
-// 				models.ReportAuthors{Report: models.Report{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}}},
+// 				models.ReportAuthors{Report: models.Report{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Slug: rrsql.NullString{"sampleslug0001", true}, PublishStatus: rrsql.NullInt{2, true}}},
+// 				models.ReportAuthors{Report: models.Report{ID: 32769, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Content: rrsql.NullString{"id not provided", true}}},
+// 				models.ReportAuthors{Report: models.Report{ID: 32767, Title: rrsql.NullString{"Modified", true}, Active: rrsql.NullInt{1, true}}},
 // 			}},
 // 			genericTestcase{"GetReportCount", "GET", `/report/count`, ``, http.StatusOK, `{"_meta":{"total":6}}`},
 // 			genericTestcase{"GetReportWithAuthorsFieldsSet", "GET", `/report/list?ids=[1,32767]&fields=["id","nickname"]`, ``, http.StatusOK, []models.ReportAuthors{
 // 				models.ReportAuthors{
-// 					Report:  models.Report{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}},
+// 					Report:  models.Report{ID: 32767, Title: rrsql.NullString{"Modified", true}, Active: rrsql.NullInt{1, true}},
 // 					Authors: []models.Stunt{models.Stunt{ID: mockReportAuthors[0].ID, Nickname: mockReportAuthors[0].Nickname}},
 // 				},
 // 				models.ReportAuthors{
-// 					Report:  models.Report{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}},
+// 					Report:  models.Report{ID: 1, Title: rrsql.NullString{"Alpha", true}, Active: rrsql.NullInt{1, true}, PublishStatus: rrsql.NullInt{1, true}},
 // 					Authors: []models.Stunt{models.Stunt{ID: mockReportAuthors[0].ID, Nickname: mockReportAuthors[0].Nickname}, models.Stunt{ID: mockReportAuthors[1].ID, Nickname: mockReportAuthors[1].Nickname}},
 // 				},
 // 			}},
 // 			genericTestcase{"GetReportWithAuthorsFull", "GET", `/report/list?ids=[1,32767]&mode=full`, ``, http.StatusOK, []models.ReportAuthors{
 // 				models.ReportAuthors{
-// 					Report:  models.Report{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}},
+// 					Report:  models.Report{ID: 32767, Title: rrsql.NullString{"Modified", true}, Active: rrsql.NullInt{1, true}},
 // 					Authors: []models.Stunt{mockReportAuthors[0]},
 // 				},
 // 				models.ReportAuthors{
-// 					Report:  models.Report{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}},
+// 					Report:  models.Report{ID: 1, Title: rrsql.NullString{"Alpha", true}, Active: rrsql.NullInt{1, true}, PublishStatus: rrsql.NullInt{1, true}},
 // 					Authors: []models.Stunt{mockReportAuthors[0], mockReportAuthors[1]},
 // 				},
 // 			}},

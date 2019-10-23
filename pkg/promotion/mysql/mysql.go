@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/readr-media/readr-restful/config"
-	"github.com/readr-media/readr-restful/models"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/pkg/promotion"
 )
 
@@ -26,7 +26,7 @@ func (a *dataAPI) Get(params promotion.ListParams) (results []promotion.Promotio
 		return nil, err
 	}
 	// Select from db
-	err = models.DB.Select(&results, query, values...)
+	err = rrsql.DB.Select(&results, query, values...)
 	if err != nil {
 		log.Printf("Failed to get promotions from database:%s\n", err.Error())
 		return nil, err
@@ -43,7 +43,7 @@ func (a *dataAPI) Count(params promotion.ListParams) (count int, err error) {
 	}
 
 	// Only select a row for count
-	err = models.DB.QueryRow(query, values...).Scan(&count)
+	err = rrsql.DB.QueryRow(query, values...).Scan(&count)
 	if err != nil {
 		log.Printf("Failed to count promotions:%s\n", err.Error())
 		return count, err
@@ -57,7 +57,7 @@ func (a *dataAPI) Insert(p promotion.Promotion) (int, error) {
 	tags := p.GetTags()
 	query := fmt.Sprintf(`INSERT INTO promotions (%s) VALUES (:%s)`, strings.Join(tags, ","), strings.Join(tags, ",:"))
 
-	results, err := models.DB.NamedExec(query, p)
+	results, err := rrsql.DB.NamedExec(query, p)
 	if err != nil {
 		return 0, err
 	}
@@ -97,7 +97,7 @@ func (a *dataAPI) Update(p promotion.Promotion) error {
 	}(`%s = :%s`, tags)
 	query := fmt.Sprintf(`UPDATE promotions SET %s WHERE id = :id`, fields)
 
-	_, err := models.DB.NamedExec(query, p)
+	_, err := rrsql.DB.NamedExec(query, p)
 	if err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func (a *dataAPI) Update(p promotion.Promotion) error {
 
 func (a *dataAPI) Delete(id uint64) error {
 
-	result, err := models.DB.Exec(fmt.Sprintf("UPDATE promotions SET active = %d WHERE id = ?", config.Config.Models.Promotions["deactive"]), id)
+	result, err := rrsql.DB.Exec(fmt.Sprintf("UPDATE promotions SET active = %d WHERE id = ?", config.Config.Models.Promotions["deactive"]), id)
 	if err != nil {
 		log.Printf("error deleting promotions in MySQL:%s\n", err.Error())
 		return err

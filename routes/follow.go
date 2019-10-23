@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -74,7 +75,7 @@ func bindFollow(c *gin.Context) (result interface{}, err error) {
 				}
 			}
 		}
-		params.Table, params.PrimaryKey, params.FollowType, err = models.GetResourceMetadata(params.ResourceName)
+		params.Table, params.PrimaryKey, params.FollowType, err = rrsql.GetResourceMetadata(params.ResourceName)
 		if err != nil {
 			return nil, err
 		}

@@ -10,49 +10,50 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 )
 
 // var MemberStatus map[string]interface{}
 
 type Member struct {
-	ID       int64      `json:"id" db:"id"`
-	MemberID string     `json:"member_id" db:"member_id"`
-	UUID     string     `json:"uuid" db:"uuid"`
-	Points   NullInt    `json:"points" db:"points"`
-	Name     NullString `json:"name" db:"name"`
-	Nickname NullString `json:"nickname" db:"nickname"`
+	ID       int64            `json:"id" db:"id"`
+	MemberID string           `json:"member_id" db:"member_id"`
+	UUID     string           `json:"uuid" db:"uuid"`
+	Points   rrsql.NullInt    `json:"points" db:"points"`
+	Name     rrsql.NullString `json:"name" db:"name"`
+	Nickname rrsql.NullString `json:"nickname" db:"nickname"`
 	// Cannot parse Date format
-	Birthday NullTime   `json:"birthday" db:"birthday"`
-	Gender   NullString `json:"gender" db:"gender"`
-	Work     NullString `json:"work" db:"work"`
-	Mail     NullString `json:"mail" db:"mail"`
-	Phone    NullString `json:"phone" db:"phone"`
+	Birthday rrsql.NullTime   `json:"birthday" db:"birthday"`
+	Gender   rrsql.NullString `json:"gender" db:"gender"`
+	Work     rrsql.NullString `json:"work" db:"work"`
+	Mail     rrsql.NullString `json:"mail" db:"mail"`
+	Phone    rrsql.NullString `json:"phone" db:"phone"`
 
-	RegisterMode NullString `json:"register_mode" db:"register_mode"`
-	SocialID     NullString `json:"social_id,omitempty" db:"social_id"`
-	TalkID       NullString `json:"talk_id" db:"talk_id"`
+	RegisterMode rrsql.NullString `json:"register_mode" db:"register_mode"`
+	SocialID     rrsql.NullString `json:"social_id,omitempty" db:"social_id"`
+	TalkID       rrsql.NullString `json:"talk_id" db:"talk_id"`
 
-	CreatedAt     NullTime   `json:"created_at" db:"created_at"`
-	UpdatedAt     NullTime   `json:"updated_at" db:"updated_at"`
-	UpdatedBy     NullInt    `json:"updated_by" db:"updated_by"`
-	Password      NullString `json:"-" db:"password"`
-	Salt          NullString `json:"-" db:"salt"`
-	PremiumBefore NullTime   `json:"premium_before" db:"premium_before"`
+	CreatedAt     rrsql.NullTime   `json:"created_at" db:"created_at"`
+	UpdatedAt     rrsql.NullTime   `json:"updated_at" db:"updated_at"`
+	UpdatedBy     rrsql.NullInt    `json:"updated_by" db:"updated_by"`
+	Password      rrsql.NullString `json:"-" db:"password"`
+	Salt          rrsql.NullString `json:"-" db:"salt"`
+	PremiumBefore rrsql.NullTime   `json:"premium_before" db:"premium_before"`
 	// Ignore password JSON marshall for now
 
-	Description  NullString `json:"description" db:"description"`
-	ProfileImage NullString `json:"profile_image" db:"profile_image"`
-	Identity     NullString `json:"identity" db:"identity"`
+	Description  rrsql.NullString `json:"description" db:"description"`
+	ProfileImage rrsql.NullString `json:"profile_image" db:"profile_image"`
+	Identity     rrsql.NullString `json:"identity" db:"identity"`
 
-	Role   NullInt `json:"role" db:"role"`
-	Active NullInt `json:"active" db:"active"`
+	Role   rrsql.NullInt `json:"role" db:"role"`
+	Active rrsql.NullInt `json:"active" db:"active"`
 
-	CustomEditor NullBool `json:"custom_editor" db:"custom_editor"`
-	HideProfile  NullBool `json:"hide_profile" db:"hide_profile"`
-	ProfilePush  NullBool `json:"profile_push" db:"profile_push"`
-	PostPush     NullBool `json:"post_push" db:"post_push"`
-	DailyPush    NullBool `json:"daily_push" db:"daily_push"`
-	CommentPush  NullBool `json:"comment_push" db:"comment_push"`
+	CustomEditor rrsql.NullBool `json:"custom_editor" db:"custom_editor"`
+	HideProfile  rrsql.NullBool `json:"hide_profile" db:"hide_profile"`
+	ProfilePush  rrsql.NullBool `json:"profile_push" db:"profile_push"`
+	PostPush     rrsql.NullBool `json:"post_push" db:"post_push"`
+	DailyPush    rrsql.NullBool `json:"daily_push" db:"daily_push"`
+	CommentPush  rrsql.NullBool `json:"comment_push" db:"comment_push"`
 }
 
 // Stunt could be regarded as an experimental, pre-transitional wrap of Member, which provide omitempty tag for json
@@ -60,42 +61,42 @@ type Member struct {
 // In this way we could control the fields returned by update SQL select fields
 type Stunt struct {
 	// Make ID, MemberID, UUID pointer to avoid situation we have to use IFNULL
-	ID       *int64      `json:"id,omitempty" db:"id"`
-	MemberID *string     `json:"member_id,omitempty" db:"member_id"`
-	UUID     *string     `json:"uuid,omitempty" db:"uuid"`
-	Points   *NullInt    `json:"points,omitempty" db:"points"`
-	Name     *NullString `json:"name,omitempty" db:"name"`
-	Nickname *NullString `json:"nickname,omitempty" db:"nickname"`
+	ID       *int64            `json:"id,omitempty" db:"id"`
+	MemberID *string           `json:"member_id,omitempty" db:"member_id"`
+	UUID     *string           `json:"uuid,omitempty" db:"uuid"`
+	Points   *rrsql.NullInt    `json:"points,omitempty" db:"points"`
+	Name     *rrsql.NullString `json:"name,omitempty" db:"name"`
+	Nickname *rrsql.NullString `json:"nickname,omitempty" db:"nickname"`
 
-	Birthday *NullTime   `json:"birthday,omitempty" db:"birthday"`
-	Gender   *NullString `json:"gender,omitempty" db:"gender"`
-	Work     *NullString `json:"work,omitempty" db:"work"`
-	Mail     *NullString `json:"mail,omitempty" db:"mail"`
-	Phone    *NullString `json:"phone,omitempty" db:"phone"`
+	Birthday *rrsql.NullTime   `json:"birthday,omitempty" db:"birthday"`
+	Gender   *rrsql.NullString `json:"gender,omitempty" db:"gender"`
+	Work     *rrsql.NullString `json:"work,omitempty" db:"work"`
+	Mail     *rrsql.NullString `json:"mail,omitempty" db:"mail"`
+	Phone    *rrsql.NullString `json:"phone,omitempty" db:"phone"`
 
-	RegisterMode *NullString `json:"register_mode,omitempty" db:"register_mode"`
-	SocialID     *NullString `json:"social_id,omitempty,omitempty" db:"social_id"`
-	TalkID       *NullString `json:"talk_id,omitempty" db:"talk_id"`
+	RegisterMode *rrsql.NullString `json:"register_mode,omitempty" db:"register_mode"`
+	SocialID     *rrsql.NullString `json:"social_id,omitempty,omitempty" db:"social_id"`
+	TalkID       *rrsql.NullString `json:"talk_id,omitempty" db:"talk_id"`
 
-	CreatedAt *NullTime  `json:"created_at,omitempty" db:"created_at"`
-	UpdatedAt *NullTime  `json:"updated_at,omitempty" db:"updated_at"`
-	UpdatedBy *NullInt   `json:"updated_by,omitempty" db:"updated_by"`
-	Password  NullString `json:"-" db:"password"`
-	Salt      NullString `json:"-" db:"salt"`
+	CreatedAt *rrsql.NullTime  `json:"created_at,omitempty" db:"created_at"`
+	UpdatedAt *rrsql.NullTime  `json:"updated_at,omitempty" db:"updated_at"`
+	UpdatedBy *rrsql.NullInt   `json:"updated_by,omitempty" db:"updated_by"`
+	Password  rrsql.NullString `json:"-" db:"password"`
+	Salt      rrsql.NullString `json:"-" db:"salt"`
 
-	Description  *NullString `json:"description,omitempty" db:"description"`
-	ProfileImage *NullString `json:"profile_image,omitempty" db:"profile_image"`
-	Identity     *NullString `json:"identity,omitempty" db:"identity"`
+	Description  *rrsql.NullString `json:"description,omitempty" db:"description"`
+	ProfileImage *rrsql.NullString `json:"profile_image,omitempty" db:"profile_image"`
+	Identity     *rrsql.NullString `json:"identity,omitempty" db:"identity"`
 
-	Role   *NullInt `json:"role,omitempty" db:"role"`
-	Active *NullInt `json:"active,omitempty" db:"active"`
+	Role   *rrsql.NullInt `json:"role,omitempty" db:"role"`
+	Active *rrsql.NullInt `json:"active,omitempty" db:"active"`
 
-	CustomEditor *NullBool `json:"custom_editor,omitempty" db:"custom_editor"`
-	HideProfile  *NullBool `json:"hide_profile,omitempty" db:"hide_profile"`
-	ProfilePush  *NullBool `json:"profile_push,omitempty" db:"profile_push"`
-	PostPush     *NullBool `json:"post_push,omitempty" db:"post_push"`
-	DailyPush    *NullBool `json:"daily_push,omitempty" db:"daily_push"`
-	CommentPush  *NullBool `json:"comment_push,omitempty" db:"comment_push"`
+	CustomEditor *rrsql.NullBool `json:"custom_editor,omitempty" db:"custom_editor"`
+	HideProfile  *rrsql.NullBool `json:"hide_profile,omitempty" db:"hide_profile"`
+	ProfilePush  *rrsql.NullBool `json:"profile_push,omitempty" db:"profile_push"`
+	PostPush     *rrsql.NullBool `json:"post_push,omitempty" db:"post_push"`
+	DailyPush    *rrsql.NullBool `json:"daily_push,omitempty" db:"daily_push"`
+	CommentPush  *rrsql.NullBool `json:"comment_push,omitempty" db:"comment_push"`
 }
 
 // Separate API and Member struct
@@ -126,7 +127,7 @@ type MemberArgs struct {
 	IDs          []string         `form:"ids"`
 	UUIDs        []string         `form:"uuids"`
 	Total        bool             `form:"total"`
-	Fields       sqlfields
+	Fields       rrsql.Sqlfields
 
 	// For filter API
 	FilterID        int64
@@ -160,7 +161,7 @@ func (m *MemberArgs) parse() (restricts string, values []interface{}) {
 	}
 	if m.Active != nil {
 		for k, v := range m.Active {
-			where = append(where, fmt.Sprintf("%s %s (?)", "members.active", operatorHelper(k)))
+			where = append(where, fmt.Sprintf("%s %s (?)", "members.active", rrsql.OperatorHelper(k)))
 			values = append(values, v)
 		}
 	}
@@ -199,7 +200,7 @@ func (m *MemberArgs) parse() (restricts string, values []interface{}) {
 func (p *MemberArgs) parseLimit() (restricts string, values []interface{}) {
 
 	if p.Sorting != "" {
-		restricts = fmt.Sprintf("%s ORDER BY %s", restricts, orderByHelper(p.Sorting))
+		restricts = fmt.Sprintf("%s ORDER BY %s", restricts, rrsql.OrderByHelper(p.Sorting))
 	}
 
 	if p.MaxResult > 0 {
@@ -276,7 +277,7 @@ func (p *MemberArgs) parseFilterQuery() (restricts string, values []interface{})
 type GetMembersKeywordsArgs struct {
 	Keywords string `form:"keyword"`
 	Roles    map[string][]int
-	Fields   sqlfields
+	Fields   rrsql.Sqlfields
 }
 
 func (a *GetMembersKeywordsArgs) Validate() (err error) {
@@ -285,7 +286,7 @@ func (a *GetMembersKeywordsArgs) Validate() (err error) {
 		return errors.New("Invalid keyword")
 	}
 	// Validate field
-	validFields := getStructDBTags("full", Stunt{})
+	validFields := rrsql.GetStructDBTags("full", Stunt{})
 
 CheckEachFieldLoop:
 	for _, f := range a.Fields {
@@ -322,10 +323,10 @@ func (a *memberAPI) GetMembers(req *MemberArgs) (result []Member, err error) {
 	if err != nil {
 		return []Member{}, err
 	}
-	query = DB.Rebind(query)
-	query = query + fmt.Sprintf(`ORDER BY %s LIMIT ? OFFSET ?`, orderByHelper(req.Sorting))
+	query = rrsql.DB.Rebind(query)
+	query = query + fmt.Sprintf(`ORDER BY %s LIMIT ? OFFSET ?`, rrsql.OrderByHelper(req.Sorting))
 	args = append(args, req.MaxResult, (req.Page-1)*uint16(req.MaxResult))
-	err = DB.Select(&result, query, args...)
+	err = rrsql.DB.Select(&result, query, args...)
 	if err != nil {
 		return []Member{}, err
 	}
@@ -337,7 +338,7 @@ func (a *memberAPI) GetMembers(req *MemberArgs) (result []Member, err error) {
 
 func (a *memberAPI) GetMember(idType string, id string) (Member, error) {
 	member := Member{}
-	err := DB.QueryRowx(fmt.Sprintf("SELECT * FROM members where %s = ?", idType), id).StructScan(&member)
+	err := rrsql.DB.QueryRowx(fmt.Sprintf("SELECT * FROM members where %s = ?", idType), id).StructScan(&member)
 	switch {
 	case err == sql.ErrNoRows:
 		err = errors.New("User Not Found")
@@ -354,7 +355,7 @@ func (a *memberAPI) GetMember(idType string, id string) (Member, error) {
 func (a *memberAPI) FilterMembers(args *MemberArgs) (result []Stunt, err error) {
 	query, values := args.parseFilterQuery()
 
-	rows, err := DB.Queryx(query, values...)
+	rows, err := rrsql.DB.Queryx(query, values...)
 	if err != nil {
 		return nil, err
 	}
@@ -370,7 +371,7 @@ func (a *memberAPI) FilterMembers(args *MemberArgs) (result []Stunt, err error) 
 
 func (a *memberAPI) InsertMember(m Member) (id int, err error) {
 	existedID := 0
-	err = DB.Get(&existedID, `SELECT id FROM members WHERE id=? OR member_id=? LIMIT 1;`, m.ID, m.MemberID)
+	err = rrsql.DB.Get(&existedID, `SELECT id FROM members WHERE id=? OR member_id=? LIMIT 1;`, m.ID, m.MemberID)
 	if err != nil {
 		if err != sql.ErrNoRows {
 			return 0, err
@@ -380,10 +381,10 @@ func (a *memberAPI) InsertMember(m Member) (id int, err error) {
 		return 0, errors.New("Duplicate entry")
 	}
 
-	tags := getStructDBTags("partial", m)
+	tags := rrsql.GetStructDBTags("partial", m)
 	query := fmt.Sprintf(`INSERT INTO members (%s) VALUES (:%s)`,
 		strings.Join(tags, ","), strings.Join(tags, ",:"))
-	result, err := DB.NamedExec(query, m)
+	result, err := rrsql.DB.NamedExec(query, m)
 	if err != nil {
 		if strings.Contains(err.Error(), "Duplicate entry") {
 			return 0, errors.New("Duplicate entry")
@@ -408,11 +409,11 @@ func (a *memberAPI) InsertMember(m Member) (id int, err error) {
 }
 
 func (a *memberAPI) UpdateMember(m Member) error {
-	// query, _ := generateSQLStmt("partial_update", "members", m)
-	tags := getStructDBTags("partial", m)
-	fields := makeFieldString("update", `%s = :%s`, tags)
+	// query, _ := rrsql.GenerateSQLStmt("partial_update", "members", m)
+	tags := rrsql.GetStructDBTags("partial", m)
+	fields := rrsql.MakeFieldString("update", `%s = :%s`, tags)
 	query := fmt.Sprintf(`UPDATE members SET %s WHERE id = :id`, strings.Join(fields, ", "))
-	result, err := DB.NamedExec(query, m)
+	result, err := rrsql.DB.NamedExec(query, m)
 
 	if err != nil {
 		log.Fatal(err)
@@ -429,8 +430,8 @@ func (a *memberAPI) UpdateMember(m Member) error {
 
 func (a *memberAPI) DeleteMember(idType string, id string) error {
 
-	// result, err := DB.Exec(fmt.Sprintf("UPDATE members SET active = %d WHERE %s = ?", int(MemberStatus["delete"].(float64)), idType), id)
-	result, err := DB.Exec(fmt.Sprintf("UPDATE members SET active = %d WHERE %s = ?", config.Config.Models.Members["delete"], idType), id)
+	// result, err := rrsql.DB.Exec(fmt.Sprintf("UPDATE members SET active = %d WHERE %s = ?", int(MemberStatus["delete"].(float64)), idType), id)
+	result, err := rrsql.DB.Exec(fmt.Sprintf("UPDATE members SET active = %d WHERE %s = ?", config.Config.Models.Members["delete"], idType), id)
 	if err != nil {
 		return err
 	}
@@ -449,8 +450,8 @@ func (a *memberAPI) UpdateAll(ids []int64, active int) (err error) {
 	if err != nil {
 		return err
 	}
-	query = DB.Rebind(query)
-	result, err := DB.Exec(query, args...)
+	query = rrsql.DB.Rebind(query)
+	result, err := rrsql.DB.Exec(query, args...)
 	if err != nil {
 		return err
 	}
@@ -467,7 +468,7 @@ func (a *memberAPI) Count(req *MemberArgs) (result int, err error) {
 
 	if !req.anyFilter() {
 
-		rows, err := DB.Queryx(`SELECT COUNT(*) FROM members`)
+		rows, err := rrsql.DB.Queryx(`SELECT COUNT(*) FROM members`)
 		if err != nil {
 			return 0, err
 		}
@@ -484,8 +485,8 @@ func (a *memberAPI) Count(req *MemberArgs) (result int, err error) {
 		if err != nil {
 			return 0, err
 		}
-		query = DB.Rebind(query)
-		count, err := DB.Queryx(query, args...)
+		query = rrsql.DB.Rebind(query)
+		count, err := rrsql.DB.Queryx(query, args...)
 		if err != nil {
 			return 0, err
 		}
@@ -508,13 +509,13 @@ func (a *memberAPI) GetIDsByNickname(params GetMembersKeywordsArgs) (result []St
 
 	if len(params.Roles) != 0 {
 		for k, v := range params.Roles {
-			query = fmt.Sprintf("%s AND %s %s (?)", query, "members.role", operatorHelper(k))
+			query = fmt.Sprintf("%s AND %s %s (?)", query, "members.role", rrsql.OperatorHelper(k))
 			values = append(values, v)
 		}
 	}
 	query, values, err = sqlx.In(query, values...)
-	query = DB.Rebind(query)
-	if err = DB.Select(&result, query, values...); err != nil {
+	query = rrsql.DB.Rebind(query)
+	if err = rrsql.DB.Select(&result, query, values...); err != nil {
 		return []Stunt{}, err
 	}
 	return result, err

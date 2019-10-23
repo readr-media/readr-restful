@@ -7,6 +7,7 @@ import (
 
 	"net/http"
 
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -75,27 +76,27 @@ func getFollowing(params *models.GetFollowingArgs) (followings []interface{}, er
 		return nil, errors.New("Not Found")
 	case params.ResourceName == "member":
 		return []interface{}{
-			models.Member{ID: 72, MemberID: "followtest2@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2012, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"followtest2@mirrormedia.mg", true}, Points: models.NullInt{0, true}},
+			models.Member{ID: 72, MemberID: "followtest2@mirrormedia.mg", Active: rrsql.NullInt{1, true}, PostPush: rrsql.NullBool{true, true}, UpdatedAt: rrsql.NullTime{time.Date(2012, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: rrsql.NullString{"followtest2@mirrormedia.mg", true}, Points: rrsql.NullInt{0, true}},
 		}, nil
 	case params.ResourceName == "post":
 		switch params.ResourceType {
 		case "":
 			return []interface{}{
-				models.Post{ID: 42, Active: models.NullInt{1, true}, Type: models.NullInt{0, true}, UpdatedAt: models.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: models.NullInt{71, true}, PublishStatus: models.NullInt{2, true}},
-				models.Post{ID: 84, Active: models.NullInt{1, true}, Type: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: models.NullInt{72, true}, PublishStatus: models.NullInt{2, true}},
+				models.Post{ID: 42, Active: rrsql.NullInt{1, true}, Type: rrsql.NullInt{0, true}, UpdatedAt: rrsql.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: rrsql.NullInt{71, true}, PublishStatus: rrsql.NullInt{2, true}},
+				models.Post{ID: 84, Active: rrsql.NullInt{1, true}, Type: rrsql.NullInt{1, true}, UpdatedAt: rrsql.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: rrsql.NullInt{72, true}, PublishStatus: rrsql.NullInt{2, true}},
 			}, nil
 		case "review":
 			return []interface{}{
-				models.Post{ID: 42, Active: models.NullInt{1, true}, Type: models.NullInt{0, true}, UpdatedAt: models.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: models.NullInt{71, true}, PublishStatus: models.NullInt{2, true}},
+				models.Post{ID: 42, Active: rrsql.NullInt{1, true}, Type: rrsql.NullInt{0, true}, UpdatedAt: rrsql.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: rrsql.NullInt{71, true}, PublishStatus: rrsql.NullInt{2, true}},
 			}, nil
 		case "news":
 			return []interface{}{
-				models.Post{ID: 84, Active: models.NullInt{1, true}, Type: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: models.NullInt{72, true}, PublishStatus: models.NullInt{2, true}},
+				models.Post{ID: 84, Active: rrsql.NullInt{1, true}, Type: rrsql.NullInt{1, true}, UpdatedAt: rrsql.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: rrsql.NullInt{72, true}, PublishStatus: rrsql.NullInt{2, true}},
 			}, nil
 		}
 	case params.ResourceName == "project":
 		return []interface{}{
-			models.Project{ID: 420, PostID: 42, Active: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Date(2015, time.November, 10, 23, 0, 0, 0, time.UTC), true}, PublishStatus: models.NullInt{2, true}},
+			models.Project{ID: 420, PostID: 42, Active: rrsql.NullInt{1, true}, UpdatedAt: rrsql.NullTime{time.Date(2015, time.November, 10, 23, 0, 0, 0, time.UTC), true}, PublishStatus: rrsql.NullInt{2, true}},
 		}, nil
 	default:
 		return nil, nil
@@ -196,9 +197,9 @@ func (m mockFollowCache) Revoke(actionType string, resource string, emotion int,
 // 	mockPostDSBack = mockPostDS
 
 // 	for _, params := range []models.Member{
-// 		models.Member{ID: 70, MemberID: "followtest0@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2010, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"followtest0@mirrormedia.mg", true}, Points: models.NullInt{0, true}, UUID: "abc1d5b1-da54-4200-b88e-f06e59fd8467", TalkID: models.NullString{"abc1d5b1-da54-4200-b58e-f06e59fd8467", true}},
-// 		models.Member{ID: 71, MemberID: "followtest1@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2011, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"followtest1@mirrormedia.mg", true}, Points: models.NullInt{0, true}, UUID: "abc1d5b1-da54-4200-b59e-f06e59fd8467", TalkID: models.NullString{"abc1d5b1-da54-4200-b59e-f06e59fd8467", true}},
-// 		models.Member{ID: 72, MemberID: "followtest2@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2012, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"followtest2@mirrormedia.mg", true}, Points: models.NullInt{0, true}, UUID: "abc1d5b1-da54-4200-b60e-f06e59fd8467", TalkID: models.NullString{"abc1d5b1-da54-4200-b60e-f06e59fd8467", true}},
+// 		models.Member{ID: 70, MemberID: "followtest0@mirrormedia.mg", Active: rrsql.NullInt{1, true}, PostPush: rrsql.NullBool{true, true}, UpdatedAt: rrsql.NullTime{time.Date(2010, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: rrsql.NullString{"followtest0@mirrormedia.mg", true}, Points: rrsql.NullInt{0, true}, UUID: "abc1d5b1-da54-4200-b88e-f06e59fd8467", TalkID: rrsql.NullString{"abc1d5b1-da54-4200-b58e-f06e59fd8467", true}},
+// 		models.Member{ID: 71, MemberID: "followtest1@mirrormedia.mg", Active: rrsql.NullInt{1, true}, PostPush: rrsql.NullBool{true, true}, UpdatedAt: rrsql.NullTime{time.Date(2011, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: rrsql.NullString{"followtest1@mirrormedia.mg", true}, Points: rrsql.NullInt{0, true}, UUID: "abc1d5b1-da54-4200-b59e-f06e59fd8467", TalkID: rrsql.NullString{"abc1d5b1-da54-4200-b59e-f06e59fd8467", true}},
+// 		models.Member{ID: 72, MemberID: "followtest2@mirrormedia.mg", Active: rrsql.NullInt{1, true}, PostPush: rrsql.NullBool{true, true}, UpdatedAt: rrsql.NullTime{time.Date(2012, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: rrsql.NullString{"followtest2@mirrormedia.mg", true}, Points: rrsql.NullInt{0, true}, UUID: "abc1d5b1-da54-4200-b60e-f06e59fd8467", TalkID: rrsql.NullString{"abc1d5b1-da54-4200-b60e-f06e59fd8467", true}},
 // 	} {
 // 		_, err := models.MemberAPI.InsertMember(params)
 // 		if err != nil {
@@ -207,8 +208,8 @@ func (m mockFollowCache) Revoke(actionType string, resource string, emotion int,
 // 	}
 
 // 	for _, params := range []models.Post{
-// 		models.Post{ID: 42, Active: models.NullInt{1, true}, Type: models.NullInt{0, true}, UpdatedAt: models.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: models.NullInt{71, true}, PublishStatus: models.NullInt{2, true}},
-// 		models.Post{ID: 84, Active: models.NullInt{1, true}, Type: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: models.NullInt{72, true}, PublishStatus: models.NullInt{2, true}},
+// 		models.Post{ID: 42, Active: rrsql.NullInt{1, true}, Type: rrsql.NullInt{0, true}, UpdatedAt: rrsql.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: rrsql.NullInt{71, true}, PublishStatus: rrsql.NullInt{2, true}},
+// 		models.Post{ID: 84, Active: rrsql.NullInt{1, true}, Type: rrsql.NullInt{1, true}, UpdatedAt: rrsql.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: rrsql.NullInt{72, true}, PublishStatus: rrsql.NullInt{2, true}},
 // 	} {
 // 		_, err := models.PostAPI.InsertPost(params)
 // 		if err != nil {
@@ -217,8 +218,8 @@ func (m mockFollowCache) Revoke(actionType string, resource string, emotion int,
 // 	}
 
 // 	for _, params := range []models.Project{
-// 		models.Project{ID: 420, PostID: 42, Active: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Date(2015, time.November, 10, 23, 0, 0, 0, time.UTC), true}, PublishStatus: models.NullInt{2, true}},
-// 		models.Project{ID: 840, PostID: 84, Active: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Date(2016, time.November, 10, 23, 0, 0, 0, time.UTC), true}, PublishStatus: models.NullInt{2, true}},
+// 		models.Project{ID: 420, PostID: 42, Active: rrsql.NullInt{1, true}, UpdatedAt: rrsql.NullTime{time.Date(2015, time.November, 10, 23, 0, 0, 0, time.UTC), true}, PublishStatus: rrsql.NullInt{2, true}},
+// 		models.Project{ID: 840, PostID: 84, Active: rrsql.NullInt{1, true}, UpdatedAt: rrsql.NullTime{time.Date(2016, time.November, 10, 23, 0, 0, 0, time.UTC), true}, PublishStatus: rrsql.NullInt{2, true}},
 // 	} {
 // 		err := models.ProjectAPI.InsertProject(params)
 // 		if err != nil {

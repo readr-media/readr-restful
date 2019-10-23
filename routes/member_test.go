@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/utils"
 )
@@ -27,38 +28,38 @@ var mockMembers = []models.Member{
 		ID:           1,
 		MemberID:     "superman@mirrormedia.mg",
 		UUID:         "3d64e480-3e30-11e8-b94b-cfe922eb374f",
-		Nickname:     models.NullString{String: "readr", Valid: true},
-		Active:       models.NullInt{Int: 1, Valid: true},
-		UpdatedAt:    models.NullTime{Time: time.Date(2017, 6, 8, 16, 27, 52, 0, time.UTC), Valid: true},
-		Mail:         models.NullString{String: "superman@mirrormedia.mg", Valid: true},
-		CustomEditor: models.NullBool{Bool: true, Valid: true},
-		Role:         models.NullInt{Int: 9, Valid: true},
-		Points:       models.NullInt{Int: 0, Valid: true},
+		Nickname:     rrsql.NullString{String: "readr", Valid: true},
+		Active:       rrsql.NullInt{Int: 1, Valid: true},
+		UpdatedAt:    rrsql.NullTime{Time: time.Date(2017, 6, 8, 16, 27, 52, 0, time.UTC), Valid: true},
+		Mail:         rrsql.NullString{String: "superman@mirrormedia.mg", Valid: true},
+		CustomEditor: rrsql.NullBool{Bool: true, Valid: true},
+		Role:         rrsql.NullInt{Int: 9, Valid: true},
+		Points:       rrsql.NullInt{Int: 0, Valid: true},
 	},
 	models.Member{
 		ID:        2,
 		MemberID:  "test6743@test.test",
 		UUID:      "3d651126-3e30-11e8-b94b-cfe922eb374f",
-		Nickname:  models.NullString{String: "yeahyeahyeah", Valid: true},
-		Active:    models.NullInt{Int: 0, Valid: true},
-		Birthday:  models.NullTime{Time: time.Date(2001, 1, 3, 0, 0, 0, 0, time.UTC), Valid: true},
-		UpdatedAt: models.NullTime{Time: time.Date(2017, 11, 11, 23, 11, 37, 0, time.UTC), Valid: true},
-		Mail:      models.NullString{String: "Lulu_Brakus@yahoo.com", Valid: true},
-		Role:      models.NullInt{Int: 3, Valid: true},
-		Points:    models.NullInt{Int: 0, Valid: true},
+		Nickname:  rrsql.NullString{String: "yeahyeahyeah", Valid: true},
+		Active:    rrsql.NullInt{Int: 0, Valid: true},
+		Birthday:  rrsql.NullTime{Time: time.Date(2001, 1, 3, 0, 0, 0, 0, time.UTC), Valid: true},
+		UpdatedAt: rrsql.NullTime{Time: time.Date(2017, 11, 11, 23, 11, 37, 0, time.UTC), Valid: true},
+		Mail:      rrsql.NullString{String: "Lulu_Brakus@yahoo.com", Valid: true},
+		Role:      rrsql.NullInt{Int: 3, Valid: true},
+		Points:    rrsql.NullInt{Int: 0, Valid: true},
 	},
 	models.Member{
 		ID:        3,
 		MemberID:  "Barney.Corwin@hotmail.com",
 		UUID:      "3d6512e8-3e30-11e8-b94b-cfe922eb374f",
-		Nickname:  models.NullString{String: "reader", Valid: true},
-		Active:    models.NullInt{Int: 0, Valid: true},
-		Gender:    models.NullString{String: "M", Valid: true},
-		UpdatedAt: models.NullTime{Time: time.Date(2017, 1, 3, 19, 32, 37, 0, time.UTC), Valid: true},
-		Birthday:  models.NullTime{Time: time.Date(1939, 11, 9, 0, 0, 0, 0, time.UTC), Valid: true},
-		Mail:      models.NullString{String: "Barney.Corwin@hotmail.com", Valid: true},
-		Role:      models.NullInt{Int: 1, Valid: true},
-		Points:    models.NullInt{Int: 0, Valid: true},
+		Nickname:  rrsql.NullString{String: "reader", Valid: true},
+		Active:    rrsql.NullInt{Int: 0, Valid: true},
+		Gender:    rrsql.NullString{String: "M", Valid: true},
+		UpdatedAt: rrsql.NullTime{Time: time.Date(2017, 1, 3, 19, 32, 37, 0, time.UTC), Valid: true},
+		Birthday:  rrsql.NullTime{Time: time.Date(1939, 11, 9, 0, 0, 0, 0, time.UTC), Valid: true},
+		Mail:      rrsql.NullString{String: "Barney.Corwin@hotmail.com", Valid: true},
+		Role:      rrsql.NullInt{Int: 1, Valid: true},
+		Points:    rrsql.NullInt{Int: 0, Valid: true},
 	},
 }
 
@@ -120,7 +121,7 @@ func (a *mockMemberAPI) GetMember(idType string, id string) (result models.Membe
 		} else if idType == "member_id" && value.MemberID == id {
 			return value, nil
 		} else if idType == "mail" && id == "registerdupeuser@mirrormedia.mg" {
-			return models.Member{RegisterMode: models.NullString{"ordinary", true}}, nil
+			return models.Member{RegisterMode: rrsql.NullString{"ordinary", true}}, nil
 		}
 	}
 	err = errors.New("User Not Found")
@@ -160,8 +161,8 @@ func (a *mockMemberAPI) DeleteMember(idType string, id string) error {
 	intID, _ := strconv.Atoi(id)
 	for index, value := range mockMemberDS {
 		if int64(intID) == value.ID {
-			// mockMemberDS[index].Active = models.NullInt{Int: int64(models.MemberStatus["delete"].(float64)), Valid: true}
-			mockMemberDS[index].Active = models.NullInt{Int: int64(config.Config.Models.Members["delete"]), Valid: true}
+			// mockMemberDS[index].Active = rrsql.NullInt{Int: int64(models.MemberStatus["delete"].(float64)), Valid: true}
+			mockMemberDS[index].Active = rrsql.NullInt{Int: int64(config.Config.Models.Members["delete"]), Valid: true}
 			return nil
 		}
 	}
@@ -174,7 +175,7 @@ func (a *mockMemberAPI) UpdateAll(ids []int64, active int) (err error) {
 	for _, value := range ids {
 		for i, v := range mockMemberDS {
 			if v.ID == value {
-				mockMemberDS[i].Active = models.NullInt{Int: int64(active), Valid: true}
+				mockMemberDS[i].Active = rrsql.NullInt{Int: int64(active), Valid: true}
 				result = append(result, i)
 			}
 		}
@@ -221,7 +222,7 @@ func (a *mockMemberAPI) GetIDsByNickname(params models.GetMembersKeywordsArgs) (
 
 func TestRouteMembers(t *testing.T) {
 	if os.Getenv("db_driver") == "mysql" {
-		_, _ = models.DB.Exec("truncate table members;")
+		_, _ = rrsql.DB.Exec("truncate table members;")
 	} else {
 		mockMemberDS = []models.Member{}
 	}

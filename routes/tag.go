@@ -15,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/config"
 	rt "github.com/readr-media/readr-restful/internal/router"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -132,8 +133,8 @@ func (r *tagHandler) Post(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Updater Not Sepcified"})
 		return
 	}
-	args.UpdatedAt = models.NullTime{Valid: false}
-	args.CreatedAt = models.NullTime{Valid: false}
+	args.UpdatedAt = rrsql.NullTime{Valid: false}
+	args.CreatedAt = rrsql.NullTime{Valid: false}
 
 	tag_id, err := models.TagAPI.InsertTag(args)
 	if err != nil {
@@ -162,8 +163,8 @@ func (r *tagHandler) Put(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Updater Not Sepcified"})
 		return
 	}
-	args.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
-	args.CreatedAt = models.NullTime{Valid: false}
+	args.UpdatedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
+	args.CreatedAt = rrsql.NullTime{Valid: false}
 
 	err = models.TagAPI.UpdateTag(args)
 	if err != nil {
@@ -171,7 +172,7 @@ func (r *tagHandler) Put(c *gin.Context) {
 		case "Duplicate Entry":
 			c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 			return
-		case models.ItemNotFoundError.Error():
+		case rrsql.ItemNotFoundError.Error():
 			c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 			return
 		default:

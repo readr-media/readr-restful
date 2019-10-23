@@ -8,53 +8,54 @@ import (
 	"strings"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 )
 
 // Poll is the struct mapping to table polls
 type Poll struct {
-	ID          int64             `json:"id" db:"id"`
-	Status      int64             `json:"status" db:"status"`
-	Active      int64             `json:"active" db:"active"`
-	Title       models.NullString `json:"title" db:"title"`
-	Description models.NullString `json:"description" db:"description"`
-	TotalVote   int64             `json:"total_vote" db:"total_vote"`
-	Frequency   models.NullInt    `json:"frequency" db:"frequency"`
-	StartAt     models.NullTime   `json:"start_at" db:"start_at"`
-	EndAt       models.NullTime   `json:"end_at" db:"end_at"`
-	MaxChoice   int64             `json:"max_choice" db:"max_choice"`
-	Changeable  int64             `json:"changeable" db:"changeable"`
-	PublishedAt models.NullTime   `json:"published_at" db:"published_at"`
-	CreatedAt   models.NullTime   `json:"created_at" db:"created_at"`
-	CreatedBy   models.NullInt    `json:"created_by" db:"created_by"`
-	UpdatedAt   models.NullTime   `json:"updated_at" db:"updated_at"`
-	UpdatedBy   models.NullInt    `json:"updated_by" db:"updated_by"`
+	ID          int64            `json:"id" db:"id"`
+	Status      int64            `json:"status" db:"status"`
+	Active      int64            `json:"active" db:"active"`
+	Title       rrsql.NullString `json:"title" db:"title"`
+	Description rrsql.NullString `json:"description" db:"description"`
+	TotalVote   int64            `json:"total_vote" db:"total_vote"`
+	Frequency   rrsql.NullInt    `json:"frequency" db:"frequency"`
+	StartAt     rrsql.NullTime   `json:"start_at" db:"start_at"`
+	EndAt       rrsql.NullTime   `json:"end_at" db:"end_at"`
+	MaxChoice   int64            `json:"max_choice" db:"max_choice"`
+	Changeable  int64            `json:"changeable" db:"changeable"`
+	PublishedAt rrsql.NullTime   `json:"published_at" db:"published_at"`
+	CreatedAt   rrsql.NullTime   `json:"created_at" db:"created_at"`
+	CreatedBy   rrsql.NullInt    `json:"created_by" db:"created_by"`
+	UpdatedAt   rrsql.NullTime   `json:"updated_at" db:"updated_at"`
+	UpdatedBy   rrsql.NullInt    `json:"updated_by" db:"updated_by"`
 }
 
 // Choice is the struct mapping to table polls_choices
 // storing choice data for each poll
 type Choice struct {
-	ID         int64             `json:"id" db:"id"`
-	Choice     models.NullString `json:"choice" db:"choice"`
-	TotalVote  models.NullInt    `json:"total_vote" db:"total_vote"`
-	PollID     models.NullInt    `json:"poll_id" db:"poll_id"`
-	Active     models.NullInt    `json:"active" db:"active"`
-	GroupOrder models.NullInt    `json:"group_order" db:"group_order"`
-	CreatedAt  models.NullTime   `json:"created_at" db:"created_at"`
-	CreatedBy  models.NullInt    `json:"created_by" db:"created_by"`
-	UpdatedAt  models.NullTime   `json:"updated_at" db:"updated_at"`
-	UpdatedBy  models.NullInt    `json:"updated_by" db:"updated_by"`
+	ID         int64            `json:"id" db:"id"`
+	Choice     rrsql.NullString `json:"choice" db:"choice"`
+	TotalVote  rrsql.NullInt    `json:"total_vote" db:"total_vote"`
+	PollID     rrsql.NullInt    `json:"poll_id" db:"poll_id"`
+	Active     rrsql.NullInt    `json:"active" db:"active"`
+	GroupOrder rrsql.NullInt    `json:"group_order" db:"group_order"`
+	CreatedAt  rrsql.NullTime   `json:"created_at" db:"created_at"`
+	CreatedBy  rrsql.NullInt    `json:"created_by" db:"created_by"`
+	UpdatedAt  rrsql.NullTime   `json:"updated_at" db:"updated_at"`
+	UpdatedBy  rrsql.NullInt    `json:"updated_by" db:"updated_by"`
 }
 
 // ChosenChoice is the mapping struct for table polls_chosen_choice
 // to record the choosing history for every users
 type ChosenChoice struct {
-	ID        int64           `json:"id" db:"id"`
-	MemberID  int64           `json:"member_id" db:"member_id"`
-	PollID    int64           `json:"poll_id" db:"poll_id"`
-	ChoiceID  int64           `json:"choice_id" db:"choice_id"`
-	Active    bool            `json:"active" db:"active"`
-	CreatedAt models.NullTime `json:"created_at" db:"created_at"`
+	ID        int64          `json:"id" db:"id"`
+	MemberID  int64          `json:"member_id" db:"member_id"`
+	PollID    int64          `json:"poll_id" db:"poll_id"`
+	ChoiceID  int64          `json:"choice_id" db:"choice_id"`
+	Active    bool           `json:"active" db:"active"`
+	CreatedAt rrsql.NullTime `json:"created_at" db:"created_at"`
 }
 
 // PollSerializer is a single complete poll struct
@@ -280,7 +281,7 @@ func (s *SQLO) Select() (query string, args []interface{}, err error) {
 	if err != nil {
 		return "", nil, err
 	}
-	query = models.DB.Rebind(query)
+	query = rrsql.DB.Rebind(query)
 	return query, args, err
 }
 
@@ -290,7 +291,7 @@ func (s *SQLO) Count() (query string, args []interface{}, err error) {
 	if err != nil {
 		return "", nil, err
 	}
-	query = models.DB.Rebind(query)
+	query = rrsql.DB.Rebind(query)
 	return query, args, err
 }
 
@@ -331,7 +332,7 @@ func (p *pollData) Get(filter *ListPollsFilter) (polls []PollSerializer, err err
 	}
 	args = append(args, subArgs...)
 
-	rows, err := models.DB.Queryx(query, args...)
+	rows, err := rrsql.DB.Queryx(query, args...)
 	if err != nil {
 		log.Println(err.Error())
 		return nil, err
@@ -381,7 +382,7 @@ func (p *pollData) Count(filter *ListPollsFilter) (count int, err error) {
 	if err != nil {
 		return 0, err
 	}
-	err = models.DB.QueryRow(query, args...).Scan(&count)
+	err = rrsql.DB.QueryRow(query, args...).Scan(&count)
 	if err != nil {
 		log.Printf("Failed to count polls:%s\n", err.Error())
 		return count, err
@@ -396,7 +397,7 @@ func (p *pollData) Count(filter *ListPollsFilter) (count int, err error) {
 func (p *pollData) Insert(poll PollDeserializer) (err error) {
 
 	pollTags := GetStructTags("full", "db", Poll{})
-	tx, err := models.DB.Beginx()
+	tx, err := rrsql.DB.Beginx()
 	if err != nil {
 		log.Printf("Fail to get sql connection: %v\n", err)
 		return err
@@ -454,7 +455,7 @@ func (p *pollData) Update(poll Poll) (err error) {
 		return strings.Join(temp, ", ")
 	}(pollTags)
 	query := fmt.Sprintf(`Update polls SET %s WHERE id = :id`, pollFields)
-	if _, err := models.DB.NamedExec(query, poll); err != nil {
+	if _, err := rrsql.DB.NamedExec(query, poll); err != nil {
 		log.Fatal(err)
 		return err
 	}
@@ -464,7 +465,7 @@ func (p *pollData) Update(poll Poll) (err error) {
 func (c *choiceData) Get(pollID int) (results []Choice, err error) {
 
 	Q := `SELECT * FROM polls_choices WHERE poll_id = ?;`
-	rows, err := models.DB.Queryx(Q, pollID)
+	rows, err := rrsql.DB.Queryx(Q, pollID)
 	if err != nil {
 		return nil, err
 	}
@@ -494,7 +495,7 @@ func (c *choiceData) Insert(choices []Choice) (err error) {
 	choiceQ := fmt.Sprintf(`INSERT INTO polls_choices (%s) VALUES (:%s)`,
 		strings.Join(choiceTags, ", "), strings.Join(choiceTags, ", :"))
 
-	tx, err := models.DB.Beginx()
+	tx, err := rrsql.DB.Beginx()
 	if err != nil {
 		log.Printf("Fail to get sql connection: %v\n", err)
 		return err
@@ -523,7 +524,7 @@ func (c *choiceData) Insert(choices []Choice) (err error) {
 // Update single choice
 func (c *choiceData) Update(choices []Choice) (err error) {
 
-	tx, err := models.DB.Beginx()
+	tx, err := rrsql.DB.Beginx()
 	if err != nil {
 		log.Printf("Fail to get sql connection: %v\n", err)
 		return err
@@ -567,7 +568,7 @@ func (s *pickData) Get(filter *ListPicksFilter) (picks []ChosenChoice, err error
 	if err != nil {
 		return nil, err
 	}
-	err = models.DB.Select(&picks, query, args...)
+	err = rrsql.DB.Select(&picks, query, args...)
 	if err != nil {
 		log.Printf("Failed to get picks from database:%s\n", err.Error())
 		return nil, err
@@ -581,7 +582,7 @@ func (s *pickData) Insert(pick ChosenChoice) (err error) {
 	pickQ := fmt.Sprintf(`INSERT INTO polls_chosen_choice (%s) VALUES (:%s)`,
 		strings.Join(pickTags, ", "), strings.Join(pickTags, ", :"))
 
-	tx, err := models.DB.Beginx()
+	tx, err := rrsql.DB.Beginx()
 	if err != nil {
 		log.Printf("Fail to get sql connection: %v\n", err)
 		return err
@@ -619,7 +620,7 @@ func (s *pickData) Update(pick ChosenChoice) (err error) {
 	}(pickTags)
 	query := fmt.Sprintf(`UPDATE polls_chosen_choice SET %s WHERE id = :id`, pickFields)
 
-	tx, err := models.DB.Beginx()
+	tx, err := rrsql.DB.Beginx()
 	if err != nil {
 		log.Printf("Fail to get sql connection: %v\n", err)
 		return err

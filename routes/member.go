@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/config"
 	rt "github.com/readr-media/readr-restful/internal/router"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/utils"
 )
@@ -31,8 +32,8 @@ func (r *memberHandler) bindQuery(c *gin.Context, args *models.MemberArgs) (err 
 		if err := json.Unmarshal([]byte(c.Query("active")), &args.Active); err != nil {
 			return err
 		} else if err == nil {
-			// if err = models.ValidateActive(args.Active, models.MemberStatus); err != nil {
-			if err = models.ValidateActive(args.Active, config.Config.Models.Members); err != nil {
+			// if err = rrsql.ValidateActive(args.Active, models.MemberStatus); err != nil {
+			if err = rrsql.ValidateActive(args.Active, config.Config.Models.Members); err != nil {
 				return err
 			}
 		}
@@ -155,10 +156,10 @@ func (r *memberHandler) Post(c *gin.Context) {
 		member.UpdatedAt.Valid = true
 	}
 	if !member.Active.Valid {
-		member.Active = models.NullInt{1, true}
+		member.Active = rrsql.NullInt{1, true}
 	}
 	if !member.Points.Valid {
-		member.Points = models.NullInt{0, true}
+		member.Points = rrsql.NullInt{0, true}
 	}
 	uuid, err := utils.NewUUIDv4()
 	if err != nil {
@@ -345,8 +346,8 @@ func (r *memberHandler) PutPassword(c *gin.Context) {
 	err = models.MemberAPI.UpdateMember(models.Member{
 		ID:       member.ID,
 		MemberID: member.MemberID,
-		Password: models.NullString{hpw, true},
-		Salt:     models.NullString{salt, true},
+		Password: rrsql.NullString{hpw, true},
+		Salt:     rrsql.NullString{salt, true},
 	})
 	if err != nil {
 		log.Println(err.Error())

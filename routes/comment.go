@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -43,7 +44,7 @@ func (r *commentsHandler) bindCommentQuery(c *gin.Context, args *models.GetComme
 		if err = json.Unmarshal([]byte(c.Query("status")), &args.Status); err != nil {
 			return err
 		} else if err == nil {
-			if err = models.ValidateActive(args.Status, config.Config.Models.CommentStatus); err != nil {
+			if err = rrsql.ValidateActive(args.Status, config.Config.Models.CommentStatus); err != nil {
 				return err
 			}
 		}
@@ -65,7 +66,7 @@ func (r *commentsHandler) bindReportQuery(c *gin.Context, args *models.GetReport
 		if err = json.Unmarshal([]byte(c.Query("solved")), &args.Solved); err != nil {
 			return err
 		} else if err == nil {
-			if err = models.ValidateActive(args.Solved, config.Config.Models.ReportedCommentStatus); err != nil {
+			if err = rrsql.ValidateActive(args.Solved, config.Config.Models.ReportedCommentStatus); err != nil {
 				return err
 			}
 		}
@@ -137,8 +138,8 @@ func (r *commentsHandler) PostRC(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Missing Required Parameters."})
 	}
 
-	report.CreatedAt = models.NullTime{Time: time.Now(), Valid: true}
-	report.Solved = models.NullInt{Int: int64(config.Config.Models.ReportedCommentStatus["pending"]), Valid: true}
+	report.CreatedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
+	report.Solved = rrsql.NullInt{Int: int64(config.Config.Models.ReportedCommentStatus["pending"]), Valid: true}
 
 	_, err = models.CommentAPI.InsertReportedComments(report)
 	if err != nil {
@@ -162,7 +163,7 @@ func (r *commentsHandler) PutRC(c *gin.Context) {
 		return
 	}
 
-	report.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
+	report.UpdatedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
 
 	err = models.CommentAPI.UpdateReportedComments(report)
 	if err != nil {

@@ -9,6 +9,7 @@ import (
 	// "testing"
 	// "time"
 
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -42,62 +43,62 @@ func (m *mockMemoAPI) GetMemos(args *models.MemoGetArgs) (memos []models.MemoDet
 	switch {
 	case len(args.IDs) == 1:
 		return []models.MemoDetail{
-			models.MemoDetail{Memo: models.Memo{ID: 1, Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullInt{131, true}, ProjectID: models.NullInt{420, true}, Active: models.NullInt{1, true}}}}, nil
+			models.MemoDetail{Memo: models.Memo{ID: 1, Title: rrsql.NullString{"MemoTestDefault1", true}, Author: rrsql.NullInt{131, true}, ProjectID: rrsql.NullInt{420, true}, Active: rrsql.NullInt{1, true}}}}, nil
 	case len(args.Author) > 0 && len(args.Project) > 0:
 		return []models.MemoDetail{
-			models.MemoDetail{Memo: models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullInt{135, true}, ProjectID: models.NullInt{422, true}, Active: models.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 4, Title: rrsql.NullString{"MemoTestDefault4", true}, Author: rrsql.NullInt{135, true}, ProjectID: rrsql.NullInt{422, true}, Active: rrsql.NullInt{1, true}}},
 		}, nil
 	case len(args.Author) > 0 && len(args.Project) == 0:
 		return []models.MemoDetail{
-			models.MemoDetail{Memo: models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullInt{132, true}, ProjectID: models.NullInt{421, true}, Active: models.NullInt{1, true}}},
-			models.MemoDetail{Memo: models.Memo{ID: 2, Title: models.NullString{"MemoTestDefault2", true}, Author: models.NullInt{135, true}, ProjectID: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
-			models.MemoDetail{Memo: models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullInt{135, true}, ProjectID: models.NullInt{422, true}, Active: models.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 100, Title: rrsql.NullString{"MemoTest2", true}, Author: rrsql.NullInt{132, true}, ProjectID: rrsql.NullInt{421, true}, Active: rrsql.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 2, Title: rrsql.NullString{"MemoTestDefault2", true}, Author: rrsql.NullInt{135, true}, ProjectID: rrsql.NullInt{420, true}, Active: rrsql.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 4, Title: rrsql.NullString{"MemoTestDefault4", true}, Author: rrsql.NullInt{135, true}, ProjectID: rrsql.NullInt{422, true}, Active: rrsql.NullInt{1, true}}},
 		}, nil
 	case len(args.Author) == 0 && len(args.Project) > 0:
 		return []models.MemoDetail{
-			models.MemoDetail{Memo: models.Memo{ID: 3, Title: models.NullString{"MemoTestDefault3", true}, Author: models.NullInt{131, true}, ProjectID: models.NullInt{422, true}, Active: models.NullInt{1, true}}},
-			models.MemoDetail{Memo: models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullInt{135, true}, ProjectID: models.NullInt{422, true}, Active: models.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 3, Title: rrsql.NullString{"MemoTestDefault3", true}, Author: rrsql.NullInt{131, true}, ProjectID: rrsql.NullInt{422, true}, Active: rrsql.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 4, Title: rrsql.NullString{"MemoTestDefault4", true}, Author: rrsql.NullInt{135, true}, ProjectID: rrsql.NullInt{422, true}, Active: rrsql.NullInt{1, true}}},
 		}, nil
 	case args.Sorting == "-author,post_id":
 		return []models.MemoDetail{
-			models.MemoDetail{Memo: models.Memo{ID: 2, Title: models.NullString{"MemoTestDefault2", true}, Author: models.NullInt{135, true}, ProjectID: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
-			models.MemoDetail{Memo: models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullInt{135, true}, ProjectID: models.NullInt{422, true}, Active: models.NullInt{1, true}}},
-			models.MemoDetail{Memo: models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullInt{132, true}, ProjectID: models.NullInt{421, true}, Active: models.NullInt{1, true}}},
-			models.MemoDetail{Memo: models.Memo{ID: 1, Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullInt{131, true}, ProjectID: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
-			models.MemoDetail{Memo: models.Memo{ID: 3, Title: models.NullString{"MemoTestDefault3", true}, Author: models.NullInt{131, true}, ProjectID: models.NullInt{422, true}, Active: models.NullInt{1, true}}},
-			models.MemoDetail{Memo: models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullInt{131, true}, ProjectID: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 2, Title: rrsql.NullString{"MemoTestDefault2", true}, Author: rrsql.NullInt{135, true}, ProjectID: rrsql.NullInt{420, true}, Active: rrsql.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 4, Title: rrsql.NullString{"MemoTestDefault4", true}, Author: rrsql.NullInt{135, true}, ProjectID: rrsql.NullInt{422, true}, Active: rrsql.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 100, Title: rrsql.NullString{"MemoTest2", true}, Author: rrsql.NullInt{132, true}, ProjectID: rrsql.NullInt{421, true}, Active: rrsql.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 1, Title: rrsql.NullString{"MemoTestDefault1", true}, Author: rrsql.NullInt{131, true}, ProjectID: rrsql.NullInt{420, true}, Active: rrsql.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 3, Title: rrsql.NullString{"MemoTestDefault3", true}, Author: rrsql.NullInt{131, true}, ProjectID: rrsql.NullInt{422, true}, Active: rrsql.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 101, Title: rrsql.NullString{"順便測中文", true}, Author: rrsql.NullInt{131, true}, ProjectID: rrsql.NullInt{420, true}, Active: rrsql.NullInt{1, true}}},
 		}, nil
 	case len(args.Slugs) == 1:
 		return []models.MemoDetail{
 
-			models.MemoDetail{Memo: models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullInt{131, true}, ProjectID: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
-			models.MemoDetail{Memo: models.Memo{ID: 1, Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullInt{131, true}, ProjectID: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
-			models.MemoDetail{Memo: models.Memo{ID: 2, Title: models.NullString{"MemoTestDefault2", true}, Author: models.NullInt{135, true}, ProjectID: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 101, Title: rrsql.NullString{"順便測中文", true}, Author: rrsql.NullInt{131, true}, ProjectID: rrsql.NullInt{420, true}, Active: rrsql.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 1, Title: rrsql.NullString{"MemoTestDefault1", true}, Author: rrsql.NullInt{131, true}, ProjectID: rrsql.NullInt{420, true}, Active: rrsql.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 2, Title: rrsql.NullString{"MemoTestDefault2", true}, Author: rrsql.NullInt{135, true}, ProjectID: rrsql.NullInt{420, true}, Active: rrsql.NullInt{1, true}}},
 		}, nil
 	case args.Page == 2:
 		return []models.MemoDetail{
-			models.MemoDetail{Memo: models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullInt{131, true}, ProjectID: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 101, Title: rrsql.NullString{"順便測中文", true}, Author: rrsql.NullInt{131, true}, ProjectID: rrsql.NullInt{420, true}, Active: rrsql.NullInt{1, true}}},
 		}, nil
 	case args.MaxResult == 1:
 		return []models.MemoDetail{
-			models.MemoDetail{Memo: models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullInt{132, true}, ProjectID: models.NullInt{421, true}, Active: models.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 100, Title: rrsql.NullString{"MemoTest2", true}, Author: rrsql.NullInt{132, true}, ProjectID: rrsql.NullInt{421, true}, Active: rrsql.NullInt{1, true}}},
 		}, nil
 	case len(args.ProjectPublishStatus) > 0:
 		return []models.MemoDetail{
-			models.MemoDetail{Memo: models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullInt{132, true}, ProjectID: models.NullInt{421, true}, Active: models.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 100, Title: rrsql.NullString{"MemoTest2", true}, Author: rrsql.NullInt{132, true}, ProjectID: rrsql.NullInt{421, true}, Active: rrsql.NullInt{1, true}}},
 		}, nil
 	case args.Keyword == "中文":
 		return []models.MemoDetail{
-			models.MemoDetail{Memo: models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullInt{131, true}, ProjectID: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 101, Title: rrsql.NullString{"順便測中文", true}, Author: rrsql.NullInt{131, true}, ProjectID: rrsql.NullInt{420, true}, Active: rrsql.NullInt{1, true}}},
 		}, nil
 	default:
 		return []models.MemoDetail{
-			models.MemoDetail{Memo: models.Memo{ID: 1, Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullInt{131, true}, ProjectID: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
-			models.MemoDetail{Memo: models.Memo{ID: 2, Title: models.NullString{"MemoTestDefault2", true}, Author: models.NullInt{135, true}, ProjectID: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
-			models.MemoDetail{Memo: models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullInt{131, true}, ProjectID: models.NullInt{420, true}, Active: models.NullInt{1, true}}},
-			models.MemoDetail{Memo: models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullInt{132, true}, ProjectID: models.NullInt{421, true}, Active: models.NullInt{1, true}}},
-			models.MemoDetail{Memo: models.Memo{ID: 3, Title: models.NullString{"MemoTestDefault3", true}, Author: models.NullInt{131, true}, ProjectID: models.NullInt{422, true}, Active: models.NullInt{1, true}}},
-			models.MemoDetail{Memo: models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullInt{135, true}, ProjectID: models.NullInt{422, true}, Active: models.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 1, Title: rrsql.NullString{"MemoTestDefault1", true}, Author: rrsql.NullInt{131, true}, ProjectID: rrsql.NullInt{420, true}, Active: rrsql.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 2, Title: rrsql.NullString{"MemoTestDefault2", true}, Author: rrsql.NullInt{135, true}, ProjectID: rrsql.NullInt{420, true}, Active: rrsql.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 101, Title: rrsql.NullString{"順便測中文", true}, Author: rrsql.NullInt{131, true}, ProjectID: rrsql.NullInt{420, true}, Active: rrsql.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 100, Title: rrsql.NullString{"MemoTest2", true}, Author: rrsql.NullInt{132, true}, ProjectID: rrsql.NullInt{421, true}, Active: rrsql.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 3, Title: rrsql.NullString{"MemoTestDefault3", true}, Author: rrsql.NullInt{131, true}, ProjectID: rrsql.NullInt{422, true}, Active: rrsql.NullInt{1, true}}},
+			models.MemoDetail{Memo: models.Memo{ID: 4, Title: rrsql.NullString{"MemoTestDefault4", true}, Author: rrsql.NullInt{135, true}, ProjectID: rrsql.NullInt{422, true}, Active: rrsql.NullInt{1, true}}},
 		}, nil
 	}
 	return []models.MemoDetail{}, nil
@@ -138,10 +139,10 @@ func (m *mockMemoAPI) UpdateHandler(ids []int, params ...int64) error     { retu
 // 	}
 
 // 	for _, memo := range []models.Memo{
-// 		models.Memo{Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullInt{131, true}, ProjectID: models.NullInt{420, true}, Active: models.NullInt{1, true}},
-// 		models.Memo{Title: models.NullString{"MemoTestDefault2", true}, Author: models.NullInt{135, true}, ProjectID: models.NullInt{420, true}, Active: models.NullInt{1, true}},
-// 		models.Memo{Title: models.NullString{"MemoTestDefault3", true}, Author: models.NullInt{131, true}, ProjectID: models.NullInt{422, true}, Active: models.NullInt{1, true}},
-// 		models.Memo{Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullInt{135, true}, ProjectID: models.NullInt{422, true}, Active: models.NullInt{1, true}},
+// 		models.Memo{Title: rrsql.NullString{"MemoTestDefault1", true}, Author: rrsql.NullInt{131, true}, ProjectID: rrsql.NullInt{420, true}, Active: rrsql.NullInt{1, true}},
+// 		models.Memo{Title: rrsql.NullString{"MemoTestDefault2", true}, Author: rrsql.NullInt{135, true}, ProjectID: rrsql.NullInt{420, true}, Active: rrsql.NullInt{1, true}},
+// 		models.Memo{Title: rrsql.NullString{"MemoTestDefault3", true}, Author: rrsql.NullInt{131, true}, ProjectID: rrsql.NullInt{422, true}, Active: rrsql.NullInt{1, true}},
+// 		models.Memo{Title: rrsql.NullString{"MemoTestDefault4", true}, Author: rrsql.NullInt{135, true}, ProjectID: rrsql.NullInt{422, true}, Active: rrsql.NullInt{1, true}},
 // 	} {
 // 		_, err := models.MemoAPI.InsertMemo(memo)
 // 		if err != nil {
@@ -150,9 +151,9 @@ func (m *mockMemoAPI) UpdateHandler(ids []int, params ...int64) error     { retu
 // 	}
 
 // 	for _, params := range []models.Member{
-// 		models.Member{ID: 131, MemberID: "MemoTestDefault1@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2010, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"MemoTestDefault1@mirrormedia.mg", true}, Points: models.NullInt{0, true}, UUID: "abc1d5b1-da54-4200-b88e-f06e59fd8131", TalkID: models.NullString{"abc1d5b1-da54-4200-b58e-f06e59fd8131", true}},
-// 		models.Member{ID: 132, MemberID: "MemoTestDefault2@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2011, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"MemoTestDefault2@mirrormedia.mg", true}, Points: models.NullInt{0, true}, UUID: "abc1d5b1-da54-4200-b59e-f06e59fd8132", TalkID: models.NullString{"abc1d5b1-da54-4200-b59e-f06e59fd8132", true}},
-// 		models.Member{ID: 135, MemberID: "MemoTestDefault3@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2012, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"MemoTestDefault3@mirrormedia.mg", true}, Points: models.NullInt{0, true}, UUID: "abc1d5b1-da54-4200-b60e-f06e59fd8135", TalkID: models.NullString{"abc1d5b1-da54-4200-b60e-f06e59fd8135", true}},
+// 		models.Member{ID: 131, MemberID: "MemoTestDefault1@mirrormedia.mg", Active: rrsql.NullInt{1, true}, PostPush: rrsql.NullBool{true, true}, UpdatedAt: rrsql.NullTime{time.Date(2010, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: rrsql.NullString{"MemoTestDefault1@mirrormedia.mg", true}, Points: rrsql.NullInt{0, true}, UUID: "abc1d5b1-da54-4200-b88e-f06e59fd8131", TalkID: rrsql.NullString{"abc1d5b1-da54-4200-b58e-f06e59fd8131", true}},
+// 		models.Member{ID: 132, MemberID: "MemoTestDefault2@mirrormedia.mg", Active: rrsql.NullInt{1, true}, PostPush: rrsql.NullBool{true, true}, UpdatedAt: rrsql.NullTime{time.Date(2011, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: rrsql.NullString{"MemoTestDefault2@mirrormedia.mg", true}, Points: rrsql.NullInt{0, true}, UUID: "abc1d5b1-da54-4200-b59e-f06e59fd8132", TalkID: rrsql.NullString{"abc1d5b1-da54-4200-b59e-f06e59fd8132", true}},
+// 		models.Member{ID: 135, MemberID: "MemoTestDefault3@mirrormedia.mg", Active: rrsql.NullInt{1, true}, PostPush: rrsql.NullBool{true, true}, UpdatedAt: rrsql.NullTime{time.Date(2012, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: rrsql.NullString{"MemoTestDefault3@mirrormedia.mg", true}, Points: rrsql.NullInt{0, true}, UUID: "abc1d5b1-da54-4200-b60e-f06e59fd8135", TalkID: rrsql.NullString{"abc1d5b1-da54-4200-b60e-f06e59fd8135", true}},
 // 	} {
 // 		_, err := models.MemberAPI.InsertMember(params)
 // 		if err != nil {
@@ -161,8 +162,8 @@ func (m *mockMemoAPI) UpdateHandler(ids []int, params ...int64) error     { retu
 // 	}
 
 // 	for _, params := range []models.Project{
-// 		models.Project{ID: 420, Active: models.NullInt{1, true}, Title: models.NullString{"Test project for memo", true}, Slug: models.NullString{"testproject", true}},
-// 		models.Project{ID: 421, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{3, true}, Title: models.NullString{"Test project for memo2", true}, Slug: models.NullString{"testproject2", true}},
+// 		models.Project{ID: 420, Active: rrsql.NullInt{1, true}, Title: rrsql.NullString{"Test project for memo", true}, Slug: rrsql.NullString{"testproject", true}},
+// 		models.Project{ID: 421, Active: rrsql.NullInt{1, true}, PublishStatus: rrsql.NullInt{3, true}, Title: rrsql.NullString{"Test project for memo2", true}, Slug: rrsql.NullString{"testproject2", true}},
 // 	} {
 // 		err := models.ProjectAPI.InsertProject(params)
 // 		if err != nil {
@@ -226,7 +227,7 @@ func (m *mockMemoAPI) UpdateHandler(ids []int, params ...int64) error     { retu
 // 		for _, testcase := range []genericTestcase{
 // 			// genericTestcase{"GetMemoOK", "GET", "/memo/1", ``, http.StatusOK, `{"_items":{"id":1,"created_at":null,"comment_amount":null,"title":"MemoTestDefault1","content":null,"link":null,"author":131,"project_id":420,"active":1,"updated_at":null,"updated_by":null,"published_at":null,"publish_status":null,"memo_order":null}}`},
 // 			genericTestcase{"GetMemoOK", "GET", "/memo/1", ``, http.StatusOK, []models.Memo{
-// 				models.Memo{ID: 1, Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullInt{131, true}, ProjectID: models.NullInt{420, true}, Active: models.NullInt{1, true}},
+// 				models.Memo{ID: 1, Title: rrsql.NullString{"MemoTestDefault1", true}, Author: rrsql.NullInt{131, true}, ProjectID: rrsql.NullInt{420, true}, Active: rrsql.NullInt{1, true}},
 // 			}},
 // 		} {
 // 			genericDoTest(testcase, t, asserter)
@@ -235,50 +236,50 @@ func (m *mockMemoAPI) UpdateHandler(ids []int, params ...int64) error     { retu
 // 	t.Run("GetMemos", func(t *testing.T) {
 // 		for _, testcase := range []genericTestcase{
 // 			genericTestcase{"GetMemoDefaultOK", "GET", "/memos?sort=project_id", ``, http.StatusOK, []models.Memo{
-// 				models.Memo{ID: 1, Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullInt{131, true}, ProjectID: models.NullInt{420, true}, Active: models.NullInt{1, true}},
-// 				models.Memo{ID: 2, Title: models.NullString{"MemoTestDefault2", true}, Author: models.NullInt{135, true}, ProjectID: models.NullInt{420, true}, Active: models.NullInt{1, true}},
-// 				models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullInt{131, true}, ProjectID: models.NullInt{420, true}, Active: models.NullInt{1, true}},
-// 				models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullInt{132, true}, ProjectID: models.NullInt{421, true}, Active: models.NullInt{1, true}},
-// 				models.Memo{ID: 3, Title: models.NullString{"MemoTestDefault3", true}, Author: models.NullInt{131, true}, ProjectID: models.NullInt{422, true}, Active: models.NullInt{1, true}},
-// 				models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullInt{135, true}, ProjectID: models.NullInt{422, true}, Active: models.NullInt{1, true}},
+// 				models.Memo{ID: 1, Title: rrsql.NullString{"MemoTestDefault1", true}, Author: rrsql.NullInt{131, true}, ProjectID: rrsql.NullInt{420, true}, Active: rrsql.NullInt{1, true}},
+// 				models.Memo{ID: 2, Title: rrsql.NullString{"MemoTestDefault2", true}, Author: rrsql.NullInt{135, true}, ProjectID: rrsql.NullInt{420, true}, Active: rrsql.NullInt{1, true}},
+// 				models.Memo{ID: 101, Title: rrsql.NullString{"順便測中文", true}, Author: rrsql.NullInt{131, true}, ProjectID: rrsql.NullInt{420, true}, Active: rrsql.NullInt{1, true}},
+// 				models.Memo{ID: 100, Title: rrsql.NullString{"MemoTest2", true}, Author: rrsql.NullInt{132, true}, ProjectID: rrsql.NullInt{421, true}, Active: rrsql.NullInt{1, true}},
+// 				models.Memo{ID: 3, Title: rrsql.NullString{"MemoTestDefault3", true}, Author: rrsql.NullInt{131, true}, ProjectID: rrsql.NullInt{422, true}, Active: rrsql.NullInt{1, true}},
+// 				models.Memo{ID: 4, Title: rrsql.NullString{"MemoTestDefault4", true}, Author: rrsql.NullInt{135, true}, ProjectID: rrsql.NullInt{422, true}, Active: rrsql.NullInt{1, true}},
 // 			}},
 // 			genericTestcase{"GetMemoMaxresultOK", "GET", "/memos?max_result=1", ``, http.StatusOK, []models.Memo{
-// 				models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullInt{132, true}, ProjectID: models.NullInt{421, true}, Active: models.NullInt{1, true}},
+// 				models.Memo{ID: 100, Title: rrsql.NullString{"MemoTest2", true}, Author: rrsql.NullInt{132, true}, ProjectID: rrsql.NullInt{421, true}, Active: rrsql.NullInt{1, true}},
 // 			}},
 // 			genericTestcase{"GetMemoMaxresultOK", "GET", "/memos?max_result=1&page=2", ``, http.StatusOK, []models.Memo{
-// 				models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullInt{131, true}, ProjectID: models.NullInt{420, true}, Active: models.NullInt{1, true}},
+// 				models.Memo{ID: 101, Title: rrsql.NullString{"順便測中文", true}, Author: rrsql.NullInt{131, true}, ProjectID: rrsql.NullInt{420, true}, Active: rrsql.NullInt{1, true}},
 // 			}},
 // 			genericTestcase{"GetMemoSortMultipleOK", "GET", "/memos?sort=-author,memo_id", ``, http.StatusOK, []models.Memo{
-// 				models.Memo{ID: 2, Title: models.NullString{"MemoTestDefault2", true}, Author: models.NullInt{135, true}, ProjectID: models.NullInt{420, true}, Active: models.NullInt{1, true}},
-// 				models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullInt{135, true}, ProjectID: models.NullInt{422, true}, Active: models.NullInt{1, true}},
-// 				models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullInt{132, true}, ProjectID: models.NullInt{421, true}, Active: models.NullInt{1, true}},
-// 				models.Memo{ID: 1, Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullInt{131, true}, ProjectID: models.NullInt{420, true}, Active: models.NullInt{1, true}},
-// 				models.Memo{ID: 3, Title: models.NullString{"MemoTestDefault3", true}, Author: models.NullInt{131, true}, ProjectID: models.NullInt{422, true}, Active: models.NullInt{1, true}},
-// 				models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullInt{131, true}, ProjectID: models.NullInt{420, true}, Active: models.NullInt{1, true}},
+// 				models.Memo{ID: 2, Title: rrsql.NullString{"MemoTestDefault2", true}, Author: rrsql.NullInt{135, true}, ProjectID: rrsql.NullInt{420, true}, Active: rrsql.NullInt{1, true}},
+// 				models.Memo{ID: 4, Title: rrsql.NullString{"MemoTestDefault4", true}, Author: rrsql.NullInt{135, true}, ProjectID: rrsql.NullInt{422, true}, Active: rrsql.NullInt{1, true}},
+// 				models.Memo{ID: 100, Title: rrsql.NullString{"MemoTest2", true}, Author: rrsql.NullInt{132, true}, ProjectID: rrsql.NullInt{421, true}, Active: rrsql.NullInt{1, true}},
+// 				models.Memo{ID: 1, Title: rrsql.NullString{"MemoTestDefault1", true}, Author: rrsql.NullInt{131, true}, ProjectID: rrsql.NullInt{420, true}, Active: rrsql.NullInt{1, true}},
+// 				models.Memo{ID: 3, Title: rrsql.NullString{"MemoTestDefault3", true}, Author: rrsql.NullInt{131, true}, ProjectID: rrsql.NullInt{422, true}, Active: rrsql.NullInt{1, true}},
+// 				models.Memo{ID: 101, Title: rrsql.NullString{"順便測中文", true}, Author: rrsql.NullInt{131, true}, ProjectID: rrsql.NullInt{420, true}, Active: rrsql.NullInt{1, true}},
 // 			}},
 // 			genericTestcase{"GetMemoSortInvalidOption", "GET", "/memos?sort=meow", ``, http.StatusBadRequest, `{"Error":"Invalid Parameters"}`},
 // 			genericTestcase{"GetMemoFilterAuthor", "GET", `/memos?author=[135,132]`, ``, http.StatusOK, []models.Memo{
-// 				models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullInt{132, true}, ProjectID: models.NullInt{421, true}, Active: models.NullInt{1, true}},
-// 				models.Memo{ID: 2, Title: models.NullString{"MemoTestDefault2", true}, Author: models.NullInt{135, true}, ProjectID: models.NullInt{420, true}, Active: models.NullInt{1, true}},
-// 				models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullInt{135, true}, ProjectID: models.NullInt{422, true}, Active: models.NullInt{1, true}},
+// 				models.Memo{ID: 100, Title: rrsql.NullString{"MemoTest2", true}, Author: rrsql.NullInt{132, true}, ProjectID: rrsql.NullInt{421, true}, Active: rrsql.NullInt{1, true}},
+// 				models.Memo{ID: 2, Title: rrsql.NullString{"MemoTestDefault2", true}, Author: rrsql.NullInt{135, true}, ProjectID: rrsql.NullInt{420, true}, Active: rrsql.NullInt{1, true}},
+// 				models.Memo{ID: 4, Title: rrsql.NullString{"MemoTestDefault4", true}, Author: rrsql.NullInt{135, true}, ProjectID: rrsql.NullInt{422, true}, Active: rrsql.NullInt{1, true}},
 // 			}},
 // 			genericTestcase{"GetMemoFilterProject", "GET", `/memos?project_id=[422]`, ``, http.StatusOK, []models.Memo{
-// 				models.Memo{ID: 3, Title: models.NullString{"MemoTestDefault3", true}, Author: models.NullInt{131, true}, ProjectID: models.NullInt{422, true}, Active: models.NullInt{1, true}},
-// 				models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullInt{135, true}, ProjectID: models.NullInt{422, true}, Active: models.NullInt{1, true}},
+// 				models.Memo{ID: 3, Title: rrsql.NullString{"MemoTestDefault3", true}, Author: rrsql.NullInt{131, true}, ProjectID: rrsql.NullInt{422, true}, Active: rrsql.NullInt{1, true}},
+// 				models.Memo{ID: 4, Title: rrsql.NullString{"MemoTestDefault4", true}, Author: rrsql.NullInt{135, true}, ProjectID: rrsql.NullInt{422, true}, Active: rrsql.NullInt{1, true}},
 // 			}},
 // 			genericTestcase{"GetMemoFilterMultipleCondition", "GET", `/memos?active={"$nin":[0]}&author=[135,132]&project_id=[422]`, ``, http.StatusOK, []models.Memo{
-// 				models.Memo{ID: 4, Title: models.NullString{"MemoTestDefault4", true}, Author: models.NullInt{135, true}, ProjectID: models.NullInt{422, true}, Active: models.NullInt{1, true}},
+// 				models.Memo{ID: 4, Title: rrsql.NullString{"MemoTestDefault4", true}, Author: rrsql.NullInt{135, true}, ProjectID: rrsql.NullInt{422, true}, Active: rrsql.NullInt{1, true}},
 // 			}},
 // 			genericTestcase{"GetMemoWithSlug", "GET", `/memos?slugs=["testproject"]`, ``, http.StatusOK, []models.Memo{
-// 				models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullInt{131, true}, ProjectID: models.NullInt{420, true}, Active: models.NullInt{1, true}},
-// 				models.Memo{ID: 1, Title: models.NullString{"MemoTestDefault1", true}, Author: models.NullInt{131, true}, ProjectID: models.NullInt{420, true}, Active: models.NullInt{1, true}},
-// 				models.Memo{ID: 2, Title: models.NullString{"MemoTestDefault2", true}, Author: models.NullInt{135, true}, ProjectID: models.NullInt{420, true}, Active: models.NullInt{1, true}},
+// 				models.Memo{ID: 101, Title: rrsql.NullString{"順便測中文", true}, Author: rrsql.NullInt{131, true}, ProjectID: rrsql.NullInt{420, true}, Active: rrsql.NullInt{1, true}},
+// 				models.Memo{ID: 1, Title: rrsql.NullString{"MemoTestDefault1", true}, Author: rrsql.NullInt{131, true}, ProjectID: rrsql.NullInt{420, true}, Active: rrsql.NullInt{1, true}},
+// 				models.Memo{ID: 2, Title: rrsql.NullString{"MemoTestDefault2", true}, Author: rrsql.NullInt{135, true}, ProjectID: rrsql.NullInt{420, true}, Active: rrsql.NullInt{1, true}},
 // 			}},
 // 			genericTestcase{"GetMemoWithMemoStatusAndProjectStatus", "GET", `/memos?project_publish_status={"$in":[3]}`, ``, http.StatusOK, []models.Memo{
-// 				models.Memo{ID: 100, Title: models.NullString{"MemoTest2", true}, Author: models.NullInt{132, true}, ProjectID: models.NullInt{421, true}, Active: models.NullInt{1, true}},
+// 				models.Memo{ID: 100, Title: rrsql.NullString{"MemoTest2", true}, Author: rrsql.NullInt{132, true}, ProjectID: rrsql.NullInt{421, true}, Active: rrsql.NullInt{1, true}},
 // 			}},
 // 			genericTestcase{"GetMemoWithKeyword", "GET", `/memos?keyword=中文`, ``, http.StatusOK, []models.Memo{
-// 				models.Memo{ID: 101, Title: models.NullString{"順便測中文", true}, Author: models.NullInt{131, true}, ProjectID: models.NullInt{420, true}, Active: models.NullInt{1, true}},
+// 				models.Memo{ID: 101, Title: rrsql.NullString{"順便測中文", true}, Author: rrsql.NullInt{131, true}, ProjectID: rrsql.NullInt{420, true}, Active: rrsql.NullInt{1, true}},
 // 			}},
 // 		} {
 // 			genericDoTest(testcase, t, asserter)

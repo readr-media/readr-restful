@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -84,10 +85,10 @@ func (r *pointsHandler) Post(c *gin.Context) {
 	}
 
 	if !pts.CreatedAt.Valid {
-		pts.CreatedAt = models.NullTime{Time: time.Now(), Valid: true}
+		pts.CreatedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
 	}
 	if !pts.UpdatedAt.Valid {
-		pts.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
+		pts.UpdatedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
 	}
 
 	if pts.Points.ObjectType == config.Config.Models.PointType["topup"] ||
