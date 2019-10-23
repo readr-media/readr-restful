@@ -145,7 +145,7 @@ func (a *mockPostAPI) InsertPost(p models.PostDescription) (int, error) {
 }
 
 func (a *mockPostAPI) UpdatePost(p models.PostDescription) (err error) {
-	err = errors.New("Post Not Found")
+	err = rrsql.ItemNotFoundError
 	for index, value := range a.mockPostDS {
 		if value.ID == p.Post.ID {
 			a.mockPostDS[index].LikeAmount = p.Post.LikeAmount
