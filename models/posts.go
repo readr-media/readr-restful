@@ -831,6 +831,13 @@ func (a *postAPI) InsertPost(p PostDescription) (lastID int, err error) {
 		stmts = append(stmts, updateTaggingStmts(config.Config.Models.TaggingType["post"], 0, p.Tags.Slice)...)
 	}
 
+	cardSyncStmts, err := cards.BuildSyncStmts(p.Post.ID, p.NewsCards)
+	if err != nil {
+		log.Println(fmt.Sprintf("Update Post Error while building card sync sql query: %s", err.Error()))
+		return 0, err
+	}
+	stmts = append(stmts, cardSyncStmts...)
+
 	err = rrsql.WithTransaction(rrsql.DB.DB, func(tx *sqlx.Tx) error {
 		id, _, err := rrsql.RunPipeline(tx, stmts...)
 		lastID = int(id)
@@ -855,11 +862,10 @@ func (a *postAPI) UpdatePost(p PostDescription) (err error) {
 	stmts := []*rrsql.PipelineStmt{}
 
 	stmts = append(stmts, &rrsql.PipelineStmt{
-		Query:        a.updatePostStms(p),
-		Args:         []interface{}{},
-		NamedArgs:    p.Post,
-		NamedExec:    true,
-		RowsAffected: true,
+		Query:     a.updatePostStms(p),
+		Args:      []interface{}{},
+		NamedArgs: p.Post,
+		NamedExec: true,
 	})
 
 	if len(p.Authors) > 0 {
@@ -869,6 +875,13 @@ func (a *postAPI) UpdatePost(p PostDescription) (err error) {
 	if p.Tags.Valid {
 		stmts = append(stmts, updateTaggingStmts(config.Config.Models.TaggingType["post"], int(p.Post.ID), p.Tags.Slice)...)
 	}
+
+	cardSyncStmts, err := cards.BuildSyncStmts(p.Post.ID, p.NewsCards)
+	if err != nil {
+		log.Println(fmt.Sprintf("Update Post Error while building card sync sql query: %s", err.Error()))
+		return err
+	}
+	stmts = append(stmts, cardSyncStmts...)
 
 	err = rrsql.WithTransaction(rrsql.DB.DB, func(tx *sqlx.Tx) error {
 		_, _, err := rrsql.RunPipeline(tx, stmts...)

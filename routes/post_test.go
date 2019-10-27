@@ -295,6 +295,7 @@ func TestRoutePost(t *testing.T) {
 				genericTestcase{"WithTags", "POST", `/post`, `{"authors":[{"member_id":53, "author_type":0}],"title":"Why so serious?", "tags":[1,2]}`, http.StatusOK, ``},
 				genericTestcase{"WithPost", "POST", `/post`, `{"authors":[{"member_id":1, "author_type":0}],"title":"Why so serious?", "type":4, "project_id":100001}`, http.StatusOK, ``},
 				genericTestcase{"WithMultipleAuthors", "POST", `/post`, `{"authors":[{"member_id":52, "author_type":"0"},{"member_id":53, "author_type":0}],"title":"OK google"}`, http.StatusOK, ``},
+				genericTestcase{"WithMultipleCards", "POST", `/post`, `{"authors":[{"member_id":52, "author_type":"0"}],"cards":[{"title":"card1","active":1},{"title":"card2","active":1}],"title":"OK google"}`, http.StatusOK, ``},
 			},
 		},
 		TestStep{
@@ -310,6 +311,7 @@ func TestRoutePost(t *testing.T) {
 				genericTestcase{"DeleteTags", "PUT", `/post`, `{"id":1, "tags":[], "updated_by":1}`, http.StatusOK, ``},
 				genericTestcase{"UpdateProjectID", "PUT", `/post`, `{"id":1, "project_id":100002, "updated_by":1}`, http.StatusOK, ``},
 				genericTestcase{"UpdateAuthor", "PUT", `/post`, `{"id":1, "authors":[{"member_id":2, "author_type":0}]}`, http.StatusOK, ``},
+				genericTestcase{"UpdateCards", "PUT", `/post`, `{"id":1, "cards":[{"id":1, "title":"modified card1", "active":1}, {"title":"inserted card2", "active":1}], "authors":[{"member_id":2, "author_type":0}]}`, http.StatusOK, ``},
 			},
 		},
 		TestStep{

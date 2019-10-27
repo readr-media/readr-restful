@@ -123,7 +123,7 @@ func (r *newscardHandler) Post(c *gin.Context) {
 	card.UpdatedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
 
 	if !card.Active.Valid {
-		card.Active = rrsql.NullInt{int64(config.Config.Models.Cards["inctive"]), true}
+		card.Active = rrsql.NullInt{int64(config.Config.Models.Cards["inactive"]), true}
 	}
 	if !card.Status.Valid {
 		card.Status = rrsql.NullInt{int64(config.Config.Models.CardStatus["draft"]), true}
