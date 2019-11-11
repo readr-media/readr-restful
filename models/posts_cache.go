@@ -29,6 +29,7 @@ func assembleCachePost(postIDs []uint32) (posts []TaggedPostMember, err error) {
 		ProjectID:    -1,
 		IDs:          postIDs,
 		ShowAuthor:   true,
+		ShowCard:     true,
 		ShowCommment: true,
 		ShowTag:      true,
 		ShowUpdater:  true,

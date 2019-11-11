@@ -57,7 +57,7 @@ func (r *miscHandler) PublishResources(c *gin.Context) {
 	if err != nil {
 		log.Println(err.Error())
 	} else {
-		PostHandler.PublishPipeline(postIDs)
+		PostHandler.PublishHandler(postIDs)
 	}
 	models.ProjectAPI.SchedulePublish()
 

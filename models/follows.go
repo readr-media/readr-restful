@@ -234,6 +234,7 @@ func (g *GetFollowingArgs) getPostDetails(items []FollowingItem) (result []Follo
 		Page:         1,
 		Sorting:      "-updated_at",
 		ShowAuthor:   true,
+		ShowCard:     true,
 		ShowCommment: true,
 		ShowTag:      true,
 		ShowUpdater:  true,
