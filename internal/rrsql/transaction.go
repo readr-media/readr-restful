@@ -12,7 +12,7 @@ import (
 // TxFn is the function that really executes sql queries
 type TxFn func(*sqlx.Tx) error
 
-// WithTransaction is a wrapper that creates db transaction and handles rollback/commit based on the
+// WithTransaction is a wrapper function that wraps the creation of db transaction and handles rollback/commit based on the
 // error object returned by the `TxFn`
 func WithTransaction(db *sqlx.DB, fn TxFn) (err error) {
 	tx, err := db.Beginx()
@@ -38,6 +38,15 @@ func WithTransaction(db *sqlx.DB, fn TxFn) (err error) {
 	return err
 }
 
+/*
+PipelineStmt represents the sql statement to be executed.
+	- Query: SQL query string including parameter placeholder "?"
+	- Args: An []interface{} type variable, store parameters for query, used when NamedExec is False
+	- NamedArgs: An interface{} type variable, used when NamedExec is True
+	- NamedExec: A bool flag for determine how to exec the sql query.
+	- RowsAffected: A bool flag, if set to ture, function will check if there's only one row modified, if not, function will return err.
+	- LastInsertId: A bool flag, if set to true, function will call LastInsertId() to get the last inserted resource's ID, and replace all TrasactionIDPlaceholder (setting in the config) in the rest of transaction queries with the inserted resource's ID.
+*/
 type PipelineStmt struct {
 	Query        string
 	Args         []interface{}
@@ -47,8 +56,8 @@ type PipelineStmt struct {
 	LastInsertId bool
 }
 
-// Runs the supplied statements within the transaction. If any statement fails, the transaction
-// is rolled back, and the original error is returned.
+// RunPipeline runs the supplied statements within the transaction.
+// If any statement fails, the transaction will be rolled back, and the original error will be returned.
 func RunPipeline(tx *sqlx.Tx, stmts ...*PipelineStmt) (int64, sql.Result, error) {
 	var res sql.Result
 	var err error
