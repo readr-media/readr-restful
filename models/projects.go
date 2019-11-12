@@ -13,42 +13,43 @@ import (
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 )
 
 type Project struct {
-	ID            int        `json:"id" db:"project_id"`
-	CreatedAt     NullTime   `json:"created_at" db:"created_at"`
-	UpdatedAt     NullTime   `json:"updated_at" db:"updated_at"`
-	UpdatedBy     NullInt    `json:"updated_by" db:"updated_by"`
-	PublishedAt   NullTime   `json:"published_at" db:"published_at"`
-	PostID        int        `json:"post_id" db:"post_id"`
-	LikeAmount    NullInt    `json:"like_amount" db:"like_amount"`
-	CommentAmount NullInt    `json:"comment_amount" db:"comment_amount"`
-	Active        NullInt    `json:"active" db:"active"`
-	HeroImage     NullString `json:"hero_image" db:"hero_image"`
-	Title         NullString `json:"title" db:"title"`
-	Description   NullString `json:"description" db:"description"`
-	Author        NullString `json:"author" db:"author"`
-	OgTitle       NullString `json:"og_title" db:"og_title"`
-	OgDescription NullString `json:"og_description" db:"og_description"`
-	OgImage       NullString `json:"og_image" db:"og_image"`
-	Order         NullInt    `json:"project_order" db:"project_order" redis:"project_order"`
-	Status        NullInt    `json:"status" db:"status" redis:"status"`
-	Slug          NullString `json:"slug" db:"slug" redis:"slug"`
-	Views         NullInt    `json:"views" db:"views" redis:"views"`
-	PublishStatus NullInt    `json:"publish_status" db:"publish_status" redis:"publish_status"`
-	Progress      NullFloat  `json:"progress" db:"progress" redis:"progress"`
-	MemoPoints    NullInt    `json:"memo_points" db:"memo_points" redis:"memo_points"`
+	ID            int              `json:"id" db:"project_id"`
+	CreatedAt     rrsql.NullTime   `json:"created_at" db:"created_at"`
+	UpdatedAt     rrsql.NullTime   `json:"updated_at" db:"updated_at"`
+	UpdatedBy     rrsql.NullInt    `json:"updated_by" db:"updated_by"`
+	PublishedAt   rrsql.NullTime   `json:"published_at" db:"published_at"`
+	PostID        int              `json:"post_id" db:"post_id"`
+	LikeAmount    rrsql.NullInt    `json:"like_amount" db:"like_amount"`
+	CommentAmount rrsql.NullInt    `json:"comment_amount" db:"comment_amount"`
+	Active        rrsql.NullInt    `json:"active" db:"active"`
+	HeroImage     rrsql.NullString `json:"hero_image" db:"hero_image"`
+	Title         rrsql.NullString `json:"title" db:"title"`
+	Description   rrsql.NullString `json:"description" db:"description"`
+	Author        rrsql.NullString `json:"author" db:"author"`
+	OgTitle       rrsql.NullString `json:"og_title" db:"og_title"`
+	OgDescription rrsql.NullString `json:"og_description" db:"og_description"`
+	OgImage       rrsql.NullString `json:"og_image" db:"og_image"`
+	Order         rrsql.NullInt    `json:"project_order" db:"project_order" redis:"project_order"`
+	Status        rrsql.NullInt    `json:"status" db:"status" redis:"status"`
+	Slug          rrsql.NullString `json:"slug" db:"slug" redis:"slug"`
+	Views         rrsql.NullInt    `json:"views" db:"views" redis:"views"`
+	PublishStatus rrsql.NullInt    `json:"publish_status" db:"publish_status" redis:"publish_status"`
+	Progress      rrsql.NullFloat  `json:"progress" db:"progress" redis:"progress"`
+	MemoPoints    rrsql.NullInt    `json:"memo_points" db:"memo_points" redis:"memo_points"`
 }
 
 type FilteredProject struct {
-	ID            int        `json:"id" db:"project_id"`
-	Title         NullString `json:"title" db:"title"`
-	Slug          NullString `json:"slug" db:"slug"`
-	Progress      NullFloat  `json:"progress" db:"progress"`
-	Status        NullInt    `json:"status" db:"status"`
-	PublishStatus NullInt    `json:"publish_status" db:"publish_status"`
-	PublishedAt   NullTime   `json:"published_at" db:"published_at"`
+	ID            int              `json:"id" db:"project_id"`
+	Title         rrsql.NullString `json:"title" db:"title"`
+	Slug          rrsql.NullString `json:"slug" db:"slug"`
+	Progress      rrsql.NullFloat  `json:"progress" db:"progress"`
+	Status        rrsql.NullInt    `json:"status" db:"status"`
+	PublishStatus rrsql.NullInt    `json:"publish_status" db:"publish_status"`
+	PublishedAt   rrsql.NullTime   `json:"published_at" db:"published_at"`
 }
 
 type projectAPI struct{}
@@ -83,7 +84,7 @@ type GetProjectArgs struct {
 	MemberID int64 `form:"member_id"`
 
 	//Generate select fields
-	Fields sqlfields `form:"fields"`
+	Fields rrsql.Sqlfields `form:"fields"`
 
 	// Filter operation
 	FilterID          int64
@@ -111,28 +112,28 @@ func (p *GetProjectArgs) parse() (restricts string, values []interface{}) {
 
 	if p.Active != nil {
 		for k, v := range p.Active {
-			where = append(where, fmt.Sprintf("%s %s (?)", "projects.active", operatorHelper(k)))
+			where = append(where, fmt.Sprintf("%s %s (?)", "projects.active", rrsql.OperatorHelper(k)))
 			values = append(values, v)
 		}
 	}
 	if p.Status != nil {
 		for k, v := range p.Status {
-			where = append(where, fmt.Sprintf("%s %s (?)", "projects.status", operatorHelper(k)))
+			where = append(where, fmt.Sprintf("%s %s (?)", "projects.status", rrsql.OperatorHelper(k)))
 			values = append(values, v)
 		}
 	}
 	if p.PublishStatus != nil {
 		for k, v := range p.PublishStatus {
-			where = append(where, fmt.Sprintf("%s %s (?)", "projects.publish_status", operatorHelper(k)))
+			where = append(where, fmt.Sprintf("%s %s (?)", "projects.publish_status", rrsql.OperatorHelper(k)))
 			values = append(values, v)
 		}
 	}
 	if len(p.IDs) != 0 {
-		where = append(where, fmt.Sprintf("%s %s (?)", "projects.project_id", operatorHelper("in")))
+		where = append(where, fmt.Sprintf("%s %s (?)", "projects.project_id", rrsql.OperatorHelper("in")))
 		values = append(values, p.IDs)
 	}
 	if len(p.Slugs) != 0 {
-		where = append(where, fmt.Sprintf("%s %s (?)", "projects.slug", operatorHelper("in")))
+		where = append(where, fmt.Sprintf("%s %s (?)", "projects.slug", rrsql.OperatorHelper("in")))
 		values = append(values, p.Slugs)
 	}
 	if p.Keyword != "" {
@@ -165,8 +166,8 @@ func (p *GetProjectArgs) parseLimit() (limit map[string]string, values []interfa
 
 		p.Sorting = strings.Join(tmp, ",")
 
-		restricts = append(restricts, fmt.Sprintf("ORDER BY %s", orderByHelper(p.Sorting)))
-		limit["order"] = fmt.Sprintf("ORDER BY %s", orderByHelper(p.Sorting))
+		restricts = append(restricts, fmt.Sprintf("ORDER BY %s", rrsql.OrderByHelper(p.Sorting)))
+		limit["order"] = fmt.Sprintf("ORDER BY %s", rrsql.OrderByHelper(p.Sorting))
 	}
 	if p.MaxResult != 0 {
 		restricts = append(restricts, "LIMIT ?")
@@ -278,13 +279,13 @@ func (p *GetProjectArgs) parseFilterQuery() (query string, values []interface{})
 }
 
 func (g *GetProjectArgs) FullAuthorTags() (result []string) {
-	return getStructDBTags("full", Member{})
+	return rrsql.GetStructDBTags("full", Member{})
 }
 
 type ProjectAuthor struct {
 	Project
-	Tags   NullString `json:"-" db:"tags"`
-	Author Stunt      `json:"author" db:"author"`
+	Tags   rrsql.NullString `json:"-" db:"tags"`
+	Author Stunt            `json:"author" db:"author"`
 }
 
 type SimpleTag struct {
@@ -294,9 +295,9 @@ type SimpleTag struct {
 
 type ProjectAuthors struct {
 	Project
-	Tags    NullString  `json:"-" db:"tags"`
-	Authors []Stunt     `json:"authors"`
-	TagList []SimpleTag `json:"tags"`
+	Tags    rrsql.NullString `json:"-" db:"tags"`
+	Authors []Stunt          `json:"authors"`
+	TagList []SimpleTag      `json:"tags"`
 }
 
 func (p *ProjectAuthors) formatTags() {
@@ -324,8 +325,8 @@ func (a *projectAPI) CountProjects(arg GetProjectArgs) (result int, err error) {
 	if err != nil {
 		return 0, err
 	}
-	query = DB.Rebind(query)
-	count, err := DB.Queryx(query, args...)
+	query = rrsql.DB.Rebind(query)
+	count, err := rrsql.DB.Queryx(query, args...)
 	if err != nil {
 		return 0, err
 	}
@@ -339,7 +340,7 @@ func (a *projectAPI) CountProjects(arg GetProjectArgs) (result int, err error) {
 
 func (a *projectAPI) GetProject(p Project) (Project, error) {
 	project := Project{}
-	err := DB.QueryRowx("SELECT * FROM projects WHERE project_id = ?", p.ID).StructScan(&project)
+	err := rrsql.DB.QueryRowx("SELECT * FROM projects WHERE project_id = ?", p.ID).StructScan(&project)
 	switch {
 	case err == sql.ErrNoRows:
 		err = errors.New("Project Not Found")
@@ -391,10 +392,10 @@ func (a *projectAPI) GetProjects(args GetProjectArgs) (result []ProjectAuthors, 
 		log.Println(err.Error())
 		return nil, err
 	}
-	query = DB.Rebind(query)
+	query = rrsql.DB.Rebind(query)
 	var pa []ProjectAuthor
 
-	if err = DB.Select(&pa, query, values...); err != nil {
+	if err = rrsql.DB.Select(&pa, query, values...); err != nil {
 		log.Println(err.Error())
 		return []ProjectAuthors{}, err
 	}
@@ -465,7 +466,7 @@ func (a *projectAPI) GetContents(id int, args GetProjectArgs) (result []interfac
 		Type string `db:"type"`
 	}
 
-	if err = DB.Select(&orderedList, query); err != nil {
+	if err = rrsql.DB.Select(&orderedList, query); err != nil {
 		log.Println(err.Error())
 		return result, err
 	}
@@ -552,7 +553,7 @@ func (a *projectAPI) GetContents(id int, args GetProjectArgs) (result []interfac
 func (a *projectAPI) FilterProjects(args GetProjectArgs) (result []interface{}, err error) {
 	query, values := args.parseFilterQuery()
 
-	rows, err := DB.Queryx(query, values...)
+	rows, err := rrsql.DB.Queryx(query, values...)
 	if err != nil {
 		return nil, err
 	}
@@ -568,8 +569,8 @@ func (a *projectAPI) FilterProjects(args GetProjectArgs) (result []interface{}, 
 
 func (a *projectAPI) InsertProject(p Project) error {
 
-	query, _ := generateSQLStmt("insert", "projects", p)
-	result, err := DB.NamedExec(query, p)
+	query, _ := rrsql.GenerateSQLStmt("insert", "projects", p)
+	result, err := rrsql.DB.NamedExec(query, p)
 
 	if err != nil {
 		if strings.Contains(err.Error(), "Duplicate entry") {
@@ -616,8 +617,8 @@ func (a *projectAPI) InsertProject(p Project) error {
 
 func (a *projectAPI) UpdateProjects(p Project) error {
 
-	query, _ := generateSQLStmt("partial_update", "projects", p)
-	result, err := DB.NamedExec(query, p)
+	query, _ := rrsql.GenerateSQLStmt("partial_update", "projects", p)
+	result, err := rrsql.DB.NamedExec(query, p)
 
 	if err != nil {
 		return err
@@ -670,7 +671,7 @@ func (a *projectAPI) UpdateProjects(p Project) error {
 
 func (a *projectAPI) DeleteProjects(p Project) error {
 
-	result, err := DB.NamedExec("UPDATE projects SET active = 0 WHERE project_id = :project_id", p)
+	result, err := rrsql.DB.NamedExec("UPDATE projects SET active = 0 WHERE project_id = :project_id", p)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -688,7 +689,7 @@ func (a *projectAPI) DeleteProjects(p Project) error {
 }
 
 func (a *projectAPI) SchedulePublish() error {
-	_, err := DB.Exec("UPDATE projects SET publish_status=2 WHERE publish_status=3 AND published_at <= cast(now() as datetime);")
+	_, err := rrsql.DB.Exec("UPDATE projects SET publish_status=2 WHERE publish_status=3 AND published_at <= cast(now() as datetime);")
 	if err != nil {
 		return err
 	}
@@ -715,8 +716,8 @@ func (a *projectAPI) SchedulePublish() error {
 // 		return []Stunt{}, err
 // 	}
 
-// 	query = DB.Rebind(query)
-// 	if err := DB.Select(&result, query, params...); err != nil {
+// 	query = rrsql.DB.Rebind(query)
+// 	if err := rrsql.DB.Select(&result, query, params...); err != nil {
 // 		return []Stunt{}, err
 // 	}
 // 	return result, nil
@@ -734,11 +735,11 @@ func (a *projectAPI) InsertAuthors(projectID int, authorIDs []int) (err error) {
 	}
 	//INSERT IGNORE INTO project_authorIDs (project_id, author_id) VALUES ( ?, ? ), ( ?, ? );
 	query := fmt.Sprintf(`INSERT IGNORE INTO project_authors (project_id, author_id) VALUES %s;`, strings.Join(valueStr, ", "))
-	_, err = DB.Exec(query, insertValues...)
+	_, err = rrsql.DB.Exec(query, insertValues...)
 	if err != nil {
 		sqlerr, ok := err.(*mysql.MySQLError)
 		if ok && sqlerr.Number == 1062 {
-			return DuplicateError
+			return rrsql.DuplicateError
 		}
 		return err
 	}
@@ -749,13 +750,13 @@ func (a *projectAPI) UpdateAuthors(projectID int, authorIDs []int) (err error) {
 
 	// Delete all author record if authorIDs is null
 	if authorIDs == nil || len(authorIDs) == 0 {
-		_, err = DB.Exec(`DELETE FROM project_authors WHERE project_id = ?`, projectID)
+		_, err = rrsql.DB.Exec(`DELETE FROM project_authors WHERE project_id = ?`, projectID)
 		if err != nil {
 			return err
 		}
 		return nil
 	}
-	tx, err := DB.Beginx()
+	tx, err := rrsql.DB.Beginx()
 	if err != nil {
 		log.Printf("Fail to get sql connection: %v", err)
 		return err
@@ -774,7 +775,7 @@ func (a *projectAPI) UpdateAuthors(projectID int, authorIDs []int) (err error) {
 		log.Printf("Fail to generate query: %v", err)
 		return err
 	}
-	del = DB.Rebind(del)
+	del = rrsql.DB.Rebind(del)
 	_, err = tx.Exec(del, args...)
 	if err != nil {
 

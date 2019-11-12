@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -79,14 +80,14 @@ var MockPermissionAPI mockPermissionAPI
 func initPermissionTest() {
 
 	var mockDefaultPermissions = []models.Permission{
-		models.Permission{ID: 1, Role: 1, Object: models.NullString{"ChangePW", true}, Permission: models.NullInt{1, true}},
-		models.Permission{ID: 2, Role: 1, Object: models.NullString{"ChangeName", true}, Permission: models.NullInt{1, true}},
-		models.Permission{ID: 3, Role: 1, Object: models.NullString{"CreateAccount", true}, Permission: models.NullInt{1, true}},
-		models.Permission{ID: 4, Role: 1, Object: models.NullString{"AddRole", true}, Permission: models.NullInt{1, true}},
-		models.Permission{ID: 5, Role: 1, Object: models.NullString{"EditRole", true}, Permission: models.NullInt{1, true}},
-		models.Permission{ID: 6, Role: 1, Object: models.NullString{"DeleteRole", true}, Permission: models.NullInt{1, true}},
-		models.Permission{ID: 7, Role: 1, Object: models.NullString{"CreatePost", true}, Permission: models.NullInt{1, true}},
-		models.Permission{ID: 8, Role: 1, Object: models.NullString{"ReadPost", true}, Permission: models.NullInt{1, true}},
+		models.Permission{ID: 1, Role: 1, Object: rrsql.NullString{"ChangePW", true}, Permission: rrsql.NullInt{1, true}},
+		models.Permission{ID: 2, Role: 1, Object: rrsql.NullString{"ChangeName", true}, Permission: rrsql.NullInt{1, true}},
+		models.Permission{ID: 3, Role: 1, Object: rrsql.NullString{"CreateAccount", true}, Permission: rrsql.NullInt{1, true}},
+		models.Permission{ID: 4, Role: 1, Object: rrsql.NullString{"AddRole", true}, Permission: rrsql.NullInt{1, true}},
+		models.Permission{ID: 5, Role: 1, Object: rrsql.NullString{"EditRole", true}, Permission: rrsql.NullInt{1, true}},
+		models.Permission{ID: 6, Role: 1, Object: rrsql.NullString{"DeleteRole", true}, Permission: rrsql.NullInt{1, true}},
+		models.Permission{ID: 7, Role: 1, Object: rrsql.NullString{"CreatePost", true}, Permission: rrsql.NullInt{1, true}},
+		models.Permission{ID: 8, Role: 1, Object: rrsql.NullString{"ReadPost", true}, Permission: rrsql.NullInt{1, true}},
 	}
 
 	err := models.PermissionAPI.InsertPermissions(mockDefaultPermissions)
@@ -210,14 +211,14 @@ func TestPermissionGetAll(t *testing.T) {
 		}
 
 		var mockDefaultPermissions = []models.Permission{
-			models.Permission{Role: 1, Object: models.NullString{"ChangePW", true}, Permission: models.NullInt{1, true}},
-			models.Permission{Role: 1, Object: models.NullString{"ChangeName", true}, Permission: models.NullInt{1, true}},
-			models.Permission{Role: 1, Object: models.NullString{"CreateAccount", true}, Permission: models.NullInt{1, true}},
-			models.Permission{Role: 1, Object: models.NullString{"AddRole", true}, Permission: models.NullInt{1, true}},
-			models.Permission{Role: 1, Object: models.NullString{"EditRole", true}, Permission: models.NullInt{1, true}},
-			models.Permission{Role: 1, Object: models.NullString{"DeleteRole", true}, Permission: models.NullInt{1, true}},
-			models.Permission{Role: 1, Object: models.NullString{"CreatePost", true}, Permission: models.NullInt{1, true}},
-			models.Permission{Role: 1, Object: models.NullString{"ReadPost", true}, Permission: models.NullInt{1, true}},
+			models.Permission{Role: 1, Object: rrsql.NullString{"ChangePW", true}, Permission: rrsql.NullInt{1, true}},
+			models.Permission{Role: 1, Object: rrsql.NullString{"ChangeName", true}, Permission: rrsql.NullInt{1, true}},
+			models.Permission{Role: 1, Object: rrsql.NullString{"CreateAccount", true}, Permission: rrsql.NullInt{1, true}},
+			models.Permission{Role: 1, Object: rrsql.NullString{"AddRole", true}, Permission: rrsql.NullInt{1, true}},
+			models.Permission{Role: 1, Object: rrsql.NullString{"EditRole", true}, Permission: rrsql.NullInt{1, true}},
+			models.Permission{Role: 1, Object: rrsql.NullString{"DeleteRole", true}, Permission: rrsql.NullInt{1, true}},
+			models.Permission{Role: 1, Object: rrsql.NullString{"CreatePost", true}, Permission: rrsql.NullInt{1, true}},
+			models.Permission{Role: 1, Object: rrsql.NullString{"ReadPost", true}, Permission: rrsql.NullInt{1, true}},
 		}
 
 		var result []models.Permission
@@ -315,7 +316,7 @@ func TestPermissionPost(t *testing.T) {
 
 		if w.Code == http.StatusOK {
 			for _, item := range testcase.in.Query {
-				itemquery := []models.Permission{models.Permission{Role: item.Role, Object: models.NullString{item.Object, true}}}
+				itemquery := []models.Permission{models.Permission{Role: item.Role, Object: rrsql.NullString{item.Object, true}}}
 				p, err := models.PermissionAPI.GetPermissions(itemquery)
 				if err != nil || p[0].Role != item.Role || p[0].Object.String != item.Object {
 					t.Errorf("Expect get inserted item %v but didn't, testcase %s", item, testcase.name)
@@ -400,7 +401,7 @@ func TestPermissionDelete(t *testing.T) {
 		}
 		if w.Code == http.StatusOK {
 			for _, item := range testcase.in.Query {
-				itemquery := []models.Permission{models.Permission{Role: item.Role, Object: models.NullString{item.Object, true}}}
+				itemquery := []models.Permission{models.Permission{Role: item.Role, Object: rrsql.NullString{item.Object, true}}}
 				p, err := models.PermissionAPI.GetPermissions(itemquery)
 
 				if err != nil || len(p) != 0 {

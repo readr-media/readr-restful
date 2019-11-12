@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/robfig/cron"
 )
 
@@ -108,10 +109,10 @@ OuterLoop:
 	}
 }
 func (v *straatsSync) GetLatestVideoTime() (t time.Time) {
-	var time NullTime
+	var time rrsql.NullTime
 	query := "SELECT updated_at FROM posts WHERE type=? ORDER BY updated_at DESC;"
-	// _ = DB.Get(&time, query, PostType["video"])
-	_ = DB.Get(&time, query, config.Config.Models.PostType["video"])
+	// _ = rrsql.DB.Get(&time, query, PostType["video"])
+	_ = rrsql.DB.Get(&time, query, config.Config.Models.PostType["video"])
 	return time.Time
 }
 func (v *straatsSync) GetLives(time time.Time) ([]straatsLive, error) {
@@ -123,29 +124,29 @@ func (v *straatsSync) GetVods(id string) ([]straatsVod, error) {
 func (v *straatsSync) UpdateLives(live straatsLive) (err error) {
 
 	var post_id string
-	_ = DB.Get(&post_id, "SELECT post_id FROM posts WHERE video_id=?;", live.ID)
+	_ = rrsql.DB.Get(&post_id, "SELECT post_id FROM posts WHERE video_id=?;", live.ID)
 	if post_id == "" {
 		v.InsertLive(live)
 	}
 
 	switch live.Status {
 	case "ready":
-		// _, err := DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=? WHERE video_id=?;", PostType["live"], live.Link, PostStatus["deactive"], time.Now(), live.ID)
-		_, err := DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=? WHERE video_id=?;", config.Config.Models.PostType["live"], live.Link, config.Config.Models.Posts["deactive"], time.Now(), live.ID)
+		// _, err := rrsql.DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=? WHERE video_id=?;", PostType["live"], live.Link, PostStatus["deactive"], time.Now(), live.ID)
+		_, err := rrsql.DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=? WHERE video_id=?;", config.Config.Models.PostType["live"], live.Link, config.Config.Models.Posts["deactive"], time.Now(), live.ID)
 		if err != nil {
 			return err
 		}
 	case "started":
 		t, _ := time.Parse(time.RFC3339, live.StartedAt)
-		// _, err := DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=?, published_at=? WHERE video_id=?;", PostType["live"], live.Link, PostStatus["active"], time.Now(), t, live.ID)
-		_, err := DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=?, published_at=? WHERE video_id=?;", config.Config.Models.PostType["live"], live.Link, config.Config.Models.Posts["active"], time.Now(), t, live.ID)
+		// _, err := rrsql.DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=?, published_at=? WHERE video_id=?;", PostType["live"], live.Link, PostStatus["active"], time.Now(), t, live.ID)
+		_, err := rrsql.DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=?, published_at=? WHERE video_id=?;", config.Config.Models.PostType["live"], live.Link, config.Config.Models.Posts["active"], time.Now(), t, live.ID)
 		if err != nil {
 			return err
 		}
 	case "ended":
 		t, _ := time.Parse(time.RFC3339, live.StartedAt)
-		// _, err := DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=?, published_at=? WHERE video_id=?;", PostType["live"], live.Link, PostStatus["deactive"], time.Now(), t, live.ID)
-		_, err := DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=?, published_at=? WHERE video_id=?;", config.Config.Models.PostType["live"], live.Link, config.Config.Models.Posts["deactive"], time.Now(), t, live.ID)
+		// _, err := rrsql.DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=?, published_at=? WHERE video_id=?;", PostType["live"], live.Link, PostStatus["deactive"], time.Now(), t, live.ID)
+		_, err := rrsql.DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=?, published_at=? WHERE video_id=?;", config.Config.Models.PostType["live"], live.Link, config.Config.Models.Posts["deactive"], time.Now(), t, live.ID)
 		if err != nil {
 			return err
 		}
@@ -157,7 +158,7 @@ func (v *straatsSync) UpdateLivesVod(live straatsLive, vods []straatsVod) (err e
 	// var vod_active = PostStatus["active"]
 	var vod_active = config.Config.Models.Posts["active"]
 	var post_id string
-	_ = DB.Get(&post_id, "SELECT post_id FROM posts WHERE video_id=?;", live.ID)
+	_ = rrsql.DB.Get(&post_id, "SELECT post_id FROM posts WHERE video_id=?;", live.ID)
 	if post_id == "" {
 		v.InsertLive(live)
 	}
@@ -174,13 +175,13 @@ func (v *straatsSync) UpdateLivesVod(live straatsLive, vods []straatsVod) (err e
 			vod_active = config.Config.Models.Posts["draft"]
 		}
 	}
-	// _, err = DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=?, published_at=? WHERE video_id=?;", PostType["video"], strings.Join(urls, ";"), vod_active, time.Now(), published_at, live.ID)
-	_, err = DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=?, published_at=? WHERE video_id=?;", config.Config.Models.PostType["video"], strings.Join(urls, ";"), vod_active, time.Now(), published_at, live.ID)
+	// _, err = rrsql.DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=?, published_at=? WHERE video_id=?;", PostType["video"], strings.Join(urls, ";"), vod_active, time.Now(), published_at, live.ID)
+	_, err = rrsql.DB.Exec("UPDATE posts SET type=?, link=?, active=?, updated_at=?, published_at=? WHERE video_id=?;", config.Config.Models.PostType["video"], strings.Join(urls, ";"), vod_active, time.Now(), published_at, live.ID)
 
 	return err
 }
 func (v *straatsSync) InsertLive(live straatsLive) (err error) {
-	_, err = DB.NamedExec(`INSERT INTO posts (title, content, video_id) VALUES (:title, :synopsis, :id)`, live)
+	_, err = rrsql.DB.NamedExec(`INSERT INTO posts (title, content, video_id) VALUES (:title, :synopsis, :id)`, live)
 	if err != nil {
 		log.Println("Error InsertLives: ", err)
 	}

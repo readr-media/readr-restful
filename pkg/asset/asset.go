@@ -11,12 +11,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/config"
 	rt "github.com/readr-media/readr-restful/internal/router"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 )
 
 type taggedAsset struct {
 	Asset
-	Tags models.NullIntSlice `json:"tags" db:"tags"`
+	Tags rrsql.NullIntSlice `json:"tags" db:"tags"`
 }
 
 type router struct{}
@@ -28,7 +29,7 @@ func (r *router) bindQuery(c *gin.Context, args *GetAssetArgs) (err error) {
 		if err = json.Unmarshal([]byte(c.Query("active")), &args.Active); err != nil {
 			return err
 		} else if err == nil {
-			if err = models.ValidateActive(args.Active, config.Config.Models.Assets); err != nil {
+			if err = rrsql.ValidateActive(args.Active, config.Config.Models.Assets); err != nil {
 				return err
 			}
 		}
@@ -148,11 +149,11 @@ func (r *router) Post(c *gin.Context) {
 	}
 
 	// CreatedAt and UpdatedAt set default to now
-	asset.CreatedAt = models.NullTime{Time: time.Now(), Valid: true}
-	asset.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
+	asset.CreatedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
+	asset.UpdatedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
 
 	if !asset.Active.Valid {
-		asset.Active = models.NullInt{int64(config.Config.Models.Assets["active"]), true}
+		asset.Active = rrsql.NullInt{int64(config.Config.Models.Assets["active"]), true}
 	}
 
 	if !asset.Destination.Valid {
@@ -211,10 +212,10 @@ func (r *router) Put(c *gin.Context) {
 
 	// Discard CreatedAt even if there is data
 	if asset.CreatedAt.Valid {
-		asset.CreatedAt = models.NullTime{time.Time{}, false}
+		asset.CreatedAt = rrsql.NullTime{time.Time{}, false}
 	}
 	// CreatedAt and UpdatedAt set default to now
-	asset.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
+	asset.UpdatedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
 
 	if !asset.UpdatedBy.Valid {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Neither updated_by or author is valid"})

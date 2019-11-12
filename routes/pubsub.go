@@ -15,6 +15,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/pkg/mail"
 	"github.com/readr-media/readr-restful/utils"
@@ -175,12 +176,12 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 							c.JSON(http.StatusOK, gin.H{"Error": fmt.Sprintf("%s %s parse embeded url fail: %v \n", msgType, actionType, err.Error())})
 							break
 						}
-						comment.OgTitle = models.NullString{String: ogInfo.Title, Valid: true}
+						comment.OgTitle = rrsql.NullString{String: ogInfo.Title, Valid: true}
 						if ogInfo.Description != "" {
-							comment.OgDescription = models.NullString{String: ogInfo.Description, Valid: true}
+							comment.OgDescription = rrsql.NullString{String: ogInfo.Description, Valid: true}
 						}
 						if ogInfo.Image != "" {
-							comment.OgImage = models.NullString{String: ogInfo.Image, Valid: true}
+							comment.OgImage = rrsql.NullString{String: ogInfo.Image, Valid: true}
 						}
 					}
 					escapedBody = strings.Replace(escapedBody, v, fmt.Sprintf(`<a href="%s" target="_blank">%s</a>`, v, v), -1)
@@ -188,11 +189,11 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 				comment.Body.String, _ = url.PathUnescape(escapedBody)
 			}
 
-			comment.CreatedAt = models.NullTime{Time: time.Now(), Valid: true}
-			// comment.Active = models.NullInt{Int: int64(models.CommentActive["active"].(float64)), Valid: true}
-			// comment.Status = models.NullInt{Int: int64(models.CommentStatus["show"].(float64)), Valid: true}
-			comment.Active = models.NullInt{Int: int64(config.Config.Models.Comment["active"]), Valid: true}
-			comment.Status = models.NullInt{Int: int64(config.Config.Models.CommentStatus["show"]), Valid: true}
+			comment.CreatedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
+			// comment.Active = rrsql.NullInt{Int: int64(models.CommentActive["active"].(float64)), Valid: true}
+			// comment.Status = rrsql.NullInt{Int: int64(models.CommentStatus["show"].(float64)), Valid: true}
+			comment.Active = rrsql.NullInt{Int: int64(config.Config.Models.Comment["active"]), Valid: true}
+			comment.Status = rrsql.NullInt{Int: int64(config.Config.Models.CommentStatus["show"]), Valid: true}
 
 			commentID, err := models.CommentAPI.InsertComment(comment)
 			if err != nil {
@@ -263,12 +264,12 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 								c.JSON(http.StatusOK, gin.H{"Error": fmt.Sprintf("%s %s parse embeded url fail: %v \n", msgType, actionType, err.Error())})
 								break
 							}
-							comment.OgTitle = models.NullString{String: ogInfo.Title, Valid: true}
+							comment.OgTitle = rrsql.NullString{String: ogInfo.Title, Valid: true}
 							if ogInfo.Description != "" {
-								comment.OgDescription = models.NullString{String: ogInfo.Description, Valid: true}
+								comment.OgDescription = rrsql.NullString{String: ogInfo.Description, Valid: true}
 							}
 							if ogInfo.Image != "" {
-								comment.OgImage = models.NullString{String: ogInfo.Image, Valid: true}
+								comment.OgImage = rrsql.NullString{String: ogInfo.Image, Valid: true}
 							}
 						}
 						escapedBody = strings.Replace(escapedBody, v, fmt.Sprintf(`<a href="%s" target="_blank">%s</a>`, v, v), -1)
@@ -277,7 +278,7 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 				}
 			}
 
-			comment.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
+			comment.UpdatedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
 
 			err = models.CommentAPI.UpdateComment(comment)
 			if err != nil {
@@ -311,12 +312,12 @@ func (r *pubsubHandler) Push(c *gin.Context) {
 			if actionType == "delete" {
 				args = models.CommentUpdateArgs{
 					IDs:       args.IDs,
-					UpdatedAt: models.NullTime{Time: time.Now(), Valid: true},
-					// Active:    models.NullInt{int64(models.CommentActive["deactive"].(float64)), true},
-					Active: models.NullInt{Int: int64(config.Config.Models.Comment["deactive"]), Valid: true},
+					UpdatedAt: rrsql.NullTime{Time: time.Now(), Valid: true},
+					// Active:    rrsql.NullInt{int64(models.CommentActive["deactive"].(float64)), true},
+					Active: rrsql.NullInt{Int: int64(config.Config.Models.Comment["deactive"]), Valid: true},
 				}
 			} else {
-				args.UpdatedAt = models.NullTime{Time: time.Now(), Valid: true}
+				args.UpdatedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
 			}
 
 			err = models.CommentAPI.UpdateComments(args)

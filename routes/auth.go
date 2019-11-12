@@ -10,6 +10,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/utils"
 )
@@ -163,7 +164,7 @@ func (r *authHandler) userRegister(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Bad Request"})
 		return
 	}
-	member.Password = models.NullString{params.Password, true}
+	member.Password = rrsql.NullString{params.Password, true}
 
 	if member.RegisterMode.String == "ordinary" {
 		if member.Password.String == "" || member.Mail.String == "" {
@@ -187,9 +188,9 @@ func (r *authHandler) userRegister(c *gin.Context) {
 		}
 
 		member.MemberID = member.Mail.String
-		member.Salt = models.NullString{string(salt), true}
-		member.Password = models.NullString{string(hpw), true}
-		member.Active = models.NullInt{int64(config.Config.Models.Members["deactive"]), true}
+		member.Salt = rrsql.NullString{string(salt), true}
+		member.Password = rrsql.NullString{string(hpw), true}
+		member.Active = rrsql.NullInt{int64(config.Config.Models.Members["deactive"]), true}
 
 	} else {
 
@@ -199,7 +200,7 @@ func (r *authHandler) userRegister(c *gin.Context) {
 		}
 
 		member.MemberID = member.SocialID.String
-		member.Active = models.NullInt{int64(config.Config.Models.Members["active"]), true}
+		member.Active = rrsql.NullInt{int64(config.Config.Models.Members["active"]), true}
 	}
 
 	// 4. fill in data and defaults
@@ -210,10 +211,10 @@ func (r *authHandler) userRegister(c *gin.Context) {
 		return
 	}
 	member.UUID = uuid.String()
-	member.CreatedAt = models.NullTime{time.Now(), true}
-	member.UpdatedAt = models.NullTime{time.Now(), true}
-	member.Points = models.NullInt{0, true}
-	member.Role = models.NullInt{1, true}
+	member.CreatedAt = rrsql.NullTime{time.Now(), true}
+	member.UpdatedAt = rrsql.NullTime{time.Now(), true}
+	member.Points = rrsql.NullInt{0, true}
+	member.Role = rrsql.NullInt{1, true}
 
 	lastID, err := models.MemberAPI.InsertMember(member)
 

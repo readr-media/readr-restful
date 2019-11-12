@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -47,7 +48,7 @@ OuterLoop:
 				continue OuterLoop
 			}
 		}
-		p.Permission = models.NullInt{0, true}
+		p.Permission = rrsql.NullInt{0, true}
 		result = append(result, p)
 	}
 

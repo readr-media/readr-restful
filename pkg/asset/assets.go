@@ -10,30 +10,30 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/config"
-	"github.com/readr-media/readr-restful/models"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 )
 
 type Asset struct {
-	ID            int64             `json:"id" db:"id"`
-	Active        models.NullInt    `json:"active" db:"active"`
-	CreatedAt     models.NullTime   `json:"created_at" db:"created_at"`
-	CreatedBy     models.NullInt    `json:"created_by" db:"created_by"`
-	UpdatedAt     models.NullTime   `json:"updated_at" db:"updated_at"`
-	UpdatedBy     models.NullInt    `json:"updated_by" db:"updated_by"`
-	Destination   models.NullString `json:"destination" db:"destination"`
-	FileType      models.NullString `json:"file_type" db:"file_type"`
-	FileName      models.NullString `json:"file_name" db:"file_name"`
-	FileExtension models.NullString `json:"file_extension" db:"file_extension"`
-	Title         models.NullString `json:"title" db:"title"`
-	AssetType     models.NullInt    `json:"asset_type" db:"asset_type"`
-	Copyright     models.NullInt    `json:"copyright" db:"copyright"`
+	ID            int64            `json:"id" db:"id"`
+	Active        rrsql.NullInt    `json:"active" db:"active"`
+	CreatedAt     rrsql.NullTime   `json:"created_at" db:"created_at"`
+	CreatedBy     rrsql.NullInt    `json:"created_by" db:"created_by"`
+	UpdatedAt     rrsql.NullTime   `json:"updated_at" db:"updated_at"`
+	UpdatedBy     rrsql.NullInt    `json:"updated_by" db:"updated_by"`
+	Destination   rrsql.NullString `json:"destination" db:"destination"`
+	FileType      rrsql.NullString `json:"file_type" db:"file_type"`
+	FileName      rrsql.NullString `json:"file_name" db:"file_name"`
+	FileExtension rrsql.NullString `json:"file_extension" db:"file_extension"`
+	Title         rrsql.NullString `json:"title" db:"title"`
+	AssetType     rrsql.NullInt    `json:"asset_type" db:"asset_type"`
+	Copyright     rrsql.NullInt    `json:"copyright" db:"copyright"`
 }
 
 type FilteredAsset struct {
-	ID        int64             `json:"id" db:"id"`
-	FileName  models.NullString `json:"file_name" db:"file_name"`
-	AssetType models.NullInt    `json:"asset_type" db:"asset_type"`
-	UpdatedAt models.NullTime   `json:"updated_at" db:"updated_at"`
+	ID        int64            `json:"id" db:"id"`
+	FileName  rrsql.NullString `json:"file_name" db:"file_name"`
+	AssetType rrsql.NullInt    `json:"asset_type" db:"asset_type"`
+	UpdatedAt rrsql.NullTime   `json:"updated_at" db:"updated_at"`
 }
 
 type GetAssetArgs struct {
@@ -224,9 +224,9 @@ func (a *assetAPI) Count(args *GetAssetArgs) (count int, err error) {
 	if err != nil {
 		return 0, err
 	}
-	query = models.DB.Rebind(query)
+	query = rrsql.DB.Rebind(query)
 
-	rows, err := models.DB.Queryx(query, values...)
+	rows, err := rrsql.DB.Queryx(query, values...)
 	if err != nil {
 		return 0, err
 	}
@@ -242,17 +242,17 @@ func (a *assetAPI) Count(args *GetAssetArgs) (count int, err error) {
 func (m *assetAPI) Delete(ids []int) (err error) {
 
 	query, args, err := sqlx.In(`UPDATE assets SET active = ? AND updated_at = ? WHERE id IN (?);`,
-		models.NullInt{Int: int64(config.Config.Models.Posts["deactive"]), Valid: true},
-		models.NullTime{Time: time.Now(), Valid: true},
+		rrsql.NullInt{Int: int64(config.Config.Models.Posts["deactive"]), Valid: true},
+		rrsql.NullTime{Time: time.Now(), Valid: true},
 		ids,
 	)
 	if err != nil {
 		return err
 	}
 
-	query = models.DB.Rebind(query)
+	query = rrsql.DB.Rebind(query)
 
-	result, err := models.DB.Exec(query, args...)
+	result, err := rrsql.DB.Exec(query, args...)
 	if err != nil {
 		return err
 	}
@@ -268,7 +268,7 @@ func (m *assetAPI) Delete(ids []int) (err error) {
 func (a *assetAPI) FilterAssets(args *GetAssetArgs) (result []FilteredAsset, err error) {
 	query, values := args.parseFilterQuery()
 
-	rows, err := models.DB.Queryx(query, values...)
+	rows, err := rrsql.DB.Queryx(query, values...)
 	if err != nil {
 		return nil, err
 	}
@@ -296,8 +296,8 @@ func (a *assetAPI) GetAssets(args *GetAssetArgs) (result []Asset, err error) {
 	if err != nil {
 		return nil, err
 	}
-	query = models.DB.Rebind(query)
-	rows, err := models.DB.Queryx(query, values...)
+	query = rrsql.DB.Rebind(query)
+	rows, err := rrsql.DB.Queryx(query, values...)
 	if err != nil {
 		return nil, err
 	}
@@ -319,7 +319,7 @@ func (m *assetAPI) Insert(asset Asset) (lastID int64, err error) {
 	query := fmt.Sprintf(`INSERT INTO assets (%s) VALUES (:%s)`,
 		strings.Join(tags, ","), strings.Join(tags, ",:"))
 
-	result, err := models.DB.NamedExec(query, asset)
+	result, err := rrsql.DB.NamedExec(query, asset)
 	if err != nil {
 		if strings.Contains(err.Error(), "Duplicate entry") {
 			return 0, errors.New("Duplicate entry")
@@ -351,7 +351,7 @@ func (m *assetAPI) Update(asset Asset) (err error) {
 	query := fmt.Sprintf(`UPDATE assets SET %s WHERE id = :id`,
 		strings.Join(fields, ", "))
 
-	result, err := models.DB.NamedExec(query, asset)
+	result, err := rrsql.DB.NamedExec(query, asset)
 
 	if err != nil {
 		return err
@@ -378,23 +378,23 @@ func getStructDBTags(input interface{}) []string {
 			if field != "" {
 				columns = append(columns, tag.Get("db"))
 			}
-		case models.NullString:
+		case rrsql.NullString:
 			if field.Valid {
 				columns = append(columns, tag.Get("db"))
 			}
-		case models.NullTime:
+		case rrsql.NullTime:
 			if field.Valid {
 				columns = append(columns, tag.Get("db"))
 			}
-		case models.NullInt:
+		case rrsql.NullInt:
 			if field.Valid {
 				columns = append(columns, tag.Get("db"))
 			}
-		case models.NullBool:
+		case rrsql.NullBool:
 			if field.Valid {
 				columns = append(columns, tag.Get("db"))
 			}
-		case models.NullIntSlice:
+		case rrsql.NullIntSlice:
 			if field.Valid {
 				columns = append(columns, tag.Get("db"))
 			}

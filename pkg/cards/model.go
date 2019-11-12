@@ -10,24 +10,24 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/config"
-	"github.com/readr-media/readr-restful/models"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	//"github.com/readr-media/readr-restful/utils"
 )
 
 type NewsCard struct {
-	ID              uint32            `json:"id" db:"id" redis:"id"`
-	PostID          uint32            `json:"post_id" db:"post_id" redis:"post_id"`
-	Title           models.NullString `json:"title" db:"title" redis:"title"`
-	Description     models.NullString `json:"description" db:"description" redis:"description"`
-	BackgroundImage models.NullString `json:"background_image" db:"background_image" redis:"background_image"`
-	BackgroundColor models.NullString `json:"background_color" db:"background_color" redis:"background_color"`
-	Image           models.NullString `json:"image" db:"image" redis:"image"`
-	Video           models.NullString `json:"video" db:"video" redis:"video"`
-	CreatedAt       models.NullTime   `json:"created_at" db:"created_at" redis:"created_at"`
-	UpdatedAt       models.NullTime   `json:"updated_at" db:"updated_at" redis:"updated_at"`
-	Order           models.NullInt    `json:"order" db:"order" redis:"order"`
-	Active          models.NullInt    `json:"active" db:"active" redis:"active"`
-	Status          models.NullInt    `json:"status" db:"status" redis:"status"`
+	ID              uint32           `json:"id" db:"id" redis:"id"`
+	PostID          uint32           `json:"post_id" db:"post_id" redis:"post_id"`
+	Title           rrsql.NullString `json:"title" db:"title" redis:"title"`
+	Description     rrsql.NullString `json:"description" db:"description" redis:"description"`
+	BackgroundImage rrsql.NullString `json:"background_image" db:"background_image" redis:"background_image"`
+	BackgroundColor rrsql.NullString `json:"background_color" db:"background_color" redis:"background_color"`
+	Image           rrsql.NullString `json:"image" db:"image" redis:"image"`
+	Video           rrsql.NullString `json:"video" db:"video" redis:"video"`
+	CreatedAt       rrsql.NullTime   `json:"created_at" db:"created_at" redis:"created_at"`
+	UpdatedAt       rrsql.NullTime   `json:"updated_at" db:"updated_at" redis:"updated_at"`
+	Order           rrsql.NullInt    `json:"order" db:"order" redis:"order"`
+	Active          rrsql.NullInt    `json:"active" db:"active" redis:"active"`
+	Status          rrsql.NullInt    `json:"status" db:"status" redis:"status"`
 }
 
 type NewsCardArgs struct {
@@ -119,7 +119,7 @@ type NewsCardInterface interface {
 
 func (a *newscardAPI) DeleteCard(id uint32) error {
 
-	result, err := models.DB.Exec(fmt.Sprintf("UPDATE newscards SET active = %d WHERE id = ?", config.Config.Models.Cards["deactive"]), id)
+	result, err := rrsql.DB.Exec(fmt.Sprintf("UPDATE newscards SET active = %d WHERE id = ?", config.Config.Models.Cards["deactive"]), id)
 	if err != nil {
 		return err
 	}
@@ -141,9 +141,9 @@ func (a *newscardAPI) GetCards(rowargs *NewsCardArgs) (result []NewsCard, err er
 	if err != nil {
 		return nil, err
 	}
-	query = models.DB.Rebind(query)
+	query = rrsql.DB.Rebind(query)
 
-	rows, err := models.DB.Queryx(query, args...)
+	rows, err := rrsql.DB.Queryx(query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -184,7 +184,7 @@ func (a *newscardAPI) InsertCard(n NewsCard) (int, error) {
 	query := fmt.Sprintf(`INSERT INTO newscards (%s) VALUES (:%s)`,
 		strings.Join(tags, ","), strings.Join(tags, ",:"))
 
-	result, err := models.DB.NamedExec(query, n)
+	result, err := rrsql.DB.NamedExec(query, n)
 	if err != nil {
 		if strings.Contains(err.Error(), "Duplicate entry") {
 			return 0, errors.New("Duplicate entry")
@@ -217,7 +217,7 @@ func (a *newscardAPI) UpdateCard(n NewsCard) error {
 	query := fmt.Sprintf(`UPDATE newscards SET %s WHERE id = :id`,
 		strings.Join(fields, ", "))
 
-	result, err := models.DB.NamedExec(query, n)
+	result, err := rrsql.DB.NamedExec(query, n)
 
 	if err != nil {
 		return err
@@ -244,23 +244,23 @@ func getStructDBTags(input interface{}) []string {
 			if field != "" {
 				columns = append(columns, tag.Get("db"))
 			}
-		case models.NullString:
+		case rrsql.NullString:
 			if field.Valid {
 				columns = append(columns, tag.Get("db"))
 			}
-		case models.NullTime:
+		case rrsql.NullTime:
 			if field.Valid {
 				columns = append(columns, tag.Get("db"))
 			}
-		case models.NullInt:
+		case rrsql.NullInt:
 			if field.Valid {
 				columns = append(columns, tag.Get("db"))
 			}
-		case models.NullBool:
+		case rrsql.NullBool:
 			if field.Valid {
 				columns = append(columns, tag.Get("db"))
 			}
-		case models.NullIntSlice:
+		case rrsql.NullIntSlice:
 			if field.Valid {
 				columns = append(columns, tag.Get("db"))
 			}

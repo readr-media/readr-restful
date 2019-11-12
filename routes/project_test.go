@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -26,7 +27,7 @@ func (a *mockProjectAPI) CountProjects(arg models.GetProjectArgs) (result int, e
 
 func (a *mockProjectAPI) GetProject(p models.Project) (result models.Project, err error) {
 	if p.ID == 32768 {
-		return models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}}, err
+		return models.Project{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{60229, true}, Slug: rrsql.NullString{"sampleslug0001", true}, Status: rrsql.NullInt{2, true}}, err
 	} else {
 		return models.Project{ID: p.ID}, err
 	}
@@ -35,70 +36,70 @@ func (a *mockProjectAPI) GetProject(p models.Project) (result models.Project, er
 func (a *mockProjectAPI) GetProjects(args models.GetProjectArgs) (result []models.ProjectAuthors, err error) {
 	if args.Keyword == "no" {
 		return []models.ProjectAuthors{
-			{Project: models.Project{ID: 32234, Title: models.NullString{"nonActive", true}, Active: models.NullInt{0, true}, Order: models.NullInt{60, true}}},
+			{Project: models.Project{ID: 32234, Title: rrsql.NullString{"nonActive", true}, Active: rrsql.NullInt{0, true}, Order: rrsql.NullInt{60, true}}},
 		}, nil
 	}
 	if args.Keyword == "327" {
 		return []models.ProjectAuthors{
-			{Project: models.Project{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}, Order: models.NullInt{99999, true}}},
-			{Project: models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}}},
-			{Project: models.Project{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{50470, true}, Description: models.NullString{"id not provided", true}}},
+			{Project: models.Project{ID: 32767, Title: rrsql.NullString{"Modified", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{99999, true}}},
+			{Project: models.Project{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{60229, true}, Slug: rrsql.NullString{"sampleslug0001", true}, Status: rrsql.NullInt{2, true}}},
+			{Project: models.Project{ID: 32769, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{50470, true}, Description: rrsql.NullString{"id not provided", true}}},
 		}, nil
 	}
 	if args.Sorting == "project_id" {
 		return []models.ProjectAuthors{
-			{Project: models.Project{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}}},
-			{Project: models.Project{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{61, true}, Slug: models.NullString{"sampleslug0002", true}, Status: models.NullInt{2, true}}},
-			{Project: models.Project{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}, Order: models.NullInt{99999, true}}},
-			{Project: models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}}},
-			{Project: models.Project{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{50470, true}, Description: models.NullString{"id not provided", true}}},
+			{Project: models.Project{ID: 1, Title: rrsql.NullString{"Alpha", true}, Active: rrsql.NullInt{1, true}}},
+			{Project: models.Project{ID: 32233, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{61, true}, Slug: rrsql.NullString{"sampleslug0002", true}, Status: rrsql.NullInt{2, true}}},
+			{Project: models.Project{ID: 32767, Title: rrsql.NullString{"Modified", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{99999, true}}},
+			{Project: models.Project{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{60229, true}, Slug: rrsql.NullString{"sampleslug0001", true}, Status: rrsql.NullInt{2, true}}},
+			{Project: models.Project{ID: 32769, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{50470, true}, Description: rrsql.NullString{"id not provided", true}}},
 		}, nil
 	}
 	if len(args.Status) == 1 {
 		return []models.ProjectAuthors{
-			{Project: models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}}},
-			{Project: models.Project{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{61, true}, Slug: models.NullString{"sampleslug0002", true}, Status: models.NullInt{2, true}}},
+			{Project: models.Project{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{60229, true}, Slug: rrsql.NullString{"sampleslug0001", true}, Status: rrsql.NullInt{2, true}}},
+			{Project: models.Project{ID: 32233, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{61, true}, Slug: rrsql.NullString{"sampleslug0002", true}, Status: rrsql.NullInt{2, true}}},
 		}, nil
 	}
 	if len(args.Slugs) == 1 {
 		return []models.ProjectAuthors{
-			{Project: models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}}},
+			{Project: models.Project{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{60229, true}, Slug: rrsql.NullString{"sampleslug0001", true}, Status: rrsql.NullInt{2, true}}},
 		}, nil
 	} else if len(args.Slugs) == 2 {
 		return []models.ProjectAuthors{
-			{Project: models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}}},
-			{Project: models.Project{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{61, true}, Slug: models.NullString{"sampleslug0002", true}, Status: models.NullInt{2, true}}},
+			{Project: models.Project{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{60229, true}, Slug: rrsql.NullString{"sampleslug0001", true}, Status: rrsql.NullInt{2, true}}},
+			{Project: models.Project{ID: 32233, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{61, true}, Slug: rrsql.NullString{"sampleslug0002", true}, Status: rrsql.NullInt{2, true}}},
 		}, nil
 	}
 	if len(args.IDs) == 2 {
 		if reflect.DeepEqual([]string(args.Fields), args.FullAuthorTags()) {
 			return []models.ProjectAuthors{
 				models.ProjectAuthors{
-					Project: models.Project{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}, Order: models.NullInt{99999, true}},
+					Project: models.Project{ID: 32767, Title: rrsql.NullString{"Modified", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{99999, true}},
 					Authors: []models.Stunt{mockProjectAuthors[0]},
 				},
 				models.ProjectAuthors{
-					Project: models.Project{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}},
+					Project: models.Project{ID: 1, Title: rrsql.NullString{"Alpha", true}, Active: rrsql.NullInt{1, true}},
 					Authors: []models.Stunt{mockProjectAuthors[0], mockProjectAuthors[1]},
 				}}, nil
 		} else if reflect.DeepEqual([]string(args.Fields), []string{"id", "nickname"}) {
 			return []models.ProjectAuthors{
 				models.ProjectAuthors{
-					Project: models.Project{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}, Order: models.NullInt{99999, true}},
+					Project: models.Project{ID: 32767, Title: rrsql.NullString{"Modified", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{99999, true}},
 					Authors: []models.Stunt{models.Stunt{ID: mockProjectAuthors[0].ID, Nickname: mockProjectAuthors[0].Nickname}},
 				},
 				models.ProjectAuthors{
-					Project: models.Project{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}},
+					Project: models.Project{ID: 1, Title: rrsql.NullString{"Alpha", true}, Active: rrsql.NullInt{1, true}},
 					Authors: []models.Stunt{models.Stunt{ID: mockProjectAuthors[0].ID, Nickname: mockProjectAuthors[0].Nickname}, models.Stunt{ID: mockProjectAuthors[1].ID, Nickname: mockProjectAuthors[1].Nickname}},
 				}}, nil
 		}
 		return []models.ProjectAuthors{
 			models.ProjectAuthors{
-				Project: models.Project{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}, Order: models.NullInt{99999, true}},
+				Project: models.Project{ID: 32767, Title: rrsql.NullString{"Modified", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{99999, true}},
 				Authors: []models.Stunt{models.Stunt{Nickname: mockProjectAuthors[0].Nickname}},
 			},
 			models.ProjectAuthors{
-				Project: models.Project{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}},
+				Project: models.Project{ID: 1, Title: rrsql.NullString{"Alpha", true}, Active: rrsql.NullInt{1, true}},
 				Authors: []models.Stunt{models.Stunt{Nickname: mockProjectAuthors[0].Nickname}, models.Stunt{Nickname: mockProjectAuthors[1].Nickname}},
 			},
 		}, nil
@@ -107,25 +108,25 @@ func (a *mockProjectAPI) GetProjects(args models.GetProjectArgs) (result []model
 	}
 	if len(args.PublishStatus) == 1 {
 		return []models.ProjectAuthors{
-			{Project: models.Project{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}}},
+			{Project: models.Project{ID: 1, Title: rrsql.NullString{"Alpha", true}, Active: rrsql.NullInt{1, true}, PublishStatus: rrsql.NullInt{1, true}}},
 		}, nil
 	}
 	if args.MaxResult == 1 && args.Page == 2 {
 		return []models.ProjectAuthors{
-			{Project: models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}}},
+			{Project: models.Project{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{60229, true}, Slug: rrsql.NullString{"sampleslug0001", true}, Status: rrsql.NullInt{2, true}}},
 		}, nil
 	}
 	if args.MaxResult == 1 {
 		return []models.ProjectAuthors{
-			{Project: models.Project{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}, Order: models.NullInt{99999, true}}},
+			{Project: models.Project{ID: 32767, Title: rrsql.NullString{"Modified", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{99999, true}}},
 		}, nil
 	}
 	return []models.ProjectAuthors{
-		{Project: models.Project{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}, Order: models.NullInt{99999, true}}},
-		{Project: models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}}},
-		{Project: models.Project{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{50470, true}, Description: models.NullString{"id not provided", true}}},
-		{Project: models.Project{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{61, true}, Slug: models.NullString{"sampleslug0002", true}, Status: models.NullInt{2, true}}},
-		{Project: models.Project{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}}},
+		{Project: models.Project{ID: 32767, Title: rrsql.NullString{"Modified", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{99999, true}}},
+		{Project: models.Project{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{60229, true}, Slug: rrsql.NullString{"sampleslug0001", true}, Status: rrsql.NullInt{2, true}}},
+		{Project: models.Project{ID: 32769, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{50470, true}, Description: rrsql.NullString{"id not provided", true}}},
+		{Project: models.Project{ID: 32233, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{61, true}, Slug: rrsql.NullString{"sampleslug0002", true}, Status: rrsql.NullInt{2, true}}},
+		{Project: models.Project{ID: 1, Title: rrsql.NullString{"Alpha", true}, Active: rrsql.NullInt{1, true}}},
 	}, nil
 }
 
@@ -187,14 +188,14 @@ func TestRouteProjects(t *testing.T) {
 	// Clear Data Stores for tests
 	mockProjectDSBack := mockProjectDS
 	mockProjectDS = []models.Project{}
-	if models.DB.DB != nil {
-		_, _ = models.DB.Exec("truncate table projects;")
+	if rrsql.DB.DB != nil {
+		_, _ = rrsql.DB.Exec("truncate table projects;")
 	}
 
 	// Insert test data
 	for _, params := range []models.Project{
-		models.Project{Active: models.NullInt{1, true}, Title: models.NullString{"Alpha", true}, PublishStatus: models.NullInt{1, true}, Progress: models.NullFloat{99.87, true}},
-		models.Project{ID: 32767, Active: models.NullInt{1, true}, Title: models.NullString{"Omega", true}, Order: models.NullInt{99999, true}},
+		models.Project{Active: rrsql.NullInt{1, true}, Title: rrsql.NullString{"Alpha", true}, PublishStatus: rrsql.NullInt{1, true}, Progress: rrsql.NullFloat{99.87, true}},
+		models.Project{ID: 32767, Active: rrsql.NullInt{1, true}, Title: rrsql.NullString{"Omega", true}, Order: rrsql.NullInt{99999, true}},
 	} {
 		err := models.ProjectAPI.InsertProject(params)
 		if err != nil {
@@ -276,76 +277,76 @@ func TestRouteProjects(t *testing.T) {
 	t.Run("GetProject", func(t *testing.T) {
 		testcases := []genericTestcase{
 			genericTestcase{"GetProjectBasicOK", "GET", "/project/list", ``, http.StatusOK, []models.ProjectAuthors{
-				models.ProjectAuthors{Project: models.Project{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}, Order: models.NullInt{99999, true}}},
-				models.ProjectAuthors{Project: models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}}},
-				models.ProjectAuthors{Project: models.Project{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{50470, true}, Description: models.NullString{"id not provided", true}}},
-				models.ProjectAuthors{Project: models.Project{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{61, true}, Slug: models.NullString{"sampleslug0002", true}, Status: models.NullInt{2, true}}},
-				models.ProjectAuthors{Project: models.Project{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}}},
+				models.ProjectAuthors{Project: models.Project{ID: 32767, Title: rrsql.NullString{"Modified", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{99999, true}}},
+				models.ProjectAuthors{Project: models.Project{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{60229, true}, Slug: rrsql.NullString{"sampleslug0001", true}, Status: rrsql.NullInt{2, true}}},
+				models.ProjectAuthors{Project: models.Project{ID: 32769, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{50470, true}, Description: rrsql.NullString{"id not provided", true}}},
+				models.ProjectAuthors{Project: models.Project{ID: 32233, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{61, true}, Slug: rrsql.NullString{"sampleslug0002", true}, Status: rrsql.NullInt{2, true}}},
+				models.ProjectAuthors{Project: models.Project{ID: 1, Title: rrsql.NullString{"Alpha", true}, Active: rrsql.NullInt{1, true}}},
 			}},
 			genericTestcase{"GetProjectMaxResultOK", "GET", "/project/list?max_result=1", ``, http.StatusOK, []models.ProjectAuthors{
-				models.ProjectAuthors{Project: models.Project{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}, Order: models.NullInt{99999, true}}},
+				models.ProjectAuthors{Project: models.Project{ID: 32767, Title: rrsql.NullString{"Modified", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{99999, true}}},
 			}},
 			genericTestcase{"GetProjectOffsetOK", "GET", "/project/list?max_result=1&page=2", ``, http.StatusOK, []models.ProjectAuthors{
-				models.ProjectAuthors{Project: models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}}},
+				models.ProjectAuthors{Project: models.Project{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{60229, true}, Slug: rrsql.NullString{"sampleslug0001", true}, Status: rrsql.NullInt{2, true}}},
 			}},
 			genericTestcase{"GetProjectWithIDsOK", "GET", `/project/list?ids=[1,32767]`, ``, http.StatusOK, []models.ProjectAuthors{
 				models.ProjectAuthors{
-					Project: models.Project{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}, Order: models.NullInt{99999, true}},
+					Project: models.Project{ID: 32767, Title: rrsql.NullString{"Modified", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{99999, true}},
 					Authors: []models.Stunt{models.Stunt{Nickname: mockProjectAuthors[0].Nickname}},
 				},
 				models.ProjectAuthors{
-					Project: models.Project{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}},
+					Project: models.Project{ID: 1, Title: rrsql.NullString{"Alpha", true}, Active: rrsql.NullInt{1, true}},
 					Authors: []models.Stunt{models.Stunt{Nickname: mockProjectAuthors[0].Nickname}, models.Stunt{Nickname: mockProjectAuthors[1].Nickname}},
 				},
 			}},
 			genericTestcase{"GetProjectWithIDsNotFound", "GET", "/project/list?ids=[9527]", ``, http.StatusOK, `{"_items":[]}`},
 			genericTestcase{"GetProjectWithSlugs", "GET", `/project/list?slugs=["sampleslug0001"]`, ``, http.StatusOK, []models.ProjectAuthors{
-				models.ProjectAuthors{Project: models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}}},
+				models.ProjectAuthors{Project: models.Project{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{60229, true}, Slug: rrsql.NullString{"sampleslug0001", true}, Status: rrsql.NullInt{2, true}}},
 			}},
 			genericTestcase{"GetProjectWithMultipleSlugs", "GET", `/project/list?slugs=["sampleslug0001","sampleslug0002"]`, ``, http.StatusOK, []models.ProjectAuthors{
-				models.ProjectAuthors{Project: models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}}},
-				models.ProjectAuthors{Project: models.Project{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{61, true}, Slug: models.NullString{"sampleslug0002", true}, Status: models.NullInt{2, true}}},
+				models.ProjectAuthors{Project: models.Project{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{60229, true}, Slug: rrsql.NullString{"sampleslug0001", true}, Status: rrsql.NullInt{2, true}}},
+				models.ProjectAuthors{Project: models.Project{ID: 32233, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{61, true}, Slug: rrsql.NullString{"sampleslug0002", true}, Status: rrsql.NullInt{2, true}}},
 			}},
 			genericTestcase{"GetProjectWithStatus", "GET", `/project/list?status={"$in":[2]}`, ``, http.StatusOK, []models.ProjectAuthors{
-				models.ProjectAuthors{Project: models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}}},
-				models.ProjectAuthors{Project: models.Project{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{61, true}, Slug: models.NullString{"sampleslug0002", true}, Status: models.NullInt{2, true}}},
+				models.ProjectAuthors{Project: models.Project{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{60229, true}, Slug: rrsql.NullString{"sampleslug0001", true}, Status: rrsql.NullInt{2, true}}},
+				models.ProjectAuthors{Project: models.Project{ID: 32233, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{61, true}, Slug: rrsql.NullString{"sampleslug0002", true}, Status: rrsql.NullInt{2, true}}},
 			}},
 			genericTestcase{"GetProjectWithPublishStatus", "GET", `/project/list?publish_status={"$in":[1]}`, ``, http.StatusOK, []models.ProjectAuthors{
-				models.ProjectAuthors{Project: models.Project{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}, PublishStatus: models.NullInt{1, true}}},
+				models.ProjectAuthors{Project: models.Project{ID: 1, Title: rrsql.NullString{"Alpha", true}, Active: rrsql.NullInt{1, true}, PublishStatus: rrsql.NullInt{1, true}}},
 			}},
 			genericTestcase{"GetProjectWithSorting", "GET", `/project/list?sort=project_id`, ``, http.StatusOK, []models.ProjectAuthors{
-				models.ProjectAuthors{Project: models.Project{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}}},
-				models.ProjectAuthors{Project: models.Project{ID: 32233, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{61, true}, Slug: models.NullString{"sampleslug0002", true}, Status: models.NullInt{2, true}}},
-				models.ProjectAuthors{Project: models.Project{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}, Order: models.NullInt{99999, true}}},
-				models.ProjectAuthors{Project: models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}}},
-				models.ProjectAuthors{Project: models.Project{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{50470, true}, Description: models.NullString{"id not provided", true}}},
+				models.ProjectAuthors{Project: models.Project{ID: 1, Title: rrsql.NullString{"Alpha", true}, Active: rrsql.NullInt{1, true}}},
+				models.ProjectAuthors{Project: models.Project{ID: 32233, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{61, true}, Slug: rrsql.NullString{"sampleslug0002", true}, Status: rrsql.NullInt{2, true}}},
+				models.ProjectAuthors{Project: models.Project{ID: 32767, Title: rrsql.NullString{"Modified", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{99999, true}}},
+				models.ProjectAuthors{Project: models.Project{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{60229, true}, Slug: rrsql.NullString{"sampleslug0001", true}, Status: rrsql.NullInt{2, true}}},
+				models.ProjectAuthors{Project: models.Project{ID: 32769, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{50470, true}, Description: rrsql.NullString{"id not provided", true}}},
 			}},
 			genericTestcase{"GetProjectKeywordMatchTitle", "GET", `/project/list?keyword=no&active={"$in":[0,1]}`, ``, http.StatusOK, []models.ProjectAuthors{
-				models.ProjectAuthors{Project: models.Project{ID: 32234, Title: models.NullString{"nonActive", true}, Active: models.NullInt{0, true}, Order: models.NullInt{60, true}}},
+				models.ProjectAuthors{Project: models.Project{ID: 32234, Title: rrsql.NullString{"nonActive", true}, Active: rrsql.NullInt{0, true}, Order: rrsql.NullInt{60, true}}},
 			}},
 			genericTestcase{"GetProjectKeywordMatchID", "GET", `/project/list?keyword=327`, ``, http.StatusOK, []models.ProjectAuthors{
-				models.ProjectAuthors{Project: models.Project{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}, Order: models.NullInt{99999, true}}},
-				models.ProjectAuthors{Project: models.Project{ID: 32768, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{60229, true}, Slug: models.NullString{"sampleslug0001", true}, Status: models.NullInt{2, true}}},
-				models.ProjectAuthors{Project: models.Project{ID: 32769, Title: models.NullString{"OK", true}, Active: models.NullInt{1, true}, Order: models.NullInt{50470, true}, Description: models.NullString{"id not provided", true}}},
+				models.ProjectAuthors{Project: models.Project{ID: 32767, Title: rrsql.NullString{"Modified", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{99999, true}}},
+				models.ProjectAuthors{Project: models.Project{ID: 32768, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{60229, true}, Slug: rrsql.NullString{"sampleslug0001", true}, Status: rrsql.NullInt{2, true}}},
+				models.ProjectAuthors{Project: models.Project{ID: 32769, Title: rrsql.NullString{"OK", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{50470, true}, Description: rrsql.NullString{"id not provided", true}}},
 			}},
 			genericTestcase{"GetProjectCount", "GET", `/project/count`, ``, http.StatusOK, `{"_meta":{"total":5}}`},
 			genericTestcase{"GetProjectWithAuthorsFieldsSet", "GET", `/project/list?ids=[1,32767]&fields=["id","nickname"]`, ``, http.StatusOK, []models.ProjectAuthors{
 				models.ProjectAuthors{
-					Project: models.Project{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}, Order: models.NullInt{99999, true}},
+					Project: models.Project{ID: 32767, Title: rrsql.NullString{"Modified", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{99999, true}},
 					Authors: []models.Stunt{models.Stunt{ID: mockProjectAuthors[0].ID, Nickname: mockProjectAuthors[0].Nickname}},
 				},
 				models.ProjectAuthors{
-					Project: models.Project{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}},
+					Project: models.Project{ID: 1, Title: rrsql.NullString{"Alpha", true}, Active: rrsql.NullInt{1, true}},
 					Authors: []models.Stunt{models.Stunt{ID: mockProjectAuthors[0].ID, Nickname: mockProjectAuthors[0].Nickname}, models.Stunt{ID: mockProjectAuthors[1].ID, Nickname: mockProjectAuthors[1].Nickname}},
 				},
 			}},
 			genericTestcase{"GetProjectWithAuthorsFull", "GET", `/project/list?ids=[1,32767]&mode=full`, ``, http.StatusOK, []models.ProjectAuthors{
 				models.ProjectAuthors{
-					Project: models.Project{ID: 32767, Title: models.NullString{"Modified", true}, Active: models.NullInt{1, true}, Order: models.NullInt{99999, true}},
+					Project: models.Project{ID: 32767, Title: rrsql.NullString{"Modified", true}, Active: rrsql.NullInt{1, true}, Order: rrsql.NullInt{99999, true}},
 					Authors: []models.Stunt{mockProjectAuthors[0]},
 				},
 				models.ProjectAuthors{
-					Project: models.Project{ID: 1, Title: models.NullString{"Alpha", true}, Active: models.NullInt{1, true}},
+					Project: models.Project{ID: 1, Title: rrsql.NullString{"Alpha", true}, Active: rrsql.NullInt{1, true}},
 					Authors: []models.Stunt{mockProjectAuthors[0], mockProjectAuthors[1]},
 				},
 			}},

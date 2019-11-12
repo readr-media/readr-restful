@@ -15,6 +15,7 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/utils"
 	"gopkg.in/gomail.v2"
@@ -381,7 +382,7 @@ OLP:
 func (m *mailApi) getDailyReport() (reports []dailyReport, err error) {
 
 	query := fmt.Sprintf("SELECT post_id, title, hero_image, content, slug FROM posts WHERE published_at > (NOW() - INTERVAL 1 DAY) AND active = %d AND publish_status = %d AND type = %d;", config.Config.Models.Reports["active"], config.Config.Models.ReportsPublishStatus["publish"], config.Config.Models.PostType["report"])
-	rows, err := models.DB.Queryx(query)
+	rows, err := rrsql.DB.Queryx(query)
 	if err != nil {
 		return nil, errors.New("Get Daily Report Error")
 	}
@@ -400,7 +401,7 @@ func (m *mailApi) getDailyReport() (reports []dailyReport, err error) {
 func (m *mailApi) getDailyMemo() (memos []dailyMemo, err error) {
 
 	query := fmt.Sprintf("SELECT p.post_id AS id, p.title AS title, p.content AS content, p.slug AS slug, e.id AS author_id, e.nickname AS author, e.profile_image AS image FROM posts AS p LEFT JOIN members AS e ON p.author = e.id WHERE p.published_at > (NOW() - INTERVAL 1 DAY) AND p.active = %d AND p.publish_status = %d AND p.type = %d;", config.Config.Models.Posts["active"], config.Config.Models.PostPublishStatus["publish"], config.Config.Models.PostType["memo"])
-	rows, err := models.DB.Queryx(query)
+	rows, err := rrsql.DB.Queryx(query)
 	if err != nil {
 		return nil, errors.New("Get Daily Memo Error")
 	}
@@ -434,7 +435,7 @@ func (m *mailApi) getDailyPost() (posts []dailyPost, err error) {
 		config.Config.Models.PostPublishStatus["publish"],
 		config.Config.Models.PostType["review"],
 		config.Config.Models.PostType["news"])
-	rows, err := models.DB.Queryx(query)
+	rows, err := rrsql.DB.Queryx(query)
 	if err != nil {
 		return nil, errors.New("Get Daily Post Error")
 	}
@@ -482,11 +483,11 @@ func (m *mailApi) getMailingList(listArgs ...interface{}) (list []mailReceiver, 
 			return list, err
 		}
 
-		query = models.DB.Rebind(query)
-		rows, err = models.DB.Queryx(query, args...)
+		query = rrsql.DB.Rebind(query)
+		rows, err = rrsql.DB.Queryx(query, args...)
 	} else {
 		query := fmt.Sprintf("SELECT mail, role FROM members WHERE active = %d AND daily_push = %d", config.Config.Models.Members["active"], config.Config.Models.MemberDailyPush["active"])
-		rows, err = models.DB.Queryx(query)
+		rows, err = rrsql.DB.Queryx(query)
 	}
 	for rows.Next() {
 		var receiver mailReceiver
@@ -779,7 +780,7 @@ func (m *mailApi) getProjectFollowerMailList(id int) (receiveres []mailReceiver,
 		config.Config.Models.FollowingType["project"], 0,
 		id)
 
-	rows, err := models.DB.Queryx(query)
+	rows, err := rrsql.DB.Queryx(query)
 	if err != nil {
 		log.Printf("Get followers of project %d error when SendProjectUpdateMail", id)
 		return receiveres, err

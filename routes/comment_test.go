@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -24,12 +25,12 @@ type mockCommentAPI struct{}
 func (c *mockCommentAPI) GetComments(args *models.GetCommentArgs) (result []models.CommentAuthor, err error) {
 
 	var mockCommentResult = []models.CommentAuthor{
-		// models.CommentAuthor{models.Comment{ID: 1, Body: models.NullString{"Comment No.1", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{91, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}}, models.NullString{"commenttest1", true}, models.NullString{"", false}, models.NullInt{0, false}, models.NullInt{0, false}},
-		// models.CommentAuthor{models.Comment{ID: 2, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"http://dev.readr.tw/post/91", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}}, models.NullString{"commenttest2", true}, models.NullString{"", true}, models.NullInt{0, false}, models.NullInt{0, false}},
-		// models.CommentAuthor{models.Comment{ID: 3, Body: models.NullString{"Comment No.3", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, Status: models.NullInt{int64(models.CommentStatus["hide"].(float64)), true}}, models.NullString{"commenttest2", true}, models.NullString{"", true}, models.NullInt{0, false}, models.NullInt{0, false}},
-		models.CommentAuthor{models.Comment{ID: 1, Body: models.NullString{"Comment No.1", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{91, true}, Active: models.NullInt{int64(config.Config.Models.Comment["active"]), true}}, models.NullString{"commenttest1", true}, models.NullString{"", false}, models.NullInt{0, false}, models.NullInt{0, false}},
-		models.CommentAuthor{models.Comment{ID: 2, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"http://dev.readr.tw/post/91", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(config.Config.Models.Comment["active"]), true}}, models.NullString{"commenttest2", true}, models.NullString{"", true}, models.NullInt{0, false}, models.NullInt{0, false}},
-		models.CommentAuthor{models.Comment{ID: 3, Body: models.NullString{"Comment No.3", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(config.Config.Models.Comment["active"]), true}, Status: models.NullInt{int64(config.Config.Models.CommentStatus["hide"]), true}}, models.NullString{"commenttest2", true}, models.NullString{"", true}, models.NullInt{0, false}, models.NullInt{0, false}},
+		// models.CommentAuthor{models.Comment{ID: 1, Body: rrsql.NullString{"Comment No.1", true}, Resource: rrsql.NullString{"http://dev.readr.tw/post/90", true}, Author: rrsql.NullInt{91, true}, Active: rrsql.NullInt{int64(models.CommentActive["active"].(float64)), true}}, rrsql.NullString{"commenttest1", true}, rrsql.NullString{"", false}, rrsql.NullInt{0, false}, rrsql.NullInt{0, false}},
+		// models.CommentAuthor{models.Comment{ID: 2, Body: rrsql.NullString{"Comment No.2", true}, Resource: rrsql.NullString{"http://dev.readr.tw/post/91", true}, Author: rrsql.NullInt{92, true}, Active: rrsql.NullInt{int64(models.CommentActive["active"].(float64)), true}}, rrsql.NullString{"commenttest2", true}, rrsql.NullString{"", true}, rrsql.NullInt{0, false}, rrsql.NullInt{0, false}},
+		// models.CommentAuthor{models.Comment{ID: 3, Body: rrsql.NullString{"Comment No.3", true}, Resource: rrsql.NullString{"http://dev.readr.tw/post/90", true}, Author: rrsql.NullInt{92, true}, Active: rrsql.NullInt{int64(models.CommentActive["active"].(float64)), true}, Status: rrsql.NullInt{int64(models.CommentStatus["hide"].(float64)), true}}, rrsql.NullString{"commenttest2", true}, rrsql.NullString{"", true}, rrsql.NullInt{0, false}, rrsql.NullInt{0, false}},
+		models.CommentAuthor{models.Comment{ID: 1, Body: rrsql.NullString{"Comment No.1", true}, Resource: rrsql.NullString{"http://dev.readr.tw/post/90", true}, Author: rrsql.NullInt{91, true}, Active: rrsql.NullInt{int64(config.Config.Models.Comment["active"]), true}}, rrsql.NullString{"commenttest1", true}, rrsql.NullString{"", false}, rrsql.NullInt{0, false}, rrsql.NullInt{0, false}},
+		models.CommentAuthor{models.Comment{ID: 2, Body: rrsql.NullString{"Comment No.2", true}, Resource: rrsql.NullString{"http://dev.readr.tw/post/91", true}, Author: rrsql.NullInt{92, true}, Active: rrsql.NullInt{int64(config.Config.Models.Comment["active"]), true}}, rrsql.NullString{"commenttest2", true}, rrsql.NullString{"", true}, rrsql.NullInt{0, false}, rrsql.NullInt{0, false}},
+		models.CommentAuthor{models.Comment{ID: 3, Body: rrsql.NullString{"Comment No.3", true}, Resource: rrsql.NullString{"http://dev.readr.tw/post/90", true}, Author: rrsql.NullInt{92, true}, Active: rrsql.NullInt{int64(config.Config.Models.Comment["active"]), true}, Status: rrsql.NullInt{int64(config.Config.Models.CommentStatus["hide"]), true}}, rrsql.NullString{"commenttest2", true}, rrsql.NullString{"", true}, rrsql.NullInt{0, false}, rrsql.NullInt{0, false}},
 	}
 
 	switch len(args.Author) {
@@ -45,8 +46,8 @@ func (c *mockCommentAPI) GetComments(args *models.GetCommentArgs) (result []mode
 
 func (c *mockCommentAPI) GetComment(id int) (comment models.CommentAuthor, err error) {
 	if id == 1 {
-		// return models.CommentAuthor{models.Comment{ID: 1, Body: models.NullString{"Comment No.1", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{91, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}}, models.NullString{"commenttest1", true}, models.NullString{"pi1", true}, models.NullInt{2, true}, models.NullInt{0, true}}, nil
-		return models.CommentAuthor{models.Comment{ID: 1, Body: models.NullString{"Comment No.1", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{91, true}, Active: models.NullInt{int64(config.Config.Models.Comment["active"]), true}}, models.NullString{"commenttest1", true}, models.NullString{"pi1", true}, models.NullInt{2, true}, models.NullInt{0, true}}, nil
+		// return models.CommentAuthor{models.Comment{ID: 1, Body: rrsql.NullString{"Comment No.1", true}, Resource: rrsql.NullString{"http://dev.readr.tw/post/90", true}, Author: rrsql.NullInt{91, true}, Active: rrsql.NullInt{int64(models.CommentActive["active"].(float64)), true}}, rrsql.NullString{"commenttest1", true}, rrsql.NullString{"pi1", true}, rrsql.NullInt{2, true}, rrsql.NullInt{0, true}}, nil
+		return models.CommentAuthor{models.Comment{ID: 1, Body: rrsql.NullString{"Comment No.1", true}, Resource: rrsql.NullString{"http://dev.readr.tw/post/90", true}, Author: rrsql.NullInt{91, true}, Active: rrsql.NullInt{int64(config.Config.Models.Comment["active"]), true}}, rrsql.NullString{"commenttest1", true}, rrsql.NullString{"pi1", true}, rrsql.NullInt{2, true}, rrsql.NullInt{0, true}}, nil
 	} else {
 		return comment, errors.New("Comment Not Found")
 	}
@@ -60,17 +61,17 @@ func (c *mockCommentAPI) UpdateComments(req models.CommentUpdateArgs) (err error
 func (c *mockCommentAPI) GetReportedComments(args *models.GetReportedCommentArgs) (result []models.ReportedCommentAuthor, err error) {
 
 	var mockCommentResult = []models.CommentAuthor{
-		// models.CommentAuthor{models.Comment{ID: 1, Body: models.NullString{"Comment No.1", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{91, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}}, models.NullString{"commenttest1", true}, models.NullString{"", false}, models.NullInt{0, false}, models.NullInt{0, false}},
-		// models.CommentAuthor{models.Comment{ID: 2, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"http://dev.readr.tw/post/91", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, IP: models.NullString{"5.6.7.8", true}}, models.NullString{"commenttest2", true}, models.NullString{"pi2", true}, models.NullInt{3, true}, models.NullInt{0, true}},
-		// models.CommentAuthor{models.Comment{ID: 3, Body: models.NullString{"Comment No.3", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, Status: models.NullInt{int64(models.CommentStatus["hide"].(float64)), true}}, models.NullString{"commenttest2", true}, models.NullString{"", true}, models.NullInt{0, false}, models.NullInt{0, false}},
-		models.CommentAuthor{models.Comment{ID: 1, Body: models.NullString{"Comment No.1", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{91, true}, Active: models.NullInt{int64(config.Config.Models.Comment["active"]), true}}, models.NullString{"commenttest1", true}, models.NullString{"", false}, models.NullInt{0, false}, models.NullInt{0, false}},
-		models.CommentAuthor{models.Comment{ID: 2, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"http://dev.readr.tw/post/91", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(config.Config.Models.Comment["active"]), true}, IP: models.NullString{"5.6.7.8", true}}, models.NullString{"commenttest2", true}, models.NullString{"pi2", true}, models.NullInt{3, true}, models.NullInt{0, true}},
-		models.CommentAuthor{models.Comment{ID: 3, Body: models.NullString{"Comment No.3", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(config.Config.Models.Comment["active"]), true}, Status: models.NullInt{int64(config.Config.Models.CommentStatus["hide"]), true}}, models.NullString{"commenttest2", true}, models.NullString{"", true}, models.NullInt{0, false}, models.NullInt{0, false}},
+		// models.CommentAuthor{models.Comment{ID: 1, Body: rrsql.NullString{"Comment No.1", true}, Resource: rrsql.NullString{"http://dev.readr.tw/post/90", true}, Author: rrsql.NullInt{91, true}, Active: rrsql.NullInt{int64(models.CommentActive["active"].(float64)), true}}, rrsql.NullString{"commenttest1", true}, rrsql.NullString{"", false}, rrsql.NullInt{0, false}, rrsql.NullInt{0, false}},
+		// models.CommentAuthor{models.Comment{ID: 2, Body: rrsql.NullString{"Comment No.2", true}, Resource: rrsql.NullString{"http://dev.readr.tw/post/91", true}, Author: rrsql.NullInt{92, true}, Active: rrsql.NullInt{int64(models.CommentActive["active"].(float64)), true}, IP: rrsql.NullString{"5.6.7.8", true}}, rrsql.NullString{"commenttest2", true}, rrsql.NullString{"pi2", true}, rrsql.NullInt{3, true}, rrsql.NullInt{0, true}},
+		// models.CommentAuthor{models.Comment{ID: 3, Body: rrsql.NullString{"Comment No.3", true}, Resource: rrsql.NullString{"http://dev.readr.tw/post/90", true}, Author: rrsql.NullInt{92, true}, Active: rrsql.NullInt{int64(models.CommentActive["active"].(float64)), true}, Status: rrsql.NullInt{int64(models.CommentStatus["hide"].(float64)), true}}, rrsql.NullString{"commenttest2", true}, rrsql.NullString{"", true}, rrsql.NullInt{0, false}, rrsql.NullInt{0, false}},
+		models.CommentAuthor{models.Comment{ID: 1, Body: rrsql.NullString{"Comment No.1", true}, Resource: rrsql.NullString{"http://dev.readr.tw/post/90", true}, Author: rrsql.NullInt{91, true}, Active: rrsql.NullInt{int64(config.Config.Models.Comment["active"]), true}}, rrsql.NullString{"commenttest1", true}, rrsql.NullString{"", false}, rrsql.NullInt{0, false}, rrsql.NullInt{0, false}},
+		models.CommentAuthor{models.Comment{ID: 2, Body: rrsql.NullString{"Comment No.2", true}, Resource: rrsql.NullString{"http://dev.readr.tw/post/91", true}, Author: rrsql.NullInt{92, true}, Active: rrsql.NullInt{int64(config.Config.Models.Comment["active"]), true}, IP: rrsql.NullString{"5.6.7.8", true}}, rrsql.NullString{"commenttest2", true}, rrsql.NullString{"pi2", true}, rrsql.NullInt{3, true}, rrsql.NullInt{0, true}},
+		models.CommentAuthor{models.Comment{ID: 3, Body: rrsql.NullString{"Comment No.3", true}, Resource: rrsql.NullString{"http://dev.readr.tw/post/90", true}, Author: rrsql.NullInt{92, true}, Active: rrsql.NullInt{int64(config.Config.Models.Comment["active"]), true}, Status: rrsql.NullInt{int64(config.Config.Models.CommentStatus["hide"]), true}}, rrsql.NullString{"commenttest2", true}, rrsql.NullString{"", true}, rrsql.NullInt{0, false}, rrsql.NullInt{0, false}},
 	}
 
 	var mockReports = []models.ReportedComment{
-		models.ReportedComment{ID: 1, CommentID: models.NullInt{2, true}, Reporter: models.NullInt{92, true}, IP: models.NullString{"1.2.3.4", true}},
-		models.ReportedComment{ID: 2, CommentID: models.NullInt{2, true}, Reporter: models.NullInt{90, true}},
+		models.ReportedComment{ID: 1, CommentID: rrsql.NullInt{2, true}, Reporter: rrsql.NullInt{92, true}, IP: rrsql.NullString{"1.2.3.4", true}},
+		models.ReportedComment{ID: 2, CommentID: rrsql.NullInt{2, true}, Reporter: rrsql.NullInt{90, true}},
 	}
 
 	switch len(args.Reporter) {
@@ -81,8 +82,8 @@ func (c *mockCommentAPI) GetReportedComments(args *models.GetReportedCommentArgs
 	case 0:
 		result = append(result, models.ReportedCommentAuthor{Comment: mockCommentResult[1], Report: mockReports[0]})
 		result = append(result, models.ReportedCommentAuthor{Comment: mockCommentResult[1], Report: mockReports[1]})
-		//result = append(result, models.ReportedCommentAuthor{models.CommentAuthor{models.Comment{ID: 2, Author: 92, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"http://dev.readr.tw/post/91", true}, Active: models.NullInt{1, true}}, "commenttest2", "pi2", 3, 0}, models.NullString{"", false}, 0, 92, models.NullInt{0, false}})
-		//result = append(result, models.ReportedCommentAuthor{models.CommentAuthor{models.Comment{ID: 2, Author: 92, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"http://dev.readr.tw/post/91", true}, Active: models.NullInt{1, true}}, "commenttest2", "pi2", 3, 0}, models.NullString{"", false}, 0, 90, models.NullInt{0, false}})
+		//result = append(result, models.ReportedCommentAuthor{models.CommentAuthor{models.Comment{ID: 2, Author: 92, Body: rrsql.NullString{"Comment No.2", true}, Resource: rrsql.NullString{"http://dev.readr.tw/post/91", true}, Active: rrsql.NullInt{1, true}}, "commenttest2", "pi2", 3, 0}, rrsql.NullString{"", false}, 0, 92, rrsql.NullInt{0, false}})
+		//result = append(result, models.ReportedCommentAuthor{models.CommentAuthor{models.Comment{ID: 2, Author: 92, Body: rrsql.NullString{"Comment No.2", true}, Resource: rrsql.NullString{"http://dev.readr.tw/post/91", true}, Active: rrsql.NullInt{1, true}}, "commenttest2", "pi2", 3, 0}, rrsql.NullString{"", false}, 0, 90, rrsql.NullInt{0, false}})
 		return result, err
 	}
 	return result, err
@@ -101,32 +102,32 @@ func (c *mockCommentAPI) UpdateAllCommentAmount() (err error) { return err }
 func TestRouteComments(t *testing.T) {
 
 	var mockComments = []models.InsertCommentArgs{
-		// models.InsertCommentArgs{ID: 1, Body: models.NullString{"Comment No.1", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{91, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, ResourceName: models.NullString{"post", true}, ResourceID: models.NullInt{90, true}},
-		// models.InsertCommentArgs{ID: 2, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"http://dev.readr.tw/post/91", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, IP: models.NullString{"5.6.7.8", true}, ResourceName: models.NullString{"post", true}, ResourceID: models.NullInt{91, true}},
-		// models.InsertCommentArgs{ID: 3, Body: models.NullString{"Comment No.3", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, Status: models.NullInt{int64(models.CommentStatus["hide"].(float64)), true}, ResourceName: models.NullString{"post", true}, ResourceID: models.NullInt{90, true}},
-		models.InsertCommentArgs{ID: 1, Body: models.NullString{"Comment No.1", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{91, true}, Active: models.NullInt{int64(config.Config.Models.Comment["active"]), true}, ResourceName: models.NullString{"post", true}, ResourceID: models.NullInt{90, true}},
-		models.InsertCommentArgs{ID: 2, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"http://dev.readr.tw/post/91", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(config.Config.Models.Comment["active"]), true}, IP: models.NullString{"5.6.7.8", true}, ResourceName: models.NullString{"post", true}, ResourceID: models.NullInt{91, true}},
-		models.InsertCommentArgs{ID: 3, Body: models.NullString{"Comment No.3", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(config.Config.Models.Comment["active"]), true}, Status: models.NullInt{int64(config.Config.Models.CommentStatus["hide"]), true}, ResourceName: models.NullString{"post", true}, ResourceID: models.NullInt{90, true}},
+		// models.InsertCommentArgs{ID: 1, Body: rrsql.NullString{"Comment No.1", true}, Resource: rrsql.NullString{"http://dev.readr.tw/post/90", true}, Author: rrsql.NullInt{91, true}, Active: rrsql.NullInt{int64(models.CommentActive["active"].(float64)), true}, ResourceName: rrsql.NullString{"post", true}, ResourceID: rrsql.NullInt{90, true}},
+		// models.InsertCommentArgs{ID: 2, Body: rrsql.NullString{"Comment No.2", true}, Resource: rrsql.NullString{"http://dev.readr.tw/post/91", true}, Author: rrsql.NullInt{92, true}, Active: rrsql.NullInt{int64(models.CommentActive["active"].(float64)), true}, IP: rrsql.NullString{"5.6.7.8", true}, ResourceName: rrsql.NullString{"post", true}, ResourceID: rrsql.NullInt{91, true}},
+		// models.InsertCommentArgs{ID: 3, Body: rrsql.NullString{"Comment No.3", true}, Resource: rrsql.NullString{"http://dev.readr.tw/post/90", true}, Author: rrsql.NullInt{92, true}, Active: rrsql.NullInt{int64(models.CommentActive["active"].(float64)), true}, Status: rrsql.NullInt{int64(models.CommentStatus["hide"].(float64)), true}, ResourceName: rrsql.NullString{"post", true}, ResourceID: rrsql.NullInt{90, true}},
+		models.InsertCommentArgs{ID: 1, Body: rrsql.NullString{"Comment No.1", true}, Resource: rrsql.NullString{"http://dev.readr.tw/post/90", true}, Author: rrsql.NullInt{91, true}, Active: rrsql.NullInt{int64(config.Config.Models.Comment["active"]), true}, ResourceName: rrsql.NullString{"post", true}, ResourceID: rrsql.NullInt{90, true}},
+		models.InsertCommentArgs{ID: 2, Body: rrsql.NullString{"Comment No.2", true}, Resource: rrsql.NullString{"http://dev.readr.tw/post/91", true}, Author: rrsql.NullInt{92, true}, Active: rrsql.NullInt{int64(config.Config.Models.Comment["active"]), true}, IP: rrsql.NullString{"5.6.7.8", true}, ResourceName: rrsql.NullString{"post", true}, ResourceID: rrsql.NullInt{91, true}},
+		models.InsertCommentArgs{ID: 3, Body: rrsql.NullString{"Comment No.3", true}, Resource: rrsql.NullString{"http://dev.readr.tw/post/90", true}, Author: rrsql.NullInt{92, true}, Active: rrsql.NullInt{int64(config.Config.Models.Comment["active"]), true}, Status: rrsql.NullInt{int64(config.Config.Models.CommentStatus["hide"]), true}, ResourceName: rrsql.NullString{"post", true}, ResourceID: rrsql.NullInt{90, true}},
 	}
 
 	var mockCommentResult = []models.CommentAuthor{
-		// models.CommentAuthor{models.Comment{ID: 1, Body: models.NullString{"Comment No.1", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{91, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}}, models.NullString{"commenttest1", true}, models.NullString{"", false}, models.NullInt{0, false}, models.NullInt{0, false}},
-		// models.CommentAuthor{models.Comment{ID: 2, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"http://dev.readr.tw/post/91", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}}, models.NullString{"commenttest2", true}, models.NullString{"", false}, models.NullInt{0, false}, models.NullInt{0, false}},
-		// models.CommentAuthor{models.Comment{ID: 3, Body: models.NullString{"Comment No.3", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(models.CommentActive["active"].(float64)), true}, Status: models.NullInt{int64(models.CommentStatus["hide"].(float64)), true}}, models.NullString{"commenttest2", true}, models.NullString{"", false}, models.NullInt{0, false}, models.NullInt{0, false}},
-		models.CommentAuthor{models.Comment{ID: 1, Body: models.NullString{"Comment No.1", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{91, true}, Active: models.NullInt{int64(config.Config.Models.Comment["active"]), true}}, models.NullString{"commenttest1", true}, models.NullString{"", false}, models.NullInt{0, false}, models.NullInt{0, false}},
-		models.CommentAuthor{models.Comment{ID: 2, Body: models.NullString{"Comment No.2", true}, Resource: models.NullString{"http://dev.readr.tw/post/91", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(config.Config.Models.Comment["active"]), true}}, models.NullString{"commenttest2", true}, models.NullString{"", false}, models.NullInt{0, false}, models.NullInt{0, false}},
-		models.CommentAuthor{models.Comment{ID: 3, Body: models.NullString{"Comment No.3", true}, Resource: models.NullString{"http://dev.readr.tw/post/90", true}, Author: models.NullInt{92, true}, Active: models.NullInt{int64(config.Config.Models.Comment["active"]), true}, Status: models.NullInt{int64(config.Config.Models.CommentStatus["hide"]), true}}, models.NullString{"commenttest2", true}, models.NullString{"", false}, models.NullInt{0, false}, models.NullInt{0, false}},
+		// models.CommentAuthor{models.Comment{ID: 1, Body: rrsql.NullString{"Comment No.1", true}, Resource: rrsql.NullString{"http://dev.readr.tw/post/90", true}, Author: rrsql.NullInt{91, true}, Active: rrsql.NullInt{int64(models.CommentActive["active"].(float64)), true}}, rrsql.NullString{"commenttest1", true}, rrsql.NullString{"", false}, rrsql.NullInt{0, false}, rrsql.NullInt{0, false}},
+		// models.CommentAuthor{models.Comment{ID: 2, Body: rrsql.NullString{"Comment No.2", true}, Resource: rrsql.NullString{"http://dev.readr.tw/post/91", true}, Author: rrsql.NullInt{92, true}, Active: rrsql.NullInt{int64(models.CommentActive["active"].(float64)), true}}, rrsql.NullString{"commenttest2", true}, rrsql.NullString{"", false}, rrsql.NullInt{0, false}, rrsql.NullInt{0, false}},
+		// models.CommentAuthor{models.Comment{ID: 3, Body: rrsql.NullString{"Comment No.3", true}, Resource: rrsql.NullString{"http://dev.readr.tw/post/90", true}, Author: rrsql.NullInt{92, true}, Active: rrsql.NullInt{int64(models.CommentActive["active"].(float64)), true}, Status: rrsql.NullInt{int64(models.CommentStatus["hide"].(float64)), true}}, rrsql.NullString{"commenttest2", true}, rrsql.NullString{"", false}, rrsql.NullInt{0, false}, rrsql.NullInt{0, false}},
+		models.CommentAuthor{models.Comment{ID: 1, Body: rrsql.NullString{"Comment No.1", true}, Resource: rrsql.NullString{"http://dev.readr.tw/post/90", true}, Author: rrsql.NullInt{91, true}, Active: rrsql.NullInt{int64(config.Config.Models.Comment["active"]), true}}, rrsql.NullString{"commenttest1", true}, rrsql.NullString{"", false}, rrsql.NullInt{0, false}, rrsql.NullInt{0, false}},
+		models.CommentAuthor{models.Comment{ID: 2, Body: rrsql.NullString{"Comment No.2", true}, Resource: rrsql.NullString{"http://dev.readr.tw/post/91", true}, Author: rrsql.NullInt{92, true}, Active: rrsql.NullInt{int64(config.Config.Models.Comment["active"]), true}}, rrsql.NullString{"commenttest2", true}, rrsql.NullString{"", false}, rrsql.NullInt{0, false}, rrsql.NullInt{0, false}},
+		models.CommentAuthor{models.Comment{ID: 3, Body: rrsql.NullString{"Comment No.3", true}, Resource: rrsql.NullString{"http://dev.readr.tw/post/90", true}, Author: rrsql.NullInt{92, true}, Active: rrsql.NullInt{int64(config.Config.Models.Comment["active"]), true}, Status: rrsql.NullInt{int64(config.Config.Models.CommentStatus["hide"]), true}}, rrsql.NullString{"commenttest2", true}, rrsql.NullString{"", false}, rrsql.NullInt{0, false}, rrsql.NullInt{0, false}},
 	}
 
 	var mockReports = []models.ReportedComment{
-		models.ReportedComment{ID: 1, CommentID: models.NullInt{2, true}, Reporter: models.NullInt{92, true}, IP: models.NullString{"1.2.3.4", true}},
-		models.ReportedComment{ID: 2, CommentID: models.NullInt{2, true}, Reporter: models.NullInt{90, true}},
+		models.ReportedComment{ID: 1, CommentID: rrsql.NullInt{2, true}, Reporter: rrsql.NullInt{92, true}, IP: rrsql.NullString{"1.2.3.4", true}},
+		models.ReportedComment{ID: 2, CommentID: rrsql.NullInt{2, true}, Reporter: rrsql.NullInt{90, true}},
 	}
 
 	for _, params := range []models.Member{
-		models.Member{ID: 90, MemberID: "commenttest0@mirrormedia.mg", Active: models.NullInt{1, true}, Role: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2010, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"commenttest0@mirrormedia.mg", true}, Points: models.NullInt{0, true}, TalkID: models.NullString{"abc1d5b1-da54-4200-b90e-f06e59fd9487", true}, ProfileImage: models.NullString{"pi0", true}, Nickname: models.NullString{"commenttest0", true}, UUID: "abc1d5b1-da54-4200-b90e-f06e59fd9487"},
-		models.Member{ID: 91, MemberID: "commenttest1@mirrormedia.mg", Active: models.NullInt{1, true}, Role: models.NullInt{2, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2011, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"commenttest1@mirrormedia.mg", true}, Points: models.NullInt{0, true}, TalkID: models.NullString{"abc1d5b1-da54-4200-b91e-f06e59fd9487", true}, ProfileImage: models.NullString{"pi1", true}, Nickname: models.NullString{"commenttest1", true}, UUID: "abc1d5b1-da54-4200-b91e-f06e59fd9487"},
-		models.Member{ID: 92, MemberID: "commenttest2@mirrormedia.mg", Active: models.NullInt{1, true}, Role: models.NullInt{3, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2012, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"commenttest2@mirrormedia.mg", true}, Points: models.NullInt{0, true}, TalkID: models.NullString{"abc1d5b1-da54-4200-b92e-f06e59fd9487", true}, ProfileImage: models.NullString{"pi2", true}, Nickname: models.NullString{"commenttest2", true}, UUID: "abc1d5b1-da54-4200-b92e-f06e59fd9487"},
+		models.Member{ID: 90, MemberID: "commenttest0@mirrormedia.mg", Active: rrsql.NullInt{1, true}, Role: rrsql.NullInt{1, true}, PostPush: rrsql.NullBool{true, true}, UpdatedAt: rrsql.NullTime{time.Date(2010, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: rrsql.NullString{"commenttest0@mirrormedia.mg", true}, Points: rrsql.NullInt{0, true}, TalkID: rrsql.NullString{"abc1d5b1-da54-4200-b90e-f06e59fd9487", true}, ProfileImage: rrsql.NullString{"pi0", true}, Nickname: rrsql.NullString{"commenttest0", true}, UUID: "abc1d5b1-da54-4200-b90e-f06e59fd9487"},
+		models.Member{ID: 91, MemberID: "commenttest1@mirrormedia.mg", Active: rrsql.NullInt{1, true}, Role: rrsql.NullInt{2, true}, PostPush: rrsql.NullBool{true, true}, UpdatedAt: rrsql.NullTime{time.Date(2011, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: rrsql.NullString{"commenttest1@mirrormedia.mg", true}, Points: rrsql.NullInt{0, true}, TalkID: rrsql.NullString{"abc1d5b1-da54-4200-b91e-f06e59fd9487", true}, ProfileImage: rrsql.NullString{"pi1", true}, Nickname: rrsql.NullString{"commenttest1", true}, UUID: "abc1d5b1-da54-4200-b91e-f06e59fd9487"},
+		models.Member{ID: 92, MemberID: "commenttest2@mirrormedia.mg", Active: rrsql.NullInt{1, true}, Role: rrsql.NullInt{3, true}, PostPush: rrsql.NullBool{true, true}, UpdatedAt: rrsql.NullTime{time.Date(2012, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: rrsql.NullString{"commenttest2@mirrormedia.mg", true}, Points: rrsql.NullInt{0, true}, TalkID: rrsql.NullString{"abc1d5b1-da54-4200-b92e-f06e59fd9487", true}, ProfileImage: rrsql.NullString{"pi2", true}, Nickname: rrsql.NullString{"commenttest2", true}, UUID: "abc1d5b1-da54-4200-b92e-f06e59fd9487"},
 	} {
 		_, err := models.MemberAPI.InsertMember(params)
 		if err != nil {
@@ -135,19 +136,19 @@ func TestRouteComments(t *testing.T) {
 	}
 
 	for _, params := range []models.Post{
-		models.Post{ID: 90, Active: models.NullInt{1, true}, Type: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: models.NullInt{90, true}, PublishStatus: models.NullInt{2, true}},
-		models.Post{ID: 91, Active: models.NullInt{1, true}, Type: models.NullInt{0, true}, UpdatedAt: models.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: models.NullInt{91, true}, PublishStatus: models.NullInt{2, true}},
-		models.Post{ID: 92, Active: models.NullInt{1, true}, Type: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: models.NullInt{92, true}, PublishStatus: models.NullInt{2, true}},
+		models.Post{ID: 90, Active: rrsql.NullInt{1, true}, Type: rrsql.NullInt{1, true}, UpdatedAt: rrsql.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: rrsql.NullInt{90, true}, PublishStatus: rrsql.NullInt{2, true}},
+		models.Post{ID: 91, Active: rrsql.NullInt{1, true}, Type: rrsql.NullInt{0, true}, UpdatedAt: rrsql.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: rrsql.NullInt{91, true}, PublishStatus: rrsql.NullInt{2, true}},
+		models.Post{ID: 92, Active: rrsql.NullInt{1, true}, Type: rrsql.NullInt{1, true}, UpdatedAt: rrsql.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: rrsql.NullInt{92, true}, PublishStatus: rrsql.NullInt{2, true}},
 	} {
-		_, err := models.PostAPI.InsertPost(params)
+		_, err := models.PostAPI.InsertPost(models.PostDescription{Post: params})
 		if err != nil {
 			log.Printf("Insert post fail when init test case. Error: %v", err)
 		}
 	}
 
 	for _, params := range []models.Project{
-		models.Project{ID: 920, PostID: 91, Active: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Date(2015, time.November, 10, 23, 0, 0, 0, time.UTC), true}, PublishStatus: models.NullInt{2, true}},
-		models.Project{ID: 921, PostID: 92, Active: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Date(2016, time.November, 10, 23, 0, 0, 0, time.UTC), true}, PublishStatus: models.NullInt{2, true}},
+		models.Project{ID: 920, PostID: 91, Active: rrsql.NullInt{1, true}, UpdatedAt: rrsql.NullTime{time.Date(2015, time.November, 10, 23, 0, 0, 0, time.UTC), true}, PublishStatus: rrsql.NullInt{2, true}},
+		models.Project{ID: 921, PostID: 92, Active: rrsql.NullInt{1, true}, UpdatedAt: rrsql.NullTime{time.Date(2016, time.November, 10, 23, 0, 0, 0, time.UTC), true}, PublishStatus: rrsql.NullInt{2, true}},
 	} {
 		err := models.ProjectAPI.InsertProject(params)
 		if err != nil {
@@ -330,9 +331,9 @@ func TestRouteComments(t *testing.T) {
 func TestPubsubComments(t *testing.T) {
 
 	for _, params := range []models.Member{
-		models.Member{ID: 90, MemberID: "commenttest0@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2010, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"commenttest0@mirrormedia.mg", true}, Points: models.NullInt{0, true}, TalkID: models.NullString{"abc1d5b1-da54-4200-b90e-f06e59fd9487", true}, ProfileImage: models.NullString{"pi0", true}, Nickname: models.NullString{"commenttest0", true}, UUID: "abc1d5b1-da54-4200-b90e-f06e59fd9487"},
-		models.Member{ID: 91, MemberID: "commenttest1@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2011, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"commenttest1@mirrormedia.mg", true}, Points: models.NullInt{0, true}, TalkID: models.NullString{"abc1d5b1-da54-4200-b91e-f06e59fd9487", true}, ProfileImage: models.NullString{"pi1", true}, Nickname: models.NullString{"commenttest1", true}, UUID: "abc1d5b1-da54-4200-b91e-f06e59fd9487"},
-		models.Member{ID: 92, MemberID: "commenttest2@mirrormedia.mg", Active: models.NullInt{1, true}, PostPush: models.NullBool{true, true}, UpdatedAt: models.NullTime{time.Date(2012, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: models.NullString{"commenttest2@mirrormedia.mg", true}, Points: models.NullInt{0, true}, TalkID: models.NullString{"abc1d5b1-da54-4200-b92e-f06e59fd9487", true}, ProfileImage: models.NullString{"pi2", true}, Nickname: models.NullString{"commenttest2", true}, UUID: "abc1d5b1-da54-4200-b92e-f06e59fd9487"},
+		models.Member{ID: 90, MemberID: "commenttest0@mirrormedia.mg", Active: rrsql.NullInt{1, true}, PostPush: rrsql.NullBool{true, true}, UpdatedAt: rrsql.NullTime{time.Date(2010, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: rrsql.NullString{"commenttest0@mirrormedia.mg", true}, Points: rrsql.NullInt{0, true}, TalkID: rrsql.NullString{"abc1d5b1-da54-4200-b90e-f06e59fd9487", true}, ProfileImage: rrsql.NullString{"pi0", true}, Nickname: rrsql.NullString{"commenttest0", true}, UUID: "abc1d5b1-da54-4200-b90e-f06e59fd9487"},
+		models.Member{ID: 91, MemberID: "commenttest1@mirrormedia.mg", Active: rrsql.NullInt{1, true}, PostPush: rrsql.NullBool{true, true}, UpdatedAt: rrsql.NullTime{time.Date(2011, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: rrsql.NullString{"commenttest1@mirrormedia.mg", true}, Points: rrsql.NullInt{0, true}, TalkID: rrsql.NullString{"abc1d5b1-da54-4200-b91e-f06e59fd9487", true}, ProfileImage: rrsql.NullString{"pi1", true}, Nickname: rrsql.NullString{"commenttest1", true}, UUID: "abc1d5b1-da54-4200-b91e-f06e59fd9487"},
+		models.Member{ID: 92, MemberID: "commenttest2@mirrormedia.mg", Active: rrsql.NullInt{1, true}, PostPush: rrsql.NullBool{true, true}, UpdatedAt: rrsql.NullTime{time.Date(2012, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Mail: rrsql.NullString{"commenttest2@mirrormedia.mg", true}, Points: rrsql.NullInt{0, true}, TalkID: rrsql.NullString{"abc1d5b1-da54-4200-b92e-f06e59fd9487", true}, ProfileImage: rrsql.NullString{"pi2", true}, Nickname: rrsql.NullString{"commenttest2", true}, UUID: "abc1d5b1-da54-4200-b92e-f06e59fd9487"},
 	} {
 		_, err := models.MemberAPI.InsertMember(params)
 		if err != nil {
@@ -341,19 +342,19 @@ func TestPubsubComments(t *testing.T) {
 	}
 
 	for _, params := range []models.Post{
-		models.Post{ID: 90, Active: models.NullInt{1, true}, Type: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: models.NullInt{90, true}, PublishStatus: models.NullInt{2, true}},
-		models.Post{ID: 91, Active: models.NullInt{1, true}, Type: models.NullInt{0, true}, UpdatedAt: models.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: models.NullInt{91, true}, PublishStatus: models.NullInt{2, true}},
-		models.Post{ID: 92, Active: models.NullInt{1, true}, Type: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: models.NullInt{92, true}, PublishStatus: models.NullInt{2, true}},
+		models.Post{ID: 90, Active: rrsql.NullInt{1, true}, Type: rrsql.NullInt{1, true}, UpdatedAt: rrsql.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: rrsql.NullInt{90, true}, PublishStatus: rrsql.NullInt{2, true}},
+		models.Post{ID: 91, Active: rrsql.NullInt{1, true}, Type: rrsql.NullInt{0, true}, UpdatedAt: rrsql.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: rrsql.NullInt{91, true}, PublishStatus: rrsql.NullInt{2, true}},
+		models.Post{ID: 92, Active: rrsql.NullInt{1, true}, Type: rrsql.NullInt{1, true}, UpdatedAt: rrsql.NullTime{time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC), true}, Author: rrsql.NullInt{92, true}, PublishStatus: rrsql.NullInt{2, true}},
 	} {
-		_, err := models.PostAPI.InsertPost(params)
+		_, err := models.PostAPI.InsertPost(models.PostDescription{Post: params})
 		if err != nil {
 			log.Printf("Insert post fail when init test case. Error: %v", err)
 		}
 	}
 
 	for _, params := range []models.Project{
-		models.Project{ID: 920, PostID: 91, Active: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Date(2015, time.November, 10, 23, 0, 0, 0, time.UTC), true}, PublishStatus: models.NullInt{2, true}, Slug: models.NullString{"slug920", true}},
-		models.Project{ID: 921, PostID: 92, Active: models.NullInt{1, true}, UpdatedAt: models.NullTime{time.Date(2016, time.November, 10, 23, 0, 0, 0, time.UTC), true}, PublishStatus: models.NullInt{2, true}, Slug: models.NullString{"slug921", true}},
+		models.Project{ID: 920, PostID: 91, Active: rrsql.NullInt{1, true}, UpdatedAt: rrsql.NullTime{time.Date(2015, time.November, 10, 23, 0, 0, 0, time.UTC), true}, PublishStatus: rrsql.NullInt{2, true}, Slug: rrsql.NullString{"slug920", true}},
+		models.Project{ID: 921, PostID: 92, Active: rrsql.NullInt{1, true}, UpdatedAt: rrsql.NullTime{time.Date(2016, time.November, 10, 23, 0, 0, 0, time.UTC), true}, PublishStatus: rrsql.NullInt{2, true}, Slug: rrsql.NullString{"slug921", true}},
 	} {
 		err := models.ProjectAPI.InsertProject(params)
 		if err != nil {
@@ -362,7 +363,7 @@ func TestPubsubComments(t *testing.T) {
 	}
 
 	for _, memo := range []models.Memo{
-		models.Memo{ID: 92, Title: models.NullString{"CommentTestDefault1", true}, Author: models.NullInt{92, true}, ProjectID: models.NullInt{920, true}, Active: models.NullInt{1, true}},
+		models.Memo{ID: 92, Title: rrsql.NullString{"CommentTestDefault1", true}, Author: rrsql.NullInt{92, true}, ProjectID: rrsql.NullInt{920, true}, Active: rrsql.NullInt{1, true}},
 	} {
 		_, err := models.MemoAPI.InsertMemo(memo)
 		if err != nil {
@@ -429,7 +430,7 @@ func TestPubsubComments(t *testing.T) {
 	}
 
 	if os.Getenv("db_driver") == "mysql" {
-		_, _ = models.DB.Exec("truncate table memos;")
+		_, _ = rrsql.DB.Exec("truncate table memos;")
 	} else {
 		mockMemoDS = []models.Memo{}
 	}

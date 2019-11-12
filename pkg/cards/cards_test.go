@@ -13,7 +13,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/config"
-	"github.com/readr-media/readr-restful/models"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 )
 
 type TestStep struct {
@@ -91,8 +91,8 @@ func (a *mockNewsCardAPI) DeleteCard(id uint32) (err error) {
 	err = errors.New("Card Not Found")
 	for index, value := range a.mockCardDS {
 		if value.ID == id {
-			// mockCardDS[index].Active = models.NullInt{Int: int64(models.PostStatus["deactive"].(float64)), Valid: true}
-			a.mockCardDS[index].Active = models.NullInt{Int: int64(config.Config.Models.Posts["deactive"]), Valid: true}
+			// mockCardDS[index].Active = rrsql.NullInt{Int: int64(models.PostStatus["deactive"].(float64)), Valid: true}
+			a.mockCardDS[index].Active = rrsql.NullInt{Int: int64(config.Config.Models.Posts["deactive"]), Valid: true}
 			return nil
 		}
 	}
@@ -174,10 +174,10 @@ func TestRouteCards(t *testing.T) {
 	var cardTest mockNewsCardAPI
 
 	cards := []NewsCard{
-		{ID: 1, PostID: 1, Title: models.NullString{"Test title 01", true}, Active: models.NullInt{1, true}, Status: models.NullInt{1, true}, CreatedAt: models.NullTime{time.Date(2000, 1, 2, 3, 4, 5, 6, time.UTC), true}, Order: models.NullInt{1, true}},
-		{ID: 2, PostID: 2, Title: models.NullString{"Test title 02", true}, Active: models.NullInt{1, true}, Status: models.NullInt{0, true}, CreatedAt: models.NullTime{time.Date(2000, 1, 2, 3, 4, 5, 7, time.UTC), true}, Order: models.NullInt{2, true}},
-		{ID: 3, PostID: 3, Title: models.NullString{"Test title 03", true}, Active: models.NullInt{0, true}, Status: models.NullInt{1, true}, CreatedAt: models.NullTime{time.Date(2000, 1, 2, 3, 4, 5, 8, time.UTC), true}, Order: models.NullInt{3, true}},
-		{ID: 4, PostID: 4, Title: models.NullString{"Test title 04", true}, Active: models.NullInt{1, true}, Status: models.NullInt{0, true}, CreatedAt: models.NullTime{time.Date(2000, 1, 2, 3, 4, 5, 9, time.UTC), true}, Order: models.NullInt{4, true}},
+		{ID: 1, PostID: 1, Title: rrsql.NullString{"Test title 01", true}, Active: rrsql.NullInt{1, true}, Status: rrsql.NullInt{1, true}, CreatedAt: rrsql.NullTime{time.Date(2000, 1, 2, 3, 4, 5, 6, time.UTC), true}, Order: rrsql.NullInt{1, true}},
+		{ID: 2, PostID: 2, Title: rrsql.NullString{"Test title 02", true}, Active: rrsql.NullInt{1, true}, Status: rrsql.NullInt{0, true}, CreatedAt: rrsql.NullTime{time.Date(2000, 1, 2, 3, 4, 5, 7, time.UTC), true}, Order: rrsql.NullInt{2, true}},
+		{ID: 3, PostID: 3, Title: rrsql.NullString{"Test title 03", true}, Active: rrsql.NullInt{0, true}, Status: rrsql.NullInt{1, true}, CreatedAt: rrsql.NullTime{time.Date(2000, 1, 2, 3, 4, 5, 8, time.UTC), true}, Order: rrsql.NullInt{3, true}},
+		{ID: 4, PostID: 4, Title: rrsql.NullString{"Test title 04", true}, Active: rrsql.NullInt{1, true}, Status: rrsql.NullInt{0, true}, CreatedAt: rrsql.NullTime{time.Date(2000, 1, 2, 3, 4, 5, 9, time.UTC), true}, Order: rrsql.NullInt{4, true}},
 	}
 
 	teststep := []TestStep{

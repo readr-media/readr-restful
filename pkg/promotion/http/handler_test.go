@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/readr-media/readr-restful/config"
-	"github.com/readr-media/readr-restful/models"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/pkg/promotion"
 	"github.com/readr-media/readr-restful/pkg/promotion/mock"
 	"github.com/readr-media/readr-restful/pkg/promotion/mysql"
@@ -96,7 +96,7 @@ func TestPromotionHandlerPost(t *testing.T) {
 	}{
 		{"empty-payload", http.StatusBadRequest, promotion.Promotion{}, `{"error":"null promotion payload"}`},
 		{"empty-title", http.StatusBadRequest, promotion.Promotion{Status: 1}, `{"error":"invalid title"}`},
-		{"default-promo", http.StatusCreated, promotion.Promotion{Status: 1, Active: 1, Title: "test", CreatedAt: time.Now().Local(), UpdatedAt: models.NullTime{Time: time.Now().Local(), Valid: true}}, ``},
+		{"default-promo", http.StatusCreated, promotion.Promotion{Status: 1, Active: 1, Title: "test", CreatedAt: time.Now().Local(), UpdatedAt: rrsql.NullTime{Time: time.Now().Local(), Valid: true}}, ``},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			w := httptest.NewRecorder()
@@ -148,7 +148,7 @@ func TestPromotionHandlerPut(t *testing.T) {
 	}{
 		{"empty-payload", http.StatusBadRequest, promotion.Promotion{}, `{"error":"null promotion payload"}`},
 		{"zero-id", http.StatusBadRequest, promotion.Promotion{ID: 0, Status: 1}, `{"error":"invalid promotion id"}`},
-		{"default-promo", http.StatusNoContent, promotion.Promotion{ID: 128, Status: 1, Active: 0, CreatedAt: time.Now().Local(), UpdatedAt: models.NullTime{Time: time.Now().Local(), Valid: true}}, ``},
+		{"default-promo", http.StatusNoContent, promotion.Promotion{ID: 128, Status: 1, Active: 0, CreatedAt: time.Now().Local(), UpdatedAt: rrsql.NullTime{Time: time.Now().Local(), Valid: true}}, ``},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			w := httptest.NewRecorder()

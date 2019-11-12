@@ -9,13 +9,14 @@ import (
 	"database/sql"
 
 	"github.com/go-sql-driver/mysql"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 )
 
 type Permission struct {
-	ID         uint32     `json:"id" db:"id"`
-	Role       int        `json:"role" db:"role"`
-	Object     NullString `json:"object" db:"object"`
-	Permission NullInt    `json:"permission" db:"permission"`
+	ID         uint32           `json:"id" db:"id"`
+	Role       int              `json:"role" db:"role"`
+	Object     rrsql.NullString `json:"object" db:"object"`
+	Permission rrsql.NullInt    `json:"permission" db:"permission"`
 }
 
 type PermissionAPIImpl struct{}
@@ -39,7 +40,7 @@ func (a *PermissionAPIImpl) GetPermissions(ps []Permission) ([]Permission, error
 	}
 	query := queryHead + strings.Join(queryBody[:], " OR ") + ";"
 
-	rows, err := DB.Queryx(query)
+	rows, err := rrsql.DB.Queryx(query)
 	switch {
 	case err != nil:
 		log.Fatal(err)
@@ -59,7 +60,7 @@ func (a *PermissionAPIImpl) GetPermissions(ps []Permission) ([]Permission, error
 func (a *PermissionAPIImpl) GetPermissionsByRole(role int) ([]Permission, error) {
 
 	permissions := []Permission{}
-	rows, err := DB.Queryx("SELECT * FROM permissions WHERE role = ?", role)
+	rows, err := rrsql.DB.Queryx("SELECT * FROM permissions WHERE role = ?", role)
 	switch {
 	case err == sql.ErrNoRows:
 		permissions = nil
@@ -81,7 +82,7 @@ func (a *PermissionAPIImpl) GetPermissionsByRole(role int) ([]Permission, error)
 func (a *PermissionAPIImpl) GetPermissionsAll() ([]Permission, error) {
 
 	permissions := []Permission{}
-	rows, err := DB.Queryx("SELECT * FROM permissions")
+	rows, err := rrsql.DB.Queryx("SELECT * FROM permissions")
 	switch {
 	case err == sql.ErrNoRows:
 		permissions = nil
@@ -108,7 +109,7 @@ func (a *PermissionAPIImpl) InsertPermissions(ps []Permission) error {
 	}
 	query := queryHead + strings.Join(queryBody[:], ",") + ";"
 
-	_, err := DB.Exec(query)
+	_, err := rrsql.DB.Exec(query)
 
 	if err != nil {
 		switch err.(*mysql.MySQLError).Number {
@@ -131,7 +132,7 @@ func (a *PermissionAPIImpl) DeletePermissions(ps []Permission) error {
 	}
 	query := queryHead + strings.Join(queryBody[:], " OR ") + ";"
 
-	_, err := DB.Exec(query)
+	_, err := rrsql.DB.Exec(query)
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -128,7 +129,7 @@ func (a *mockPostAPI) GetPost(id uint32, args *models.PostArgs) (models.TaggedPo
 	return result, err
 }
 
-func (a *mockPostAPI) InsertPost(p models.Post) (int, error) {
+func (a *mockPostAPI) InsertPost(p models.PostDescription) (int, error) {
 
 	var tpm models.TaggedPostMember
 	var id uint32
@@ -137,18 +138,18 @@ func (a *mockPostAPI) InsertPost(p models.Post) (int, error) {
 	} else {
 		id = 1
 	}
-	p.ID = id
-	tpm.Post = p
+	p.Post.ID = id
+	tpm.Post = p.Post
 	a.mockPostDS = append(a.mockPostDS, tpm)
 	return int(p.ID), nil
 }
 
-func (a *mockPostAPI) UpdatePost(p models.Post) (err error) {
-	err = errors.New("Post Not Found")
+func (a *mockPostAPI) UpdatePost(p models.PostDescription) (err error) {
+	err = rrsql.ItemNotFoundError
 	for index, value := range a.mockPostDS {
-		if value.ID == p.ID {
-			a.mockPostDS[index].LikeAmount = p.LikeAmount
-			a.mockPostDS[index].Title = p.Title
+		if value.ID == p.Post.ID {
+			a.mockPostDS[index].LikeAmount = p.Post.LikeAmount
+			a.mockPostDS[index].Title = p.Post.Title
 			err = nil
 			return err
 		}
@@ -175,8 +176,8 @@ func (a *mockPostAPI) DeletePost(id uint32) (err error) {
 	err = errors.New("Post Not Found")
 	for index, value := range a.mockPostDS {
 		if value.ID == id {
-			// mockPostDS[index].Active = models.NullInt{Int: int64(models.PostStatus["deactive"].(float64)), Valid: true}
-			mockPostDS[index].Active = models.NullInt{Int: int64(config.Config.Models.Posts["deactive"]), Valid: true}
+			// mockPostDS[index].Active = rrsql.NullInt{Int: int64(models.PostStatus["deactive"].(float64)), Valid: true}
+			mockPostDS[index].Active = rrsql.NullInt{Int: int64(config.Config.Models.Posts["deactive"]), Valid: true}
 			return nil
 		}
 	}

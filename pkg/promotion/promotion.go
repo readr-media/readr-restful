@@ -5,23 +5,23 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/readr-media/readr-restful/models"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 )
 
 // Promotion maps the schema of table 'promotions'
 type Promotion struct {
-	ID          uint64            `json:"id" db:"id"`
-	Status      int               `json:"status" db:"status"`
-	Active      int               `json:"active" db:"active"`
-	Title       string            `json:"title" db:"title"`
-	Description models.NullString `json:"description" db:"description"`
-	Image       models.NullString `json:"image" db:"image"`
-	Link        models.NullString `json:"link" db:"link"`
-	Order       models.NullInt    `json:"order" db:"order"`
-	CreatedAt   time.Time         `json:"created_at" db:"created_at"`
-	UpdatedAt   models.NullTime   `json:"updated_at" db:"updated_at"`
-	UpdatedBy   models.NullString `json:"updated_by" db:"updated_by"`
-	PublishedAt models.NullTime   `json:"published_at" db:"published_at"`
+	ID          uint64           `json:"id" db:"id"`
+	Status      int              `json:"status" db:"status"`
+	Active      int              `json:"active" db:"active"`
+	Title       string           `json:"title" db:"title"`
+	Description rrsql.NullString `json:"description" db:"description"`
+	Image       rrsql.NullString `json:"image" db:"image"`
+	Link        rrsql.NullString `json:"link" db:"link"`
+	Order       rrsql.NullInt    `json:"order" db:"order"`
+	CreatedAt   time.Time        `json:"created_at" db:"created_at"`
+	UpdatedAt   rrsql.NullTime   `json:"updated_at" db:"updated_at"`
+	UpdatedBy   rrsql.NullString `json:"updated_by" db:"updated_by"`
+	PublishedAt rrsql.NullTime   `json:"published_at" db:"published_at"`
 }
 
 // ListParams setup the interface that could be passed to Get() in DataLayer
@@ -55,23 +55,23 @@ func (p Promotion) GetTags() (columns []string) {
 			if field != "" {
 				columns = append(columns, tag.Get("db"))
 			}
-		case models.NullString:
+		case rrsql.NullString:
 			if field.Valid {
 				columns = append(columns, tag.Get("db"))
 			}
-		case models.NullTime:
+		case rrsql.NullTime:
 			if field.Valid {
 				columns = append(columns, tag.Get("db"))
 			}
-		case models.NullInt:
+		case rrsql.NullInt:
 			if field.Valid {
 				columns = append(columns, tag.Get("db"))
 			}
-		case models.NullBool:
+		case rrsql.NullBool:
 			if field.Valid {
 				columns = append(columns, tag.Get("db"))
 			}
-		case models.NullIntSlice:
+		case rrsql.NullIntSlice:
 			if field.Valid {
 				columns = append(columns, tag.Get("db"))
 			}

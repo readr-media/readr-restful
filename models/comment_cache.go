@@ -8,6 +8,7 @@ import (
 
 	"github.com/garyburd/redigo/redis"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 )
 
 type CommentCacheInterface interface {
@@ -101,7 +102,7 @@ func (c commentCache) Generate() (err error) {
 		config.Config.Models.Comment["active"],
 	)
 
-	rows, err := DB.Queryx(query)
+	rows, err := rrsql.DB.Queryx(query)
 	if err != nil {
 		log.Printf("Fail to query comment indexes when updating latest comments: %v \n", err.Error())
 		return err

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -21,9 +22,9 @@ func (t *mockTagAPI) ToggleTags(args models.UpdateMultipleTagsArgs) error {
 		for index, tags := range mockTagDS {
 			if tags.ID == id {
 				if args.Active == "0" {
-					mockTagDS[index].Active = models.NullInt{1, true}
+					mockTagDS[index].Active = rrsql.NullInt{1, true}
 				} else {
-					mockTagDS[index].Active = models.NullInt{0, true}
+					mockTagDS[index].Active = rrsql.NullInt{0, true}
 				}
 			}
 		}
@@ -80,7 +81,7 @@ func (t *mockTagAPI) InsertTag(tag models.Tag) (int, error) {
 			return 0, errors.New(`Duplicate Entry`)
 		}
 	}
-	mockTagDS = append(mockTagDS, models.Tag{ID: index, Text: tag.Text, Active: models.NullInt{1, true}})
+	mockTagDS = append(mockTagDS, models.Tag{ID: index, Text: tag.Text, Active: rrsql.NullInt{1, true}})
 	return index, nil
 }
 
@@ -91,7 +92,7 @@ func (t *mockTagAPI) UpdateTag(tag models.Tag) error {
 		}
 	}
 	if tag.ID > len(mockTagDS) {
-		return models.ItemNotFoundError
+		return rrsql.ItemNotFoundError
 	}
 	mockTagDS[tag.ID-1].Text = tag.Text
 	return nil
@@ -103,9 +104,9 @@ func (t *mockTagAPI) UpdateTagging(resourceType int, targetID int, tagIDs []int)
 			for i, t := range mockTagDS {
 				if t.ID == tagID {
 					if targetID%2 == 0 {
-						mockTagDS[i].RelatedReviews = models.NullInt{t.RelatedReviews.Int + 1, true}
+						mockTagDS[i].RelatedReviews = rrsql.NullInt{t.RelatedReviews.Int + 1, true}
 					} else {
-						mockTagDS[i].RelatedNews = models.NullInt{t.RelatedNews.Int + 1, true}
+						mockTagDS[i].RelatedNews = rrsql.NullInt{t.RelatedNews.Int + 1, true}
 					}
 				}
 			}
@@ -137,10 +138,10 @@ func (t *mockTagAPI) GetPostReport(args *models.GetPostReportArgs) ([]models.Las
 func TestRouteTags(t *testing.T) {
 
 	tags := []models.Tag{
-		models.Tag{Text: "tag1", UpdatedBy: models.NullInt{931, true}},
-		models.Tag{Text: "tag2", UpdatedBy: models.NullInt{931, true}},
-		models.Tag{Text: "tag3", UpdatedBy: models.NullInt{931, true}},
-		models.Tag{Text: "tag4", UpdatedBy: models.NullInt{931, true}},
+		models.Tag{Text: "tag1", UpdatedBy: rrsql.NullInt{931, true}},
+		models.Tag{Text: "tag2", UpdatedBy: rrsql.NullInt{931, true}},
+		models.Tag{Text: "tag3", UpdatedBy: rrsql.NullInt{931, true}},
+		models.Tag{Text: "tag4", UpdatedBy: rrsql.NullInt{931, true}},
 	}
 
 	for _, tag := range tags {
@@ -151,18 +152,18 @@ func TestRouteTags(t *testing.T) {
 	}
 
 	for _, params := range []models.Post{
-		models.Post{ID: 42, Active: models.NullInt{1, true}, Type: models.NullInt{0, true}, Author: models.NullInt{931, true}, UpdatedBy: models.NullInt{931, true}},
-		models.Post{ID: 43, Active: models.NullInt{1, true}, Type: models.NullInt{1, true}, Author: models.NullInt{931, true}, UpdatedBy: models.NullInt{931, true}},
-		models.Post{ID: 44, Active: models.NullInt{1, true}, Type: models.NullInt{0, true}, Author: models.NullInt{931, true}, UpdatedBy: models.NullInt{931, true}},
+		models.Post{ID: 42, Active: rrsql.NullInt{1, true}, Type: rrsql.NullInt{0, true}, Author: rrsql.NullInt{931, true}, UpdatedBy: rrsql.NullInt{931, true}},
+		models.Post{ID: 43, Active: rrsql.NullInt{1, true}, Type: rrsql.NullInt{1, true}, Author: rrsql.NullInt{931, true}, UpdatedBy: rrsql.NullInt{931, true}},
+		models.Post{ID: 44, Active: rrsql.NullInt{1, true}, Type: rrsql.NullInt{0, true}, Author: rrsql.NullInt{931, true}, UpdatedBy: rrsql.NullInt{931, true}},
 	} {
-		_, err := models.PostAPI.InsertPost(params)
+		_, err := models.PostAPI.InsertPost(models.PostDescription{Post: params})
 		if err != nil {
 			log.Printf("Insert post fail when init test case. Error: %v", err)
 		}
 	}
 
 	for _, params := range []models.Member{
-		models.Member{ID: 931, MemberID: "AMI@mirrormedia.mg", Active: models.NullInt{1, true}, Points: models.NullInt{0, true}, UUID: "abc1d5b1-da54-4200-b61e-f06e59fd8467"},
+		models.Member{ID: 931, MemberID: "AMI@mirrormedia.mg", Active: rrsql.NullInt{1, true}, Points: rrsql.NullInt{0, true}, UUID: "abc1d5b1-da54-4200-b61e-f06e59fd8467"},
 	} {
 		_, err := models.MemberAPI.InsertMember(params)
 		if err != nil {
@@ -217,25 +218,25 @@ func TestRouteTags(t *testing.T) {
 	t.Run("GetTags", func(t *testing.T) {
 		for _, testcase := range []genericTestcase{
 			genericTestcase{"GetTagBasicOK", "GET", "/tags?stats=0", ``, http.StatusOK, []models.Tag{
-				models.Tag{ID: 1, Text: "tag1", Active: models.NullInt{1, true}},
-				models.Tag{ID: 2, Text: "tag2", Active: models.NullInt{1, true}},
-				models.Tag{ID: 3, Text: "tag3", Active: models.NullInt{1, true}},
-				models.Tag{ID: 4, Text: "tag4", Active: models.NullInt{1, true}},
+				models.Tag{ID: 1, Text: "tag1", Active: rrsql.NullInt{1, true}},
+				models.Tag{ID: 2, Text: "tag2", Active: rrsql.NullInt{1, true}},
+				models.Tag{ID: 3, Text: "tag3", Active: rrsql.NullInt{1, true}},
+				models.Tag{ID: 4, Text: "tag4", Active: rrsql.NullInt{1, true}},
 			}},
 			genericTestcase{"GetTagMaxresultOK", "GET", "/tags?stats=0&max_result=1", ``, http.StatusOK, []models.Tag{
-				models.Tag{ID: 1, Text: "tag1", Active: models.NullInt{1, true}},
+				models.Tag{ID: 1, Text: "tag1", Active: rrsql.NullInt{1, true}},
 			}},
 			genericTestcase{"GetTagPaginationOK", "GET", "/tags?stats=0&max_result=1&page=2", ``, http.StatusOK, []models.Tag{
-				models.Tag{ID: 2, Text: "tag2", Active: models.NullInt{1, true}},
+				models.Tag{ID: 2, Text: "tag2", Active: rrsql.NullInt{1, true}},
 			}},
 			genericTestcase{"GetTagKeywordAndStatsOK", "GET", "/tags?stats=1&keyword=tag2", ``, http.StatusOK, []models.Tag{
-				models.Tag{ID: 2, Text: "tag2", Active: models.NullInt{1, true}, RelatedReviews: models.NullInt{1, true}, RelatedNews: models.NullInt{0, true}},
+				models.Tag{ID: 2, Text: "tag2", Active: rrsql.NullInt{1, true}, RelatedReviews: rrsql.NullInt{1, true}, RelatedNews: rrsql.NullInt{0, true}},
 			}},
 			genericTestcase{"GetTagSortingOK", "GET", "/tags?keyword=tag&sort=updated_at", ``, http.StatusOK, []models.Tag{
-				models.Tag{ID: 1, Text: "tag1", Active: models.NullInt{1, true}},
-				models.Tag{ID: 2, Text: "tag2", Active: models.NullInt{1, true}},
-				models.Tag{ID: 3, Text: "tag3", Active: models.NullInt{1, true}},
-				models.Tag{ID: 4, Text: "tag4", Active: models.NullInt{1, true}},
+				models.Tag{ID: 1, Text: "tag1", Active: rrsql.NullInt{1, true}},
+				models.Tag{ID: 2, Text: "tag2", Active: rrsql.NullInt{1, true}},
+				models.Tag{ID: 3, Text: "tag3", Active: rrsql.NullInt{1, true}},
+				models.Tag{ID: 4, Text: "tag4", Active: rrsql.NullInt{1, true}},
 			}},
 			genericTestcase{"GetTagKeywordNotFound", "GET", "/tags?keyword=1024", ``, http.StatusOK, `{"_items":[]}`},
 			genericTestcase{"GetTagUnknownSortingKey", "GET", "/tags?sort=unknown", ``, http.StatusBadRequest, `{"Error":"Bad Sorting Option"}`},

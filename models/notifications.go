@@ -11,13 +11,14 @@ import (
 	"github.com/garyburd/redigo/redis"
 	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/utils"
 )
 
 type UpdateNotificationArgs struct {
-	IDs      []string `json:"ids"`
-	MemberID string   `redis:"member_id" json:"member_id"`
-	Read     NullBool `redis:"read" json:"read"`
+	IDs      []string       `json:"ids"`
+	MemberID string         `redis:"member_id" json:"member_id"`
+	Read     rrsql.NullBool `redis:"read" json:"read"`
 }
 
 type Notification struct {
@@ -115,7 +116,7 @@ func (n Notifications) getMemberMail(ids []int) (result map[int]string, err erro
 	if err != nil {
 		return nil, err
 	}
-	rows, err := DB.Queryx(query, args...)
+	rows, err := rrsql.DB.Queryx(query, args...)
 
 	for rows.Next() {
 		var mm memberMail

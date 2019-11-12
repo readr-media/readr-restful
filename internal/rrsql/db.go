@@ -1,4 +1,4 @@
-package models
+package rrsql
 
 import (
 	"bytes"
@@ -84,7 +84,7 @@ func ValidateActive(args map[string][]int, status map[string]int) (err error) {
 	return err
 }
 
-func makeFieldString(mode string, pattern string, tags []string) (result []string) {
+func MakeFieldString(mode string, pattern string, tags []string) (result []string) {
 	switch mode {
 	case "get":
 		for _, field := range tags {
@@ -113,7 +113,7 @@ func makeFieldString(mode string, pattern string, tags []string) (result []strin
 	return result
 }
 
-func operatorHelper(ops string) (result string) {
+func OperatorHelper(ops string) (result string) {
 	switch ops {
 	case "$in":
 		result = `IN`
@@ -125,7 +125,7 @@ func operatorHelper(ops string) (result string) {
 	return result
 }
 
-func orderByHelper(sortMethod string) (result string) {
+func OrderByHelper(sortMethod string) (result string) {
 	// if strings.Contains(sortMethod, )
 	tmp := strings.Split(sortMethod, ",")
 	for i, v := range tmp {
@@ -139,7 +139,7 @@ func orderByHelper(sortMethod string) (result string) {
 	return result
 }
 
-func getStructDBTags(mode string, input interface{}) []string {
+func GetStructDBTags(mode string, input interface{}) []string {
 	columns := make([]string, 0)
 	u := reflect.ValueOf(input)
 	for i := 0; i < u.NumField(); i++ {
@@ -187,7 +187,7 @@ func getStructDBTags(mode string, input interface{}) []string {
 }
 
 // Use ... operator to encompass the potential for variadic input in the future
-func generateSQLStmt(mode string, tableName string, input ...interface{}) (query string, err error) {
+func GenerateSQLStmt(mode string, tableName string, input ...interface{}) (query string, err error) {
 	columns := make([]string, 0)
 	// u := reflect.ValueOf(input).Elem()
 

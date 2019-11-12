@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 )
 
 type notificationGenerator struct{}
@@ -72,18 +73,24 @@ func (c notificationGenerator) GenerateCommentNotifications(comment InsertCommen
 		})
 		if err != nil {
 			log.Println("Error get post", resourceID, err.Error())
+			return err
+		}
+		if len(post.Authors) == 0 {
+			log.Println("Error post no author", resourceID)
+			return errors.New(fmt.Sprintf("Error post %d has no author", resourceID))
 		}
 
 		postFollowers, err := c.getFollowers(resourceID, config.Config.Models.FollowingType["post"],
 			[]int{config.Config.Models.Emotions["like"], config.Config.Models.Emotions["dislike"]})
 		if err != nil {
 			log.Println("Error get post followers", resourceID, err.Error())
+			return err
 		}
 		//log.Println(postFollowers)
 
 		var commentors []int
-		// rows, err := DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, int(CommentStatus["show"].(float64)), int(CommentActive["active"].(float64))))
-		rows, err := DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, config.Config.Models.CommentStatus["show"], config.Config.Models.Comment["active"]))
+		// rows, err := rrsql.DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, int(CommentStatus["show"].(float64)), int(CommentActive["active"].(float64))))
+		rows, err := rrsql.DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, config.Config.Models.CommentStatus["show"], config.Config.Models.Comment["active"]))
 
 		if err != nil {
 			log.Println("Error get commentors", commentDetail.Resource.String, err.Error())
@@ -151,8 +158,8 @@ func (c notificationGenerator) GenerateCommentNotifications(comment InsertCommen
 		log.Println(projectFollowers)
 
 		var commentors []int
-		// rows, err := DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, int(CommentStatus["show"].(float64)), int(CommentActive["active"].(float64))))
-		rows, err := DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, config.Config.Models.CommentStatus["show"], config.Config.Models.Comment["active"]))
+		// rows, err := rrsql.DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, int(CommentStatus["show"].(float64)), int(CommentActive["active"].(float64))))
+		rows, err := rrsql.DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, config.Config.Models.CommentStatus["show"], config.Config.Models.Comment["active"]))
 		if err != nil {
 			log.Println("Error get commentors", commentDetail.Resource.String, err.Error())
 			return err
@@ -221,8 +228,8 @@ func (c notificationGenerator) GenerateCommentNotifications(comment InsertCommen
 		followers := c.mergeFollowerSlices(memoFollowers, projectFollowers)
 
 		var commentors []int
-		// rows, err := DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, int(CommentStatus["show"].(float64)), int(CommentActive["active"].(float64))))
-		rows, err := DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, config.Config.Models.CommentStatus["show"], config.Config.Models.Comment["active"]))
+		// rows, err := rrsql.DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, int(CommentStatus["show"].(float64)), int(CommentActive["active"].(float64))))
+		rows, err := rrsql.DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, config.Config.Models.CommentStatus["show"], config.Config.Models.Comment["active"]))
 		if err != nil {
 			log.Println("Error get commentors", commentDetail.Resource.String, err.Error())
 			return err
@@ -285,8 +292,8 @@ func (c notificationGenerator) GenerateCommentNotifications(comment InsertCommen
 		followers := c.mergeFollowerSlices(reportFollowers, projectFollowers)
 
 		var commentors []int
-		// rows, err := DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, int(CommentStatus["show"].(float64)), int(CommentActive["active"].(float64))))
-		rows, err := DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, config.Config.Models.CommentStatus["show"], config.Config.Models.Comment["active"]))
+		// rows, err := rrsql.DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, int(CommentStatus["show"].(float64)), int(CommentActive["active"].(float64))))
+		rows, err := rrsql.DB.Queryx(fmt.Sprintf(`SELECT DISTINCT author FROM comments WHERE resource="%s" AND status = %d AND active = %d;`, commentDetail.Resource.String, config.Config.Models.CommentStatus["show"], config.Config.Models.Comment["active"]))
 		if err != nil {
 			log.Println("Error get commentors", commentDetail.Resource.String, err.Error())
 			return err
@@ -462,7 +469,7 @@ func (c notificationGenerator) GeneratePostNotifications(p TaggedPostMember) (er
 				log.Println("Error get tag followers", t[1], err.Error())
 			}
 			for _, v := range tagFollowers {
-				if !c.checkForAuthor(v, p.Authors) {
+				if !c.checkForAuthor(v, p.Authors) && len(p.Authors) > 0 {
 					n := NewNotification("follow_tag_post", v)
 					n.SubjectID = strconv.Itoa(int(p.ID))
 					n.Nickname = p.Title.String
@@ -483,7 +490,7 @@ func (c notificationGenerator) GeneratePostNotifications(p TaggedPostMember) (er
 func (c *notificationGenerator) generateTagNotifications(p Project, eventType string) (err error) {
 	ns := Notifications{}
 	query := "SELECT tags.tag_id, tags.tag_content FROM tagging LEFT JOIN tags ON tags.tag_id = tagging.tag_id WHERE type = ? AND target_id = ? AND active = ?"
-	rows, err := DB.Queryx(query, config.Config.Models.TaggingType["project"], p.ID, config.Config.Models.Tags["active"])
+	rows, err := rrsql.DB.Queryx(query, config.Config.Models.TaggingType["project"], p.ID, config.Config.Models.Tags["active"])
 	if err != nil {
 		log.Println("Error get project tags", p.ID, err.Error())
 		return err

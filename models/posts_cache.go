@@ -10,6 +10,7 @@ import (
 
 	"github.com/garyburd/redigo/redis"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 )
 
 type postCacheType interface {
@@ -246,7 +247,7 @@ func (c latestPostCache) SyncFromDataStorage() {
 	defer conn.Close()
 
 	var postIDs []uint32
-	err := DB.Select(&postIDs, fmt.Sprintf(`
+	err := rrsql.DB.Select(&postIDs, fmt.Sprintf(`
 		SELECT post_id FROM posts WHERE active=%d AND publish_status=%d ORDER BY published_at DESC LIMIT 20;`,
 		config.Config.Models.Posts["active"],
 		config.Config.Models.PostPublishStatus["publish"],
@@ -340,7 +341,7 @@ func (c hottestPostCache) SyncFromDataStorage() {
 		config.Config.Models.Posts["active"],
 		config.Config.Models.PostPublishStatus["publish"],
 	)
-	rows, err := DB.Queryx(query)
+	rows, err := rrsql.DB.Queryx(query)
 	if err != nil {
 		log.Println(err.Error())
 		return

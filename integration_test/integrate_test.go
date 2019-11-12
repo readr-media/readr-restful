@@ -20,6 +20,7 @@ import (
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/routes"
 )
@@ -41,7 +42,7 @@ func TestMain(m *testing.M) {
 		fmt.Sprintf("%s:%v", config.Config.SQL.Host, config.Config.SQL.Port),
 	)
 	//dbURI := "root:qwerty@tcp(127.0.0.1)/memberdb?parseTime=true"
-	models.Connect(dbURI)
+	rrsql.Connect(dbURI)
 
 	// Init Redis connetions
 	models.RedisConn(map[string]string{
@@ -124,17 +125,17 @@ func genericDoRequestByte(tc genericRequestTestcase, t *testing.T) (int, []byte)
 
 func flushDB() {
 	var tableNames []string
-	models.DB.Select(&tableNames, `SELECT table_name FROM INFORMATION_SCHEMA.tables WHERE table_schema = 'memberdb'`)
+	rrsql.DB.Select(&tableNames, `SELECT table_name FROM INFORMATION_SCHEMA.tables WHERE table_schema = 'memberdb'`)
 
 	for _, tableName := range tableNames {
 		if tableName != "schema_migrations" && tableName != "roles" {
 			if tableName == "polls_choices" || tableName == "members" || tableName == "polls" {
-				_, err := models.DB.Exec(fmt.Sprintf("SET FOREIGN_KEY_CHECKS = 0;truncate table %s;SET FOREIGN_KEY_CHECKS = 1", tableName))
+				_, err := rrsql.DB.Exec(fmt.Sprintf("SET FOREIGN_KEY_CHECKS = 0;truncate table %s;SET FOREIGN_KEY_CHECKS = 1", tableName))
 				if err != nil {
 					print(err.Error(), tableName, "\n")
 				}
 			} else {
-				_, err := models.DB.Exec(fmt.Sprintf("truncate table %s;", tableName))
+				_, err := rrsql.DB.Exec(fmt.Sprintf("truncate table %s;", tableName))
 				if err != nil {
 					print(err.Error(), tableName, "\n")
 				}

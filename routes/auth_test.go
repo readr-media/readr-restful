@@ -13,6 +13,7 @@ import (
 
 	"golang.org/x/crypto/scrypt"
 
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -22,35 +23,35 @@ func initAuthTest() {
 		models.Member{
 			ID:           81,
 			MemberID:     "logintest1@mirrormedia.mg",
-			Password:     models.NullString{"hellopassword", true},
-			Role:         models.NullInt{1, true},
-			Active:       models.NullInt{1, true},
-			RegisterMode: models.NullString{"ordinary", true},
+			Password:     rrsql.NullString{"hellopassword", true},
+			Role:         rrsql.NullInt{1, true},
+			Active:       rrsql.NullInt{1, true},
+			RegisterMode: rrsql.NullString{"ordinary", true},
 			UUID:         "abc1d5b1-da54-4200-b57e-f06e59fd8467",
-			Points:       models.NullInt{Int: 0, Valid: true},
-			Mail:         models.NullString{"logintest1@mirrormedia.mg", true},
+			Points:       rrsql.NullInt{Int: 0, Valid: true},
+			Mail:         rrsql.NullString{"logintest1@mirrormedia.mg", true},
 		},
 		models.Member{
 			ID:           82,
 			MemberID:     "logintest2018",
-			Password:     models.NullString{"1233211234567", true},
-			Role:         models.NullInt{1, true},
-			Active:       models.NullInt{1, true},
-			RegisterMode: models.NullString{"oauth-fb", true},
+			Password:     rrsql.NullString{"1233211234567", true},
+			Role:         rrsql.NullInt{1, true},
+			Active:       rrsql.NullInt{1, true},
+			RegisterMode: rrsql.NullString{"oauth-fb", true},
 			UUID:         "abc1d5b1-da54-4200-b67e-f06e59fd8467",
-			Points:       models.NullInt{Int: 0, Valid: true},
-			Mail:         models.NullString{"logintest2018", true},
+			Points:       rrsql.NullInt{Int: 0, Valid: true},
+			Mail:         rrsql.NullString{"logintest2018", true},
 		},
 		models.Member{
 			ID:           83,
 			MemberID:     "logindeactived",
-			Password:     models.NullString{"88888888", true},
-			Role:         models.NullInt{1, true},
-			Active:       models.NullInt{0, true},
-			RegisterMode: models.NullString{"ordinary", true},
+			Password:     rrsql.NullString{"88888888", true},
+			Role:         rrsql.NullInt{1, true},
+			Active:       rrsql.NullInt{0, true},
+			RegisterMode: rrsql.NullString{"ordinary", true},
 			UUID:         "abc1d5b1-da54-4200-b77e-f06e59fd8467",
-			Points:       models.NullInt{Int: 0, Valid: true},
-			Mail:         models.NullString{"logindeactived", true},
+			Points:       rrsql.NullInt{Int: 0, Valid: true},
+			Mail:         rrsql.NullString{"logindeactived", true},
 		}}
 
 	for _, member := range mockLoginMembers {
@@ -61,9 +62,9 @@ func initAuthTest() {
 			fmt.Errorf(err.Error())
 			return
 		}
-		member.Salt = models.NullString{string(salt), true}
+		member.Salt = rrsql.NullString{string(salt), true}
 		hpw, err := scrypt.Key([]byte(member.Password.String), []byte(member.Salt.String), 32768, 8, 1, 64)
-		member.Password = models.NullString{string(hpw), true}
+		member.Password = rrsql.NullString{string(hpw), true}
 		_, err = models.MemberAPI.InsertMember(member)
 		if err != nil {
 			log.Println(err)

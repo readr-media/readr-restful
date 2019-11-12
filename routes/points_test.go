@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -26,9 +27,9 @@ var mockPointsDS = []models.PointsProject{
 			ObjectType: 1,
 			ObjectID:   1,
 			Points:     500,
-			CreatedAt:  models.NullTime{Time: time.Date(2018, 3, 1, 17, 15, 0, 0, time.UTC), Valid: true},
-			UpdatedBy:  models.NullInt{Int: 1, Valid: true},
-			UpdatedAt:  models.NullTime{Time: time.Date(2018, 3, 2, 17, 17, 0, 0, time.UTC), Valid: true}},
+			CreatedAt:  rrsql.NullTime{Time: time.Date(2018, 3, 1, 17, 15, 0, 0, time.UTC), Valid: true},
+			UpdatedBy:  rrsql.NullInt{Int: 1, Valid: true},
+			UpdatedAt:  rrsql.NullTime{Time: time.Date(2018, 3, 2, 17, 17, 0, 0, time.UTC), Valid: true}},
 	},
 	models.PointsProject{
 		Points: models.Points{
@@ -37,9 +38,9 @@ var mockPointsDS = []models.PointsProject{
 			ObjectType: 2,
 			ObjectID:   3,
 			Points:     300,
-			CreatedAt:  models.NullTime{Time: time.Date(2018, 3, 1, 17, 15, 0, 0, time.UTC), Valid: true},
-			UpdatedBy:  models.NullInt{Int: 0, Valid: true},
-			UpdatedAt:  models.NullTime{Time: time.Date(2018, 3, 2, 17, 17, 0, 0, time.UTC), Valid: true}},
+			CreatedAt:  rrsql.NullTime{Time: time.Date(2018, 3, 1, 17, 15, 0, 0, time.UTC), Valid: true},
+			UpdatedBy:  rrsql.NullInt{Int: 0, Valid: true},
+			UpdatedAt:  rrsql.NullTime{Time: time.Date(2018, 3, 2, 17, 17, 0, 0, time.UTC), Valid: true}},
 	},
 	models.PointsProject{
 		Points: models.Points{
@@ -48,9 +49,9 @@ var mockPointsDS = []models.PointsProject{
 			ObjectType: 1,
 			ObjectID:   1,
 			Points:     500,
-			CreatedAt:  models.NullTime{Time: time.Date(2018, 3, 1, 17, 15, 0, 0, time.UTC), Valid: true},
-			UpdatedBy:  models.NullInt{Int: 1, Valid: true},
-			UpdatedAt:  models.NullTime{Time: time.Date(2018, 3, 2, 17, 17, 0, 0, time.UTC), Valid: true}},
+			CreatedAt:  rrsql.NullTime{Time: time.Date(2018, 3, 1, 17, 15, 0, 0, time.UTC), Valid: true},
+			UpdatedBy:  rrsql.NullInt{Int: 1, Valid: true},
+			UpdatedAt:  rrsql.NullTime{Time: time.Date(2018, 3, 2, 17, 17, 0, 0, time.UTC), Valid: true}},
 	},
 	models.PointsProject{
 		Points: models.Points{
@@ -59,9 +60,9 @@ var mockPointsDS = []models.PointsProject{
 			ObjectType: 2,
 			ObjectID:   23,
 			Points:     100,
-			CreatedAt:  models.NullTime{Time: time.Date(2018, 3, 2, 17, 15, 0, 0, time.UTC), Valid: true},
-			UpdatedBy:  models.NullInt{Int: 1, Valid: true},
-			UpdatedAt:  models.NullTime{Time: time.Date(2018, 3, 5, 17, 17, 0, 0, time.UTC), Valid: true}},
+			CreatedAt:  rrsql.NullTime{Time: time.Date(2018, 3, 2, 17, 15, 0, 0, time.UTC), Valid: true},
+			UpdatedBy:  rrsql.NullInt{Int: 1, Valid: true},
+			UpdatedAt:  rrsql.NullTime{Time: time.Date(2018, 3, 5, 17, 17, 0, 0, time.UTC), Valid: true}},
 	},
 }
 
@@ -99,7 +100,7 @@ func (a *mockPointsAPI) Insert(pts models.PointsToken) (result int, id int, err 
 		for _, v := range total {
 			result += int(v.Points.Points)
 		}
-		// mockPointsDS = append(a.mockPointsDS, models.PointsProject{Points: pts, Title: models.NullString{"", false}})
+		// mockPointsDS = append(a.mockPointsDS, models.PointsProject{Points: pts, Title: rrsql.NullString{"", false}})
 		result -= pts.Points.Points
 	}
 	return result, 1, err
