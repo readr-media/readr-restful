@@ -2,7 +2,6 @@ package rrsql
 
 import (
 	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -76,13 +75,37 @@ func (nt *NullTime) UnmarshalJSON(text []byte) error {
 	return err
 }
 
-func (nt *NullTime) RedisScan(src interface{}) error {
-
+// RedisScan implements Scanner interface in redis for NullTime
+func (nt *NullTime) RedisScan(src interface{}) (err error) {
+	// Handle null input
 	if src == nil {
 		nt.Time, nt.Valid = time.Time{}, false
 		return nil
 	}
-	return convertRedisAssign(nt, src)
+
+	s, ok := src.(string)
+	if !ok {
+		return errors.New("RedisScan assert error: string")
+	}
+
+	if !strings.HasPrefix(s, "{") || !strings.HasSuffix(s, "}") {
+		return errors.New("RedisScan validate curly bracket error")
+	}
+
+	s = strings.TrimPrefix(s, "{")
+	s = strings.TrimSuffix(s, "}")
+
+	if strings.HasSuffix(s, " true") {
+		s = strings.TrimSuffix(s, " true")
+		nt.Time, err = time.Parse("2006-01-02 15:04:05 +0000 UTC", s)
+		if err != nil {
+			return err
+		}
+		nt.Valid = true
+	} else if strings.HasSuffix(s, " false") {
+		nt.Time, nt.Valid = time.Time{}, false
+	}
+	return nil
 }
 
 // Before is wrap of time.Time.Before, used in test
@@ -136,13 +159,34 @@ func (ns *NullString) UnmarshalJSON(text []byte) error {
 	return nil
 }
 
-func (ns *NullString) RedisScan(src interface{}) error {
+// RedisScan implement Scanner interface in redis package for NullString
+func (ns *NullString) RedisScan(src interface{}) (err error) {
 
 	if src == nil {
 		ns.String, ns.Valid = "", false
 		return nil
 	}
-	return convertRedisAssign(ns, src)
+	s, ok := src.(string)
+	if !ok {
+		return errors.New("RedisScan assert error: string")
+	}
+
+	if !strings.HasPrefix(s, "{") || !strings.HasSuffix(s, "}") {
+		return errors.New("RedisScan validate curly bracket error")
+	}
+
+	s = strings.TrimPrefix(s, "{")
+	s = strings.TrimSuffix(s, "}")
+
+	if strings.HasSuffix(s, " true") {
+
+		s = strings.TrimSuffix(s, " true")
+		ns.String, ns.Valid = s, true
+
+	} else if strings.HasSuffix(s, " false") {
+		ns.String, ns.Valid = "", false
+	}
+	return nil
 }
 
 // Create our own null string type for prettier marshal JSON format
@@ -187,12 +231,38 @@ func (ns *NullInt) UnmarshalJSON(text []byte) error {
 	return nil
 }
 
-func (ns *NullInt) RedisScan(src interface{}) error {
+// RedisScan implement Scanner interface in redis for NullInt
+func (ns *NullInt) RedisScan(src interface{}) (err error) {
+
 	if src == nil {
 		ns.Int, ns.Valid = 0, false
 		return nil
 	}
-	return convertRedisAssign(ns, src)
+	s, ok := src.(string)
+	if !ok {
+		return errors.New("RedisScan assert error: int")
+	}
+
+	if !strings.HasPrefix(s, "{") || !strings.HasSuffix(s, "}") {
+		return errors.New("RedisScan validate curly bracket error")
+	}
+
+	s = strings.TrimPrefix(s, "{")
+	s = strings.TrimSuffix(s, "}")
+
+	if strings.HasSuffix(s, " true") {
+
+		s = strings.TrimSuffix(s, " true")
+		ns.Int, err = strconv.ParseInt(s, 10, 64)
+		if err != nil {
+			return err
+		}
+		ns.Valid = true
+
+	} else if strings.HasSuffix(s, " false") {
+		ns.Int, ns.Valid = 0, false
+	}
+	return nil
 }
 
 // Create our own null boolean type for prettier marshal JSON format
@@ -236,15 +306,6 @@ func (ns *NullBool) UnmarshalJSON(text []byte) error {
 	}
 	return nil
 }
-
-// NullBool is not included in Post type right now
-// func (ns *NullBool) RedisScan(src interface{}) error {
-// 	if src == nil {
-// 		ns.Bool, ns.Valid = false, false
-// 		return nil
-// 	}
-// 	return nil
-// }
 
 // Create our own null float type for prettier marshal JSON format
 type NullFloat struct {
@@ -320,73 +381,48 @@ func (ns *NullIntSlice) UnmarshalJSON(text []byte) error {
 
 // ----------------------------- END OF NULLABLE TYPE DEFINITION -----------------------------
 
-// Since the logic of this function is deeply coupled with sql types, and nullable types are now belongs to sql package.
-// To prevent circular dependency, remove this function from redis package and add it here.
-func convertRedisAssign(dest, src interface{}) error {
-	var err error
-	b, ok := src.([]byte)
-	if !ok {
-		return errors.New("RedisScan error assert byte array")
-	}
-	s := string(b)
-	if !strings.HasPrefix(s, "{") || !strings.HasSuffix(s, "}") {
-		fmt.Println(string(b), " failed")
-	} else {
-		s = strings.TrimPrefix(s, "{")
-		s = strings.TrimSuffix(s, "}")
+// // Since the logic of this function is deeply coupled with sql types, and nullable types are now belongs to sql package.
+// // To prevent circular dependency, remove this function from redis package and add it here.
+// func convertRedisAssign(dest, src interface{}) error {
+// 	var err error
+// 	b, ok := src.([]byte)
+// 	if !ok {
+// 		return errors.New("RedisScan error assert byte array")
+// 	}
+// 	s := string(b)
+// 	if !strings.HasPrefix(s, "{") || !strings.HasSuffix(s, "}") {
+// 		fmt.Println(string(b), " failed")
+// 	} else {
+// 		s = strings.TrimPrefix(s, "{")
+// 		s = strings.TrimSuffix(s, "}")
 
-		if strings.HasSuffix(s, " true") {
-			s = strings.TrimSuffix(s, " true")
+// 		if strings.HasSuffix(s, " true") {
+// 			s = strings.TrimSuffix(s, " true")
 
-			switch d := dest.(type) {
-			case *NullString:
-				d.String, d.Valid = string(s), true
-				return nil
-			case *NullTime:
-				d.Time, err = time.Parse("2006-01-02 15:04:05 +0000 UTC", s)
-				if err != nil {
-					fmt.Println(err)
-					return err
-				}
-				d.Valid = true
-			case *NullInt:
-				d.Int, err = strconv.ParseInt(s, 10, 64)
-				if err != nil {
-					fmt.Println(err)
-					return err
-				}
-				d.Valid = true
-			case *NullBool:
-				d.Bool, err = strconv.ParseBool(s)
-				if err != nil {
-					fmt.Println(err)
-					return err
-				}
-				d.Valid = true
-			default:
-				fmt.Println(s, " non case ", d)
-				return errors.New("Cannot parse non-nil nullable type")
-			}
+// 			switch d := dest.(type) {
+// 			case *NullBool:
+// 				d.Bool, err = strconv.ParseBool(s)
+// 				if err != nil {
+// 					fmt.Println(err)
+// 					return err
+// 				}
+// 				d.Valid = true
+// 			default:
+// 				fmt.Println(s, " non case ", d)
+// 				return errors.New("Cannot parse non-nil nullable type")
+// 			}
 
-		} else if strings.HasSuffix(s, " false") {
-			s = strings.TrimSuffix(s, " false")
+// 		} else if strings.HasSuffix(s, " false") {
+// 			s = strings.TrimSuffix(s, " false")
 
-			switch d := dest.(type) {
-			case *NullString:
-				d.String, d.Valid = "", false
-				return nil
-			case *NullTime:
-				d.Time, d.Valid = time.Time{}, false
-				return nil
-			case *NullInt:
-				d.Int, d.Valid = 0, false
-			case *NullBool:
-				d.Valid, d.Valid = false, false
-			default:
-				fmt.Println(s, " FALSE non case ", d)
-				return errors.New("redis conversion error: invalid null* valid field")
-			}
-		}
-	}
-	return nil
-}
+// 			switch d := dest.(type) {
+// 			case *NullBool:
+// 				d.Valid, d.Valid = false, false
+// 			default:
+// 				fmt.Println(s, " FALSE non case ", d)
+// 				return errors.New("redis conversion error: invalid null* valid field")
+// 			}
+// 		}
+// 	}
+// 	return nil
+// }
