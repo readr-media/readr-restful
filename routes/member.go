@@ -19,7 +19,7 @@ import (
 
 type memberHandler struct{}
 
-func (r *memberHandler) bindQuery(c *gin.Context, args *models.MemberArgs) (err error) {
+func (r *memberHandler) bindQuery(c *gin.Context, args *models.GetMembersArgs) (err error) {
 
 	args.SetDefault()
 	if err = c.ShouldBindQuery(args); err != nil {
@@ -75,7 +75,7 @@ func bindKeywordsArgs(c *gin.Context, params *models.GetMembersKeywordsArgs) (er
 }
 func (r *memberHandler) GetAll(c *gin.Context) {
 
-	var args = &models.MemberArgs{}
+	var args = &models.GetMembersArgs{}
 	err := r.bindQuery(c, args)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
@@ -117,7 +117,10 @@ func (r *memberHandler) Get(c *gin.Context) {
 		idType = "id"
 	}
 
-	member, err := models.MemberAPI.GetMember(idType, id)
+	member, err := models.MemberAPI.GetMember(models.GetMemberArgs{
+		ID:     id,
+		IDType: idType,
+	})
 	if err != nil {
 		switch err.Error() {
 		case "User Not Found":
@@ -302,7 +305,10 @@ func (r *memberHandler) PutPassword(c *gin.Context) {
 		return
 	}
 
-	member, err := models.MemberAPI.GetMember("id", input.ID)
+	member, err := models.MemberAPI.GetMember(models.GetMemberArgs{
+		ID:     input.ID,
+		IDType: "id",
+	})
 	if err != nil {
 		switch err.Error() {
 		case "User Not Found":
@@ -360,7 +366,7 @@ func (r *memberHandler) PutPassword(c *gin.Context) {
 
 func (r *memberHandler) Count(c *gin.Context) {
 
-	var args = &models.MemberArgs{}
+	var args = &models.GetMembersArgs{}
 	if err := r.bindQuery(c, args); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
 		return

@@ -117,7 +117,7 @@ func (m *mailApi) SendUpdateNote(args models.GetFollowMapArgs) (err error) {
 		return nil
 	}
 
-	members, err := models.MemberAPI.GetMembers(&models.MemberArgs{IDs: followers_list, Sorting: "member_id", MaxResult: uint8(len(followers_list)), Page: 1})
+	members, err := models.MemberAPI.GetMembers(&models.GetMembersArgs{IDs: followers_list, Sorting: "member_id", MaxResult: uint8(len(followers_list)), Page: 1})
 	if err != nil {
 		log.Println(err.Error())
 		return err
@@ -175,7 +175,7 @@ func (m *mailApi) SendUpdateNoteAllResource(args models.GetFollowMapArgs) (err e
 		return nil
 	}
 
-	members, err := models.MemberAPI.GetMembers(&models.MemberArgs{IDs: followers_list, Sorting: "member_id", MaxResult: uint8(len(followers_list)), Page: 1})
+	members, err := models.MemberAPI.GetMembers(&models.GetMembersArgs{IDs: followers_list, Sorting: "member_id", MaxResult: uint8(len(followers_list)), Page: 1})
 	if err != nil {
 		log.Println(err.Error())
 		return err
@@ -731,7 +731,10 @@ func (m *mailApi) SendFollowProjectMail(args models.FollowArgs) (err error) {
 		log.Println("Error get project when SendFollowProjectMail: ", err)
 		return err
 	}
-	member, err := models.MemberAPI.GetMember("id", strconv.Itoa(int(args.Subject)))
+	member, err := models.MemberAPI.GetMember(models.GetMemberArgs{
+		ID:     strconv.Itoa(int(args.Subject)),
+		IDType: "id",
+	})
 	if err != nil {
 		log.Println("Error get member when SendFollowProjectMail: ", err)
 		return err

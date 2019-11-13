@@ -186,7 +186,7 @@ func (r *filterHandler) Get(c *gin.Context) {
 		}
 		c.JSON(http.StatusOK, gin.H{"_items": assets})
 	case "members":
-		members, err := models.MemberAPI.FilterMembers(&models.MemberArgs{
+		members, err := models.MemberAPI.FilterMembers(&models.GetMembersArgs{
 			MaxResult:       uint8(args.MaxResult),
 			Page:            uint16(args.Page),
 			Sorting:         args.Sorting,

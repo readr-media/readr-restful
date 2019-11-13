@@ -297,7 +297,7 @@ func (g *GetFollowingArgs) getMemberDetails(items []FollowingItem) (result []Fol
 		ids = append(ids, strconv.Itoa(item.TargetID))
 	}
 
-	members, err := MemberAPI.GetMembers(&MemberArgs{
+	members, err := MemberAPI.GetMembers(&GetMembersArgs{
 		IDs:       ids,
 		Active:    map[string][]int{"in": []int{config.Config.Models.Members["active"]}},
 		MaxResult: uint8(len(ids)),
