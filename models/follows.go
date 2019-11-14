@@ -234,6 +234,7 @@ func (g *GetFollowingArgs) getPostDetails(items []FollowingItem) (result []Follo
 		Page:         1,
 		Sorting:      "-updated_at",
 		ShowAuthor:   true,
+		ShowCard:     true,
 		ShowCommment: true,
 		ShowTag:      true,
 		ShowUpdater:  true,
@@ -296,7 +297,7 @@ func (g *GetFollowingArgs) getMemberDetails(items []FollowingItem) (result []Fol
 		ids = append(ids, strconv.Itoa(item.TargetID))
 	}
 
-	members, err := MemberAPI.GetMembers(&MemberArgs{
+	members, err := MemberAPI.GetMembers(&GetMembersArgs{
 		IDs:       ids,
 		Active:    map[string][]int{"in": []int{config.Config.Models.Members["active"]}},
 		MaxResult: uint8(len(ids)),

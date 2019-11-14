@@ -171,6 +171,10 @@ func GetStructDBTags(mode string, input interface{}) []string {
 				if field.Valid {
 					columns = append(columns, tag.Get("db"))
 				}
+			case NullIntSlice:
+				if field.Valid {
+					columns = append(columns, tag.Get("db"))
+				}
 			case bool, int, uint32, int64:
 				columns = append(columns, tag.Get("db"))
 			default:

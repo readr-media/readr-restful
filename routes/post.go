@@ -224,7 +224,7 @@ func (r *postHandler) Post(c *gin.Context) {
 	// Only do the pipeline when it's published
 	if (!post.Active.Valid || post.Active.Int != int64(config.Config.Models.Posts["deactive"])) &&
 		(post.PublishStatus.Valid && post.PublishStatus.Int == int64(config.Config.Models.PostPublishStatus["publish"])) {
-		r.PublishPipeline([]uint32{uint32(postID)})
+		r.PublishHandler([]uint32{uint32(postID)})
 	}
 	c.Status(http.StatusOK)
 }
@@ -299,18 +299,21 @@ func (r *postHandler) Put(c *gin.Context) {
 				go mail.MailAPI.SendCECommentNotify(postDetail)
 				models.SlackHelper.SendCECommentNotify(postDetail)
 			}
-
 		}
 	} else if post.PublishStatus.Valid || post.Active.Valid {
 		// Case: Publish a post. Read whole post from database, then store to cache/searcher
 		// Case: Update a post.
-		err := r.PublishPipeline([]uint32{post.ID})
+		err := r.PublishHandler([]uint32{post.ID})
 		if err != nil {
-			log.Println("Handling publish pipeline fail when update all posts", err)
+			log.Println("Handling publish fail of a post: ", err.Error())
 			return
 		}
 	} else {
-		go models.PostCache.Update(post.Post)
+		err := r.UpdateHandler(post)
+		if err != nil {
+			log.Println("Handling update fail of a post: ", err.Error())
+			return
+		}
 	}
 
 	c.Status(http.StatusOK)
@@ -410,7 +413,7 @@ func (r *postHandler) PublishAll(c *gin.Context) {
 	for _, id := range payload.IDs {
 		publishedIDs = append(publishedIDs, uint32(id))
 	}
-	err = r.PublishPipeline(publishedIDs)
+	err = r.PublishHandler(publishedIDs)
 	if err != nil {
 		log.Println("Handling publish pipeline fail when update all posts", err)
 		return
@@ -461,7 +464,7 @@ func (r *postHandler) validatePostSorting(sort string) bool {
 	return true
 }
 
-func (r *postHandler) PublishPipeline(ids []uint32) error {
+func (r *postHandler) PublishHandler(ids []uint32) error {
 	// Insert to SearchFeed / Redis PostCache / Redis notification
 	// Send notify mail / slack message
 
@@ -473,6 +476,7 @@ func (r *postHandler) PublishPipeline(ids []uint32) error {
 		arg.ProjectID = -1
 		arg.IDs = ids
 		arg.ShowAuthor = true
+		arg.ShowCard = true
 		arg.ShowCommment = true
 		arg.ShowTag = true
 		arg.ShowUpdater = true
@@ -488,11 +492,47 @@ func (r *postHandler) PublishPipeline(ids []uint32) error {
 			post.PublishStatus.Int == int64(config.Config.Models.PostPublishStatus["publish"]) {
 
 			go models.NotificationGen.GeneratePostNotifications(post)
+
+			if post.Post.ProjectID.Int != 0 {
+				p := models.Project{ID: int(post.Post.ProjectID.Int), UpdatedAt: rrsql.NullTime{Time: time.Now(), Valid: true}}
+				if post.Post.UpdatedBy.Valid {
+					p.UpdatedBy = post.Post.UpdatedBy
+				}
+				err := models.ProjectAPI.UpdateProjects(p)
+				if err != nil {
+					log.Println("Error Update project in PublishHander of a post: ", err.Error())
+				}
+			}
+
 			validPosts = append(validPosts, post)
 		}
 	}
 	go models.PostCache.SyncFromDataStorage()
 	go models.SearchFeed.InsertPost(validPosts)
+
+	return nil
+}
+
+func (r *postHandler) UpdateHandler(post models.PostDescription) error {
+
+	go models.PostCache.Update(post.Post)
+
+	postDetail, err := models.PostAPI.GetPost(post.Post.ID, &models.PostArgs{
+		ProjectID: -1,
+	})
+	if err != nil {
+		return err
+	}
+	if postDetail.Post.ProjectID.Int != 0 {
+		p := models.Project{ID: int(postDetail.Post.ProjectID.Int), UpdatedAt: rrsql.NullTime{Time: time.Now(), Valid: true}}
+		if postDetail.Post.UpdatedBy.Valid {
+			p.UpdatedBy = postDetail.Post.UpdatedBy
+		}
+		err = models.ProjectAPI.UpdateProjects(p)
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }

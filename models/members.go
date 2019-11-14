@@ -106,18 +106,44 @@ var MemberAPI MemberInterface = new(memberAPI)
 
 type MemberInterface interface {
 	DeleteMember(idType string, id string) error
-	GetMember(idType string, id string) (Member, error)
-	GetMembers(req *MemberArgs) ([]Member, error)
-	FilterMembers(args *MemberArgs) ([]Stunt, error)
+	GetMember(req GetMemberArgs) (Member, error)
+	GetMembers(req *GetMembersArgs) ([]Member, error)
+	FilterMembers(args *GetMembersArgs) ([]Stunt, error)
 	InsertMember(m Member) (id int, err error)
 	UpdateAll(ids []int64, active int) error
 	UpdateMember(m Member) error
-	Count(req *MemberArgs) (result int, err error)
+	Count(req *GetMembersArgs) (result int, err error)
 	GetIDsByNickname(params GetMembersKeywordsArgs) (result []Stunt, err error)
 }
 
-// type MemberArgs map[string]interface{}
-type MemberArgs struct {
+type GetMemberArgs struct {
+	IDType string
+	ID     string
+	Mode   string
+}
+
+func (m *GetMemberArgs) parse() (restricts string, values []interface{}) {
+	where := make([]string, 0)
+
+	if m.ID != "" && m.IDType != "" {
+		where = append(where, fmt.Sprintf("%s = ?", m.IDType))
+		values = append(values, m.ID)
+	}
+
+	if m.Mode != "" {
+		where = append(where, "register_mode = ?")
+		values = append(values, m.Mode)
+	}
+
+	if len(where) > 1 {
+		restricts = strings.Join(where, " AND ")
+	} else if len(where) == 1 {
+		restricts = where[0]
+	}
+	return restricts, values
+}
+
+type GetMembersArgs struct {
 	MaxResult    uint8            `form:"max_result"`
 	Page         uint16           `form:"page"`
 	Sorting      string           `form:"sort"`
@@ -137,22 +163,22 @@ type MemberArgs struct {
 	FilterUpdatedAt map[string]time.Time
 }
 
-func (m *MemberArgs) SetDefault() {
+func (m *GetMembersArgs) SetDefault() {
 	m.MaxResult = 20
 	m.Page = 1
 	m.Sorting = "-updated_at"
 }
 
-func (m *MemberArgs) DefaultActive() {
+func (m *GetMembersArgs) DefaultActive() {
 	// m.Active = map[string][]int{"$nin": []int{int(MemberStatus["delete"].(float64))}}
 	m.Active = map[string][]int{"$nin": []int{config.Config.Models.Members["delete"]}}
 }
 
-func (m *MemberArgs) anyFilter() bool {
+func (m *GetMembersArgs) anyFilter() bool {
 	return m.Active != nil || m.CustomEditor == true
 }
 
-func (m *MemberArgs) parse() (restricts string, values []interface{}) {
+func (m *GetMembersArgs) parse() (restricts string, values []interface{}) {
 	where := make([]string, 0)
 
 	if m.CustomEditor {
@@ -197,54 +223,54 @@ func (m *MemberArgs) parse() (restricts string, values []interface{}) {
 	return restricts, values
 }
 
-func (p *MemberArgs) parseLimit() (restricts string, values []interface{}) {
+func (m *GetMembersArgs) parseLimit() (restricts string, values []interface{}) {
 
-	if p.Sorting != "" {
-		restricts = fmt.Sprintf("%s ORDER BY %s", restricts, rrsql.OrderByHelper(p.Sorting))
+	if m.Sorting != "" {
+		restricts = fmt.Sprintf("%s ORDER BY %s", restricts, rrsql.OrderByHelper(m.Sorting))
 	}
 
-	if p.MaxResult > 0 {
+	if m.MaxResult > 0 {
 		restricts = fmt.Sprintf("%s LIMIT ?", restricts)
-		values = append(values, p.MaxResult)
-		if p.Page > 0 {
+		values = append(values, m.MaxResult)
+		if m.Page > 0 {
 			restricts = fmt.Sprintf("%s OFFSET ?", restricts)
-			values = append(values, (p.Page-1)*uint16(p.MaxResult))
+			values = append(values, (m.Page-1)*uint16(m.MaxResult))
 		}
 	}
 	return restricts, values
 }
 
-func (p *MemberArgs) parseFilterRestricts() (restrictString string, values []interface{}) {
+func (m *GetMembersArgs) parseFilterRestricts() (restrictString string, values []interface{}) {
 	restricts := make([]string, 0)
 
-	if p.FilterID != 0 {
+	if m.FilterID != 0 {
 		restricts = append(restricts, `CAST(members.id as CHAR) LIKE ?`)
-		values = append(values, fmt.Sprintf("%s%d%s", "%", p.FilterID, "%"))
+		values = append(values, fmt.Sprintf("%s%d%s", "%", m.FilterID, "%"))
 	}
-	if p.FilterMail != "" {
+	if m.FilterMail != "" {
 		restricts = append(restricts, `CAST(members.mail as CHAR) LIKE ?`)
-		values = append(values, fmt.Sprintf("%s%s%s", "%", p.FilterMail, "%"))
+		values = append(values, fmt.Sprintf("%s%s%s", "%", m.FilterMail, "%"))
 	}
-	if p.FilterNickname != "" {
+	if m.FilterNickname != "" {
 		restricts = append(restricts, `CAST(members.nickname as CHAR) LIKE ?`)
-		values = append(values, fmt.Sprintf("%s%s%s", "%", p.FilterNickname, "%"))
+		values = append(values, fmt.Sprintf("%s%s%s", "%", m.FilterNickname, "%"))
 	}
-	if len(p.FilterCreatedAt) != 0 {
-		if v, ok := p.FilterCreatedAt["$gt"]; ok {
+	if len(m.FilterCreatedAt) != 0 {
+		if v, ok := m.FilterCreatedAt["$gt"]; ok {
 			restricts = append(restricts, "members.created_at >= ?")
 			values = append(values, v)
 		}
-		if v, ok := p.FilterCreatedAt["$lt"]; ok {
+		if v, ok := m.FilterCreatedAt["$lt"]; ok {
 			restricts = append(restricts, "members.created_at <= ?")
 			values = append(values, v)
 		}
 	}
-	if len(p.FilterUpdatedAt) != 0 {
-		if v, ok := p.FilterUpdatedAt["$gt"]; ok {
+	if len(m.FilterUpdatedAt) != 0 {
+		if v, ok := m.FilterUpdatedAt["$gt"]; ok {
 			restricts = append(restricts, "members.updated_at >= ?")
 			values = append(values, v)
 		}
-		if v, ok := p.FilterUpdatedAt["$lt"]; ok {
+		if v, ok := m.FilterUpdatedAt["$lt"]; ok {
 			restricts = append(restricts, "members.updated_at <= ?")
 			values = append(values, v)
 		}
@@ -257,11 +283,11 @@ func (p *MemberArgs) parseFilterRestricts() (restrictString string, values []int
 	return restrictString, values
 }
 
-func (p *MemberArgs) parseFilterQuery() (restricts string, values []interface{}) {
-	selectedFields := p.Fields.GetFields(`%s "%s"`)
+func (m *GetMembersArgs) parseFilterQuery() (restricts string, values []interface{}) {
+	selectedFields := m.Fields.GetFields(`%s "%s"`)
 
-	restricts, restrictVals := p.parseFilterRestricts()
-	limit, limitVals := p.parseLimit()
+	restricts, restrictVals := m.parseFilterRestricts()
+	limit, limitVals := m.parseLimit()
 	values = append(values, restrictVals...)
 	values = append(values, limitVals...)
 
@@ -314,7 +340,7 @@ CheckEachFieldLoop:
 	return err
 }
 
-func (a *memberAPI) GetMembers(req *MemberArgs) (result []Member, err error) {
+func (a *memberAPI) GetMembers(req *GetMembersArgs) (result []Member, err error) {
 
 	restricts, values := req.parse()
 	query := fmt.Sprintf(`SELECT * FROM members where %s `, restricts)
@@ -336,9 +362,12 @@ func (a *memberAPI) GetMembers(req *MemberArgs) (result []Member, err error) {
 	return result, err
 }
 
-func (a *memberAPI) GetMember(idType string, id string) (Member, error) {
+func (a *memberAPI) GetMember(req GetMemberArgs) (Member, error) {
 	member := Member{}
-	err := rrsql.DB.QueryRowx(fmt.Sprintf("SELECT * FROM members where %s = ?", idType), id).StructScan(&member)
+	restricts, values := req.parse()
+	query := fmt.Sprintf("SELECT * FROM members where %s", restricts)
+
+	err := rrsql.DB.QueryRowx(query, values...).StructScan(&member)
 	switch {
 	case err == sql.ErrNoRows:
 		err = errors.New("User Not Found")
@@ -352,7 +381,7 @@ func (a *memberAPI) GetMember(idType string, id string) (Member, error) {
 	return member, err
 }
 
-func (a *memberAPI) FilterMembers(args *MemberArgs) (result []Stunt, err error) {
+func (a *memberAPI) FilterMembers(args *GetMembersArgs) (result []Stunt, err error) {
 	query, values := args.parseFilterQuery()
 
 	rows, err := rrsql.DB.Queryx(query, values...)
@@ -464,7 +493,7 @@ func (a *memberAPI) UpdateAll(ids []int64, active int) (err error) {
 	return err
 }
 
-func (a *memberAPI) Count(req *MemberArgs) (result int, err error) {
+func (a *memberAPI) Count(req *GetMembersArgs) (result int, err error) {
 
 	if !req.anyFilter() {
 

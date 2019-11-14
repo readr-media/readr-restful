@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"reflect"
 	"regexp"
 	"strings"
 
@@ -53,13 +52,13 @@ func (p *NewsCardArgs) parse() (restricts string, values []interface{}) {
 
 	if p.Active != nil {
 		for k, v := range p.Active {
-			where = append(where, fmt.Sprintf("%s %s (?)", "newscards.active", operatorHelper(k)))
+			where = append(where, fmt.Sprintf("%s %s (?)", "newscards.active", rrsql.OperatorHelper(k)))
 			values = append(values, v)
 		}
 	}
 	if p.Status != nil {
 		for k, v := range p.Status {
-			where = append(where, fmt.Sprintf("%s %s (?)", "newscards.status", operatorHelper(k)))
+			where = append(where, fmt.Sprintf("%s %s (?)", "newscards.status", rrsql.OperatorHelper(k)))
 			values = append(values, v)
 		}
 	}
@@ -82,7 +81,7 @@ func (p *NewsCardArgs) parse() (restricts string, values []interface{}) {
 func (p *NewsCardArgs) parseResultLimit() (restricts string, values []interface{}) {
 	sortingString := "created_at DESC"
 	if p.Sorting != "" {
-		sortingString = fmt.Sprintf("%s, %s", orderByHelper(p.Sorting), sortingString)
+		sortingString = fmt.Sprintf("%s, %s", rrsql.OrderByHelper(p.Sorting), sortingString)
 	}
 	restricts = fmt.Sprintf("%s ORDER BY %s", restricts, sortingString)
 
@@ -134,7 +133,7 @@ func (a *newscardAPI) DeleteCard(id uint32) error {
 
 func (a *newscardAPI) GetCards(rowargs *NewsCardArgs) (result []NewsCard, err error) {
 
-	query, args := a.buildGetQuery(rowargs)
+	query, args := a.buildGetStmt(rowargs)
 	// To give adaptability to where clauses, have to use ... operator here
 	// Therefore split query into two parts, assembling them after sqlx.Rebind
 	query, args, err = sqlx.In(query, args...)
@@ -159,28 +158,9 @@ func (a *newscardAPI) GetCards(rowargs *NewsCardArgs) (result []NewsCard, err er
 	return result, err
 }
 
-func (a *newscardAPI) buildGetQuery(args *NewsCardArgs) (query string, values []interface{}) {
-	selectedFields := []string{"newscards.*"}
-	var restricts string
-
-	restricts, restrictVals := args.parse()
-	resultLimit, resultLimitVals := args.parseResultLimit()
-	values = append(values, restrictVals...)
-	values = append(values, resultLimitVals...)
-
-	query = fmt.Sprintf(`
-		SELECT %s FROM newscards %s `,
-		strings.Join(selectedFields, ","),
-		restricts+resultLimit,
-	)
-
-	return query, values
-}
-
 func (a *newscardAPI) InsertCard(n NewsCard) (int, error) {
 
-	tags := getStructDBTags(n)
-	fmt.Println(tags)
+	tags := rrsql.GetStructDBTags("partial", n)
 	query := fmt.Sprintf(`INSERT INTO newscards (%s) VALUES (:%s)`,
 		strings.Join(tags, ","), strings.Join(tags, ",:"))
 
@@ -211,9 +191,8 @@ func (a *newscardAPI) InsertCard(n NewsCard) (int, error) {
 
 func (a *newscardAPI) UpdateCard(n NewsCard) error {
 
-	tags := getStructDBTags(n)
-	fields := makeFieldString(
-		`%s = :%s`, tags)
+	tags := rrsql.GetStructDBTags("partial", n)
+	fields := rrsql.MakeFieldString("update", `%s = :%s`, tags)
 	query := fmt.Sprintf(`UPDATE newscards SET %s WHERE id = :id`,
 		strings.Join(fields, ", "))
 
@@ -230,78 +209,4 @@ func (a *newscardAPI) UpdateCard(n NewsCard) error {
 	}
 
 	return err
-}
-
-func getStructDBTags(input interface{}) []string {
-	columns := make([]string, 0)
-	u := reflect.ValueOf(input)
-	for i := 0; i < u.NumField(); i++ {
-		tag := u.Type().Field(i).Tag
-		field := u.Field(i).Interface()
-
-		switch field := field.(type) {
-		case string:
-			if field != "" {
-				columns = append(columns, tag.Get("db"))
-			}
-		case rrsql.NullString:
-			if field.Valid {
-				columns = append(columns, tag.Get("db"))
-			}
-		case rrsql.NullTime:
-			if field.Valid {
-				columns = append(columns, tag.Get("db"))
-			}
-		case rrsql.NullInt:
-			if field.Valid {
-				columns = append(columns, tag.Get("db"))
-			}
-		case rrsql.NullBool:
-			if field.Valid {
-				columns = append(columns, tag.Get("db"))
-			}
-		case rrsql.NullIntSlice:
-			if field.Valid {
-				columns = append(columns, tag.Get("db"))
-			}
-		case bool, int, uint32, int64:
-			columns = append(columns, tag.Get("db"))
-		default:
-			fmt.Println("unrecognised format: ", u.Field(i).Type())
-		}
-	}
-	return columns
-}
-
-func makeFieldString(pattern string, tags []string) (result []string) {
-	for _, value := range tags {
-		result = append(result, fmt.Sprintf(pattern, value, value))
-	}
-	return result
-}
-
-func operatorHelper(ops string) (result string) {
-	switch ops {
-	case "$in":
-		result = `IN`
-	case "$nin":
-		result = `NOT IN`
-	default:
-		result = `IN`
-	}
-	return result
-}
-
-func orderByHelper(sortMethod string) (result string) {
-	// if strings.Contains(sortMethod, )
-	tmp := strings.Split(sortMethod, ",")
-	for i, v := range tmp {
-		if v := strings.TrimSpace(v); strings.HasPrefix(v, "-") {
-			tmp[i] = v[1:] + " DESC"
-		} else {
-			tmp[i] = v
-		}
-	}
-	result = strings.Join(tmp, ",")
-	return result
 }

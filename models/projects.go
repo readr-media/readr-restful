@@ -495,6 +495,7 @@ func (a *projectAPI) GetContents(id int, args GetProjectArgs) (result []interfac
 			MaxResult:    uint8(args.MaxResult),
 			IDs:          postIDs,
 			ShowAuthor:   true,
+			ShowCard:     true,
 			ShowCommment: true,
 			ShowTag:      true,
 		})

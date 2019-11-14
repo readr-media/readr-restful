@@ -65,7 +65,7 @@ var mockMembers = []models.Member{
 
 var mockMemberDS = []models.Member{}
 
-func (a *mockMemberAPI) GetMembers(req *models.MemberArgs) (result []models.Member, err error) {
+func (a *mockMemberAPI) GetMembers(req *models.GetMembersArgs) (result []models.Member, err error) {
 
 	if req.CustomEditor == true {
 		result = []models.Member{mockMemberDS[0]}
@@ -113,14 +113,14 @@ func (a *mockMemberAPI) GetMembers(req *models.MemberArgs) (result []models.Memb
 	return result, err
 }
 
-func (a *mockMemberAPI) GetMember(idType string, id string) (result models.Member, err error) {
-	intID, _ := strconv.Atoi(id)
+func (a *mockMemberAPI) GetMember(req models.GetMemberArgs) (result models.Member, err error) {
+	intID, _ := strconv.Atoi(req.ID)
 	for _, value := range mockMemberDS {
-		if idType == "id" && value.ID == int64(intID) {
+		if req.IDType == "id" && value.ID == int64(intID) {
 			return value, nil
-		} else if idType == "member_id" && value.MemberID == id {
+		} else if req.IDType == "member_id" && value.MemberID == req.ID {
 			return value, nil
-		} else if idType == "mail" && id == "registerdupeuser@mirrormedia.mg" {
+		} else if req.IDType == "mail" && req.ID == "registerdupeuser@mirrormedia.mg" {
 			return models.Member{RegisterMode: rrsql.NullString{"ordinary", true}}, nil
 		}
 	}
@@ -128,7 +128,7 @@ func (a *mockMemberAPI) GetMember(idType string, id string) (result models.Membe
 	return result, err
 }
 
-func (a *mockMemberAPI) FilterMembers(args *models.MemberArgs) (result []models.Stunt, err error) {
+func (a *mockMemberAPI) FilterMembers(args *models.GetMembersArgs) (result []models.Stunt, err error) {
 	return result, err
 }
 
@@ -187,7 +187,7 @@ func (a *mockMemberAPI) UpdateAll(ids []int64, active int) (err error) {
 	return err
 }
 
-func (a *mockMemberAPI) Count(req *models.MemberArgs) (result int, err error) {
+func (a *mockMemberAPI) Count(req *models.GetMembersArgs) (result int, err error) {
 	result = 0
 	err = errors.New("Members Not Found")
 	if req.CustomEditor == true {
@@ -396,7 +396,10 @@ func TestRouteMemberUpdatePassword(t *testing.T) {
 		}
 
 		if w.Code == http.StatusOK {
-			member, err := models.MemberAPI.GetMember("id", testcase.in.ID)
+			member, err := models.MemberAPI.GetMember(models.GetMemberArgs{
+				ID:     testcase.in.ID,
+				IDType: "id",
+			})
 			if err != nil {
 				t.Errorf("Cannot get user after update PW, testcase %s", testcase.name)
 				t.Fail()

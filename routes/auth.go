@@ -50,7 +50,11 @@ func (r *authHandler) userLogin(c *gin.Context) {
 		return
 	}
 
-	member, err := models.MemberAPI.GetMember("member_id", id)
+	member, err := models.MemberAPI.GetMember(models.GetMemberArgs{
+		ID:     id,
+		IDType: "member_id",
+		Mode:   mode,
+	})
 	if err != nil {
 		switch err.Error() {
 		case "User Not Found":
@@ -145,7 +149,11 @@ func (r *authHandler) userRegister(c *gin.Context) {
 	}
 
 	// 2. check if user exists
-	m, err := models.MemberAPI.GetMember("mail", params.Mail)
+	m, err := models.MemberAPI.GetMember(models.GetMemberArgs{
+		ID:     params.Mail,
+		IDType: "mail",
+		Mode:   params.RegisterMode,
+	})
 	if err == nil || err.Error() != "User Not Found" {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "User Duplicated", "Mode": m.RegisterMode.String})
 		return
