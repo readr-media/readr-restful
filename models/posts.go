@@ -675,7 +675,8 @@ func (a *postAPI) fetchPostAuthors(ids []int) (authors map[int][]AuthorBasic, er
 		var authorb AuthorBasic
 		e := rows.StructScan(&authorb)
 		if e != nil {
-			return map[int][]AuthorBasic{}, err
+			fmt.Println("Post has no author or the author data don't have a corresponding member")
+			continue
 		}
 		authors[int(authorb.ResourceID.Int)] = append(authors[int(authorb.ResourceID.Int)], authorb)
 	}
