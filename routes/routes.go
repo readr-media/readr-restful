@@ -7,6 +7,7 @@ import (
 	"github.com/readr-media/readr-restful/pkg/mail"
 	"github.com/readr-media/readr-restful/pkg/poll"
 	promotion "github.com/readr-media/readr-restful/pkg/promotion/http"
+	subscription "github.com/readr-media/readr-restful/pkg/subscription/http"
 )
 
 type RouterHandler interface {
@@ -35,6 +36,7 @@ func SetRoutes(router *gin.Engine) {
 		&TagHandler,
 		&poll.Router,
 		&promotion.Router,
+		&subscription.Router,
 	} {
 		h.SetRoutes(router)
 	}
