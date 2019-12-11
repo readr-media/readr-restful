@@ -37,9 +37,10 @@ func (i *InvoiceStore) Scan(value interface{}) error {
 // Subscriber provides the interface for different db backend
 //go:generate mockgen -package=mock -destination=test/mock/mock.go github.com/readr-media/readr-restful/pkg/subscription Subscriber
 type Subscriber interface {
-	GetSubscriptions() (results []Subscription, err error)
+	GetSubscriptions(f ListFilter) (results []Subscription, err error)
 	CreateSubscription(s Subscription) error
 	UpdateSubscriptions(s Subscription) error
+	RoutinePay(subscribers []Subscription) error
 }
 
 // Subscription is the model for unmarshalling JSON, and serialized to database
@@ -55,4 +56,8 @@ type Subscription struct {
 	Status         int            `json:"status" db:"status"`
 	PaymentInfos   PaymentStore   `json:"payment_infos,omitempty" db:"payment_infos"`
 	InvoiceInfos   InvoiceStore   `json:"invoice_infos,omitempty" db:"invoice_infos"`
+}
+
+type ListFilter interface {
+	Select() (string, []interface{}, error)
 }

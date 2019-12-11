@@ -68,7 +68,10 @@ FindTags:
 				columns = append(columns, tag)
 			default:
 				fmt.Printf("unrecognised format: %s value:%v\n", value.Field(i).Type(), fieldValue)
-				columns = append(columns, tag)
+				// TODO: restrict the judgement to certain kind with Kind(), or it might panic
+				if fieldValue.Len() > 0 {
+					columns = append(columns, tag)
+				}
 			}
 		}
 	}
@@ -84,9 +87,10 @@ type SubscriptionService struct {
 }
 
 // GetSubscriptions could list user subscriptions
-func (s *SubscriptionService) GetSubscriptions() (results []subscription.Subscription, err error) {
-	query := `SELECT * FROM subscriptions;`
-	err = s.DB.Select(&results, query)
+func (s *SubscriptionService) GetSubscriptions(params subscription.ListFilter) (results []subscription.Subscription, err error) {
+
+	query, values, err := params.Select()
+	err = s.DB.Select(&results, query, values...)
 	if err != nil {
 		log.Printf("Failed to get subscriptions from MySQL: %s\n", err.Error())
 		return nil, err
@@ -160,6 +164,30 @@ func (s *SubscriptionService) UpdateSubscriptions(p subscription.Subscription) e
 	if err != nil {
 		fmt.Println(err.Error())
 		return err
+	}
+	return nil
+}
+
+// RoutinePay accepts user subscription infos, request recurring pay API, and updates updated_at, last_pay_at.
+func (s *SubscriptionService) RoutinePay(subscribers []subscription.Subscription) (err error) {
+
+	for _, p := range subscribers {
+		s.Payment, err = payment.NewRecurringProvider(p.PaymentService)
+		if err != nil {
+			return err
+		}
+		p.PaymentInfos["amount"] = p.Amount
+		_, _, err := s.Payment.Pay(p.PaymentInfos)
+		if err != nil {
+			log.Printf("recurring pay error:%v\n", err)
+			return err
+		}
+		update := subscription.Subscription{ID: uint64(p.ID), UpdatedAt: rrsql.NullTime{Time: time.Now(), Valid: true}, LastPaidAt: rrsql.NullTime{Time: time.Now(), Valid: true}}
+		err = s.UpdateSubscriptions(update)
+		if err != nil {
+			fmt.Println(err.Error())
+			return err
+		}
 	}
 	return nil
 }
