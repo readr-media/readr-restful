@@ -1,7 +1,6 @@
 package http
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -21,13 +20,12 @@ func (h *Handler) Get(c *gin.Context) {
 
 	var err error
 	params := NewListRequest()
-	if err = c.ShouldBindQuery(&params); err != nil {
+	if err = params.bind(c); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 		return
 	}
-	fmt.Printf("ListArgs:\n%v\n", params)
 
-	// Formatting JSON here
+	// Formatting JSON
 	var results struct {
 		Items []subscription.Subscription `json:"_itmes"`
 	}
@@ -56,7 +54,7 @@ func (h *Handler) Post(c *gin.Context) {
 		}
 		return
 	}
-	// Should return 201
+	// return 201
 	c.Status(http.StatusCreated)
 }
 
@@ -87,8 +85,8 @@ func (h *Handler) RecurringPay(c *gin.Context) {
 
 	params := NewListRequest(func(p *ListRequest) {
 		p.LastPaidAt = map[string]time.Time{
-			"gte": start,
-			"lt":  end,
+			"$gte": start,
+			"$lt":  end,
 		}
 		p.Status = 1
 	})
@@ -100,8 +98,8 @@ func (h *Handler) RecurringPay(c *gin.Context) {
 	}
 	err = h.Service.RoutinePay(list)
 
-	// Return 201
-	c.Status(http.StatusCreated)
+	// Return 202
+	c.Status(http.StatusAccepted)
 }
 
 // SetRoutes provides a public function to set gin router
