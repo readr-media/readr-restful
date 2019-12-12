@@ -7,6 +7,8 @@ import (
 	"github.com/readr-media/readr-restful/internal/rrsql"
 )
 
+// TODO: define ENUM status
+
 // PaymentStore wraps the necessary data structure for sqlx
 // gin could bind map[string]interface{} directly, but not sqlx
 type PaymentStore map[string]interface{}
