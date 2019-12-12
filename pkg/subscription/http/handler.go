@@ -1,6 +1,7 @@
 package http
 
 import (
+	"log"
 	"net/http"
 	"time"
 
@@ -105,9 +106,13 @@ func (h *Handler) RecurringPay(c *gin.Context) {
 // SetRoutes provides a public function to set gin router
 func (h *Handler) SetRoutes(router *gin.Engine) {
 
-	// Create a mySQL subscription service, and make handlers use it to process subscriptions
-	s := &mysql.SubscriptionService{DB: rrsql.DB.DB}
-	h.Service = s
+	// Create a mySQL subscription service, and make handlers use it to process subscriptions if there is no other service
+	if h.Service == nil {
+		// Set default service to MySQL
+		log.Println("Set subscription service to default MySQL")
+		s := &mysql.SubscriptionService{DB: rrsql.DB.DB}
+		h.Service = s
+	}
 	// Register subscriptions endpoints
 	subscriptionRouter := router.Group("/subscriptions")
 	{

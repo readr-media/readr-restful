@@ -48,16 +48,44 @@ func (mr *MockSubscriberMockRecorder) CreateSubscription(arg0 interface{}) *gomo
 }
 
 // GetSubscriptions mocks base method
-func (m *MockSubscriber) GetSubscriptions() ([]subscription.Subscription, error) {
+func (m *MockSubscriber) GetSubscriptions(arg0 subscription.ListFilter) ([]subscription.Subscription, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetSubscriptions")
+	ret := m.ctrl.Call(m, "GetSubscriptions", arg0)
 	ret0, _ := ret[0].([]subscription.Subscription)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetSubscriptions indicates an expected call of GetSubscriptions
-func (mr *MockSubscriberMockRecorder) GetSubscriptions() *gomock.Call {
+func (mr *MockSubscriberMockRecorder) GetSubscriptions(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSubscriptions", reflect.TypeOf((*MockSubscriber)(nil).GetSubscriptions))
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSubscriptions", reflect.TypeOf((*MockSubscriber)(nil).GetSubscriptions), arg0)
+}
+
+// RoutinePay mocks base method
+func (m *MockSubscriber) RoutinePay(arg0 []subscription.Subscription) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RoutinePay", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RoutinePay indicates an expected call of RoutinePay
+func (mr *MockSubscriberMockRecorder) RoutinePay(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RoutinePay", reflect.TypeOf((*MockSubscriber)(nil).RoutinePay), arg0)
+}
+
+// UpdateSubscriptions mocks base method
+func (m *MockSubscriber) UpdateSubscriptions(arg0 subscription.Subscription) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateSubscriptions", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateSubscriptions indicates an expected call of UpdateSubscriptions
+func (mr *MockSubscriberMockRecorder) UpdateSubscriptions(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateSubscriptions", reflect.TypeOf((*MockSubscriber)(nil).UpdateSubscriptions), arg0)
 }
