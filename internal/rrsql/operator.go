@@ -3,14 +3,14 @@ package rrsql
 import "errors"
 
 var allowOperator = map[string]string{
-	"gte": ">=",
-	"gt":  ">",
-	"lte": "<=",
-	"lt":  "<",
-	"neq": "!=",
-	"eq":  "=",
-	"in":  "IN",
-	"nin": "NOT IN",
+	"$gte": ">=",
+	"$gt":  ">",
+	"$lte": "<=",
+	"$lt":  "<",
+	"$neq": "!=",
+	"$eq":  "=",
+	"$in":  "IN",
+	"$nin": "NOT IN",
 }
 
 // OperatorCoverter converts between query operators and MySQL operators

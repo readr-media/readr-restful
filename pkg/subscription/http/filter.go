@@ -2,16 +2,42 @@ package http
 
 import (
 	"fmt"
+	"log"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/internal/rrsql"
 )
 
 // ListRequest holds the query parameters for list request
 type ListRequest struct {
-	Status     int                  `form:"status"`
+	Status     int64                `form:"status"`
 	LastPaidAt map[string]time.Time `form:"last_paid_at"`
+}
+
+func (r *ListRequest) bind(c *gin.Context) (err error) {
+
+	if err = c.ShouldBindQuery(r); err != nil {
+		log.Printf("list request binding error first:%s\n", err.Error())
+	}
+	if c.Query("status") != "" {
+		r.Status, _ = strconv.ParseInt(c.Query("status"), 0, 64)
+	}
+	if c.Query("last_paid_at") != "" {
+		r.LastPaidAt = make(map[string]time.Time)
+		timeList := strings.Split(c.Query("last_paid_at"), "::")
+		for _, restrain := range timeList {
+			op := strings.Split(restrain, ":")
+			targetTime, err := time.Parse("2006-01-02", op[1])
+			if err != nil {
+				return err
+			}
+			r.LastPaidAt[op[0]] = targetTime
+		}
+	}
+	return nil
 }
 
 // Select generates the query statement and arguments for MySQL SELECT
@@ -27,7 +53,6 @@ func (r *ListRequest) Select() (query string, values []interface{}, err error) {
 	wv = append(wv, r.Status)
 	// r.LastPaidAt
 	if r.LastPaidAt != nil {
-		fmt.Printf("LastPayAt:%v\n", r.LastPaidAt)
 		for o, v := range r.LastPaidAt {
 			ops, err := rrsql.OperatorCoverter(o)
 			if err != nil {
