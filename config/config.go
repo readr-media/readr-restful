@@ -101,6 +101,14 @@ type appConfig struct {
 		PaymentDescription string `mapstructure:"payment_description"`
 	} `mapstructure:"payment_service"`
 
+	InvoiceService struct {
+		MerchantID string `mapstructure:"merchant_id"`
+		URL        string `mapstructure:"url"`
+		APIVersion string `mapstructure:"api_version"`
+		Key        string `mapstructure:"key"`
+		IV         string `mapstructure:"iv"`
+	} `mapstructure:"invoice_service"`
+
 	Slack struct {
 		NotifyWebhook string `mapstructure:"notify_webhook"`
 	} `mapstructure:"slack"`

@@ -83,7 +83,6 @@ func (h *Handler) RecurringPay(c *gin.Context) {
 
 	// Get subscription list on today's interval
 	start, end, _ := payInterval(time.Now())
-
 	params := NewListRequest(func(p *ListRequest) {
 		p.LastPaidAt = map[string]time.Time{
 			"$gte": start,
@@ -98,6 +97,10 @@ func (h *Handler) RecurringPay(c *gin.Context) {
 		return
 	}
 	err = h.Service.RoutinePay(list)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
+		return
+	}
 
 	// Return 202
 	c.Status(http.StatusAccepted)
@@ -116,7 +119,7 @@ func (h *Handler) SetRoutes(router *gin.Engine) {
 	// Register subscriptions endpoints
 	subscriptionRouter := router.Group("/subscriptions")
 	{
-		subscriptionRouter.GET("", h.Get)
+		// subscriptionRouter.GET("", h.Get)
 		subscriptionRouter.POST("", h.Post)
 		subscriptionRouter.PUT("/:id", h.Put)
 

@@ -9,6 +9,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/internal/rrsql"
+	"github.com/readr-media/readr-restful/pkg/invoice"
 	"github.com/readr-media/readr-restful/pkg/payment"
 	"github.com/readr-media/readr-restful/pkg/subscription"
 )
@@ -83,7 +84,7 @@ type SubscriptionService struct {
 	DB *sqlx.DB
 
 	Payment payment.Provider
-	// Invoice struct
+	Invoice invoice.Provider
 }
 
 // GetSubscriptions could list user subscriptions
@@ -98,24 +99,23 @@ func (s *SubscriptionService) GetSubscriptions(params subscription.ListFilter) (
 	return results, nil
 }
 
-// Necessary payment info:
-/*
-{
-	"card_key": "",
-	"card_token": "",
-	"partner_key": "",
-	"merchant_id": "",
-	"amount": 0,
-	"currentcy": "TWD"
-	"details": ""
-}
-*/
-
 // CreateSubscription will make first payment, and store infos for recurring payment in db
 func (s *SubscriptionService) CreateSubscription(p subscription.Subscription) (err error) {
 
 	// Setup payment service
 	s.Payment, err = payment.NewOnetimeProvider(p.PaymentService)
+
+	// Setup invoice service
+	p.InvoiceInfos["amount"] = p.Amount
+	s.Invoice, err = invoice.NewInvoiceProvider(p.InvoiceService, p.InvoiceInfos)
+	if err != nil {
+		log.Printf("recurring pay error assigning invoice service:%v\n", err)
+		return err
+	}
+	if err = s.Invoice.Validate(); err != nil {
+		log.Printf("invoice validated error:%s\n", err.Error())
+		return err
+	}
 
 	// Create subscription records
 	tags := GetStructTags("full", "db", p)
@@ -135,9 +135,14 @@ func (s *SubscriptionService) CreateSubscription(p subscription.Subscription) (e
 	p.PaymentInfos["amount"] = p.Amount
 	p.PaymentInfos["remember"] = true
 
-	// var resp map[string]interface{}
 	_, p.PaymentInfos, err = s.Payment.Pay(p.PaymentInfos)
 	if err != nil {
+		return err
+	}
+
+	_, err = s.Invoice.Create()
+	if err != nil {
+		log.Printf("recurring pay error creating invoice:%v\n", err)
 		return err
 	}
 
@@ -172,22 +177,40 @@ func (s *SubscriptionService) UpdateSubscriptions(p subscription.Subscription) e
 func (s *SubscriptionService) RoutinePay(subscribers []subscription.Subscription) (err error) {
 
 	for _, p := range subscribers {
+		// Initializing payment service
 		s.Payment, err = payment.NewRecurringProvider(p.PaymentService)
 		if err != nil {
 			return err
 		}
 		p.PaymentInfos["amount"] = p.Amount
+		p.InvoiceInfos["amount"] = p.Amount
+
+		s.Invoice, err = invoice.NewInvoiceProvider(p.InvoiceService, p.InvoiceInfos)
+		if err != nil {
+			log.Printf("recurring pay error assigning invoice service:%v\n", err)
+			return err
+		}
+		if err = s.Invoice.Validate(); err != nil {
+			return err
+		}
+
 		_, _, err := s.Payment.Pay(p.PaymentInfos)
 		if err != nil {
-			log.Printf("recurring pay error:%v\n", err)
+			log.Printf("recurring pay error paying:%v\n", err)
 			return err
 		}
 		update := subscription.Subscription{ID: uint64(p.ID), UpdatedAt: rrsql.NullTime{Time: time.Now(), Valid: true}, LastPaidAt: rrsql.NullTime{Time: time.Now(), Valid: true}}
 		err = s.UpdateSubscriptions(update)
 		if err != nil {
-			fmt.Println(err.Error())
 			return err
 		}
+
+		_, err = s.Invoice.Create()
+		if err != nil {
+			log.Printf("recurring pay error creating invoice:%v\n", err)
+			return err
+		}
+
 	}
 	return nil
 }
