@@ -1,0 +1,39 @@
+[{
+    "name": "normal",
+    "input": {
+        "amount": 100,
+        "buyer_name": "wonderwoman",
+        "item_name": ["訂閱"],
+        "item_count": [1],
+        "item_price": [299],
+        "item_unit": ["月"]
+    },
+    "expect": {
+        "RespondType": "JSON",
+        "Version": "1.4",
+        "Status": "0",
+        "TaxType": "1",
+        "TaxAmt": 5,
+        "TaxRate": 5,
+        "TotalAmt": 100,
+        "Category": "B2C",
+        "LoveCode": "",
+        "CarrierNum": "",
+        "BuyerName": "wonderwoman",
+        "BuyerEmail": "",
+        "ItemName": "訂閱",
+        "ItemCount": "1",
+        "ItemPrice": "299",
+        "ItemUnit": "月",
+        "ItemAmt": "299",
+        "Amt": 95,
+        "PrintFlag": "Y"
+    },
+    "error": ""
+},
+{
+   "name": "invalid-amount",
+   "input": {},
+   "expect": {},
+   "error": "invalid amount"
+}]

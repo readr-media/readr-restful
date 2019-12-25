@@ -237,6 +237,13 @@
         "currency": "",
         "payment_description": ""
     },
+    "invoice_service": {
+        "merchant_id": "",
+        "url": "",
+        "api_version": "",
+        "key": "",
+        "IV": ""
+    },
     "slack":{
         "notify_webhook": ""
     }
