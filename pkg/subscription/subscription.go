@@ -7,6 +7,19 @@ import (
 	"github.com/readr-media/readr-restful/internal/rrsql"
 )
 
+const (
+	// StatusInit means subscriptions is init. It's different from zero-value of Go
+	StatusInit = iota + 1
+	// StatusOK means it is a functioning subscription
+	StatusOK
+	// StatusInactive indicates this is not an active subscription now
+	StatusInactive
+	// StatusInitPayFail denotes fail when pay for the first time
+	StatusInitPayFail
+	// StatusRoutinePayFail indicates failure when pays with token
+	StatusRoutinePayFail
+)
+
 // PaymentStore wraps the necessary data structure for sqlx
 // gin could bind map[string]interface{} directly, but not sqlx
 type PaymentStore map[string]interface{}
