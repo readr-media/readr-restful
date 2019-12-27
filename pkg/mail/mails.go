@@ -821,3 +821,63 @@ func (m *mailApi) SendCECommentNotify(tpm models.TaggedPostMember) (err error) {
 }
 
 var MailAPI MailInterface = new(mailApi)
+
+// Mailer is the mail service interface
+type Mailer interface {
+	Send() (err error)
+	Set(m Mail)
+}
+
+// Mail contains the manipulatable arguments for a mail
+type Mail struct {
+	UserName string
+	To       []string `json:"to"`
+	CC       []string `json:"cc"`
+	BCC      []string `json:"bcc"`
+	Subject  string   `json:"subject"`
+	Body     string   `json:"body"`
+	Bulk     bool     `json:"bulk"`
+}
+
+// MailService holds all the information to request mail API
+type MailService struct {
+	User     string `json:"user"`
+	Password string `json:"password"`
+	From     string `json:"from"`
+
+	Mail
+}
+
+// Send will send letters with the information store in MailService
+func (m *MailService) Send() (err error) {
+
+	msg := gomail.NewMessage()
+	// Populate secrets from config
+	m.User = config.Config.Mail.User
+	m.Password = config.Config.Mail.Password
+	// default use user_name from config
+	if m.Mail.UserName == "" {
+		m.Mail.UserName = config.Config.Mail.UserName
+	}
+	m.From = msg.FormatAddress(config.Config.Mail.User, m.Mail.UserName)
+	reqBody, _ := json.Marshal(m)
+
+	resp, body, err := utils.HTTPRequest("POST", config.Config.Mail.Host,
+		map[string]string{}, reqBody)
+
+	if err != nil {
+		log.Printf("Send mail error: %v\n", err)
+		return err
+	}
+
+	if resp.StatusCode != 200 {
+		log.Printf("Send mail error: %v, status_code: %v", body, resp.StatusCode)
+		return errors.New(string(body))
+	}
+	return err
+}
+
+// Set will modify the arguments in MailService with input arguments
+func (m *MailService) Set(mail Mail) {
+	m.Mail = mail
+}

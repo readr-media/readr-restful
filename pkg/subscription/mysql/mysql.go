@@ -10,6 +10,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/pkg/invoice"
+	"github.com/readr-media/readr-restful/pkg/mail"
 	"github.com/readr-media/readr-restful/pkg/payment"
 	"github.com/readr-media/readr-restful/pkg/subscription"
 )
@@ -83,8 +84,9 @@ FindTags:
 type SubscriptionService struct {
 	DB *sqlx.DB
 
-	Payment payment.Provider
-	Invoice invoice.Provider
+	Payment     payment.Provider
+	Invoice     invoice.Provider
+	MailService mail.Mailer
 }
 
 // GetSubscriptions could list user subscriptions
@@ -108,6 +110,8 @@ func (s *SubscriptionService) CreateSubscription(p subscription.Subscription) (e
 	// Setup invoice service
 	p.InvoiceInfos["amount"] = p.Amount
 	s.Invoice, err = invoice.NewInvoiceProvider(p.InvoiceService, p.InvoiceInfos)
+	s.MailService = &mail.MailService{}
+
 	if err != nil {
 		log.Printf("recurring pay error assigning invoice service:%v\n", err)
 		return err
@@ -117,6 +121,8 @@ func (s *SubscriptionService) CreateSubscription(p subscription.Subscription) (e
 		return err
 	}
 
+	// Set status to init
+	p.Status = subscription.StatusInit
 	// Create subscription records
 	tags := GetStructTags("full", "db", p)
 	query := fmt.Sprintf(`INSERT INTO subscriptions (%s) VALUES (:%s)`, strings.Join(tags, ","), strings.Join(tags, ",:"))
@@ -137,12 +143,20 @@ func (s *SubscriptionService) CreateSubscription(p subscription.Subscription) (e
 
 	_, p.PaymentInfos, err = s.Payment.Pay(p.PaymentInfos)
 	if err != nil {
+		s.MailService.Set(mail.Mail{To: []string{p.Email}, Subject: "Huston! We have a problem!", Body: err.Error()})
+		if err = s.MailService.Send(); err != nil {
+			return err
+		}
 		return err
 	}
 
 	_, err = s.Invoice.Create()
 	if err != nil {
-		log.Printf("recurring pay error creating invoice:%v\n", err)
+		log.Printf("error creating invoice:%v\n", err)
+		s.MailService.Set(mail.Mail{To: []string{p.Email}, Subject: "Huston! We have a problem!", Body: err.Error()})
+		if err = s.MailService.Send(); err != nil {
+			return err
+		}
 		return err
 	}
 
@@ -193,10 +207,15 @@ func (s *SubscriptionService) RoutinePay(subscribers []subscription.Subscription
 		if err = s.Invoice.Validate(); err != nil {
 			return err
 		}
+		s.MailService = &mail.MailService{}
 
 		_, _, err := s.Payment.Pay(p.PaymentInfos)
 		if err != nil {
 			log.Printf("recurring pay error paying:%v\n", err)
+			s.MailService.Set(mail.Mail{To: []string{p.Email}, Subject: "Huston! We have a problem!", Body: err.Error()})
+			if err = s.MailService.Send(); err != nil {
+				return err
+			}
 			return err
 		}
 		update := subscription.Subscription{ID: uint64(p.ID), UpdatedAt: rrsql.NullTime{Time: time.Now(), Valid: true}, LastPaidAt: rrsql.NullTime{Time: time.Now(), Valid: true}}
@@ -207,6 +226,10 @@ func (s *SubscriptionService) RoutinePay(subscribers []subscription.Subscription
 
 		_, err = s.Invoice.Create()
 		if err != nil {
+			s.MailService.Set(mail.Mail{To: []string{p.Email}, Subject: "Huston! We have a problem!", Body: err.Error()})
+			if err = s.MailService.Send(); err != nil {
+				return err
+			}
 			log.Printf("recurring pay error creating invoice:%v\n", err)
 			return err
 		}

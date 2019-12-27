@@ -113,6 +113,7 @@ func (h *Handler) SetRoutes(router *gin.Engine) {
 	if h.Service == nil {
 		// Set default service to MySQL
 		log.Println("Set subscription service to default MySQL")
+
 		s := &mysql.SubscriptionService{DB: rrsql.DB.DB}
 		h.Service = s
 	}
