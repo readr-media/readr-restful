@@ -147,7 +147,7 @@ func (s *SubscriptionService) CreateSubscription(p subscription.Subscription) (e
 	}
 
 	// update payment token
-	update := subscription.Subscription{ID: uint64(subID), Status: 1, UpdatedAt: rrsql.NullTime{Time: time.Now(), Valid: true}, LastPaidAt: rrsql.NullTime{Time: time.Now(), Valid: true}, PaymentInfos: p.PaymentInfos}
+	update := subscription.Subscription{ID: uint64(subID), Status: subscription.StatusOK, UpdatedAt: rrsql.NullTime{Time: time.Now(), Valid: true}, LastPaidAt: rrsql.NullTime{Time: time.Now(), Valid: true}, PaymentInfos: p.PaymentInfos}
 	err = s.UpdateSubscriptions(update)
 
 	if err != nil {

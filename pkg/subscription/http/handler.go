@@ -88,7 +88,7 @@ func (h *Handler) RecurringPay(c *gin.Context) {
 			"$gte": start,
 			"$lt":  end,
 		}
-		p.Status = 1
+		p.Status = subscription.StatusOK
 	})
 
 	list, err := h.Service.GetSubscriptions(params)
