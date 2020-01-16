@@ -196,6 +196,10 @@ func (r *postHandler) Post(c *gin.Context) {
 		post.PublishedAt = rrsql.NullTime{Time: time.Now(), Valid: true}
 	}
 
+	if !post.Order.Valid {
+		post.Order = rrsql.NullInt{99, true}
+	}
+
 	if !post.ProjectID.Valid {
 		post.ProjectID = rrsql.NullInt{Int: 0, Valid: true}
 	}
