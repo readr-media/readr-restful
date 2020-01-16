@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"strconv"
-	"strings"
 
 	"github.com/readr-media/readr-restful/config"
 	"github.com/readr-media/readr-restful/internal/rrsql"
@@ -457,28 +456,22 @@ func (c notificationGenerator) GenerateProjectNotifications(resource interface{}
 func (c notificationGenerator) GeneratePostNotifications(p TaggedPostMember) (err error) {
 	ns := Notifications{}
 
-	if p.Tags.Valid {
+	for _, tb := range p.Tags {
 
-		tas := strings.Split(p.Tags.String, ",")
-		for _, ta := range tas {
-			t := strings.Split(ta, ":")
-			id, _ := strconv.Atoi(t[0])
-
-			tagFollowers, _ := c.getFollowers(id, config.Config.Models.FollowingType["tag"], []int{0})
-			if err != nil {
-				log.Println("Error get tag followers", t[1], err.Error())
-			}
-			for _, v := range tagFollowers {
-				if !c.checkForAuthor(v, p.Authors) && len(p.Authors) > 0 {
-					n := NewNotification("follow_tag_post", v)
-					n.SubjectID = strconv.Itoa(int(p.ID))
-					n.Nickname = p.Title.String
-					n.ProfileImage = p.Authors[0].ProfileImage.String
-					n.ObjectName = t[1]
-					n.ObjectType = "tag"
-					n.ObjectID = strconv.Itoa(id)
-					ns = append(ns, n)
-				}
+		tagFollowers, err := c.getFollowers(tb.ID, config.Config.Models.FollowingType["tag"], []int{0})
+		if err != nil {
+			log.Println("Error get tag followers", tb.ID, err.Error())
+		}
+		for _, v := range tagFollowers {
+			if !c.checkForAuthor(v, p.Authors) && len(p.Authors) > 0 {
+				n := NewNotification("follow_tag_post", v)
+				n.SubjectID = strconv.Itoa(int(p.ID))
+				n.Nickname = p.Title.String
+				n.ProfileImage = p.Authors[0].ProfileImage.String
+				n.ObjectName = tb.Text
+				n.ObjectType = "tag"
+				n.ObjectID = strconv.Itoa(tb.ID)
+				ns = append(ns, n)
 			}
 		}
 	}
