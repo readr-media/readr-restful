@@ -227,6 +227,7 @@
         }
     },
     "readr_id": 0,
+    "default_order": 0,
     "domain_name": "http://www.foo.bar",
     "token_secret": "",
     "payment_service": {

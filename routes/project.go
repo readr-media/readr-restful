@@ -197,6 +197,10 @@ func (r *projectHandler) Post(c *gin.Context) {
 		return
 	}
 
+	if !project.Order.Valid {
+		project.Project.Order = rrsql.NullInt{int64(config.Config.DefaultOrder), true}
+	}
+
 	if !project.CreatedAt.Valid {
 		project.CreatedAt = rrsql.NullTime{time.Now(), true}
 	}

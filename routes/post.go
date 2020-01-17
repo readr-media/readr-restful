@@ -197,7 +197,7 @@ func (r *postHandler) Post(c *gin.Context) {
 	}
 
 	if !post.Order.Valid {
-		post.Order = rrsql.NullInt{99, true}
+		post.Order = rrsql.NullInt{int64(config.Config.DefaultOrder), true}
 	}
 
 	if !post.ProjectID.Valid {
@@ -497,17 +497,6 @@ func (r *postHandler) PublishHandler(ids []uint32) error {
 
 			go models.NotificationGen.GeneratePostNotifications(post)
 
-			if post.Post.ProjectID.Int != 0 {
-				p := models.Project{ID: int(post.Post.ProjectID.Int), UpdatedAt: rrsql.NullTime{Time: time.Now(), Valid: true}}
-				if post.Post.UpdatedBy.Valid {
-					p.UpdatedBy = post.Post.UpdatedBy
-				}
-				err := models.ProjectAPI.UpdateProjects(p)
-				if err != nil {
-					log.Println("Error Update project in PublishHander of a post: ", err.Error())
-				}
-			}
-
 			validPosts = append(validPosts, post)
 		}
 	}
@@ -520,24 +509,6 @@ func (r *postHandler) PublishHandler(ids []uint32) error {
 func (r *postHandler) UpdateHandler(post models.PostDescription) error {
 
 	go models.PostCache.Update(post.Post)
-
-	postDetail, err := models.PostAPI.GetPost(post.Post.ID, &models.PostArgs{
-		ProjectID: -1,
-	})
-	if err != nil {
-		return err
-	}
-	if postDetail.Post.ProjectID.Int != 0 {
-		p := models.Project{ID: int(postDetail.Post.ProjectID.Int), UpdatedAt: rrsql.NullTime{Time: time.Now(), Valid: true}}
-		if postDetail.Post.UpdatedBy.Valid {
-			p.UpdatedBy = postDetail.Post.UpdatedBy
-		}
-		err = models.ProjectAPI.UpdateProjects(p)
-		if err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 

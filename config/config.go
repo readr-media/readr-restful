@@ -93,9 +93,10 @@ type appConfig struct {
 		Promotions            map[string]int `mapstructure:"promotions"`
 	} `mapstructure:"models"`
 
-	ReadrID     int    `mapstructure:"readr_id"`
-	DomainName  string `mapstructure:"domain_name"`
-	TokenSecret string `mapstructure:"token_secret"`
+	ReadrID      int    `mapstructure:"readr_id"`
+	DefaultOrder int    `mapstructure:"default_order"`
+	DomainName   string `mapstructure:"domain_name"`
+	TokenSecret  string `mapstructure:"token_secret"`
 
 	PaymentService struct {
 		PartnerKey         string `mapstructure:"partner_key"`
