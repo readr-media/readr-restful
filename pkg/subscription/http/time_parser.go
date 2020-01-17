@@ -1,14 +1,12 @@
 package http
 
 import (
-	"fmt"
 	"time"
 )
 
 func payInterval(t time.Time) (start time.Time, end time.Time, err error) {
 	truncatedT := t.UTC().Truncate(24 * time.Hour)
-	year, month, day := truncatedT.Date()
-	fmt.Println(year, month, day)
+	_, month, day := truncatedT.Date()
 	switch month {
 	case time.May, time.July, time.October, time.December:
 		if day == 30 {
