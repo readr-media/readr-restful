@@ -17,9 +17,9 @@ func TestGetStructTags(t *testing.T) {
 		input   subscription.Subscription
 		expect  []string
 	}{
-		{"all-tags", "full", "db", subscription.Subscription{}, []string{"id", "member_id", "amount", "created_at", "updated_at", "last_paid_at", "payment_service", "invoice_service", "status", "payment_infos", "invoice_infos"}},
+		{"all-tags", "full", "db", subscription.Subscription{}, []string{"id", "member_id", "email", "amount", "created_at", "updated_at", "last_paid_at", "payment_service", "invoice_service", "status", "payment_infos", "invoice_infos"}},
 		{"partial-empty", "non-null", "db", subscription.Subscription{}, []string{}},
-		{"built-in-types", "non-null", "db", subscription.Subscription{ID: 1, MemberID: 648, Amount: 100, PaymentService: "tappay", Status: 1}, []string{"id", "member_id", "amount", "payment_service", "status"}},
+		{"built-in-types", "non-null", "db", subscription.Subscription{ID: 1, MemberID: rrsql.NullInt{Int: 648, Valid: true}, Amount: 100, PaymentService: "tappay", Status: 1}, []string{"id", "member_id", "amount", "payment_service", "status"}},
 		{"NullTime", "non-null", "db", subscription.Subscription{CreatedAt: rrsql.NullTime{Time: time.Now(), Valid: true}}, []string{"created_at"}},
 		{"partial-map", "non-null", "db", subscription.Subscription{PaymentInfos: map[string]interface{}{"foo": "bar"}}, []string{"payment_infos"}},
 	} {
