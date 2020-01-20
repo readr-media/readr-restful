@@ -55,12 +55,6 @@ type appConfig struct {
 		MaxRetry  int    `mapstructure:"max_retry"`
 	} `mapstructure:"search_feed"`
 
-	Straats struct {
-		AppID     string `mapstructure:"app_id"`
-		AppKey    string `mapstructure:"app_key"`
-		APIServer string `mapstructure:"api_server"`
-	} `mapstructure:"straats"`
-
 	Models struct {
 		Assets                map[string]int `mapstructure:"assets"`
 		AssetType             map[string]int `mapstructure:"asset_type"`

@@ -80,16 +80,10 @@ func (r *miscHandler) PublishResources(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-func (r *miscHandler) StraatsSync(c *gin.Context) {
-	models.StraatsSync.Cron()
-	c.Status(http.StatusOK)
-}
-
 func (r *miscHandler) SetRoutes(router *gin.Engine) {
 	router.GET("/url/meta", r.GetUrlMeta)
 
 	router.PUT("/schedule/publish", r.PublishResources)
-	//router.PUT("/schedule/straats", r.StraatsSync)
 
 	router.GET("/healthz", func(c *gin.Context) {
 		c.String(http.StatusOK, "")
