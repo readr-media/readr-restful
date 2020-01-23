@@ -64,11 +64,6 @@
         "index_name": "",
         "max_retry": 0
     },
-    "straats":{
-        "app_id": "",
-        "app_key": "",
-        "api_server": ""
-    },
     "models":{
         "assets":{
             "active": 9,
@@ -227,6 +222,7 @@
         }
     },
     "readr_id": 0,
+    "default_order": 0,
     "domain_name": "http://www.foo.bar",
     "token_secret": "",
     "payment_service": {

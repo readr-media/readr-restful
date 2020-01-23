@@ -1,7 +1,6 @@
 package models
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -88,35 +87,10 @@ type PostInterface interface {
 	GetPostAuthor(id uint32) (member Member, err error)
 }
 
-// PostTags is the wrap for rrsql.NullString used especially in TaggedPostMember
-// Because it is convenient to implement MarshalJSON to override Tags default JSON output
-// The reason I don't use direct alias, ex: type PostTags rrsql.NullString,
-// is because in this way sqlx could not scan values into the type
-type PostTags struct{ rrsql.NullString }
-
-func (pt PostTags) MarshalJSON() ([]byte, error) {
-	type tag struct {
-		ID      int    `json:"id"`
-		Content string `json:"text"`
-	}
-
-	var Tags []tag
-
-	if pt.Valid != false {
-		tagPairs := strings.Split(pt.String, ",")
-		for _, value := range tagPairs {
-			t := strings.Split(value, ":")
-			id, _ := strconv.Atoi(t[0])
-			Tags = append(Tags, tag{ID: id, Content: t[1]})
-		}
-	}
-	return json.Marshal(Tags)
-}
-
 type TaggedPostMember struct {
 	Post
 	UpdatedBy *MemberBasic    `json:"updated_by,omitempty" db:"updated_by"`
-	Tags      PostTags        `json:"tags,omitempty" db:"tags"`
+	Tags      []TagBasic      `json:"tags,omitempty" db:"tags"`
 	Authors   []AuthorBasic   `json:"authors,omitempty"`
 	Comment   []CommentAuthor `json:"comments,omitempty"`
 	Cards     []postCard      `json:"cards,omitempty"`
@@ -159,6 +133,12 @@ func (tpm TaggedPostMember) ReturnUpdatedAt() time.Time {
 
 // UpdatedBy wraps Member for embedded field updated_by
 // in the usage of anonymous struct in PostMember
+
+type TagBasic struct {
+	ID   int    `json:"id" db:"tag_id"`
+	Text string `json:"text" db:"tag_content"`
+}
+
 type MemberBasic struct {
 	ID           int64            `json:"id" db:"id"`
 	UUID         rrsql.NullString `json:"uuid" db:"uuid"`
@@ -502,6 +482,14 @@ func (a *postAPI) GetPosts(req *PostArgs) (result []TaggedPostMember, err error)
 			}
 		}
 	}
+	if req.ShowTag {
+		tags, err := a.fetchPostTags(postIDs)
+		if err == nil {
+			for k, v := range result {
+				result[k].Tags = tags[int(v.Post.ID)]
+			}
+		}
+	}
 	if req.ShowAuthor {
 		authors, err := a.fetchPostAuthors(postIDs)
 		if err == nil {
@@ -652,6 +640,43 @@ func (a *postAPI) fetchPostCommentResource(ids []int) (result []postCommentResou
 	return result, err
 }
 
+func (a *postAPI) fetchPostTags(ids []int) (tags map[int][]TagBasic, err error) {
+	//SELECT t.tag_id, t.tag_content, ti.target_id FROM tagging as ti LEFT JOIN tags as t ON ti.tag_id = t.tag_id WHERE ti.type = 1 AND ti.target_id IN (1928, 1892);
+	query := fmt.Sprintf(`
+		SELECT t.tag_id, t.tag_content, ti.target_id FROM tagging as ti
+		LEFT JOIN tags as t ON ti.tag_id = t.tag_id
+		WHERE ti.type = %d AND ti.target_id IN (?)`,
+		config.Config.Models.TaggingType["post"])
+
+	tags = make(map[int][]TagBasic, 0)
+
+	query, args, err := sqlx.In(query, ids)
+	if err != nil {
+		return tags, err
+	}
+	query = rrsql.DB.Rebind(query)
+
+	rows, err := rrsql.DB.Queryx(query, args...)
+	if err != nil {
+		return tags, err
+	}
+
+	for rows.Next() {
+		var tag struct {
+			TagBasic
+			TargetID int64 `db:"target_id"`
+		}
+		e := rows.StructScan(&tag)
+		if e != nil {
+			fmt.Println("Post has no author or the author data don't have a corresponding member")
+			continue
+		}
+		tags[int(tag.TargetID)] = append(tags[int(tag.TargetID)], tag.TagBasic)
+	}
+
+	return tags, err
+}
+
 func (a *postAPI) fetchPostAuthors(ids []int) (authors map[int][]AuthorBasic, err error) {
 	query := `SELECT members.id "id",members.uuid "uuid",members.nickname "nickname",members.profile_image "profile_image",members.description "description",members.role "role",authors.author_type "author_type",authors.resource_id "resource_id" FROM posts
 		LEFT JOIN authors ON posts.post_id = authors.resource_id
@@ -735,18 +760,6 @@ func (a *postAPI) buildGetQuery(req *PostArgs) (query string, values []interface
 		projectField[0] = fmt.Sprintf(`IFNULL(%s, 0) %s`, projectIDQuery[0], projectIDQuery[1])
 		selectedFields = append(selectedFields, projectField...)
 		joinedTables = append(joinedTables, `LEFT JOIN projects AS project ON posts.project_id = project.project_id`)
-	}
-
-	if req.ShowTag {
-		selectedFields = append(selectedFields, "t.tags as tags")
-		joinedTables = append(joinedTables, fmt.Sprintf(`
-		LEFT JOIN (
-			SELECT pt.target_id as post_id,
-				GROUP_CONCAT(CONCAT(t.tag_id, ":", t.tag_content) SEPARATOR ',') as tags
-			FROM tagging as pt LEFT JOIN tags as t ON t.tag_id = pt.tag_id WHERE pt.type=%d
-			GROUP BY pt.target_id
-		) AS t ON t.post_id = posts.post_id
-		`, config.Config.Models.TaggingType["post"]))
 	}
 
 	if len(joinedTables) > 0 {

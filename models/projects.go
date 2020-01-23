@@ -284,8 +284,9 @@ func (g *GetProjectArgs) FullAuthorTags() (result []string) {
 
 type ProjectAuthor struct {
 	Project
-	Tags   rrsql.NullString `json:"-" db:"tags"`
-	Author Stunt            `json:"author" db:"author"`
+	ContentUpdateTime rrsql.NullTime   `json:"content_updated_at" db:"content_updated_at"`
+	Tags              rrsql.NullString `json:"-" db:"tags"`
+	Author            Stunt            `json:"author" db:"author"`
 }
 
 type SimpleTag struct {
@@ -295,9 +296,10 @@ type SimpleTag struct {
 
 type ProjectAuthors struct {
 	Project
-	Tags    rrsql.NullString `json:"-" db:"tags"`
-	Authors []Stunt          `json:"authors"`
-	TagList []SimpleTag      `json:"tags"`
+	ContentUpdateTime rrsql.NullTime   `json:"content_updated_at"`
+	Tags              rrsql.NullString `json:"-"`
+	Authors           []Stunt          `json:"authors"`
+	TagList           []SimpleTag      `json:"tags"`
 }
 
 func (p *ProjectAuthors) formatTags() {
@@ -367,7 +369,10 @@ func (a *projectAPI) GetProjects(args GetProjectArgs) (result []ProjectAuthors, 
 	values = append(values, largs...)
 
 	query := fmt.Sprintf(`
-		SELECT projects.*, t.tags, %s FROM (SELECT * FROM projects %s %s) AS projects 
+		SELECT projects.*, t.tags, po.published_at as content_updated_at , %s FROM (SELECT * FROM projects %s %s) AS projects
+		LEFT JOIN (
+			SELECT project_id, MAX(published_at) as published_at FROM posts WHERE project_id != 0 AND publish_status=%d GROUP BY project_id
+			) as po ON projects.project_id = po.project_id
 		LEFT JOIN (
 			SELECT pt.target_id as project_id, GROUP_CONCAT(CONCAT(t.tag_id, ":", t.tag_content) SEPARATOR ',') as tags
 			FROM tagging as pt LEFT JOIN tags as t ON t.tag_id = pt.tag_id WHERE pt.type=%d 
@@ -382,6 +387,7 @@ func (a *projectAPI) GetProjects(args GetProjectArgs) (result []ProjectAuthors, 
 		args.Fields.GetFields(`author.%s "author.%s"`),
 		restricts,
 		limit["full"],
+		config.Config.Models.PostPublishStatus["publish"],
 		config.Config.Models.TaggingType["project"],
 		config.Config.Models.PostType["memo"],
 		config.Config.Models.PostType["report"],
@@ -405,7 +411,7 @@ func (a *projectAPI) GetProjects(args GetProjectArgs) (result []ProjectAuthors, 
 	}
 	for _, project := range pa {
 		var notNullAuthor = func(in ProjectAuthor) ProjectAuthors {
-			pas := ProjectAuthors{Project: in.Project, Tags: in.Tags}
+			pas := ProjectAuthors{Project: in.Project, Tags: in.Tags, ContentUpdateTime: in.ContentUpdateTime}
 			if project.Author != (Stunt{}) {
 				pas.Authors = append(pas.Authors, in.Author)
 			}

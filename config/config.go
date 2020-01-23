@@ -55,12 +55,6 @@ type appConfig struct {
 		MaxRetry  int    `mapstructure:"max_retry"`
 	} `mapstructure:"search_feed"`
 
-	Straats struct {
-		AppID     string `mapstructure:"app_id"`
-		AppKey    string `mapstructure:"app_key"`
-		APIServer string `mapstructure:"api_server"`
-	} `mapstructure:"straats"`
-
 	Models struct {
 		Assets                map[string]int `mapstructure:"assets"`
 		AssetType             map[string]int `mapstructure:"asset_type"`
@@ -93,9 +87,10 @@ type appConfig struct {
 		Promotions            map[string]int `mapstructure:"promotions"`
 	} `mapstructure:"models"`
 
-	ReadrID     int    `mapstructure:"readr_id"`
-	DomainName  string `mapstructure:"domain_name"`
-	TokenSecret string `mapstructure:"token_secret"`
+	ReadrID      int    `mapstructure:"readr_id"`
+	DefaultOrder int    `mapstructure:"default_order"`
+	DomainName   string `mapstructure:"domain_name"`
+	TokenSecret  string `mapstructure:"token_secret"`
 
 	PaymentService struct {
 		PartnerKey         string `mapstructure:"partner_key"`

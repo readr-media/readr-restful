@@ -50,9 +50,6 @@ func main() {
 	}
 	models.RedisConn(redisConfig)
 
-	// Init Straats API
-	models.StraatsHelper.Init()
-
 	// Set postcache settings
 	models.InitPostCache()
 
