@@ -109,7 +109,7 @@ pipeline:
       branch: [master, dev, stage]
 
   deploy_dev:
-    image: nytimes/drone-gke:develop
+    image: nytimes/drone-gke
     zone: asia-east1-a
     cluster: dev
     namespace: default
@@ -128,7 +128,7 @@ pipeline:
       branch: dev
 
   deploy_stage:
-    image: nytimes/drone-gke:develop
+    image: nytimes/drone-gke
     zone: asia-east1-a
     cluster: prod-readr
     namespace: default
