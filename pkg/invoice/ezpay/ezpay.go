@@ -133,7 +133,7 @@ func (c *InvoiceClient) Validate() (err error) {
 	result["RespondType"] = get(c.Payload, "response_type", "JSON")
 	result["TimeStamp"] = time.Now().Unix()
 	result["MerchantOrderNo"] = time.Now().Format("20060102")
-	result["Status"] = get(c.Payload, "status", "0")
+	result["Status"] = get(c.Payload, "status", "1")
 	result["TaxType"] = get(c.Payload, "tax_type", "1")
 	result["Category"] = get(c.Payload, "category", "B2C")
 	result["LoveCode"] = get(c.Payload, "love_code", "")
