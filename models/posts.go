@@ -12,6 +12,7 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/args"
 	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/pkg/cards"
 	"github.com/readr-media/readr-restful/utils"
@@ -76,11 +77,11 @@ type PostInterface interface {
 	DeletePost(id uint32) error
 	GetPosts(args *PostArgs) (result []TaggedPostMember, err error)
 	GetPost(id uint32, args *PostArgs) (TaggedPostMember, error)
-	FilterPosts(args *PostArgs) ([]FilteredPost, error)
+	FilterPosts(args *FilterPostArgs) ([]FilteredPost, error)
 	InsertPost(p PostDescription) (lastID int, err error)
 	UpdateAll(req PostUpdateArgs) error
 	UpdatePost(p PostDescription) error
-	Count(req *PostArgs) (result int, err error)
+	Count(req args.ArgsParser) (result int, err error)
 	//Hot() (result []HotPost, err error)
 	UpdateAuthors(p Post, authors []AuthorInput) (err error)
 	SchedulePublish() (ids []uint32, err error)
@@ -124,15 +125,6 @@ func (tpm TaggedPostMember) ReturnUpdatedAt() time.Time {
 }
 
 // ------------ ↑↑↑ End of requirement to satisfy LastPNRInterface  ↑↑↑ ------------
-
-// type HotPost struct {
-// 	Post
-// 	AuthorNickname     rrsql.NullString `json:"author_nickname" redis:"author_nickname"`
-// 	AuthorProfileImage rrsql.NullString `json:"author_profileImage" redis:"author_profileImage"`
-// }
-
-// UpdatedBy wraps Member for embedded field updated_by
-// in the usage of anonymous struct in PostMember
 
 type TagBasic struct {
 	ID   int    `json:"id" db:"tag_id"`
@@ -235,15 +227,6 @@ type PostArgs struct {
 	Type          map[string][]int   `form:"type"`
 	Total         bool               `form:"total"`
 	Filter        Filter
-
-	// For filter API
-	FilterID          int64
-	FilterTitle       []string
-	FilterContent     []string
-	FilterAuthorName  []string
-	FilterTagName     []string
-	FilterPublishedAt map[string]time.Time
-	FilterUpdatedAt   map[string]time.Time
 }
 
 // NewPostArgs return a PostArgs struct with default settings,
@@ -269,7 +252,59 @@ func (p *PostArgs) anyFilter() (result bool) {
 	return p.Active != nil || p.PublishStatus != nil || p.Author != nil || p.Type != nil
 }
 
-func (p *PostArgs) parse() (restricts string, values []interface{}) {
+func (a *PostArgs) ParseQuery() (query string, values []interface{}) {
+	memberDBTags := rrsql.GetStructDBTags("full", MemberBasic{})
+	selectedFields := []string{"posts.*"}
+	joinedTables := make([]string, 0)
+	var joinedTableString, restricts string
+
+	if a.ShowUpdater {
+		updatedByField := rrsql.MakeFieldString("get", `updated_by.%s "updated_by.%s"`, memberDBTags)
+		updatedByIDQuery := strings.Split(updatedByField[0], " ")
+		updatedByField[0] = fmt.Sprintf(`IFNULL(%s, 0) %s`, updatedByIDQuery[0], updatedByIDQuery[1])
+		selectedFields = append(selectedFields, updatedByField...)
+		joinedTables = append(joinedTables, `LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.id`)
+	}
+
+	if a.ShowProject {
+		projectDBTags := rrsql.GetStructDBTags("full", ProjectBasic{})
+		projectField := rrsql.MakeFieldString("get", `project.%s "project.%s"`, projectDBTags)
+		projectIDQuery := strings.Split(projectField[0], " ")
+		projectField[0] = fmt.Sprintf(`IFNULL(%s, 0) %s`, projectIDQuery[0], projectIDQuery[1])
+		selectedFields = append(selectedFields, projectField...)
+		joinedTables = append(joinedTables, `LEFT JOIN projects AS project ON posts.project_id = project.project_id`)
+	}
+
+	if len(joinedTables) > 0 {
+		joinedTableString = strings.Join(joinedTables, " ")
+	}
+
+	restricts, restrictVals := a.parseRestricts()
+	resultLimit, resultLimitVals := a.parseResultLimit()
+	values = append(values, restrictVals...)
+	values = append(values, resultLimitVals...)
+
+	query = fmt.Sprintf(`
+		SELECT %s FROM posts %s %s `,
+		strings.Join(selectedFields, ","),
+		joinedTableString,
+		restricts+resultLimit,
+	)
+
+	return query, values
+}
+func (a *PostArgs) ParseCountQuery() (query string, values []interface{}) {
+
+	if !a.anyFilter() {
+		return `SELECT COUNT(*) FROM posts`, values
+	} else {
+		restricts, values := a.parseRestricts()
+		return fmt.Sprintf(`SELECT COUNT(*) FROM (SELECT post_id FROM posts %s) AS subquery`, restricts), values
+	}
+
+}
+
+func (p *PostArgs) parseRestricts() (restricts string, values []interface{}) {
 	where := make([]string, 0)
 
 	if p.Active != nil {
@@ -346,61 +381,112 @@ func (p *PostArgs) parseResultLimit() (restricts string, values []interface{}) {
 	return restricts, values
 }
 
-func (p *PostArgs) parseFilterRestricts() (restrictString string, values []interface{}) {
+type FilterPostArgs struct {
+	FilterArgs
+}
+
+func (p *FilterPostArgs) ParseQuery() (query string, values []interface{}) {
+	return p.parse(false)
+}
+func (p *FilterPostArgs) ParseCountQuery() (query string, values []interface{}) {
+	return p.parse(true)
+}
+func (p *FilterPostArgs) parse(doCount bool) (query string, values []interface{}) {
+	fields := rrsql.GetStructDBTags("exist", FilteredPost{})
+	for k, v := range fields {
+		fields[k] = fmt.Sprintf("posts.%s", v)
+	}
+
+	restricts, restrictVals := p.parseRestricts()
+	limit, limitVals := p.parseLimit()
+	values = append(values, restrictVals...)
+	values = append(values, limitVals...)
+
+	var joinedTables []string
+	if len(p.Tag) > 0 {
+		joinedTables = append(joinedTables, fmt.Sprintf(`
+		LEFT JOIN tagging AS tagging ON tagging.target_id = posts.post_id AND tagging.type = %d LEFT JOIN tags AS tags ON tags.tag_id = tagging.tag_id
+		`, config.Config.Models.TaggingType["post"]))
+	}
+	if len(p.Author) > 0 {
+		joinedTables = append(joinedTables, `LEFT JOIN authors AS authors ON authors.resource_id = posts.post_id LEFT JOIN members AS members ON authors.author_id = members.id `)
+	}
+
+	if doCount {
+		query = fmt.Sprintf(`
+		SELECT %s FROM posts AS posts %s %s`,
+			"COUNT(post_id)",
+			strings.Join(joinedTables, " "),
+			restricts,
+		)
+		values = restrictVals
+	} else {
+		query = fmt.Sprintf(`
+		SELECT %s FROM posts AS posts %s %s `,
+			strings.Join(fields, ","),
+			strings.Join(joinedTables, " "),
+			restricts+limit,
+		)
+	}
+
+	return query, values
+}
+
+func (p *FilterPostArgs) parseRestricts() (restrictString string, values []interface{}) {
 	restricts := make([]string, 0)
 
-	if p.FilterID != 0 {
+	if p.ID != 0 {
 		restricts = append(restricts, `CAST(posts.post_id as CHAR) LIKE ?`)
-		values = append(values, fmt.Sprintf("%s%d%s", "%", p.FilterID, "%"))
+		values = append(values, fmt.Sprintf("%s%d%s", "%", p.ID, "%"))
 	}
-	if len(p.FilterTitle) != 0 {
+	if len(p.Title) != 0 {
 		subRestricts := make([]string, 0)
-		for _, v := range p.FilterTitle {
+		for _, v := range p.Title {
 			subRestricts = append(subRestricts, `posts.title LIKE ?`)
 			values = append(values, fmt.Sprintf("%s%s%s", "%", v, "%"))
 		}
 		restricts = append(restricts, fmt.Sprintf("%s%s%s", "(", strings.Join(subRestricts, " OR "), ")"))
 	}
-	if len(p.FilterContent) != 0 {
+	if len(p.Content) != 0 {
 		subRestricts := make([]string, 0)
-		for _, v := range p.FilterContent {
+		for _, v := range p.Content {
 			subRestricts = append(subRestricts, `posts.content LIKE ?`)
 			values = append(values, fmt.Sprintf("%s%s%s", "%", v, "%"))
 		}
 		restricts = append(restricts, fmt.Sprintf("%s%s%s", "(", strings.Join(subRestricts, " OR "), ")"))
 	}
-	if len(p.FilterAuthorName) != 0 {
+	if len(p.Author) != 0 {
 		subRestricts := make([]string, 0)
-		for _, v := range p.FilterAuthorName {
+		for _, v := range p.Author {
 			subRestricts = append(subRestricts, `members.name LIKE ?`)
 			values = append(values, fmt.Sprintf("%s%s%s", "%", v, "%"))
 		}
 		restricts = append(restricts, fmt.Sprintf("%s%s%s", "(", strings.Join(subRestricts, " OR "), ")"))
 	}
-	if len(p.FilterTagName) != 0 {
+	if len(p.Tag) != 0 {
 		subRestricts := make([]string, 0)
-		for _, v := range p.FilterTagName {
+		for _, v := range p.Tag {
 			subRestricts = append(subRestricts, `tags.tag_content LIKE ?`)
 			values = append(values, fmt.Sprintf("%s%s%s", "%", v, "%"))
 		}
 		restricts = append(restricts, fmt.Sprintf("(%s)", strings.Join(subRestricts, " OR ")))
 	}
-	if len(p.FilterPublishedAt) != 0 {
-		if v, ok := p.FilterPublishedAt["$gt"]; ok {
+	if len(p.PublishedAt) != 0 {
+		if v, ok := p.PublishedAt["$gt"]; ok {
 			restricts = append(restricts, "posts.published_at >= ?")
 			values = append(values, v)
 		}
-		if v, ok := p.FilterPublishedAt["$lt"]; ok {
+		if v, ok := p.PublishedAt["$lt"]; ok {
 			restricts = append(restricts, "posts.published_at <= ?")
 			values = append(values, v)
 		}
 	}
-	if len(p.FilterUpdatedAt) != 0 {
-		if v, ok := p.FilterUpdatedAt["$gt"]; ok {
+	if len(p.UpdatedAt) != 0 {
+		if v, ok := p.UpdatedAt["$gt"]; ok {
 			restricts = append(restricts, "posts.updated_at >= ?")
 			values = append(values, v)
 		}
-		if v, ok := p.FilterUpdatedAt["$lt"]; ok {
+		if v, ok := p.UpdatedAt["$lt"]; ok {
 			restricts = append(restricts, "posts.updated_at <= ?")
 			values = append(values, v)
 		}
@@ -413,41 +499,35 @@ func (p *PostArgs) parseFilterRestricts() (restrictString string, values []inter
 	return restrictString, values
 }
 
-func (p *PostArgs) parseFilterQuery() (restricts string, values []interface{}) {
-	fields := rrsql.GetStructDBTags("exist", FilteredPost{})
-	for k, v := range fields {
-		fields[k] = fmt.Sprintf("posts.%s", v)
-	}
-	selectedFields := strings.Join(fields, ",")
+func (p *FilterPostArgs) parseLimit() (restricts string, values []interface{}) {
 
-	restricts, restrictVals := p.parseFilterRestricts()
-	limit, limitVals := p.parseResultLimit()
-	values = append(values, restrictVals...)
-	values = append(values, limitVals...)
-
-	var joinedTables []string
-	if len(p.FilterTagName) > 0 {
-		joinedTables = append(joinedTables, fmt.Sprintf(`
-		LEFT JOIN tagging AS tagging ON tagging.target_id = posts.post_id AND tagging.type = %d LEFT JOIN tags AS tags ON tags.tag_id = tagging.tag_id
-		`, config.Config.Models.TaggingType["post"]))
-	}
-	if len(p.FilterAuthorName) > 0 {
-		joinedTables = append(joinedTables, `LEFT JOIN authors AS authors ON authors.resource_id = posts.post_id LEFT JOIN members AS members ON authors.author_id = members.id `)
+	if p.Sorting != "" {
+		tmp := strings.Split(p.Sorting, ",")
+		for i, v := range tmp {
+			if v := strings.TrimSpace(v); strings.HasPrefix(v, "-") {
+				tmp[i] = "-posts." + v[1:]
+			} else {
+				tmp[i] = "posts." + v
+			}
+		}
+		p.Sorting = strings.Join(tmp, ",")
+		restricts = fmt.Sprintf("%s ORDER BY %s", restricts, rrsql.OrderByHelper(p.Sorting))
 	}
 
-	query := fmt.Sprintf(`
-		SELECT %s FROM posts AS posts %s %s `,
-		selectedFields,
-		strings.Join(joinedTables, " "),
-		restricts+limit,
-	)
-
-	return query, values
+	if p.MaxResult > 0 {
+		restricts = fmt.Sprintf("%s LIMIT ?", restricts)
+		values = append(values, p.MaxResult)
+		if p.Page > 0 {
+			restricts = fmt.Sprintf("%s OFFSET ?", restricts)
+			values = append(values, (p.Page-1)*p.MaxResult)
+		}
+	}
+	return restricts, values
 }
 
 func (a *postAPI) GetPosts(req *PostArgs) (result []TaggedPostMember, err error) {
 
-	query, args := a.buildGetQuery(req)
+	query, args := req.ParseQuery()
 	// To give adaptability to where clauses, have to use ... operator here
 	// Therefore split query into two parts, assembling them after sqlx.Rebind
 	query, args, err = sqlx.In(query, args...)
@@ -514,7 +594,7 @@ func (a *postAPI) GetPost(id uint32, req *PostArgs) (post TaggedPostMember, err 
 
 	req.IDs = []uint32{id}
 	req.MaxResult = 1
-	query, args := a.buildGetQuery(req)
+	query, args := req.ParseQuery()
 
 	query, args, err = sqlx.In(query, args...)
 	if err != nil {
@@ -739,51 +819,9 @@ func (a *postAPI) fetchPostCards(ids []int) (cards map[int][]postCard, err error
 	return cards, err
 }
 
-func (a *postAPI) buildGetQuery(req *PostArgs) (query string, values []interface{}) {
-	memberDBTags := rrsql.GetStructDBTags("full", MemberBasic{})
-	selectedFields := []string{"posts.*"}
-	joinedTables := make([]string, 0)
-	var joinedTableString, restricts string
-
-	if req.ShowUpdater {
-		updatedByField := rrsql.MakeFieldString("get", `updated_by.%s "updated_by.%s"`, memberDBTags)
-		updatedByIDQuery := strings.Split(updatedByField[0], " ")
-		updatedByField[0] = fmt.Sprintf(`IFNULL(%s, 0) %s`, updatedByIDQuery[0], updatedByIDQuery[1])
-		selectedFields = append(selectedFields, updatedByField...)
-		joinedTables = append(joinedTables, `LEFT JOIN members AS updated_by ON posts.updated_by = updated_by.id`)
-	}
-
-	if req.ShowProject {
-		projectDBTags := rrsql.GetStructDBTags("full", ProjectBasic{})
-		projectField := rrsql.MakeFieldString("get", `project.%s "project.%s"`, projectDBTags)
-		projectIDQuery := strings.Split(projectField[0], " ")
-		projectField[0] = fmt.Sprintf(`IFNULL(%s, 0) %s`, projectIDQuery[0], projectIDQuery[1])
-		selectedFields = append(selectedFields, projectField...)
-		joinedTables = append(joinedTables, `LEFT JOIN projects AS project ON posts.project_id = project.project_id`)
-	}
-
-	if len(joinedTables) > 0 {
-		joinedTableString = strings.Join(joinedTables, " ")
-	}
-
-	restricts, restrictVals := req.parse()
-	resultLimit, resultLimitVals := req.parseResultLimit()
-	values = append(values, restrictVals...)
-	values = append(values, resultLimitVals...)
-
-	query = fmt.Sprintf(`
-		SELECT %s FROM posts %s %s `,
-		strings.Join(selectedFields, ","),
-		joinedTableString,
-		restricts+resultLimit,
-	)
-
-	return query, values
-}
-
-func (a *postAPI) FilterPosts(args *PostArgs) (result []FilteredPost, err error) {
-	query, values := args.parseFilterQuery()
-
+func (a *postAPI) FilterPosts(args *FilterPostArgs) (result []FilteredPost, err error) {
+	query, values := args.ParseQuery()
+	fmt.Println(query, values)
 	rows, err := rrsql.DB.Queryx(query, values...)
 	if err != nil {
 		return nil, err
@@ -951,36 +989,22 @@ func (a *postAPI) UpdateAll(req PostUpdateArgs) error {
 	return nil
 }
 
-func (a *postAPI) Count(req *PostArgs) (result int, err error) {
+func (a *postAPI) Count(req args.ArgsParser) (result int, err error) {
 
-	if !req.anyFilter() {
-		rows, err := rrsql.DB.Queryx(`SELECT COUNT(*) FROM posts`)
-		if err != nil {
-			return 0, err
-		}
-		for rows.Next() {
-			if err = rows.Scan(&result); err != nil {
-				return 0, err
-			}
-		}
-	} else {
+	query, values := req.ParseCountQuery()
 
-		restricts, values := req.parse()
-		query := fmt.Sprintf(`SELECT COUNT(*) FROM (SELECT post_id FROM posts %s) AS subquery`, restricts)
-
-		query, args, err := sqlx.In(query, values...)
-		if err != nil {
+	query, args, err := sqlx.In(query, values...)
+	if err != nil {
+		return 0, err
+	}
+	query = rrsql.DB.Rebind(query)
+	count, err := rrsql.DB.Queryx(query, args...)
+	if err != nil {
+		return 0, err
+	}
+	for count.Next() {
+		if err = count.Scan(&result); err != nil {
 			return 0, err
-		}
-		query = rrsql.DB.Rebind(query)
-		count, err := rrsql.DB.Queryx(query, args...)
-		if err != nil {
-			return 0, err
-		}
-		for count.Next() {
-			if err = count.Scan(&result); err != nil {
-				return 0, err
-			}
 		}
 	}
 	return result, err

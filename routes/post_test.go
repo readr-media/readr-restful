@@ -5,9 +5,11 @@ import (
 	"errors"
 	"net/http"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/args"
 	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 )
@@ -184,27 +186,21 @@ func (a *mockPostAPI) DeletePost(id uint32) (err error) {
 	return err
 }
 
-func (a *mockPostAPI) Count(req *models.PostArgs) (result int, err error) {
+func (a *mockPostAPI) Count(req args.ArgsParser) (result int, err error) {
+	query, _ := req.ParseCountQuery()
 	result = 4
 	err = nil
-	// Type
-	if req.Type != nil {
-		if reflect.DeepEqual(req.Type, map[string][]int{"$in": {1, 2}}) {
-			return 3, nil
-		}
-	}
 
-	// CountAuthor
-	if req.Author != nil {
-		if reflect.DeepEqual(req.Author, map[string][]int64{"$nin": {0, 1}}) {
-			return 2, nil
-		}
+	if strings.Contains(query, "posts.type") {
+		return 3, nil
 	}
-	if reflect.DeepEqual(req.Active, map[string][]int{"$nin": {0}}) {
+	if strings.Contains(query, "posts.author") {
+		return 2, nil
+	}
+	if strings.Contains(query, "posts.active NOT IN (?)") {
 		return 4, nil
 	}
-	// CountActive
-	if reflect.DeepEqual(req.Active, map[string][]int{"$in": {0, 1}}) {
+	if strings.Contains(query, "posts.active IN (?)") {
 		return 2, nil
 	}
 	return result, err
@@ -222,7 +218,7 @@ func (a *mockPostAPI) PublishPipeline(ids []uint32) error {
 func (a *mockPostAPI) GetPostAuthor(id uint32) (member models.Member, err error) {
 	return member, nil
 }
-func (a *mockPostAPI) FilterPosts(args *models.PostArgs) (result []models.FilteredPost, err error) {
+func (a *mockPostAPI) FilterPosts(args *models.FilterPostArgs) (result []models.FilteredPost, err error) {
 	return result, err
 }
 

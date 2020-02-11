@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/args"
 	"github.com/readr-media/readr-restful/models"
 )
 
@@ -81,7 +82,7 @@ func (a *mockAssetAPI) teardown() {
 	AssetAPI = a.apiBackup
 }
 
-func (a *mockAssetAPI) Count(args *GetAssetArgs) (count int, err error) {
+func (a *mockAssetAPI) Count(args args.ArgsParser) (count int, err error) {
 	return 1, nil
 }
 
@@ -94,7 +95,7 @@ func (a *mockAssetAPI) Delete(ids []int) (err error) {
 	return nil
 }
 
-func (a *mockAssetAPI) FilterAssets(args *GetAssetArgs) (result []FilteredAsset, err error) {
+func (a *mockAssetAPI) FilterAssets(args *FilterAssetArgs) (result []FilteredAsset, err error) {
 	return result, err
 }
 
