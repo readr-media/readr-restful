@@ -10,7 +10,9 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/args"
 	"github.com/readr-media/readr-restful/internal/rrsql"
+	"github.com/readr-media/readr-restful/models"
 )
 
 type Asset struct {
@@ -45,13 +47,6 @@ type GetAssetArgs struct {
 	FileType  []string         `form:"file_type"`
 	Active    map[string][]int `form:"active"`
 	Total     bool             `form:"total"`
-
-	// For filter API
-	FilterID        int64
-	FilterTitle     []string
-	FilterTagName   []string
-	FilterCreatedAt map[string]time.Time
-	FilterUpdatedAt map[string]time.Time
 }
 
 func NewAssetArgs() *GetAssetArgs {
@@ -61,8 +56,17 @@ func NewAssetArgs() *GetAssetArgs {
 func (a *GetAssetArgs) DefaultActive() {
 	a.Active = map[string][]int{"$nin": []int{config.Config.Models.Assets["deactive"]}}
 }
+func (a *GetAssetArgs) ParseCountQuery() (query string, values []interface{}) {
+	conditionSQL, conditionArgs := a.parseRestricts()
 
-func (a *GetAssetArgs) parseCondition() (restricts string, values []interface{}) {
+	query = fmt.Sprintf(`
+		SELECT COUNT(*) FROM assets WHERE %s`,
+		conditionSQL,
+	)
+
+	return query, conditionArgs
+}
+func (a *GetAssetArgs) parseRestricts() (restricts string, values []interface{}) {
 	where := make([]string, 0)
 
 	if a.Active != nil {
@@ -92,10 +96,10 @@ func (a *GetAssetArgs) parseCondition() (restricts string, values []interface{})
 	return restricts, values
 }
 
-func (p *GetAssetArgs) parseLimit() (restricts string, values []interface{}) {
+func (a *GetAssetArgs) parseLimit() (restricts string, values []interface{}) {
 
-	if p.Sorting != "" {
-		tmp := strings.Split(p.Sorting, ",")
+	if a.Sorting != "" {
+		tmp := strings.Split(a.Sorting, ",")
 		for i, v := range tmp {
 			if v := strings.TrimSpace(v); strings.HasPrefix(v, "-") {
 				tmp[i] = "-assets." + v[1:]
@@ -107,56 +111,105 @@ func (p *GetAssetArgs) parseLimit() (restricts string, values []interface{}) {
 		restricts = fmt.Sprintf("%s ORDER BY %s", restricts, orderByHelper(sortFields))
 	}
 
-	if p.MaxResult > 0 {
+	if a.MaxResult > 0 {
 		restricts = fmt.Sprintf("%s LIMIT ?", restricts)
-		values = append(values, p.MaxResult)
-		if p.Page > 0 {
+		values = append(values, a.MaxResult)
+		if a.Page > 0 {
 			restricts = fmt.Sprintf("%s OFFSET ?", restricts)
-			values = append(values, (p.Page-1)*uint16(p.MaxResult))
+			values = append(values, (a.Page-1)*uint16(a.MaxResult))
 		}
 	}
 	return restricts, values
 }
 
-func (p *GetAssetArgs) parseFilterRestricts() (restrictString string, values []interface{}) {
+type FilterAssetArgs struct {
+	models.FilterArgs
+}
+
+func (a *FilterAssetArgs) ParseQuery() (query string, values []interface{}) {
+	return a.parse(false)
+}
+func (a *FilterAssetArgs) ParseCountQuery() (query string, values []interface{}) {
+	return a.parse(true)
+}
+
+func (a *FilterAssetArgs) parse(doCount bool) (query string, values []interface{}) {
+	fields := getStructDBTags(FilteredAsset{})
+	for k, v := range fields {
+		fields[k] = fmt.Sprintf("assets.%s", v)
+	}
+	selectedFields := strings.Join(fields, ",")
+
+	restricts, restrictVals := a.parseFilterRestricts()
+	limit, limitVals := a.parseLimit()
+	values = append(values, restrictVals...)
+	values = append(values, limitVals...)
+
+	var joinedTables []string
+	if len(a.Tag) > 0 {
+		joinedTables = append(joinedTables, fmt.Sprintf(`
+		LEFT JOIN tagging AS tagging ON tagging.target_id = assets.id AND tagging.type = %d LEFT JOIN tags AS tags ON tags.tag_id = tagging.tag_id
+		`, config.Config.Models.TaggingType["asset"]))
+	}
+
+	if doCount {
+		query = fmt.Sprintf(`
+		SELECT %s FROM assets AS assets %s %s `,
+			"COUNT(*)",
+			strings.Join(joinedTables, " "),
+			restricts,
+		)
+		values = restrictVals
+	} else {
+		query = fmt.Sprintf(`
+		SELECT %s FROM assets AS assets %s %s `,
+			selectedFields,
+			strings.Join(joinedTables, " "),
+			restricts+limit,
+		)
+	}
+
+	return query, values
+}
+func (a *FilterAssetArgs) parseFilterRestricts() (restrictString string, values []interface{}) {
 	restricts := make([]string, 0)
 
-	if p.FilterID != 0 {
+	if a.ID != 0 {
 		restricts = append(restricts, `CAST(assets.id as CHAR) LIKE ?`)
-		values = append(values, fmt.Sprintf("%s%d%s", "%", p.FilterID, "%"))
+		values = append(values, fmt.Sprintf("%s%d%s", "%", a.ID, "%"))
 	}
-	if len(p.FilterTitle) != 0 {
+	if len(a.Title) != 0 {
 		subRestricts := make([]string, 0)
-		for _, v := range p.FilterTitle {
+		for _, v := range a.Title {
 			subRestricts = append(subRestricts, `assets.title LIKE ?`)
 			values = append(values, fmt.Sprintf("%s%s%s", "%", v, "%"))
 		}
 		restricts = append(restricts, fmt.Sprintf("%s%s%s", "(", strings.Join(subRestricts, " OR "), ")"))
 	}
-	if len(p.FilterTagName) != 0 {
+	if len(a.Tag) != 0 {
 		subRestricts := make([]string, 0)
-		for _, v := range p.FilterTagName {
+		for _, v := range a.Tag {
 			subRestricts = append(subRestricts, `tags.tag_content LIKE ?`)
 			values = append(values, fmt.Sprintf("%s%s%s", "%", v, "%"))
 		}
 		restricts = append(restricts, fmt.Sprintf("(%s)", strings.Join(subRestricts, " OR ")))
 	}
-	if len(p.FilterCreatedAt) != 0 {
-		if v, ok := p.FilterCreatedAt["$gt"]; ok {
+	if len(a.CreatedAt) != 0 {
+		if v, ok := a.CreatedAt["$gt"]; ok {
 			restricts = append(restricts, "assets.created_at >= ?")
 			values = append(values, v)
 		}
-		if v, ok := p.FilterCreatedAt["$lt"]; ok {
+		if v, ok := a.CreatedAt["$lt"]; ok {
 			restricts = append(restricts, "assets.created_at <= ?")
 			values = append(values, v)
 		}
 	}
-	if len(p.FilterUpdatedAt) != 0 {
-		if v, ok := p.FilterUpdatedAt["$gt"]; ok {
+	if len(a.UpdatedAt) != 0 {
+		if v, ok := a.UpdatedAt["$gt"]; ok {
 			restricts = append(restricts, "assets.updated_at >= ?")
 			values = append(values, v)
 		}
-		if v, ok := p.FilterUpdatedAt["$lt"]; ok {
+		if v, ok := a.UpdatedAt["$lt"]; ok {
 			restricts = append(restricts, "assets.updated_at <= ?")
 			values = append(values, v)
 		}
@@ -169,57 +222,47 @@ func (p *GetAssetArgs) parseFilterRestricts() (restrictString string, values []i
 	return restrictString, values
 }
 
-func (p *GetAssetArgs) parseFilterQuery() (restricts string, values []interface{}) {
-	fields := getStructDBTags(FilteredAsset{})
-	for k, v := range fields {
-		fields[k] = fmt.Sprintf("assets.%s", v)
-	}
-	selectedFields := strings.Join(fields, ",")
+func (a *FilterAssetArgs) parseLimit() (restricts string, values []interface{}) {
 
-	restricts, restrictVals := p.parseFilterRestricts()
-	limit, limitVals := p.parseLimit()
-	values = append(values, restrictVals...)
-	values = append(values, limitVals...)
-
-	var joinedTables []string
-	if len(p.FilterTagName) > 0 {
-		joinedTables = append(joinedTables, fmt.Sprintf(`
-		LEFT JOIN tagging AS tagging ON tagging.target_id = assets.id AND tagging.type = %d LEFT JOIN tags AS tags ON tags.tag_id = tagging.tag_id
-		`, config.Config.Models.TaggingType["asset"]))
+	if a.Sorting != "" {
+		tmp := strings.Split(a.Sorting, ",")
+		for i, v := range tmp {
+			if v := strings.TrimSpace(v); strings.HasPrefix(v, "-") {
+				tmp[i] = "-assets." + v[1:]
+			} else {
+				tmp[i] = "assets." + v
+			}
+		}
+		sortFields := strings.Join(tmp, ",")
+		restricts = fmt.Sprintf("%s ORDER BY %s", restricts, orderByHelper(sortFields))
 	}
 
-	query := fmt.Sprintf(`
-		SELECT %s FROM assets AS assets %s %s `,
-		selectedFields,
-		strings.Join(joinedTables, " "),
-		restricts+limit,
-	)
-
-	return query, values
+	if a.MaxResult > 0 {
+		restricts = fmt.Sprintf("%s LIMIT ?", restricts)
+		values = append(values, a.MaxResult)
+		if a.Page > 0 {
+			restricts = fmt.Sprintf("%s OFFSET ?", restricts)
+			values = append(values, (a.Page-1)*a.MaxResult)
+		}
+	}
+	return restricts, values
 }
 
 type assetAPI struct{}
 
 type AssetInterface interface {
-	Count(args *GetAssetArgs) (count int, err error)
+	Count(args args.ArgsParser) (count int, err error)
 	Delete(ids []int) (err error)
-	FilterAssets(args *GetAssetArgs) ([]FilteredAsset, error)
+	FilterAssets(args *FilterAssetArgs) ([]FilteredAsset, error)
 	GetAssets(args *GetAssetArgs) (result []Asset, err error)
 	Insert(asset Asset) (lastID int64, err error)
 	Update(asset Asset) (err error)
 }
 
-func (a *assetAPI) Count(args *GetAssetArgs) (count int, err error) {
+func (a *assetAPI) Count(args args.ArgsParser) (count int, err error) {
 
-	conditionSQL, conditionArgs := args.parseCondition()
-	limitingSQL, limitingArgs := args.parseLimit()
-
-	values := append(conditionArgs, limitingArgs...)
-	query := fmt.Sprintf(`
-		SELECT COUNT(*) FROM assets WHERE %s %s`,
-		conditionSQL, limitingSQL,
-	)
-
+	query, values := args.ParseCountQuery()
+	fmt.Println(query, values)
 	query, values, err = sqlx.In(query, values...)
 	if err != nil {
 		return 0, err
@@ -265,8 +308,8 @@ func (m *assetAPI) Delete(ids []int) (err error) {
 
 	return nil
 }
-func (a *assetAPI) FilterAssets(args *GetAssetArgs) (result []FilteredAsset, err error) {
-	query, values := args.parseFilterQuery()
+func (a *assetAPI) FilterAssets(args *FilterAssetArgs) (result []FilteredAsset, err error) {
+	query, values := args.ParseQuery()
 
 	rows, err := rrsql.DB.Queryx(query, values...)
 	if err != nil {
@@ -284,7 +327,7 @@ func (a *assetAPI) FilterAssets(args *GetAssetArgs) (result []FilteredAsset, err
 
 func (a *assetAPI) GetAssets(args *GetAssetArgs) (result []Asset, err error) {
 
-	conditionSQL, conditionArgs := args.parseCondition()
+	conditionSQL, conditionArgs := args.parseRestricts()
 	limitingSQL, limitingArgs := args.parseLimit()
 
 	values := append(conditionArgs, limitingArgs...)

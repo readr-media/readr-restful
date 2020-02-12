@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/args"
 	"github.com/readr-media/readr-restful/internal/rrsql"
 )
 
@@ -108,11 +108,11 @@ type MemberInterface interface {
 	DeleteMember(idType string, id string) error
 	GetMember(req GetMemberArgs) (Member, error)
 	GetMembers(req *GetMembersArgs) ([]Member, error)
-	FilterMembers(args *GetMembersArgs) ([]Stunt, error)
+	FilterMembers(args *FilterMemberArgs) ([]Stunt, error)
 	InsertMember(m Member) (id int, err error)
 	UpdateAll(ids []int64, active int) error
 	UpdateMember(m Member) error
-	Count(req *GetMembersArgs) (result int, err error)
+	Count(req args.ArgsParser) (result int, err error)
 	GetIDsByNickname(params GetMembersKeywordsArgs) (result []Stunt, err error)
 }
 
@@ -122,7 +122,7 @@ type GetMemberArgs struct {
 	Mode   string
 }
 
-func (m *GetMemberArgs) parse() (restricts string, values []interface{}) {
+func (m *GetMemberArgs) parseRestricts() (restricts string, values []interface{}) {
 	where := make([]string, 0)
 
 	if m.ID != "" && m.IDType != "" {
@@ -153,14 +153,6 @@ type GetMembersArgs struct {
 	IDs          []string         `form:"ids"`
 	UUIDs        []string         `form:"uuids"`
 	Total        bool             `form:"total"`
-	Fields       rrsql.Sqlfields
-
-	// For filter API
-	FilterID        int64
-	FilterMail      string
-	FilterNickname  string
-	FilterCreatedAt map[string]time.Time
-	FilterUpdatedAt map[string]time.Time
 }
 
 func (m *GetMembersArgs) SetDefault() {
@@ -174,11 +166,21 @@ func (m *GetMembersArgs) DefaultActive() {
 	m.Active = map[string][]int{"$nin": []int{config.Config.Models.Members["delete"]}}
 }
 
+func (m *GetMembersArgs) ParseCountQuery() (query string, values []interface{}) {
+
+	if !m.anyFilter() {
+		return `SELECT COUNT(*) FROM members`, values
+	} else {
+		restricts, values := m.parseRestricts()
+		return fmt.Sprintf(`SELECT COUNT(*) FROM (SELECT id FROM members WHERE %s) AS subquery`, restricts), values
+	}
+}
+
 func (m *GetMembersArgs) anyFilter() bool {
 	return m.Active != nil || m.CustomEditor == true
 }
 
-func (m *GetMembersArgs) parse() (restricts string, values []interface{}) {
+func (m *GetMembersArgs) parseRestricts() (restricts string, values []interface{}) {
 	where := make([]string, 0)
 
 	if m.CustomEditor {
@@ -240,37 +242,74 @@ func (m *GetMembersArgs) parseLimit() (restricts string, values []interface{}) {
 	return restricts, values
 }
 
-func (m *GetMembersArgs) parseFilterRestricts() (restrictString string, values []interface{}) {
+type FilterMemberArgs struct {
+	FilterArgs
+	Fields rrsql.Sqlfields
+}
+
+func (p FilterMemberArgs) ParseQuery() (query string, values []interface{}) {
+	return p.parse(false)
+}
+func (p FilterMemberArgs) ParseCountQuery() (query string, values []interface{}) {
+	return p.parse(true)
+}
+
+func (m *FilterMemberArgs) parse(doCount bool) (query string, values []interface{}) {
+	selectedFields := m.Fields.GetFields(`%s "%s"`)
+
+	restricts, restrictVals := m.parseFilterRestricts()
+	limit, limitVals := m.parseLimit()
+	values = append(values, restrictVals...)
+	values = append(values, limitVals...)
+
+	if doCount {
+		query = fmt.Sprintf(`
+		SELECT %s FROM members %s `,
+			"COUNT(member_id)",
+			restricts,
+		)
+		values = restrictVals
+	} else {
+		query = fmt.Sprintf(`
+		SELECT %s FROM members %s `,
+			selectedFields,
+			restricts+limit,
+		)
+	}
+
+	return query, values
+}
+func (m *FilterMemberArgs) parseFilterRestricts() (restrictString string, values []interface{}) {
 	restricts := make([]string, 0)
 
-	if m.FilterID != 0 {
+	if m.ID != 0 {
 		restricts = append(restricts, `CAST(members.id as CHAR) LIKE ?`)
-		values = append(values, fmt.Sprintf("%s%d%s", "%", m.FilterID, "%"))
+		values = append(values, fmt.Sprintf("%s%d%s", "%", m.ID, "%"))
 	}
-	if m.FilterMail != "" {
+	if m.Mail != "" {
 		restricts = append(restricts, `CAST(members.mail as CHAR) LIKE ?`)
-		values = append(values, fmt.Sprintf("%s%s%s", "%", m.FilterMail, "%"))
+		values = append(values, fmt.Sprintf("%s%s%s", "%", m.Mail, "%"))
 	}
-	if m.FilterNickname != "" {
+	if m.Nickname != "" {
 		restricts = append(restricts, `CAST(members.nickname as CHAR) LIKE ?`)
-		values = append(values, fmt.Sprintf("%s%s%s", "%", m.FilterNickname, "%"))
+		values = append(values, fmt.Sprintf("%s%s%s", "%", m.Nickname, "%"))
 	}
-	if len(m.FilterCreatedAt) != 0 {
-		if v, ok := m.FilterCreatedAt["$gt"]; ok {
+	if len(m.CreatedAt) != 0 {
+		if v, ok := m.CreatedAt["$gt"]; ok {
 			restricts = append(restricts, "members.created_at >= ?")
 			values = append(values, v)
 		}
-		if v, ok := m.FilterCreatedAt["$lt"]; ok {
+		if v, ok := m.CreatedAt["$lt"]; ok {
 			restricts = append(restricts, "members.created_at <= ?")
 			values = append(values, v)
 		}
 	}
-	if len(m.FilterUpdatedAt) != 0 {
-		if v, ok := m.FilterUpdatedAt["$gt"]; ok {
+	if len(m.UpdatedAt) != 0 {
+		if v, ok := m.UpdatedAt["$gt"]; ok {
 			restricts = append(restricts, "members.updated_at >= ?")
 			values = append(values, v)
 		}
-		if v, ok := m.FilterUpdatedAt["$lt"]; ok {
+		if v, ok := m.UpdatedAt["$lt"]; ok {
 			restricts = append(restricts, "members.updated_at <= ?")
 			values = append(values, v)
 		}
@@ -283,21 +322,21 @@ func (m *GetMembersArgs) parseFilterRestricts() (restrictString string, values [
 	return restrictString, values
 }
 
-func (m *GetMembersArgs) parseFilterQuery() (restricts string, values []interface{}) {
-	selectedFields := m.Fields.GetFields(`%s "%s"`)
+func (m *FilterMemberArgs) parseLimit() (restricts string, values []interface{}) {
 
-	restricts, restrictVals := m.parseFilterRestricts()
-	limit, limitVals := m.parseLimit()
-	values = append(values, restrictVals...)
-	values = append(values, limitVals...)
+	if m.Sorting != "" {
+		restricts = fmt.Sprintf("%s ORDER BY %s", restricts, rrsql.OrderByHelper(m.Sorting))
+	}
 
-	query := fmt.Sprintf(`
-		SELECT %s FROM members %s `,
-		selectedFields,
-		restricts+limit,
-	)
-
-	return query, values
+	if m.MaxResult > 0 {
+		restricts = fmt.Sprintf("%s LIMIT ?", restricts)
+		values = append(values, m.MaxResult)
+		if m.Page > 0 {
+			restricts = fmt.Sprintf("%s OFFSET ?", restricts)
+			values = append(values, (m.Page-1)*m.MaxResult)
+		}
+	}
+	return restricts, values
 }
 
 type GetMembersKeywordsArgs struct {
@@ -342,7 +381,7 @@ CheckEachFieldLoop:
 
 func (a *memberAPI) GetMembers(req *GetMembersArgs) (result []Member, err error) {
 
-	restricts, values := req.parse()
+	restricts, values := req.parseRestricts()
 	query := fmt.Sprintf(`SELECT * FROM members where %s `, restricts)
 
 	query, args, err := sqlx.In(query, values...)
@@ -364,7 +403,7 @@ func (a *memberAPI) GetMembers(req *GetMembersArgs) (result []Member, err error)
 
 func (a *memberAPI) GetMember(req GetMemberArgs) (Member, error) {
 	member := Member{}
-	restricts, values := req.parse()
+	restricts, values := req.parseRestricts()
 	query := fmt.Sprintf("SELECT * FROM members where %s", restricts)
 
 	err := rrsql.DB.QueryRowx(query, values...).StructScan(&member)
@@ -381,8 +420,8 @@ func (a *memberAPI) GetMember(req GetMemberArgs) (Member, error) {
 	return member, err
 }
 
-func (a *memberAPI) FilterMembers(args *GetMembersArgs) (result []Stunt, err error) {
-	query, values := args.parseFilterQuery()
+func (a *memberAPI) FilterMembers(args *FilterMemberArgs) (result []Stunt, err error) {
+	query, values := args.ParseQuery()
 
 	rows, err := rrsql.DB.Queryx(query, values...)
 	if err != nil {
@@ -493,38 +532,25 @@ func (a *memberAPI) UpdateAll(ids []int64, active int) (err error) {
 	return err
 }
 
-func (a *memberAPI) Count(req *GetMembersArgs) (result int, err error) {
+func (a *memberAPI) Count(req args.ArgsParser) (result int, err error) {
 
-	if !req.anyFilter() {
+	query, values := req.ParseCountQuery()
 
-		rows, err := rrsql.DB.Queryx(`SELECT COUNT(*) FROM members`)
-		if err != nil {
+	query, args, err := sqlx.In(query, values...)
+	if err != nil {
+		return 0, err
+	}
+	query = rrsql.DB.Rebind(query)
+	count, err := rrsql.DB.Queryx(query, args...)
+	if err != nil {
+		return 0, err
+	}
+	for count.Next() {
+		if err = count.Scan(&result); err != nil {
 			return 0, err
-		}
-		for rows.Next() {
-			err = rows.Scan(&result)
-		}
-
-	} else {
-
-		restricts, values := req.parse()
-		query := fmt.Sprintf(`SELECT COUNT(*) FROM (SELECT id FROM members WHERE %s) AS subquery`, restricts)
-
-		query, args, err := sqlx.In(query, values...)
-		if err != nil {
-			return 0, err
-		}
-		query = rrsql.DB.Rebind(query)
-		count, err := rrsql.DB.Queryx(query, args...)
-		if err != nil {
-			return 0, err
-		}
-		for count.Next() {
-			if err = count.Scan(&result); err != nil {
-				return 0, err
-			}
 		}
 	}
+
 	return result, err
 }
 

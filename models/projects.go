@@ -6,13 +6,13 @@ import (
 	"log"
 	"strconv"
 	"strings"
-	"time"
 
 	"database/sql"
 
 	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/args"
 	"github.com/readr-media/readr-restful/internal/rrsql"
 )
 
@@ -55,12 +55,12 @@ type FilteredProject struct {
 type projectAPI struct{}
 
 type ProjectAPIInterface interface {
-	CountProjects(args GetProjectArgs) (int, error)
+	CountProjects(args args.ArgsParser) (int, error)
 	DeleteProjects(p Project) error
 	GetProject(p Project) (Project, error)
 	GetProjects(args GetProjectArgs) ([]ProjectAuthors, error)
 	GetContents(id int, args GetProjectArgs) ([]interface{}, error)
-	FilterProjects(args GetProjectArgs) ([]interface{}, error)
+	FilterProjects(args *FilterProjectArgs) ([]interface{}, error)
 	InsertProject(p Project) error
 	UpdateProjects(p Project) error
 	SchedulePublish() error
@@ -85,15 +85,6 @@ type GetProjectArgs struct {
 
 	//Generate select fields
 	Fields rrsql.Sqlfields `form:"fields"`
-
-	// Filter operation
-	FilterID          int64
-	FilterSlug        string
-	FilterTitle       []string
-	FilterDescription []string
-	FilterTagName     []string
-	FilterPublishedAt map[string]time.Time
-	FilterUpdatedAt   map[string]time.Time
 }
 
 func (g *GetProjectArgs) Default() {
@@ -107,7 +98,7 @@ func (g *GetProjectArgs) DefaultActive() {
 	g.Active = map[string][]int{"$nin": []int{config.Config.Models.ProjectsActive["deactive"]}}
 }
 
-func (p *GetProjectArgs) parse() (restricts string, values []interface{}) {
+func (p *GetProjectArgs) parseRestricts() (restricts string, values []interface{}) {
 	where := make([]string, 0)
 
 	if p.Active != nil {
@@ -183,58 +174,121 @@ func (p *GetProjectArgs) parseLimit() (limit map[string]string, values []interfa
 	return limit, values
 }
 
-func (p *GetProjectArgs) parseFilterRestricts() (restrictString string, values []interface{}) {
+func (g *GetProjectArgs) FullAuthorTags() (result []string) {
+	return rrsql.GetStructDBTags("full", Member{})
+}
+
+func (p GetProjectArgs) ParseCountQuery() (query string, values []interface{}) {
+	restricts, values := p.parseRestricts()
+	return fmt.Sprintf(`SELECT COUNT(project_id) FROM projects WHERE %s`, restricts), values
+}
+
+type FilterProjectArgs struct {
+	FilterArgs
+	//Generate select fields
+	Fields rrsql.Sqlfields `form:"fields"`
+}
+
+func (p *FilterProjectArgs) ParseQuery() (query string, values []interface{}) {
+	return p.parseFilterQuery(false)
+}
+func (p *FilterProjectArgs) ParseCountQuery() (query string, values []interface{}) {
+	return p.parseFilterQuery(true)
+}
+
+func (p *FilterProjectArgs) parseFilterQuery(doCount bool) (query string, values []interface{}) {
+
+	var selectedFields string
+	if len(p.Fields) == 0 {
+		selectedFields = "*"
+	} else {
+		selectedFields = p.Fields.GetFields(`projects.%s "%s"`)
+	}
+
+	restricts, restrictVals := p.parseRestricts()
+	limit, limitVals := p.parseLimit()
+	values = append(values, restrictVals...)
+	values = append(values, limitVals...)
+
+	var joinedTables []string
+	if len(p.Tag) > 0 {
+		joinedTables = append(joinedTables, fmt.Sprintf(`
+		LEFT JOIN tagging AS tagging ON tagging.target_id = projects.project_id AND tagging.type = %d LEFT JOIN tags AS tags ON tags.tag_id = tagging.tag_id 
+		`, config.Config.Models.TaggingType["project"]))
+	}
+
+	if doCount {
+		query = fmt.Sprintf(`
+		SELECT %s FROM projects AS projects %s %s `,
+			"COUNT(project_id)",
+			strings.Join(joinedTables, " "),
+			restricts,
+		)
+		values = restrictVals
+	} else {
+		query = fmt.Sprintf(`
+		SELECT %s FROM projects AS projects %s %s `,
+			selectedFields,
+			strings.Join(joinedTables, " "),
+			restricts+limit,
+		)
+	}
+
+	return query, values
+}
+
+func (p *FilterProjectArgs) parseRestricts() (restrictString string, values []interface{}) {
 	restricts := make([]string, 0)
 
-	if p.FilterID != 0 {
+	if p.ID != 0 {
 		restricts = append(restricts, `CAST(projects.project_id as CHAR) LIKE ?`)
-		values = append(values, fmt.Sprintf("%s%d%s", "%", p.FilterID, "%"))
+		values = append(values, fmt.Sprintf("%s%d%s", "%", p.ID, "%"))
 	}
-	if p.FilterSlug != "" {
+	if p.Slug != "" {
 		restricts = append(restricts, `projects.slug LIKE ?`)
-		values = append(values, fmt.Sprintf("%s%s%s", "%", p.FilterSlug, "%"))
+		values = append(values, fmt.Sprintf("%s%s%s", "%", p.Slug, "%"))
 	}
-	if len(p.FilterTitle) != 0 {
+	if len(p.Title) != 0 {
 		subRestricts := make([]string, 0)
-		for _, v := range p.FilterTitle {
+		for _, v := range p.Title {
 			subRestricts = append(subRestricts, `projects.title LIKE ?`)
 			values = append(values, fmt.Sprintf("%s%s%s", "%", v, "%"))
 		}
 		restricts = append(restricts, fmt.Sprintf("%s%s%s", "(", strings.Join(subRestricts, " OR "), ")"))
 	}
-	if len(p.FilterDescription) != 0 {
+	if len(p.Description) != 0 {
 		subRestricts := make([]string, 0)
-		for _, v := range p.FilterDescription {
+		for _, v := range p.Description {
 			subRestricts = append(subRestricts, `projects.description LIKE ?`)
 			values = append(values, fmt.Sprintf("%s%s%s", "%", v, "%"))
 		}
 		restricts = append(restricts, fmt.Sprintf("%s%s%s", "(", strings.Join(subRestricts, " OR "), ")"))
 	}
-	if len(p.FilterTagName) != 0 {
+	if len(p.Tag) != 0 {
 		subRestricts := make([]string, 0)
-		for _, v := range p.FilterTagName {
+		for _, v := range p.Tag {
 			subRestricts = append(subRestricts, `tags.tag_content LIKE ?`)
 			values = append(values, fmt.Sprintf("%s%s%s", "%", v, "%"))
 		}
 		restricts = append(restricts, fmt.Sprintf("(%s)", strings.Join(subRestricts, " OR ")))
 	}
 
-	if len(p.FilterPublishedAt) != 0 {
-		if v, ok := p.FilterPublishedAt["$gt"]; ok {
+	if len(p.PublishedAt) != 0 {
+		if v, ok := p.PublishedAt["$gt"]; ok {
 			restricts = append(restricts, "projects.published_at >= ?")
 			values = append(values, v)
 		}
-		if v, ok := p.FilterPublishedAt["$lt"]; ok {
+		if v, ok := p.PublishedAt["$lt"]; ok {
 			restricts = append(restricts, "projects.published_at <= ?")
 			values = append(values, v)
 		}
 	}
-	if len(p.FilterUpdatedAt) != 0 {
-		if v, ok := p.FilterUpdatedAt["$gt"]; ok {
+	if len(p.UpdatedAt) != 0 {
+		if v, ok := p.UpdatedAt["$gt"]; ok {
 			restricts = append(restricts, "projects.updated_at >= ?")
 			values = append(values, v)
 		}
-		if v, ok := p.FilterUpdatedAt["$lt"]; ok {
+		if v, ok := p.UpdatedAt["$lt"]; ok {
 			restricts = append(restricts, "projects.updated_at <= ?")
 			values = append(values, v)
 		}
@@ -247,39 +301,35 @@ func (p *GetProjectArgs) parseFilterRestricts() (restrictString string, values [
 	return restrictString, values
 }
 
-func (p *GetProjectArgs) parseFilterQuery() (query string, values []interface{}) {
+func (p *FilterProjectArgs) parseLimit() (limit string, values []interface{}) {
+	restricts := make([]string, 0)
 
-	var selectedFields string
-	if len(p.Fields) == 0 {
-		selectedFields = "*"
-	} else {
-		selectedFields = p.Fields.GetFields(`projects.%s "%s"`)
+	if p.Sorting != "" {
+		tmp := strings.Split(p.Sorting, ",")
+		for i, v := range tmp {
+			if v := strings.TrimSpace(v); strings.HasPrefix(v, "-") {
+				tmp[i] = "-projects." + v[1:]
+			} else {
+				tmp[i] = "projects." + v
+			}
+		}
+
+		p.Sorting = strings.Join(tmp, ",")
+
+		restricts = append(restricts, fmt.Sprintf("ORDER BY %s", rrsql.OrderByHelper(p.Sorting)))
 	}
-
-	restricts, restrictVals := p.parseFilterRestricts()
-	limit, limitVals := p.parseLimit()
-	values = append(values, restrictVals...)
-	values = append(values, limitVals...)
-
-	var joinedTables []string
-	if len(p.FilterTagName) > 0 {
-		joinedTables = append(joinedTables, fmt.Sprintf(`
-		LEFT JOIN tagging AS tagging ON tagging.target_id = projects.project_id AND tagging.type = %d LEFT JOIN tags AS tags ON tags.tag_id = tagging.tag_id 
-		`, config.Config.Models.TaggingType["project"]))
+	if p.MaxResult != 0 {
+		restricts = append(restricts, "LIMIT ?")
+		values = append(values, p.MaxResult)
+		if p.Page != 0 {
+			restricts = append(restricts, "OFFSET ?")
+			values = append(values, (p.Page-1)*(p.MaxResult))
+		}
 	}
-
-	query = fmt.Sprintf(`
-		SELECT %s FROM projects AS projects %s %s `,
-		selectedFields,
-		strings.Join(joinedTables, " "),
-		restricts+limit["full"],
-	)
-
-	return query, values
-}
-
-func (g *GetProjectArgs) FullAuthorTags() (result []string) {
-	return rrsql.GetStructDBTags("full", Member{})
+	if len(restricts) > 0 {
+		limit = fmt.Sprintf(" %s", strings.Join(restricts, " "))
+	}
+	return limit, values
 }
 
 type ProjectAuthor struct {
@@ -319,9 +369,8 @@ func (p *ProjectAuthors) formatTags() {
 	}
 }
 
-func (a *projectAPI) CountProjects(arg GetProjectArgs) (result int, err error) {
-	restricts, values := arg.parse()
-	query := fmt.Sprintf(`SELECT COUNT(project_id) FROM projects WHERE %s`, restricts)
+func (a *projectAPI) CountProjects(arg args.ArgsParser) (result int, err error) {
+	query, values := arg.ParseCountQuery()
 
 	query, args, err := sqlx.In(query, values...)
 	if err != nil {
@@ -360,7 +409,7 @@ func (a *projectAPI) GetProjects(args GetProjectArgs) (result []ProjectAuthors, 
 	// Init appendable result slice
 	result = make([]ProjectAuthors, 0)
 
-	restricts, values := args.parse()
+	restricts, values := args.parseRestricts()
 	if len(restricts) > 0 {
 		restricts = fmt.Sprintf("WHERE %s", restricts)
 	}
@@ -557,8 +606,9 @@ func (a *projectAPI) GetContents(id int, args GetProjectArgs) (result []interfac
 	return result, nil
 }
 
-func (a *projectAPI) FilterProjects(args GetProjectArgs) (result []interface{}, err error) {
-	query, values := args.parseFilterQuery()
+func (a *projectAPI) FilterProjects(args *FilterProjectArgs) (result []interface{}, err error) {
+	query, values := args.ParseQuery()
+	fmt.Println(query, values)
 
 	rows, err := rrsql.DB.Queryx(query, values...)
 	if err != nil {

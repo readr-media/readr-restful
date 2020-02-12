@@ -9,31 +9,14 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	rt "github.com/readr-media/readr-restful/internal/router"
 	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/pkg/asset"
 )
 
-type FilterArgs struct {
-	MaxResult   int                  `form:"max_result"`
-	Page        int                  `form:"page"`
-	Sorting     string               `form:"sort"`
-	ID          int64                `form:"id"`
-	Slug        string               `form:"slug"`
-	Mail        string               `form:"mail"`
-	Nickname    string               `form:"nickname"`
-	Title       []string             `form:"title"`
-	Description []string             `form:"description"`
-	Content     []string             `form:"content"`
-	Author      []string             `form:"author"`
-	Tag         []string             `form:"tag"`
-	PublishedAt map[string]time.Time `form:"published_at"`
-	CreatedAt   map[string]time.Time `form:"created_at"`
-	UpdatedAt   map[string]time.Time `form:"updated_at"`
-}
-
 type filterHandler struct{}
 
-func (r *filterHandler) bindQuery(c *gin.Context, args *FilterArgs) (err error) {
+func (r *filterHandler) bindQuery(c *gin.Context, args *models.FilterArgs) (err error) {
 	_ = c.ShouldBindQuery(args)
 
 	if c.Query("id") != "" {
@@ -69,14 +52,14 @@ func (r *filterHandler) bindQuery(c *gin.Context, args *FilterArgs) (err error) 
 	}
 
 	if c.Query("published_at") != "" {
-		timearg, err := r.BindTimeOp(c.Query("published_at"))
+		timearg, err := r.bindTimeOp(c.Query("published_at"))
 		if err != nil {
 			return err
 		}
 		args.PublishedAt = timearg
 	}
 	if c.Query("updated_at") != "" {
-		timearg, err := r.BindTimeOp(c.Query("updated_at"))
+		timearg, err := r.bindTimeOp(c.Query("updated_at"))
 		if err != nil {
 			return err
 		}
@@ -85,7 +68,7 @@ func (r *filterHandler) bindQuery(c *gin.Context, args *FilterArgs) (err error) 
 	return nil
 }
 
-func (r *filterHandler) BindTimeOp(param string) (timeOps map[string]time.Time, err error) {
+func (r *filterHandler) bindTimeOp(param string) (timeOps map[string]time.Time, err error) {
 	timeOps = make(map[string]time.Time)
 	statements := strings.Split(param, "::")
 	if len(statements) > 0 {
@@ -114,7 +97,7 @@ func (r *filterHandler) BindTimeOp(param string) (timeOps map[string]time.Time, 
 func (r *filterHandler) Get(c *gin.Context) {
 
 	var resource = strings.Split(c.Request.URL.Path, "/")[1]
-	var args = &FilterArgs{}
+	var args = &models.FilterArgs{}
 
 	if err := r.bindQuery(c, args); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"Error": err.Error()})
@@ -133,75 +116,79 @@ func (r *filterHandler) Get(c *gin.Context) {
 
 	switch resource {
 	case "project":
-		projects, err := models.ProjectAPI.FilterProjects(models.GetProjectArgs{
-			MaxResult:         args.MaxResult,
-			Page:              args.Page,
-			Sorting:           args.Sorting,
-			FilterID:          args.ID,
-			FilterSlug:        args.Slug,
-			FilterTitle:       args.Title,
-			FilterDescription: args.Description,
-			FilterTagName:     args.Tag,
-			FilterPublishedAt: args.PublishedAt,
-			FilterUpdatedAt:   args.UpdatedAt,
-			Fields:            []string{"project_id", "title", "slug", "progress", "status", "publish_status", "published_at"},
-		})
+		getArg := models.FilterProjectArgs{
+			FilterArgs: *args,
+			Fields:     []string{"project_id", "title", "slug", "progress", "status", "publish_status", "published_at"},
+		}
+		projects, err := models.ProjectAPI.FilterProjects(&getArg)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"_items": projects})
+		total, err := models.ProjectAPI.CountProjects(&getArg)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"_items": projects,
+			"_meta":  rt.ResponseMeta{Total: &total},
+		})
 	case "posts":
-		posts, err := models.PostAPI.FilterPosts(&models.PostArgs{
-			MaxResult:         uint8(args.MaxResult),
-			Page:              uint16(args.Page),
-			Sorting:           args.Sorting,
-			FilterID:          args.ID,
-			FilterTitle:       args.Title,
-			FilterContent:     args.Content,
-			FilterAuthorName:  args.Author,
-			FilterTagName:     args.Tag,
-			FilterPublishedAt: args.PublishedAt,
-			FilterUpdatedAt:   args.UpdatedAt,
-		})
+		getArg := models.FilterPostArgs{
+			FilterArgs: *args,
+		}
+		posts, err := models.PostAPI.FilterPosts(&getArg)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"_items": posts})
+		total, err := models.PostAPI.Count(&getArg)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"_items": posts,
+			"_meta":  rt.ResponseMeta{Total: &total},
+		})
 	case "asset":
-		assets, err := asset.AssetAPI.FilterAssets(&asset.GetAssetArgs{
-			MaxResult:       uint8(args.MaxResult),
-			Page:            uint16(args.Page),
-			Sorting:         args.Sorting,
-			FilterID:        args.ID,
-			FilterTitle:     args.Title,
-			FilterTagName:   args.Tag,
-			FilterCreatedAt: args.CreatedAt,
-			FilterUpdatedAt: args.UpdatedAt,
-		})
+		getArg := asset.FilterAssetArgs{
+			FilterArgs: *args,
+		}
+		assets, err := asset.AssetAPI.FilterAssets(&getArg)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"_items": assets})
+		total, err := asset.AssetAPI.Count(&getArg)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"_items": assets,
+			"_meta":  rt.ResponseMeta{Total: &total},
+		})
 	case "members":
-		members, err := models.MemberAPI.FilterMembers(&models.GetMembersArgs{
-			MaxResult:       uint8(args.MaxResult),
-			Page:            uint16(args.Page),
-			Sorting:         args.Sorting,
-			FilterID:        args.ID,
-			FilterMail:      args.Mail,
-			FilterNickname:  args.Nickname,
-			FilterCreatedAt: args.CreatedAt,
-			FilterUpdatedAt: args.UpdatedAt,
-			Fields:          []string{"id", "mail", "nickname", "role", "custom_editor", "updated_at"},
-		})
+		getArg := models.FilterMemberArgs{
+			FilterArgs: *args,
+			Fields:     []string{"id", "mail", "nickname", "role", "custom_editor", "updated_at"},
+		}
+		members, err := models.MemberAPI.FilterMembers(&getArg)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"_items": members})
+		total, err := models.MemberAPI.Count(&getArg)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"Error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"_items": members,
+			"_meta":  rt.ResponseMeta{Total: &total},
+		})
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"Error": "Resource Not Supported"})
 	}

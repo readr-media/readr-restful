@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/readr-media/readr-restful/internal/args"
 	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 )
@@ -21,7 +22,7 @@ var mockProjectAuthors = []models.Stunt{}
 
 type mockProjectAPI struct{}
 
-func (a *mockProjectAPI) CountProjects(arg models.GetProjectArgs) (result int, err error) {
+func (a *mockProjectAPI) CountProjects(arg args.ArgsParser) (result int, err error) {
 	return 5, err
 }
 
@@ -134,7 +135,7 @@ func (a *mockProjectAPI) GetContents(id int, args models.GetProjectArgs) (result
 	return nil, err
 }
 
-func (a *mockProjectAPI) FilterProjects(args models.GetProjectArgs) (result []interface{}, err error) {
+func (a *mockProjectAPI) FilterProjects(args *models.FilterProjectArgs) (result []interface{}, err error) {
 	return result, err
 }
 

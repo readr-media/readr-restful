@@ -11,10 +11,12 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/readr-media/readr-restful/config"
+	"github.com/readr-media/readr-restful/internal/args"
 	"github.com/readr-media/readr-restful/internal/rrsql"
 	"github.com/readr-media/readr-restful/models"
 	"github.com/readr-media/readr-restful/utils"
@@ -128,8 +130,8 @@ func (a *mockMemberAPI) GetMember(req models.GetMemberArgs) (result models.Membe
 	return result, err
 }
 
-func (a *mockMemberAPI) FilterMembers(args *models.GetMembersArgs) (result []models.Stunt, err error) {
-	return result, err
+func (a *mockMemberAPI) FilterMembers(args *models.FilterMemberArgs) (result []models.Stunt, err error) {
+	return result, nil
 }
 
 func (a *mockMemberAPI) InsertMember(m models.Member) (id int, err error) {
@@ -187,22 +189,24 @@ func (a *mockMemberAPI) UpdateAll(ids []int64, active int) (err error) {
 	return err
 }
 
-func (a *mockMemberAPI) Count(req *models.GetMembersArgs) (result int, err error) {
+func (a *mockMemberAPI) Count(req args.ArgsParser) (result int, err error) {
+	query, _ := req.ParseCountQuery()
 	result = 0
 	err = errors.New("Members Not Found")
-	if req.CustomEditor == true {
+	if strings.Contains(query, "custom_editor") {
 		return 1, nil
 	}
-	if req.Role != nil && *req.Role == int64(9) {
+	if strings.Contains(query, "role") {
 		return 1, nil
 	}
-	for k, v := range req.Active {
-		if k == "$in" && reflect.DeepEqual(v, []int{1, -1}) {
-			return 2, nil
-		}
-		if k == "$nin" && reflect.DeepEqual(v, []int{-1}) {
-			return 4, nil
-		}
+	if strings.Contains(query, "members.active NOT IN (?))") {
+		return 4, nil
+	}
+	if strings.Contains(query, "members.active IN (?))") {
+		return 2, nil
+	}
+	if strings.Contains(query, "CAST(members.mail as CHAR) LIKE") {
+		return 1, nil
 	}
 	return result, err
 }
