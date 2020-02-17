@@ -228,6 +228,9 @@ func (c *InvoiceClient) Validate() (err error) {
 					return errors.New("empty buyer_email when carrier_type = 2")
 				}
 				result["CarrierNum"] = result["BuyerEmail"]
+				if _, ok := result["PrintFlag"]; !ok {
+					result["PrintFlag"] = "N"
+				}
 			default:
 				delete(result, "CarrierType")
 				result["PrintFlag"] = "Y"
