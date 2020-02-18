@@ -134,7 +134,7 @@ func (a *FilterAssetArgs) ParseCountQuery() (query string, values []interface{})
 }
 
 func (a *FilterAssetArgs) parse(doCount bool) (query string, values []interface{}) {
-	fields := getStructDBTags(FilteredAsset{})
+	fields := rrsql.GetStructDBTags("full", FilteredAsset{})
 	for k, v := range fields {
 		fields[k] = fmt.Sprintf("assets.%s", v)
 	}

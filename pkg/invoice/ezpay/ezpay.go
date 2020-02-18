@@ -228,20 +228,24 @@ func (c *InvoiceClient) Validate() (err error) {
 					return errors.New("empty buyer_email when carrier_type = 2")
 				}
 				result["CarrierNum"] = result["BuyerEmail"]
-				if _, ok := result["PrintFlag"]; !ok {
-					result["PrintFlag"] = "N"
-				}
 			default:
 				delete(result, "CarrierType")
 				result["PrintFlag"] = "Y"
 			}
 		}
+		// Fix type of ItemPrice
+		var itemPrice = []int{}
+		for _, v := range result["ItemPrice"].([]interface{}) {
+			price := int(math.Round(v.(float64)))
+			itemPrice = append(itemPrice, price)
+		}
+		result["ItemPrice"] = itemPrice
 	}
-	if len(result["ItemCount"].([]interface{})) == len(result["ItemPrice"].([]interface{})) {
+	if len(result["ItemCount"].([]interface{})) == len(result["ItemPrice"].([]int)) {
 		var itemAmt = []int{}
 		for i := range result["ItemCount"].([]interface{}) {
 			count := int(result["ItemCount"].([]interface{})[i].(float64))
-			price := int(result["ItemPrice"].([]interface{})[i].(float64))
+			price := result["ItemPrice"].([]int)[i]
 			itemAmt = append(itemAmt, count*price)
 		}
 		result["ItemAmt"] = itemAmt
@@ -249,8 +253,13 @@ func (c *InvoiceClient) Validate() (err error) {
 
 	result["ItemName"] = strings.Join(interfaceSliceToa(result["ItemName"].([]interface{})), "|")
 	result["ItemUnit"] = strings.Join(interfaceSliceToa(result["ItemUnit"].([]interface{})), "|")
-	result["ItemPrice"] = strings.Join(interfaceSliceItoa(result["ItemPrice"].([]interface{})), "|")
 	result["ItemCount"] = strings.Join(interfaceSliceItoa(result["ItemCount"].([]interface{})), "|")
+	result["ItemPrice"] = strings.Join(func(i []int) (r []string) {
+		for _, v := range i {
+			r = append(r, strconv.Itoa(v))
+		}
+		return r
+	}(result["ItemPrice"].([]int)), "|")
 	result["ItemAmt"] = strings.Join(func(i []int) (r []string) {
 		for _, v := range i {
 			r = append(r, strconv.Itoa(v))

@@ -2,6 +2,8 @@ package tappay
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
 
 	"github.com/readr-media/readr-restful/config"
@@ -46,6 +48,24 @@ func (c RecurringClient) Pay(payment map[string]interface{}) (resp map[string]in
 	payment["merchant_id"] = config.Config.PaymentService.MerchantID
 
 	resp, err = Pay(config.Config.PaymentService.TokenURL, payment)
+	if err != nil {
+		return nil, nil, err
+	}
+	if _, ok := resp["status"]; !ok {
+		return nil, nil, errors.New("Pay by prime error: Unexpected response from tappay")
+	}
+	if status, ok := resp["status"].(float64); ok {
+		if status != 0 && status != 2 {
+			jsonStr, jsonErr := json.Marshal(resp)
+			if jsonErr != nil {
+				return nil, nil, errors.New(fmt.Sprintf("Pay by token error, Status: %s", status))
+			} else {
+				return nil, nil, errors.New(fmt.Sprintf("Pay by token error, %s", string(jsonStr)))
+			}
+		}
+	} else {
+		return nil, nil, errors.New("Pay by prime error: Unexpected response from tappay")
+	}
 	return resp, token, err
 }
 
@@ -63,7 +83,21 @@ func (c OnetimeClient) Pay(payment map[string]interface{}) (resp map[string]inte
 	if err != nil {
 		return nil, nil, err
 	}
-
+	if _, ok := resp["status"]; !ok {
+		return nil, nil, errors.New("Pay by prime error: Unexpected response from tappay")
+	}
+	if status, ok := resp["status"].(float64); ok {
+		if status != 0 && status != 2 {
+			jsonStr, jsonErr := json.Marshal(resp)
+			if jsonErr != nil {
+				return nil, nil, errors.New(fmt.Sprintf("Pay by prime error, Status: %s", status))
+			} else {
+				return nil, nil, errors.New(fmt.Sprintf("Pay by prime error, %s", string(jsonStr)))
+			}
+		}
+	} else {
+		return nil, nil, errors.New("Pay by prime error: Unexpected response from tappay")
+	}
 	token = make(map[string]interface{})
 	// Parse for pay by token
 	if rem, ok := payment["remember"]; ok && rem == true {
