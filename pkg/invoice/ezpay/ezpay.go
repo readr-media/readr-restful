@@ -233,6 +233,13 @@ func (c *InvoiceClient) Validate() (err error) {
 				result["PrintFlag"] = "Y"
 			}
 		}
+		// Fix type of ItemPrice
+		var itemPrice = []int{}
+		for _, v := range result["ItemPrice"].([]interface{}) {
+			price := int(math.Round(v.(float64)))
+			itemPrice = append(itemPrice, price)
+		}
+		result["ItemPrice"] = itemPrice
 	}
 	if len(result["ItemCount"].([]interface{})) == len(result["ItemPrice"].([]int)) {
 		var itemAmt = []int{}
