@@ -144,8 +144,8 @@ func (s *SubscriptionService) CreateSubscription(p subscription.Subscription) (e
 	_, p.PaymentInfos, err = s.Payment.Pay(p.PaymentInfos)
 	if err != nil {
 		s.MailService.Set(mail.Mail{To: []string{p.Email}, Subject: "Huston! We have a problem!", Body: err.Error()})
-		if err = s.MailService.Send(); err != nil {
-			return err
+		if mailErr := s.MailService.Send(); mailErr != nil {
+			return mailErr
 		}
 		return err
 	}
@@ -154,8 +154,8 @@ func (s *SubscriptionService) CreateSubscription(p subscription.Subscription) (e
 	if err != nil {
 		log.Printf("error creating invoice:%v\n", err)
 		s.MailService.Set(mail.Mail{To: []string{p.Email}, Subject: "Huston! We have a problem!", Body: err.Error()})
-		if err = s.MailService.Send(); err != nil {
-			return err
+		if mailErr := s.MailService.Send(); mailErr != nil {
+			return mailErr
 		}
 		return err
 	}
@@ -213,8 +213,8 @@ func (s *SubscriptionService) RoutinePay(subscribers []subscription.Subscription
 		if err != nil {
 			log.Printf("recurring pay error paying:%v\n", err)
 			s.MailService.Set(mail.Mail{To: []string{p.Email}, Subject: "Huston! We have a problem!", Body: err.Error()})
-			if err = s.MailService.Send(); err != nil {
-				return err
+			if mailErr := s.MailService.Send(); mailErr != nil {
+				return mailErr
 			}
 			return err
 		}
@@ -227,13 +227,12 @@ func (s *SubscriptionService) RoutinePay(subscribers []subscription.Subscription
 		_, err = s.Invoice.Create()
 		if err != nil {
 			s.MailService.Set(mail.Mail{To: []string{p.Email}, Subject: "Huston! We have a problem!", Body: err.Error()})
-			if err = s.MailService.Send(); err != nil {
-				return err
+			if mailErr := s.MailService.Send(); mailErr != nil {
+				return mailErr
 			}
 			log.Printf("recurring pay error creating invoice:%v\n", err)
 			return err
 		}
-
 	}
 	return nil
 }
