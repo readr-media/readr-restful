@@ -132,7 +132,7 @@ func (c *InvoiceClient) Validate() (err error) {
 
 	result["RespondType"] = get(c.Payload, "response_type", "JSON")
 	result["TimeStamp"] = time.Now().Unix()
-	result["MerchantOrderNo"] = time.Now().Format("20060102")
+	result["MerchantOrderNo"] = get(c.Payload, "merchant_order_no", time.Now().Format("20060102"))
 	result["Status"] = get(c.Payload, "status", "1")
 	result["TaxType"] = get(c.Payload, "tax_type", "1")
 	result["Category"] = get(c.Payload, "category", "B2C")
@@ -150,6 +150,11 @@ func (c *InvoiceClient) Validate() (err error) {
 	result["TotalAmt"] = get(c.Payload, "amount", nil)
 	if result["TotalAmt"] == nil {
 		return errors.New("invalid amount")
+	}
+
+	result["PrintFlag"] = get(c.Payload, "print_flag", nil)
+	if result["PrintFlag"] == nil {
+		return errors.New("invalid print_flag")
 	}
 
 	if config.Config.InvoiceService.APIVersion == "" {

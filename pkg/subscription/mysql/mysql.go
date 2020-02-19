@@ -69,7 +69,7 @@ FindTags:
 			case "bool":
 				columns = append(columns, tag)
 			default:
-				fmt.Printf("unrecognised format: %s value:%v\n", value.Field(i).Type(), fieldValue)
+				// fmt.Printf("unrecognised format: %s value:%v\n", value.Field(i).Type(), fieldValue)
 				// TODO: restrict the judgement to certain kind with Kind(), or it might panic
 				if fieldValue.Len() > 0 {
 					columns = append(columns, tag)
@@ -104,22 +104,9 @@ func (s *SubscriptionService) GetSubscriptions(params subscription.ListFilter) (
 // CreateSubscription will make first payment, and store infos for recurring payment in db
 func (s *SubscriptionService) CreateSubscription(p subscription.Subscription) (err error) {
 
+	s.MailService = &mail.MailService{}
 	// Setup payment service
 	s.Payment, err = payment.NewOnetimeProvider(p.PaymentService)
-
-	// Setup invoice service
-	p.InvoiceInfos["amount"] = p.Amount
-	s.Invoice, err = invoice.NewInvoiceProvider(p.InvoiceService, p.InvoiceInfos)
-	s.MailService = &mail.MailService{}
-
-	if err != nil {
-		log.Printf("recurring pay error assigning invoice service:%v\n", err)
-		return err
-	}
-	if err = s.Invoice.Validate(); err != nil {
-		log.Printf("invoice validated error:%s\n", err.Error())
-		return err
-	}
 
 	// Set status to init
 	p.Status = subscription.StatusInit
@@ -141,12 +128,28 @@ func (s *SubscriptionService) CreateSubscription(p subscription.Subscription) (e
 	p.PaymentInfos["amount"] = p.Amount
 	p.PaymentInfos["remember"] = true
 
-	_, p.PaymentInfos, err = s.Payment.Pay(p.PaymentInfos)
+	var paymentResp map[string]interface{}
+	paymentResp, p.PaymentInfos, err = s.Payment.Pay(p.PaymentInfos)
 	if err != nil {
 		s.MailService.Set(mail.Mail{To: []string{p.Email}, Subject: "Huston! We have a problem!", Body: err.Error()})
 		if mailErr := s.MailService.Send(); mailErr != nil {
 			return mailErr
 		}
+		return err
+	}
+
+	// Setup invoice service
+	p.InvoiceInfos["amount"] = p.Amount
+	// Set the "MerchantOrderNo" of Invoice to connect Payment and Invoice info
+	p.InvoiceInfos["merchant_order_no"] = paymentResp["bank_transaction_id"]
+	s.Invoice, err = invoice.NewInvoiceProvider(p.InvoiceService, p.InvoiceInfos)
+
+	if err != nil {
+		log.Printf("recurring pay error assigning invoice service:%v\n", err)
+		return err
+	}
+	if err = s.Invoice.Validate(); err != nil {
+		log.Printf("invoice validated error:%s\n", err.Error())
 		return err
 	}
 
@@ -191,25 +194,17 @@ func (s *SubscriptionService) UpdateSubscriptions(p subscription.Subscription) e
 func (s *SubscriptionService) RoutinePay(subscribers []subscription.Subscription) (err error) {
 
 	for _, p := range subscribers {
+
+		s.MailService = &mail.MailService{}
 		// Initializing payment service
 		s.Payment, err = payment.NewRecurringProvider(p.PaymentService)
 		if err != nil {
 			return err
 		}
 		p.PaymentInfos["amount"] = p.Amount
-		p.InvoiceInfos["amount"] = p.Amount
 
-		s.Invoice, err = invoice.NewInvoiceProvider(p.InvoiceService, p.InvoiceInfos)
-		if err != nil {
-			log.Printf("recurring pay error assigning invoice service:%v\n", err)
-			return err
-		}
-		if err = s.Invoice.Validate(); err != nil {
-			return err
-		}
-		s.MailService = &mail.MailService{}
-
-		_, _, err := s.Payment.Pay(p.PaymentInfos)
+		var paymentResp map[string]interface{}
+		paymentResp, _, err := s.Payment.Pay(p.PaymentInfos)
 		if err != nil {
 			log.Printf("recurring pay error paying:%v\n", err)
 			s.MailService.Set(mail.Mail{To: []string{p.Email}, Subject: "Huston! We have a problem!", Body: err.Error()})
@@ -218,6 +213,19 @@ func (s *SubscriptionService) RoutinePay(subscribers []subscription.Subscription
 			}
 			return err
 		}
+
+		p.InvoiceInfos["amount"] = p.Amount
+		// Set the "MerchantOrderNo" of Invoice to connect Payment and Invoice info
+		p.InvoiceInfos["merchant_order_no"] = paymentResp["bank_transaction_id"]
+		s.Invoice, err = invoice.NewInvoiceProvider(p.InvoiceService, p.InvoiceInfos)
+		if err != nil {
+			log.Printf("recurring pay error assigning invoice service:%v\n", err)
+			return err
+		}
+		if err = s.Invoice.Validate(); err != nil {
+			return err
+		}
+
 		update := subscription.Subscription{ID: uint64(p.ID), UpdatedAt: rrsql.NullTime{Time: time.Now(), Valid: true}, LastPaidAt: rrsql.NullTime{Time: time.Now(), Valid: true}}
 		err = s.UpdateSubscriptions(update)
 		if err != nil {
