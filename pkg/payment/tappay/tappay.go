@@ -58,7 +58,7 @@ func (c RecurringClient) Pay(payment map[string]interface{}) (resp map[string]in
 		if status != 0 && status != 2 {
 			jsonStr, jsonErr := json.Marshal(resp)
 			if jsonErr != nil {
-				return nil, nil, errors.New(fmt.Sprintf("Pay by token error, Status: %s", status))
+				return nil, nil, errors.New(fmt.Sprintf("Pay by token error, Status: %f", status))
 			} else {
 				return nil, nil, errors.New(fmt.Sprintf("Pay by token error, %s", string(jsonStr)))
 			}
@@ -90,7 +90,7 @@ func (c OnetimeClient) Pay(payment map[string]interface{}) (resp map[string]inte
 		if status != 0 && status != 2 {
 			jsonStr, jsonErr := json.Marshal(resp)
 			if jsonErr != nil {
-				return nil, nil, errors.New(fmt.Sprintf("Pay by prime error, Status: %s", status))
+				return nil, nil, errors.New(fmt.Sprintf("Pay by prime error, Status: %f", status))
 			} else {
 				return nil, nil, errors.New(fmt.Sprintf("Pay by prime error, %s", string(jsonStr)))
 			}
