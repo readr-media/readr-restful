@@ -6,7 +6,8 @@
         "item_name": ["訂閱"],
         "item_count": [1],
         "item_price": [299],
-        "item_unit": ["月"]
+        "item_unit": ["月"],
+        "print_flag": "Y"
     },
     "expect": {
         "RespondType": "JSON",
