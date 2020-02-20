@@ -33,9 +33,10 @@ type Asset struct {
 
 type FilteredAsset struct {
 	ID        int64            `json:"id" db:"id"`
-	FileName  rrsql.NullString `json:"file_name" db:"file_name"`
+	Title     rrsql.NullString `json:"title" db:"title"`
+	Copyright rrsql.NullString `json:"copyright" db:"copyright"`
 	AssetType rrsql.NullInt    `json:"asset_type" db:"asset_type"`
-	UpdatedAt rrsql.NullTime   `json:"updated_at" db:"updated_at"`
+	CreatedAt rrsql.NullTime   `json:"created_at" db:"created_at"`
 }
 
 type GetAssetArgs struct {
@@ -262,7 +263,6 @@ type AssetInterface interface {
 func (a *assetAPI) Count(args args.ArgsParser) (count int, err error) {
 
 	query, values := args.ParseCountQuery()
-	fmt.Println(query, values)
 	query, values, err = sqlx.In(query, values...)
 	if err != nil {
 		return 0, err

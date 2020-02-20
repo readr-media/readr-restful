@@ -56,10 +56,11 @@ type Post struct {
 
 type FilteredPost struct {
 	ID            int              `json:"id" db:"post_id"`
-	Title         rrsql.NullString `json:"title" db:"title"`
-	PublishStatus rrsql.NullInt    `json:"publish_status" db:"publish_status"`
-	UpdatedAt     rrsql.NullTime   `json:"updated_at" db:"updated_at"`
 	Authors       []AuthorBasic    `json:"authors,omitempty"`
+	Title         rrsql.NullString `json:"title" db:"title"`
+	Type          rrsql.NullInt    `json:"type" db:"type"`
+	PublishStatus rrsql.NullInt    `json:"publish_status" db:"publish_status"`
+	CreatedAt     rrsql.NullTime   `json:"created_at" db:"created_at"`
 }
 
 type PostDescription struct {
