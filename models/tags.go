@@ -224,7 +224,7 @@ func (t *tagApi) GetTags(args GetTagsArgs) (tags []TagRelatedResources, err erro
 	}
 
 	if args.Sorting != "" {
-		query.WriteString(fmt.Sprintf(` ORDER BY %s`, rrsql.OperatorHelper(args.Sorting)))
+		query.WriteString(fmt.Sprintf(` ORDER BY %s`, rrsql.OrderByHelper(args.Sorting)))
 	}
 
 	if args.MaxResult != 0 {
