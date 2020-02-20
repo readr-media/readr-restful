@@ -34,7 +34,7 @@ type Asset struct {
 type FilteredAsset struct {
 	ID        int64            `json:"id" db:"id"`
 	Title     rrsql.NullString `json:"title" db:"title"`
-	Copyright rrsql.NullString `json:"copyright" db:"copyright"`
+	Copyright rrsql.NullInt    `json:"copyright" db:"copyright"`
 	AssetType rrsql.NullInt    `json:"asset_type" db:"asset_type"`
 	CreatedAt rrsql.NullTime   `json:"created_at" db:"created_at"`
 }
