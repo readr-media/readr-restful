@@ -118,7 +118,7 @@ func (r *filterHandler) Get(c *gin.Context) {
 	case "project":
 		getArg := models.FilterProjectArgs{
 			FilterArgs: *args,
-			Fields:     []string{"project_id", "title", "slug", "progress", "status", "publish_status", "published_at"},
+			Fields:     []string{"project_id", "title", "slug", "status", "publish_status", "created_at"},
 		}
 		projects, err := models.ProjectAPI.FilterProjects(&getArg)
 		if err != nil {
@@ -173,7 +173,7 @@ func (r *filterHandler) Get(c *gin.Context) {
 	case "members":
 		getArg := models.FilterMemberArgs{
 			FilterArgs: *args,
-			Fields:     []string{"id", "mail", "nickname", "role", "custom_editor", "updated_at"},
+			Fields:     []string{"id", "nickname", "mail", "role", "active", "custom_editor", "created_at"},
 		}
 		members, err := models.MemberAPI.FilterMembers(&getArg)
 		if err != nil {
