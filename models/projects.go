@@ -46,10 +46,9 @@ type FilteredProject struct {
 	ID            int              `json:"id" db:"project_id"`
 	Title         rrsql.NullString `json:"title" db:"title"`
 	Slug          rrsql.NullString `json:"slug" db:"slug"`
-	Progress      rrsql.NullFloat  `json:"progress" db:"progress"`
 	Status        rrsql.NullInt    `json:"status" db:"status"`
 	PublishStatus rrsql.NullInt    `json:"publish_status" db:"publish_status"`
-	PublishedAt   rrsql.NullTime   `json:"published_at" db:"published_at"`
+	CreatedAt     rrsql.NullTime   `json:"created_at" db:"created_at"`
 }
 
 type projectAPI struct{}
