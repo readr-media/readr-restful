@@ -116,7 +116,8 @@
             "report": 9,
             "memo": 9,
             "paragragh": 9,
-            "dummy": 9
+            "dummy": 9,
+            "qa": 9
         },
         "post_publish_status":{
             "unpublish": 9,
