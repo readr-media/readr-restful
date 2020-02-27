@@ -626,6 +626,10 @@ func (a *postAPI) GetPost(id uint32, req *PostArgs) (post TaggedPostMember, err 
 	if err == nil {
 		post.Authors = authors[int(post.Post.ID)]
 	}
+	tags, err := a.fetchPostTags([]int{int(post.Post.ID)})
+	if err == nil {
+		post.Tags = tags[int(post.Post.ID)]
+	}
 
 	if req.ShowCard {
 		cards, err := a.fetchPostCards([]int{int(post.Post.ID)})
