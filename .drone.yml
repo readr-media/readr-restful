@@ -13,7 +13,7 @@ pipeline:
       *{{build.author}}* give *{{build.branch}}* a little push.
     when:
       event: [push]
-      branch: [master, dev, stage]
+      branch: [master, dev]
 
   get_config_dev:
     image: gcr.io/mirrormedia-1470651750304/drone-cloud-sdk:latest
@@ -23,23 +23,11 @@ pipeline:
     - cp rr-configs/readr-media/readr-restful/dev/main.json ./config/main.json
     - cp rr-configs/readr-media/readr-restful/*.html ./config/
     when:
-      event: [push, pull_request]
+      event: [pull_request]
       branch: [dev]
 
-  get_stage_config:
-    image: gcr.io/mirrormedia-1470651750304/drone-cloud-sdk:latest
-    secrets: [google_credentials]
-    commands:
-    - gcloud source repos clone configs rr-configs
-    - cp rr-configs/readr-media/readr-restful/prod/main.json ./config/main.json
-    - cp rr-configs/readr-media/readr-restful/prod/.kube.yml ./.kube.yml
-    - cp rr-configs/readr-media/readr-restful/*.html ./config/
-    when:
-      event: [push]
-      branch: [stage]
-
   pull_request_test:
-    image: golang:1.12-alpine
+    image: golang:1.14-alpine
     environment:
       - GO111MODULE=on
     commands:
@@ -51,8 +39,8 @@ pipeline:
       branch: [dev]
 
   pr_integration_test:
-    image: golang:1.12-alpine
-    environment:
+    image: golang:1.14-alpine
+    environment:/
       - GO111MODULE=on
     commands:
     - cp rr-configs/readr-media/readr-restful/integration_test/main.json config/integration_test.json
@@ -67,15 +55,15 @@ pipeline:
       branch: [dev]
 
   config_clean:
-    image: golang:1.12-alpine
+    image: golang:1.14-alpine
     commands:
     - rm -rf rr-configs
     when:
-      event: [push, pull_request]
-      branch: [dev, stage]
+      event: [pull_request]
+      branch: [dev]
 
   builds:
-    image: golang:1.12-alpine
+    image: golang:1.14-alpine
     environment:
       - GO111MODULE=on
     commands:
@@ -86,66 +74,16 @@ pipeline:
       event: [push]
       branch: dev
 
-  build_stage:
-    image: golang:1.12-alpine
-    environment:
-      - GO111MODULE=on
-    commands:
-    - apk add --update git make
-    - make build-stage
-    when:
-      event: push
-      branch: stage
-
   publish:
     image: plugins/gcr
     repo: mirrormedia-1470651750304/${DRONE_REPO_NAME}
-    tag: ${DRONE_COMMIT_AUTHOR}_${DRONE_BUILD_NUMBER}
+    tag: ${DRONE_COMMIT_BRANCH}_${DRONE_COMMIT_AUTHOR}_${DRONE_BUILD_NUMBER}
     environment:
       - DOCKER_LAUNCH_DEBUG=true
     secrets: [google_credentials]
     when:
       event: [push]
-      branch: [master, dev, stage]
-
-  deploy_dev:
-    image: nytimes/drone-gke
-    zone: asia-east1-a
-    cluster: dev
-    namespace: default
-    # For debugging
-    dry_run: false
-    verbose: true
-    secrets:
-      - source: google_credentials
-        target: token
-    vars:
-      image: gcr.io/mirrormedia-1470651750304/${DRONE_REPO_NAME}:${DRONE_COMMIT_AUTHOR}_${DRONE_BUILD_NUMBER}
-      app: readr-rest
-      tier: backend
-    when:
-      event: [push]
-      branch: dev
-
-  deploy_stage:
-    image: nytimes/drone-gke
-    zone: asia-east1-a
-    cluster: prod-readr
-    namespace: default
-    # For debugging
-    dry_run: false
-    verbose: true
-    secrets:
-      - source: google_credentials
-        target: token
-    vars:
-      image: gcr.io/mirrormedia-1470651750304/${DRONE_REPO_NAME}:${DRONE_COMMIT_AUTHOR}_${DRONE_BUILD_NUMBER}
-      app: readr-restful
-      tier: backend-stage
-      branch: stage
-    when:
-      event: [push]
-      branch: stage
+      branch: [master, dev]
 
   pr_test_fail:
     image: plugins/slack
@@ -173,7 +111,7 @@ pipeline:
     when:
       status: [success, failure]
       event: [push]
-      branch: [master, dev, stage]
+      branch: [master, dev]
     template: >
       {{#success build.status}}
         Build<${DRONE_BUILD_LINK}|#{{build.number}}> *success* ${DRONE_REPO_NAME}:${DRONE_COMMIT_AUTHOR}_${DRONE_BUILD_NUMBER} was well served.
