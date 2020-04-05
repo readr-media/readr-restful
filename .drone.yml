@@ -23,7 +23,7 @@ pipeline:
     - cp rr-configs/readr-media/readr-restful/dev/main.json ./config/main.json
     - cp rr-configs/readr-media/readr-restful/*.html ./config/
     when:
-      event: [pull_request]
+      event: [pull_request, push]
       branch: [dev]
 
   pull_request_test:
@@ -59,7 +59,7 @@ pipeline:
     commands:
     - rm -rf rr-configs
     when:
-      event: [pull_request]
+      event: [pull_request, push]
       branch: [dev]
 
   builds:
