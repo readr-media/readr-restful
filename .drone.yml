@@ -40,7 +40,7 @@ pipeline:
 
   pr_integration_test:
     image: golang:1.14-alpine
-    environment:/
+    environment:
       - GO111MODULE=on
     commands:
     - cp rr-configs/readr-media/readr-restful/integration_test/main.json config/integration_test.json
