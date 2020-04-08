@@ -12,12 +12,16 @@ spec:
     targetPort: readrest-port
   type: LoadBalancer
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: readr-rest
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      app: readr-rest
+      tier: backend
   template:
     metadata:
       labels:
