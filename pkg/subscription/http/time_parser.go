@@ -18,8 +18,10 @@ func payInterval(current time.Time) (start time.Time, end time.Time, err error) 
 			return truncatedCurrent.AddDate(0, -1, 0), truncatedCurrent.AddDate(0, -1, 2), nil
 		}
 	case time.February:
-		if day == 28 {
+		if day == 28 && !isLeapYear(year) {
 			return truncatedCurrent.AddDate(0, -1, 0), truncatedCurrent.AddDate(0, -1, 4), nil
+		} else if day == 29 {
+			return truncatedCurrent.AddDate(0, -1, 0), truncatedCurrent.AddDate(0, -1, 3), nil
 		}
 	case time.March:
 		if day > 29 || (day == 29 && !isLeapYear(year)) {
