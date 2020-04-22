@@ -83,7 +83,7 @@ pipeline:
     secrets: [google_credentials]
     when:
       event: [push]
-      branch: [master, dev]
+      branch: [dev]
 
   pr_test_fail:
     image: plugins/slack
