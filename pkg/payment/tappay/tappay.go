@@ -23,6 +23,7 @@ type PaymentResp struct {
 func Pay(url string, payment map[string]interface{}) (resp map[string]interface{}, err error) {
 
 	reqBody, _ := json.Marshal(payment)
+	log.Printf("payment request string: %v\n", string(reqBody))
 	_, body, err := utils.HTTPRequest("POST", url,
 		map[string]string{
 			"x-api-key": config.Config.PaymentService.PartnerKey,
