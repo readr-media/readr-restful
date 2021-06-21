@@ -47,6 +47,9 @@ func (c RecurringClient) Pay(payment map[string]interface{}) (resp map[string]in
 	// Inject partner_key & merchant_id
 	payment["partner_key"] = config.Config.PaymentService.PartnerKey
 	payment["merchant_id"] = config.Config.PaymentService.MerchantID
+	payment["three_domain_secure"] = true
+	payment["frontend_redirect_url"] = config.Config.PaymentService.FrontendRedirectUrl
+	payment["backend_notify_url"] = config.Config.PaymentService.BackendNotifyUrl
 
 	resp, err = Pay(config.Config.PaymentService.TokenURL, payment)
 	if err != nil {
@@ -79,6 +82,7 @@ func (c OnetimeClient) Pay(payment map[string]interface{}) (resp map[string]inte
 	// Retrieve key & id from config
 	payment["partner_key"] = config.Config.PaymentService.PartnerKey
 	payment["merchant_id"] = config.Config.PaymentService.MerchantID
+	payment["three_domain_secure"] = true
 
 	resp, err = Pay(config.Config.PaymentService.PrimeURL, payment)
 	if err != nil {

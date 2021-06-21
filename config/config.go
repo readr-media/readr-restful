@@ -93,12 +93,14 @@ type appConfig struct {
 	TokenSecret  string `mapstructure:"token_secret"`
 
 	PaymentService struct {
-		PartnerKey         string `mapstructure:"partner_key"`
-		MerchantID         string `mapstructure:"merchant_id"`
-		PrimeURL           string `mapstructure:"prime_url"`
-		TokenURL           string `mapstructure:"token_url"`
-		Currency           string `mapstructure:"currency"`
-		PaymentDescription string `mapstructure:"payment_description"`
+		PartnerKey          string `mapstructure:"partner_key"`
+		MerchantID          string `mapstructure:"merchant_id"`
+		PrimeURL            string `mapstructure:"prime_url"`
+		TokenURL            string `mapstructure:"token_url"`
+		Currency            string `mapstructure:"currency"`
+		PaymentDescription  string `mapstructure:"payment_description"`
+		FrontendRedirectUrl string `mapstructure:"frontend_redirect_url"`
+		BackendNotifyUrl    string `mapstructure:"backend_notify_url"`
 	} `mapstructure:"payment_service"`
 
 	InvoiceService struct {
